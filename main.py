@@ -3,7 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from typing import List
-
+import os
+from thumbs import THUMBS_DIR
 from config import CORS_ORIGINS, ADMIN_TOKEN
 from database import db_ping, SessionLocal, init_db
 from models import Game
