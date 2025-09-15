@@ -65,7 +65,7 @@ def list_games(
 
     # pagination
     offset = (page - 1) * page_size
-    rows: List[Game] = db.execute(query.offset(offset).limit(page_size)).scalars().all()
+    rows = db.execute(query.offset(offset).limit(page_size)).scalars().all()
 
     def to_out(g: Game) -> GameOut:
         cats = [c.strip() for c in (g.categories or "").split(",") if c.strip()]
