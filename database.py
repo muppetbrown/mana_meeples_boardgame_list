@@ -1,16 +1,16 @@
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from config import DATABASE_URL
+from models import Base
 
-# SQLite tuning: use check_same_thread=False and StaticPool if in-memory.
+# SQLite tuning for FastAPI
 connect_args = {}
 engine_kwargs = {}
 
 if DATABASE_URL.startswith("sqlite:"):
     connect_args["check_same_thread"] = False
-    # file-based SQLite on Render Disk; StaticPool not needed unless in-memory
+    # StaticPool only for in-memory SQLite, not needed for file-based
     if DATABASE_URL in ("sqlite://", "sqlite:///:memory:"):
         engine_kwargs["poolclass"] = StaticPool
 
@@ -24,3 +24,6 @@ def db_ping() -> bool:
         return True
     except Exception:
         return False
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
