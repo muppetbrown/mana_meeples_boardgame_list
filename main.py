@@ -94,21 +94,18 @@ def list_games(
     }
 
 def to_out(g: Game) -> GameOut:
-    # categories must always be a list
     cats = [c.strip() for c in (g.categories or "").split(",") if c.strip()]
 
-    # thumbnail: prefer stored URL, otherwise build from file; normalize to absolute
+    # normalize thumbnail to absolute
     thumb = g.thumbnail_url
     if not thumb and getattr(g, "thumbnail_file", None):
         thumb = f"/thumbs/{g.thumbnail_file}"
-
-    # If it's a leading-slash path, convert to absolute using PUBLIC_BASE_URL (if set)
     if thumb and thumb.startswith("/") and (PUBLIC_BASE_URL or ""):
         thumb = f"{PUBLIC_BASE_URL.rstrip('/')}{thumb}"
 
     return GameOut(
         id=g.id,
-        title=g.title or "",  # defensive
+        title=g.title or "",
         categories=cats,
         year=g.year,
         players_min=g.players_min,
@@ -116,6 +113,13 @@ def to_out(g: Game) -> GameOut:
         playtime_min=g.playtime_min,
         playtime_max=g.playtime_max,
         thumbnail_url=thumb,
+
+        # legacy mirrors for the current frontend
+        thumbnail=thumb,
+        playersMin=g.players_min,
+        playersMax=g.players_max,
+        playtimeMin=g.playtime_min,
+        playtimeMax=g.playtime_max,
     )
 
     items = [to_out(g) for g in rows]
