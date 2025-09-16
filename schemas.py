@@ -16,22 +16,9 @@ class GameOut(BaseModel):
     playtime_max: Optional[int] = None
     thumbnail_url: Optional[str] = None
 
-    # existing mirrors
-    thumbnail: Optional[str] = None
-    playersMin: Optional[int] = None
-    playersMax: Optional[int] = None
-    playtimeMin: Optional[int] = None
-    playtimeMax: Optional[int] = None
-
-    # added to match the frontend helpers & alternate shapes
-    imageUrl: Optional[str] = None
-    image: Optional[str] = None
-    imageURL: Optional[str] = None
-    players: Optional[Range] = None
-    playtime: Optional[Range] = None
-
     class Config:
         orm_mode = True
+        extra = "allow"
 
 class PagedGames(BaseModel):
     total: int
