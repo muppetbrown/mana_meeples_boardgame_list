@@ -52,6 +52,13 @@ async def fetch_bgg_thing(bgg_id: int) -> Dict[str, Any]:
             maxplayers = int_or_none(attr(item.find("maxplayers")     or ET.Element("x"), "value"))
             minplay    = int_or_none(attr(item.find("minplaytime")    or ET.Element("x"), "value"))
             maxplay    = int_or_none(attr(item.find("maxplaytime")    or ET.Element("x"), "value"))
+            # Extra fallbacks
+            playing = int_or_none(attr(item.find("playingtime") or ET.Element("x"), "value"))
+            if minplay is None and playing is not None:
+                minplay = playing
+            if maxplay is None and playing is not None:
+                maxplay = playing
+
 
             thumb = (item.findtext("thumbnail") or "").strip()
             cats: List[str] = [
