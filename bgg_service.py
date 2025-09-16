@@ -7,17 +7,17 @@ BGG_THING_URL = "https://www.boardgamegeek.com/xmlapi2/thing"
 
 async def fetch_bgg_thing(bgg_id: int) -> Dict[str, Any]:
     params = {"id": str(bgg_id), "stats": "1"}
-    async with httpx.AsyncClient(timeout=30) as client:
-        # Retry up to ~12s total if BGG returns 202 (queued)
+    headers = {"User-Agent": "ManaMeeples/1.0 (+https://manaandmeeples.co.nz)"}
+
+    async with httpx.AsyncClient(timeout=30, follow_redirects=True, headers=headers) as client:
+        # Retry loop to handle BGG's 202 "queued" and occasional empty responses
         for attempt in range(6):
             r = await client.get(BGG_THING_URL, params=params)
-            # 202 means “queued” – wait and try again
             if r.status_code == 202:
                 await asyncio.sleep(2)
                 continue
             r.raise_for_status()
-            text = r.text.strip()
-            # Sometimes 200 but empty/queued-looking; guard it
+            text = (r.text or "").strip()
             if not text or "<items" not in text:
                 await asyncio.sleep(2)
                 continue
@@ -25,7 +25,6 @@ async def fetch_bgg_thing(bgg_id: int) -> Dict[str, Any]:
             root = ET.fromstring(text)
             item = root.find("./item")
             if item is None:
-                # Try again if no item yet
                 await asyncio.sleep(2)
                 continue
 
@@ -48,15 +47,17 @@ async def fetch_bgg_thing(bgg_id: int) -> Dict[str, Any]:
                 except ValueError:
                     return None
 
-            year = int_or_none(attr(item.find("yearpublished") or ET.Element("x"), "value"))
-            minplayers = int_or_none(attr(item.find("minplayers") or ET.Element("x"), "value"))
-            maxplayers = int_or_none(attr(item.find("maxplayers") or ET.Element("x"), "value"))
-            minplay = int_or_none(attr(item.find("minplaytime") or ET.Element("x"), "value"))
-            maxplay = int_or_none(attr(item.find("maxplaytime") or ET.Element("x"), "value"))
+            year       = int_or_none(attr(item.find("yearpublished") or ET.Element("x"), "value"))
+            minplayers = int_or_none(attr(item.find("minplayers")     or ET.Element("x"), "value"))
+            maxplayers = int_or_none(attr(item.find("maxplayers")     or ET.Element("x"), "value"))
+            minplay    = int_or_none(attr(item.find("minplaytime")    or ET.Element("x"), "value"))
+            maxplay    = int_or_none(attr(item.find("maxplaytime")    or ET.Element("x"), "value"))
 
             thumb = (item.findtext("thumbnail") or "").strip()
             cats: List[str] = [
-                attr(l, "value") for l in item.findall("link") if attr(l, "type") == "boardgamecategory"
+                attr(l, "value")
+                for l in item.findall("link")
+                if attr(l, "type") == "boardgamecategory"
             ]
 
             return {
