@@ -179,6 +179,20 @@ def _parse_categories(raw_categories) -> List[str]:
     # Handle comma-separated format
     return [c.strip() for c in raw_str.split(",") if c.strip()]
 
+def _parse_json_field(field_value) -> List[str]:
+    """Parse JSON field (designers, publishers, mechanics, etc.) into a list"""
+    if not field_value:
+        return []
+    
+    if isinstance(field_value, list):
+        return field_value
+    
+    try:
+        parsed = json.loads(field_value)
+        return parsed if isinstance(parsed, list) else []
+    except (json.JSONDecodeError, TypeError):
+        return []
+
 def _categorize_game(categories: List[str]) -> Optional[str]:
     """Automatically categorize a game based on its BGG categories"""
     if not categories:
@@ -211,35 +225,6 @@ def _categorize_game(categories: List[str]) -> Optional[str]:
         return max(scores, key=scores.get)
     
     return None
-
-@app.post("/api/admin/recategorize-all")
-async def recategorize_all_games(
-    x_admin_token: Optional[str] = Header(None),
-    db: Session = Depends(get_db)
-):
-    """Recategorize all existing games based on their BGG categories"""
-    _require_admin_token(x_admin_token)
-    
-    games = db.execute(select(Game)).scalars().all()
-    updated = 0
-    
-    for game in games:
-        categories = _parse_categories(game.categories)
-        new_category = _categorize_game(categories)
-        
-        if new_category != game.mana_meeple_category:
-            game.mana_meeple_category = new_category
-            updated += 1
-    
-    db.commit()
-    
-    return {
-        "message": f"Recategorized {updated} games",
-        "categories_assigned": {
-            game.title: game.mana_meeple_category 
-            for game in games
-        }
-    }
 
 def _make_absolute_url(request: Request, url: Optional[str]) -> Optional[str]:
     """Convert relative URLs to absolute URLs"""
@@ -288,15 +273,18 @@ async def _download_thumbnail(url: str, filename_base: str) -> Optional[str]:
 def _game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
     """Convert game model to dictionary for API response"""
     categories = _parse_categories(game.categories)
-    designers = json.loads(game.designers) if game.designers else []
-    publishers = json.loads(game.publishers) if game.publishers else []
-    mechanics = json.loads(game.mechanics) if game.mechanics else []
+    
+    # Parse JSON fields safely
+    designers = _parse_json_field(getattr(game, 'designers', None))
+    publishers = _parse_json_field(getattr(game, 'publishers', None))
+    mechanics = _parse_json_field(getattr(game, 'mechanics', None))
+    artists = _parse_json_field(getattr(game, 'artists', None))
     
     # Handle thumbnail URL
     thumbnail_url = None
-    if game.thumbnail_file:
+    if hasattr(game, 'thumbnail_file') and game.thumbnail_file:
         thumbnail_url = _make_absolute_url(request, f"/thumbs/{game.thumbnail_file}")
-    elif game.thumbnail_url:
+    elif hasattr(game, 'thumbnail_url') and game.thumbnail_url:
         thumbnail_url = game.thumbnail_url
     
     return {
@@ -315,15 +303,17 @@ def _game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         "thumbnail_url": thumbnail_url,
         "image_url": thumbnail_url,  # Alias for frontend
         "mana_meeple_category": getattr(game, "mana_meeple_category", None),
-        "description": game.description,
+        "description": getattr(game, "description", None),
         "designers": designers,
         "publishers": publishers,  
         "mechanics": mechanics,
-        "average_rating": game.average_rating,
-        "complexity": game.complexity,
-        "bgg_rank": game.bgg_rank,
-        "min_age": game.min_age,
-        "is_cooperative": game.is_cooperative,
+        "artists": artists,
+        "average_rating": getattr(game, "average_rating", None),
+        "complexity": getattr(game, "complexity", None),
+        "bgg_rank": getattr(game, "bgg_rank", None),
+        "min_age": getattr(game, "min_age", None),
+        "is_cooperative": getattr(game, "is_cooperative", None),
+        "users_rated": getattr(game, "users_rated", None),
         "bgg_id": getattr(game, "bgg_id", None),
         "created_at": game.created_at.isoformat() if hasattr(game, "created_at") and game.created_at else None,
     }
@@ -351,6 +341,96 @@ def _require_admin_token(token: Optional[str]):
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         logger.warning(f"Invalid admin token attempt: {token}")
         raise HTTPException(status_code=401, detail="Invalid admin token")
+
+async def _download_and_update_thumbnail(game_id: int, thumbnail_url: str):
+    """Background task to download and update game thumbnail"""
+    try:
+        db = SessionLocal()
+        game = db.get(Game, game_id)
+        if not game:
+            return
+        
+        filename = await _download_thumbnail(thumbnail_url, f"{game_id}-{game.title}")
+        if filename:
+            if hasattr(game, 'thumbnail_file'):
+                game.thumbnail_file = filename
+            if hasattr(game, 'thumbnail_url'):
+                game.thumbnail_url = f"/thumbs/{filename}"
+            db.add(game)
+            db.commit()
+            logger.info(f"Updated thumbnail for game {game_id}: {filename}")
+        
+    except Exception as e:
+        logger.error(f"Failed to download thumbnail for game {game_id}: {e}")
+    finally:
+        db.close()
+
+async def _reimport_single_game(game_id: int, bgg_id: int):
+    """Background task to re-import a single game with enhanced data"""
+    try:
+        db = SessionLocal()
+        game = db.get(Game, game_id)
+        if not game:
+            logger.warning(f"Game {game_id} not found for reimport")
+            return
+        
+        # Fetch enhanced data from BGG
+        bgg_data = await fetch_bgg_thing(bgg_id)
+        
+        # Update game with enhanced data
+        game.title = bgg_data.get("title", game.title)
+        game.categories = ", ".join(bgg_data.get("categories", []))
+        game.year = bgg_data.get("year", game.year)
+        game.players_min = bgg_data.get("players_min", game.players_min)
+        game.players_max = bgg_data.get("players_max", game.players_max)
+        game.playtime_min = bgg_data.get("playtime_min", game.playtime_min)
+        game.playtime_max = bgg_data.get("playtime_max", game.playtime_max)
+        
+        # Update enhanced fields if they exist in the model
+        if hasattr(game, 'description'):
+            game.description = bgg_data.get("description")
+        if hasattr(game, 'designers'):
+            game.designers = json.dumps(bgg_data.get("designers", []))
+        if hasattr(game, 'publishers'):
+            game.publishers = json.dumps(bgg_data.get("publishers", []))
+        if hasattr(game, 'mechanics'):
+            game.mechanics = json.dumps(bgg_data.get("mechanics", []))
+        if hasattr(game, 'artists'):
+            game.artists = json.dumps(bgg_data.get("artists", []))
+        if hasattr(game, 'average_rating'):
+            game.average_rating = bgg_data.get("average_rating")
+        if hasattr(game, 'complexity'):
+            game.complexity = bgg_data.get("complexity")
+        if hasattr(game, 'bgg_rank'):
+            game.bgg_rank = bgg_data.get("bgg_rank")
+        if hasattr(game, 'users_rated'):
+            game.users_rated = bgg_data.get("users_rated")
+        if hasattr(game, 'min_age'):
+            game.min_age = bgg_data.get("min_age")
+        if hasattr(game, 'is_cooperative'):
+            game.is_cooperative = bgg_data.get("is_cooperative")
+        
+        # Re-categorize based on new data
+        categories = _parse_categories(game.categories)
+        game.mana_meeple_category = _categorize_game(categories)
+        
+        db.add(game)
+        db.commit()
+        
+        # Download new thumbnail if available
+        thumbnail_url = bgg_data.get("thumbnail")
+        if thumbnail_url:
+            await _download_and_update_thumbnail(game_id, thumbnail_url)
+        
+        logger.info(f"Successfully reimported game {game_id}: {game.title}")
+        
+    except Exception as e:
+        logger.error(f"Failed to reimport game {game_id}: {e}")
+        if 'db' in locals():
+            db.rollback()
+    finally:
+        if 'db' in locals():
+            db.close()
 
 # ------------------------------------------------------------------------------
 # Health endpoints
@@ -389,6 +469,32 @@ async def debug_categories(db: Session = Depends(get_db)):
         "total_games": len(games),
         "unique_categories": unique_categories,
         "category_count": len(unique_categories)
+    }
+
+@app.get("/api/debug/database-info")
+async def debug_database_info(db: Session = Depends(get_db)):
+    """Debug endpoint to see database structure and sample data"""
+    games = db.execute(select(Game)).scalars().all()
+    return {
+        "total_games": len(games),
+        "sample_games": [
+            {
+                "id": g.id,
+                "title": g.title,
+                "categories": g.categories,
+                "mana_meeple_category": g.mana_meeple_category,
+                "year": g.year,
+                "description": getattr(g, "description", "NOT_IN_SCHEMA"),
+                "designers": getattr(g, "designers", "NOT_IN_SCHEMA"),
+                "publishers": getattr(g, "publishers", "NOT_IN_SCHEMA"),
+                "mechanics": getattr(g, "mechanics", "NOT_IN_SCHEMA"),
+                "average_rating": getattr(g, "average_rating", "NOT_IN_SCHEMA"),
+                "complexity": getattr(g, "complexity", "NOT_IN_SCHEMA"),
+                "bgg_rank": getattr(g, "bgg_rank", "NOT_IN_SCHEMA"),
+                "bgg_id": g.bgg_id
+            }
+            for g in games[:5]  # Show first 5 games
+        ]
     }
 
 # ------------------------------------------------------------------------------
@@ -516,7 +622,7 @@ async def create_game(
             if existing:
                 raise HTTPException(status_code=400, detail="Game already exists")
         
-        # Create game
+        # Create game with basic fields
         game = Game(
             title=game_data.get("title", ""),
             categories=",".join(game_data.get("categories", [])),
@@ -528,6 +634,16 @@ async def create_game(
             bgg_id=bgg_id,
             mana_meeple_category=game_data.get("mana_meeple_category")
         )
+        
+        # Add enhanced fields if they exist in the model
+        if hasattr(game, 'description'):
+            game.description = game_data.get("description")
+        if hasattr(game, 'designers'):
+            game.designers = json.dumps(game_data.get("designers", []))
+        if hasattr(game, 'publishers'):
+            game.publishers = json.dumps(game_data.get("publishers", []))
+        if hasattr(game, 'mechanics'):
+            game.mechanics = json.dumps(game_data.get("mechanics", []))
         
         # Auto-categorize if no category provided
         if not game.mana_meeple_category:
@@ -550,27 +666,6 @@ async def create_game(
         db.rollback()
         logger.error(f"Failed to create game: {e}")
         raise HTTPException(status_code=500, detail="Failed to create game")
-
-async def _download_and_update_thumbnail(game_id: int, thumbnail_url: str):
-    """Background task to download and update game thumbnail"""
-    try:
-        db = SessionLocal()
-        game = db.get(Game, game_id)
-        if not game:
-            return
-        
-        filename = await _download_thumbnail(thumbnail_url, f"{game_id}-{game.title}")
-        if filename:
-            game.thumbnail_file = filename
-            game.thumbnail_url = f"/thumbs/{filename}"
-            db.add(game)
-            db.commit()
-            logger.info(f"Updated thumbnail for game {game_id}: {filename}")
-        
-    except Exception as e:
-        logger.error(f"Failed to download thumbnail for game {game_id}: {e}")
-    finally:
-        db.close()
 
 @app.post("/api/admin/import/bgg")
 async def import_from_bgg(
@@ -603,6 +698,30 @@ async def import_from_bgg(
             existing.playtime_min = bgg_data.get("playtime_min")
             existing.playtime_max = bgg_data.get("playtime_max")
             
+            # Update enhanced fields if they exist
+            if hasattr(existing, 'description'):
+                existing.description = bgg_data.get("description")
+            if hasattr(existing, 'designers'):
+                existing.designers = json.dumps(bgg_data.get("designers", []))
+            if hasattr(existing, 'publishers'):
+                existing.publishers = json.dumps(bgg_data.get("publishers", []))
+            if hasattr(existing, 'mechanics'):
+                existing.mechanics = json.dumps(bgg_data.get("mechanics", []))
+            if hasattr(existing, 'artists'):
+                existing.artists = json.dumps(bgg_data.get("artists", []))
+            if hasattr(existing, 'average_rating'):
+                existing.average_rating = bgg_data.get("average_rating")
+            if hasattr(existing, 'complexity'):
+                existing.complexity = bgg_data.get("complexity")
+            if hasattr(existing, 'bgg_rank'):
+                existing.bgg_rank = bgg_data.get("bgg_rank")
+            if hasattr(existing, 'users_rated'):
+                existing.users_rated = bgg_data.get("users_rated")
+            if hasattr(existing, 'min_age'):
+                existing.min_age = bgg_data.get("min_age")
+            if hasattr(existing, 'is_cooperative'):
+                existing.is_cooperative = bgg_data.get("is_cooperative")
+            
             # Re-categorize
             categories = _parse_categories(categories_str)
             existing.mana_meeple_category = _categorize_game(categories)
@@ -610,285 +729,15 @@ async def import_from_bgg(
             db.add(existing)
             game = existing
         else:
-            # Create new
+            # Create new with enhanced data
             categories = _parse_categories(categories_str)
-                game = Game(
-                    title=bgg_data["title"],
-                    categories=", ".join(bgg_data.get("categories", [])),
-                    year=bgg_data.get("year"),
-                    players_min=bgg_data.get("players_min"),
-                    players_max=bgg_data.get("players_max"),
-                    playtime_min=bgg_data.get("playtime_min"),
-                    playtime_max=bgg_data.get("playtime_max"),
-                    description=bgg_data.get("description"),
-                    designers=json.dumps(bgg_data.get("designers", [])),
-                    publishers=json.dumps(bgg_data.get("publishers", [])),
-                    mechanics=json.dumps(bgg_data.get("mechanics", [])),
-                    artists=json.dumps(bgg_data.get("artists", [])),
-                    average_rating=bgg_data.get("average_rating"),
-                    complexity=bgg_data.get("complexity"),
-                    bgg_rank=bgg_data.get("bgg_rank"),
-                    users_rated=bgg_data.get("users_rated"),
-                    min_age=bgg_data.get("min_age"),
-                    is_cooperative=bgg_data.get("is_cooperative"),
-                    bgg_id=bgg_id,
-                    mana_meeple_category=_categorize_game(bgg_data.get("categories", []))
-                )
-            db.add(game)
-        
-        db.commit()
-        db.refresh(game)
-        
-        # Download thumbnail in background
-        thumbnail_url = bgg_data.get("thumbnail")
-        if thumbnail_url and background_tasks:
-            background_tasks.add_task(_download_and_update_thumbnail, game.id, thumbnail_url)
-        
-        logger.info(f"Imported from BGG: {game.title} (BGG ID: {bgg_id})")
-        return {"id": game.id, "title": game.title, "cached": bool(existing)}
-        
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Failed to import BGG game {bgg_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to import game: {str(e)}")
-
-@app.post("/api/admin/bulk-import-csv")
-async def bulk_import_csv(
-    csv_data: dict,
-    background_tasks: BackgroundTasks,
-    x_admin_token: Optional[str] = Header(None),
-    db: Session = Depends(get_db)
-):
-    """Bulk import games from CSV data (admin only)"""
-    _require_admin_token(x_admin_token)
-    
-    try:
-        csv_text = csv_data.get("csv_data", "")
-        if not csv_text.strip():
-            raise HTTPException(status_code=400, detail="No CSV data provided")
-        
-        lines = [line.strip() for line in csv_text.strip().split('\n') if line.strip()]
-        if not lines:
-            raise HTTPException(status_code=400, detail="No valid lines in CSV")
-        
-        added = []
-        skipped = []
-        errors = []
-        
-        for line_num, line in enumerate(lines, 1):
-            try:
-                # Expected format: bgg_id,title (title is optional)
-                parts = [p.strip() for p in line.split(',')]
-                if len(parts) < 1:
-                    errors.append(f"Line {line_num}: No BGG ID provided")
-                    continue
-                
-                # Try to parse BGG ID
-                try:
-                    bgg_id = int(parts[0])
-                except ValueError:
-                    errors.append(f"Line {line_num}: Invalid BGG ID '{parts[0]}'")
-                    continue
-                
-                # Check if already exists
-                existing = db.execute(select(Game).where(Game.bgg_id == bgg_id)).scalar_one_or_none()
-                if existing:
-                    skipped.append(f"BGG ID {bgg_id}: Already exists as '{existing.title}'")
-                    continue
-                
-                # Import from BGG
-                try:
-                    bgg_data = await fetch_bgg_thing(bgg_id)
-                    categories_str = ", ".join(bgg_data.get("categories", []))
-                    
-                    # Create new game
-                    categories = _parse_categories(categories_str)
-                    game = Game(
-                        title=bgg_data["title"],
-                        categories=categories_str,
-                        year=bgg_data.get("year"),
-                        players_min=bgg_data.get("players_min"),
-                        players_max=bgg_data.get("players_max"),
-                        playtime_min=bgg_data.get("playtime_min"),
-                        playtime_max=bgg_data.get("playtime_max"),
-                        bgg_id=bgg_id,
-                        mana_meeple_category=_categorize_game(categories)
-                    )
-                    db.add(game)
-                    db.commit()
-                    db.refresh(game)
-                    
-                    added.append(f"BGG ID {bgg_id}: {game.title}")
-                    
-                    # Download thumbnail in background
-                    thumbnail_url = bgg_data.get("thumbnail")
-                    if thumbnail_url and background_tasks:
-                        background_tasks.add_task(_download_and_update_thumbnail, game.id, thumbnail_url)
-                    
-                except Exception as e:
-                    db.rollback()
-                    errors.append(f"Line {line_num}: Failed to import BGG ID {bgg_id} - {str(e)}")
-                    
-            except Exception as e:
-                errors.append(f"Line {line_num}: {str(e)}")
-        
-        return {
-            "message": f"Processed {len(lines)} lines",
-            "added": added,
-            "skipped": skipped,
-            "errors": errors
-        }
-        
-    except Exception as e:
-        logger.error(f"Bulk import failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Bulk import failed: {str(e)}")
-
-
-@app.post("/api/admin/bulk-categorize-csv")
-async def bulk_categorize_csv(
-    csv_data: dict,
-    x_admin_token: Optional[str] = Header(None),
-    db: Session = Depends(get_db)
-):
-    """Bulk categorize existing games from CSV data (admin only)"""
-    _require_admin_token(x_admin_token)
-    
-    try:
-        csv_text = csv_data.get("csv_data", "")
-        if not csv_text.strip():
-            raise HTTPException(status_code=400, detail="No CSV data provided")
-        
-        lines = [line.strip() for line in csv_text.strip().split('\n') if line.strip()]
-        if not lines:
-            raise HTTPException(status_code=400, detail="No valid lines in CSV")
-        
-        updated = []
-        not_found = []
-        errors = []
-        
-        for line_num, line in enumerate(lines, 1):
-            try:
-                # Expected format: bgg_id,category[,title]
-                parts = [p.strip() for p in line.split(',')]
-                if len(parts) < 2:
-                    errors.append(f"Line {line_num}: Must have at least bgg_id,category")
-                    continue
-                
-                # Parse BGG ID
-                try:
-                    bgg_id = int(parts[0])
-                except ValueError:
-                    errors.append(f"Line {line_num}: Invalid BGG ID '{parts[0]}'")
-                    continue
-                
-                category = parts[1].strip()
-                
-                # Validate category (accept both keys and labels)
-                category_key = None
-                if category in CATEGORY_KEYS:
-                    category_key = category
-                else:
-                    # Try to find by label
-                    from constants.categories import CATEGORY_LABELS
-                    for key, label in CATEGORY_LABELS.items():
-                        if label.lower() == category.lower():
-                            category_key = key
-                            break
-                
-                if not category_key:
-                    errors.append(f"Line {line_num}: Invalid category '{category}'. Use: {', '.join(CATEGORY_KEYS)}")
-                    continue
-                
-                # Find and update game
-                game = db.execute(select(Game).where(Game.bgg_id == bgg_id)).scalar_one_or_none()
-                if not game:
-                    not_found.append(f"BGG ID {bgg_id}: Game not found")
-                    continue
-                
-                old_category = game.mana_meeple_category
-                game.mana_meeple_category = category_key
-                db.add(game)
-                
-                updated.append(f"BGG ID {bgg_id} ({game.title}): {old_category or 'None'} → {category_key}")
-                
-            except Exception as e:
-                errors.append(f"Line {line_num}: {str(e)}")
-        
-        db.commit()
-        
-        return {
-            "message": f"Processed {len(lines)} lines",
-            "updated": updated,
-            "not_found": not_found,
-            "errors": errors
-        }
-        
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Bulk categorize failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Bulk categorize failed: {str(e)}")
-
-@app.get("/api/debug/database-info")
-async def debug_database_info(db: Session = Depends(get_db)):
-    games = db.execute(select(Game)).scalars().all()
-    return {
-        "total_games": len(games),
-        "sample_games": [
-            {
-                "id": g.id,
-                "title": g.title,
-                "categories": g.categories,
-                "mana_meeple_category": g.mana_meeple_category,
-                "year": g.year,
-                "bgg_id": g.bgg_id
-            }
-            for g in games[:10]
-        ]
-    }
-
-@app.post("/api/admin/reimport-all-games")
-async def reimport_all_games(
-    x_admin_token: Optional[str] = Header(None),
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
-):
-    """Re-import all existing games to get enhanced BGG data"""
-    _require_admin_token(x_admin_token)
-    
-    games = db.execute(select(Game).where(Game.bgg_id.isnot(None))).scalars().all()
-    
-    for game in games:
-        background_tasks.add_task(_reimport_single_game, game.id, game.bgg_id)
-    
-    return {"message": f"Started re-importing {len(games)} games with enhanced data"}
-    
-# ------------------------------------------------------------------------------
-# Startup
-# ------------------------------------------------------------------------------
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and create thumbs directory"""
-    logger.info("Starting Mana & Meeples API...")
-    init_db()
-    os.makedirs(THUMBS_DIR, exist_ok=True)
-    logger.info(f"Thumbnails directory: {THUMBS_DIR}")
-    logger.info("API startup complete")
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    logger.info("Shutting down API...")
-    await httpx_client.aclose()
-    logger.info("API shutdown complete")
-
-# ------------------------------------------------------------------------------
-# Root redirect
-# ------------------------------------------------------------------------------
-@app.get("/")
-async def root():
-    """Root endpoint - redirect to API docs"""
-    return {"message": "Mana & Meeples API", "docs": "/docs", "health": "/api/health"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+            game = Game(
+                title=bgg_data["title"],
+                categories=categories_str,
+                year=bgg_data.get("year"),
+                players_min=bgg_data.get("players_min"),
+                players_max=bgg_data.get("players_max"),
+                playtime_min=bgg_data.get("playtime_min"),
+                playtime_max=bgg_data.get("playtime_max"),
+                bgg_id=bgg_id,
+                mana_meeple_category=_categorize_game(categories)
