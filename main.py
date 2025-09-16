@@ -1,6 +1,7 @@
 # main.py
 import os
 import pathlib
+import json
 from typing import Optional, List, Dict
 
 import httpx
@@ -26,6 +27,27 @@ THUMBS_DIR = os.getenv("THUMBS_DIR", "/data/thumbs")
 os.makedirs(THUMBS_DIR, exist_ok=True)
 httpx_client = httpx.AsyncClient(follow_redirects=True, timeout=15)
 API_BASE = "https://mana-meeples-boardgame-list.onrender.com"  # your Render base
+
+# BGG → Pill buckets (lowercased)
+BUCKET_MAP: dict[str, set[str]] = {
+    "Co-op & Adventure": {
+        "cooperative game","adventure","narrative choice","campaign game",
+    },
+    "Core Strategy & Epics": {
+        "wargame","area majority / influence","deck, bag, and pool building",
+        "engine building","civilization","area control","economic",
+    },
+    "Gateway Strategy": {
+        "abstract strategy","animals","environmental","family game","tile placement",
+    },
+    "Kids & Families": {
+        "children's game","educational","memory","dexterity",
+    },
+    "Party & Icebreakers": {
+        "party game","humor","social deduction","word game",
+    },
+    # “Uncategorized” pill is computed as the remainder
+}
 
 # ---------------------------------------------------------------------
 # App
@@ -76,14 +98,22 @@ def get_db():
 # ---------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------
-def _categories_to_list(raw) -> List[str]:
-    if not raw:
+def _cat_list(value) -> list[str]:
+    if not value:
         return []
-    if isinstance(raw, list):
-        return [c.strip() for c in raw if c and str(c).strip()]
-    # assume comma-separated text
-    return [c.strip() for c in str(raw).split(",") if c.strip()]
-
+    if isinstance(value, list):
+        return [str(x).strip() for x in value if str(x).strip()]
+    if isinstance(value, str):
+        s = value.strip()
+        if s.startswith('['):  # JSON in text column
+            try:
+                arr = json.loads(s)
+                return [str(x).strip() for x in arr if str(x).strip()]
+            except Exception:
+                pass
+        # comma-delimited fallback
+        return [p.strip() for p in s.split(',') if p.strip()]
+    return []
 
 def _abs_url(request: Request, url: Optional[str]) -> Optional[str]:
     """Turn '/thumbs/x.png' into absolute https://host/thumbs/x.png for the proxy."""
@@ -227,12 +257,33 @@ def list_games(
 
 @app.get("/api/public/category-counts")
 def category_counts(db: Session = Depends(get_db)):
-    rows = db.execute(select(Game)).scalars().all() or []
-    counts: Dict[str, int] = {}
-    for g in rows:
-        for c in _categories_to_list(getattr(g, "categories", None)):
-            counts[c] = counts.get(c, 0) + 1
+    # Start counts at 0 for the 5 pills + uncategorized
+    counts: dict[str, int] = {
+        "All": 0,
+        "Co-op & Adventure": 0,
+        "Core Strategy & Epics": 0,
+        "Gateway Strategy": 0,
+        "Kids & Families": 0,
+        "Party & Icebreakers": 0,
+        "Uncategorized": 0,
+    }
+
+    games = db.execute(select(Game)).scalars().all() or []
+    for g in games:
+        counts["All"] += 1
+        cats = [c.lower() for c in _cat_list(getattr(g, "categories", None))]
+        matched_any = False
+        for pill, keys in BUCKET_MAP.items():
+            if any(c in keys for c in cats):
+                counts[pill] += 1
+                matched_any = True
+        if not matched_any:
+            counts["Uncategorized"] += 1
+
+    # Frontend expects a flat object of counts excluding "All" or including? 
+    # Your UI shows a separate "All" chip; keeping it is harmless.
     return counts
+
 
 @app.get("/api/public/image-proxy")
 async def image_proxy(url: str):
