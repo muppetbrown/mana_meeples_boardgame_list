@@ -8,3 +8,5 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 
 # SQLite by default; on Render we’ll set sqlite:////data/app.db
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
