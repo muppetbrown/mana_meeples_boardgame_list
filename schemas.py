@@ -12,6 +12,13 @@ class GameOut(BaseModel):
     playtime_max: Optional[int] = None
     thumbnail_url: Optional[str] = None
 
+    # --- legacy / frontend mirrors ---
+    thumbnail: Optional[str] = None
+    playersMin: Optional[int] = None
+    playersMax: Optional[int] = None
+    playtimeMin: Optional[int] = None
+    playtimeMax: Optional[int] = None
+
     class Config:
         orm_mode = True
 
