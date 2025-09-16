@@ -9,7 +9,6 @@ class Game(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(255), index=True, nullable=False)
-    # For v1 keep it simple: comma-separated categories
     categories = Column(Text, default="", nullable=False)
     year = Column(Integer, nullable=True)
     players_min = Column(Integer, nullable=True)
@@ -20,3 +19,4 @@ class Game(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     bgg_id = Column(Integer, unique=True, nullable=True, index=True)
     thumbnail_file = Column(String(256), nullable=True)
+    mana_meeple_category = Column(String(50), nullable=True)  # ADD THIS LINE
