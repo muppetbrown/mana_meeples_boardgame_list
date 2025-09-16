@@ -74,36 +74,41 @@ def list_games(
         like = f"%{q.strip()}%"
         query = query.where(Game.title.ilike(like))
 
-    # total
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
 
-    # sort
     if sort == "title_desc":
         query = query.order_by(Game.title.desc())
     else:
         query = query.order_by(Game.title.asc())
 
-    # pagination
     offset = (page - 1) * page_size
-    rows: List[Game] = db.execute(query.offset(offset).limit(page_size)).scalars().all()
+    rows: List[Game] = db.execute(query.offset(offset).limit(page_size)).scalars().all() or []
+    items = [to_out(g) for g in rows]
+
+    # <<< IMPORTANT: always return a dict, never fall through >>>
+    return {
+        "total": int(total),
+        "page": int(page),
+        "page_size": int(page_size),
+        "items": items,
+    }
 
 def to_out(g: Game) -> GameOut:
+    # categories must always be a list
     cats = [c.strip() for c in (g.categories or "").split(",") if c.strip()]
+
+    # thumbnail: prefer stored URL, otherwise build from file; normalize to absolute
     thumb = g.thumbnail_url
-    # If we only have a local file, build an absolute URL off the Render host
     if not thumb and getattr(g, "thumbnail_file", None):
-        if PUBLIC_BASE_URL:
-            thumb = f"{PUBLIC_BASE_URL}/thumbs/{g.thumbnail_file}"
-        else:
-            # fallback (still works when called directly against Render)
-            thumb = f"/thumbs/{g.thumbnail_file}"
-    # If DB holds a leading-slash path, also normalize to absolute
-    if thumb and thumb.startswith("/") and PUBLIC_BASE_URL:
-        thumb = f"{PUBLIC_BASE_URL}{thumb}"
+        thumb = f"/thumbs/{g.thumbnail_file}"
+
+    # If it's a leading-slash path, convert to absolute using PUBLIC_BASE_URL (if set)
+    if thumb and thumb.startswith("/") and (PUBLIC_BASE_URL or ""):
+        thumb = f"{PUBLIC_BASE_URL.rstrip('/')}{thumb}"
 
     return GameOut(
         id=g.id,
-        title=g.title,
+        title=g.title or "",  # defensive
         categories=cats,
         year=g.year,
         players_min=g.players_min,
