@@ -1,81 +1,98 @@
+# bgg_service.py
+import asyncio
 import httpx
 import xml.etree.ElementTree as ET
-import asyncio
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 BGG_THING_URL = "https://www.boardgamegeek.com/xmlapi2/thing"
 
+def _int_or_none(val: Optional[str]) -> Optional[int]:
+    try:
+        return int(val) if val is not None else None
+    except ValueError:
+        return None
+
+def _attr(elem: Optional[ET.Element], key: str) -> Optional[str]:
+    return elem.attrib.get(key) if elem is not None else None
+
 async def fetch_bgg_thing(bgg_id: int) -> Dict[str, Any]:
+    """
+    Robust BGG fetch:
+    - follows redirects (www -> bare domain)
+    - retries while BGG queues (202)
+    - extracts title, year, players min/max, playtime min/max with fallbacks
+    - returns categories list + thumbnail URL
+    """
     params = {"id": str(bgg_id), "stats": "1"}
     headers = {"User-Agent": "ManaMeeples/1.0 (+https://manaandmeeples.co.nz)"}
 
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True, headers=headers) as client:
-        # Retry loop to handle BGG's 202 "queued" and occasional empty responses
-        for attempt in range(6):
+    async with httpx.AsyncClient(
+        timeout=30,
+        follow_redirects=True,
+        headers=headers
+    ) as client:
+        for _ in range(6):  # ~12s total
             r = await client.get(BGG_THING_URL, params=params)
             if r.status_code == 202:
                 await asyncio.sleep(2)
                 continue
             r.raise_for_status()
-            text = (r.text or "").strip()
-            if not text or "<items" not in text:
+            xml = (r.text or "").strip()
+            if not xml or "<items" not in xml:
                 await asyncio.sleep(2)
                 continue
 
-            root = ET.fromstring(text)
+            root = ET.fromstring(xml)
             item = root.find("./item")
             if item is None:
                 await asyncio.sleep(2)
                 continue
 
-            def attr(elem, name, default=None):
-                return elem.attrib.get(name, default)
-
+            # --- core fields ---
             # title
             title = None
             for n in item.findall("name"):
-                if attr(n, "type") == "primary":
-                    title = attr(n, "value")
+                if _attr(n, "type") == "primary":
+                    title = _attr(n, "value")
                     break
             if not title:
-                n = item.find("name")
-                title = attr(n, "value") if n is not None else "Unknown"
+                first = item.find("name")
+                title = _attr(first, "value") if first is not None else "Unknown"
 
-            def int_or_none(s: Optional[str]):
-                try:
-                    return int(s) if s is not None else None
-                except ValueError:
-                    return None
+            # numbers
+            year        = _int_or_none(_attr(item.find("yearpublished"), "value"))
+            players_min = _int_or_none(_attr(item.find("minplayers"), "value"))
+            players_max = _int_or_none(_attr(item.find("maxplayers"), "value"))
+            play_min    = _int_or_none(_attr(item.find("minplaytime"), "value"))
+            play_max    = _int_or_none(_attr(item.find("maxplaytime"), "value"))
 
-            year       = int_or_none(attr(item.find("yearpublished") or ET.Element("x"), "value"))
-            minplayers = int_or_none(attr(item.find("minplayers")     or ET.Element("x"), "value"))
-            maxplayers = int_or_none(attr(item.find("maxplayers")     or ET.Element("x"), "value"))
-            minplay    = int_or_none(attr(item.find("minplaytime")    or ET.Element("x"), "value"))
-            maxplay    = int_or_none(attr(item.find("maxplaytime")    or ET.Element("x"), "value"))
-            # Extra fallbacks
-            playing = int_or_none(attr(item.find("playingtime") or ET.Element("x"), "value"))
-            if minplay is None and playing is not None:
-                minplay = playing
-            if maxplay is None and playing is not None:
-                maxplay = playing
+            # fallback to <playingtime> if min/max missing (your desktop script does this too)
+            playing     = _int_or_none(_attr(item.find("playingtime"), "value"))
+            if play_min is None and playing is not None:
+                play_min = playing
+            if play_max is None and playing is not None:
+                play_max = playing
 
-
-            thumb = (item.findtext("thumbnail") or "").strip()
-            cats: List[str] = [
-                attr(l, "value")
+            # categories
+            categories: List[str] = [
+                _attr(l, "value") or ""
                 for l in item.findall("link")
-                if attr(l, "type") == "boardgamecategory"
+                if _attr(l, "type") == "boardgamecategory"
             ]
+            categories = [c for c in categories if c]
+
+            # thumbnail
+            thumb_text = (item.findtext("thumbnail") or "").strip()
 
             return {
                 "title": title,
                 "year": year,
-                "players_min": minplayers,
-                "players_max": maxplayers,
-                "playtime_min": minplay,
-                "playtime_max": maxplay,
-                "thumbnail": thumb,
-                "categories": cats,
+                "players_min": players_min,
+                "players_max": players_max,
+                "playtime_min": play_min,
+                "playtime_max": play_max,
+                "thumbnail": thumb_text,
+                "categories": categories,
             }
 
     raise ValueError("BGG item not available after retries")
