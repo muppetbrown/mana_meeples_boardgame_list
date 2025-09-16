@@ -1,10 +1,10 @@
 # main.py
 import os
 import pathlib
-from typing import List, Dict, Optional
+from typing import Optional, List, Dict
 
 import httpx
-from fastapi import FastAPI, Depends, Header, HTTPException, Query, BackgroundTasks
+from fastapi import FastAPI, Depends, Header, HTTPException, Query, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,42 +13,37 @@ from sqlalchemy.orm import Session
 
 from database import SessionLocal, init_db
 from models import Game
-from schemas import PagedGames, GameOut, CategoryCounts, Range
 from bgg_service import fetch_bgg_thing
 
-# -------------------------
-# Configuration
-# -------------------------
-# Absolute public base for this API (used to build absolute URLs)
+# ---------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------
 PUBLIC_BASE_URL = (os.getenv("PUBLIC_BASE_URL") or "").rstrip("/")
+ADMIN_TOKEN = (os.getenv("ADMIN_TOKEN") or "").strip()
 
-# Admin token for privileged endpoints
-ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "").strip()
-
-# Where we store thumbnails on disk (persistent on Render if under /data)
 THUMBS_DIR = os.getenv("THUMBS_DIR", "/data/thumbs")
 os.makedirs(THUMBS_DIR, exist_ok=True)
 
-# -------------------------
-# App setup
-# -------------------------
+# ---------------------------------------------------------------------
+# App
+# ---------------------------------------------------------------------
 app = FastAPI(title="Mana & Meeples API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # front-end reads via your PHP proxy, but safe to allow
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Serve thumbnails directly
+# serve thumbnails (e.g. https://.../thumbs/1-azul.png)
 app.mount("/thumbs", StaticFiles(directory=THUMBS_DIR), name="thumbs")
 
 
-# -------------------------
-# DB dependency
-# -------------------------
+# ---------------------------------------------------------------------
+# DB session
+# ---------------------------------------------------------------------
 def get_db():
     db = SessionLocal()
     try:
@@ -57,37 +52,42 @@ def get_db():
         db.close()
 
 
-# -------------------------
-# Utilities
-# -------------------------
-def _abs_thumb_from_file(filename: Optional[str]) -> Optional[str]:
-    if not filename:
+# ---------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------
+def _categories_to_list(raw) -> List[str]:
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return [c.strip() for c in raw if c and str(c).strip()]
+    # assume comma-separated text
+    return [c.strip() for c in str(raw).split(",") if c.strip()]
+
+
+def _abs_url(request: Request, url: Optional[str]) -> Optional[str]:
+    """Turn '/thumbs/x.png' into absolute https://host/thumbs/x.png for the proxy."""
+    if not url:
         return None
-    # Prefer absolute URL so the browser on manaandmeeples.co.nz can load from Render
-    if PUBLIC_BASE_URL:
-        return f"{PUBLIC_BASE_URL}/thumbs/{filename}"
-    # Fallback (works when calling API host directly)
-    return f"/thumbs/{filename}"
+    if url.startswith("http://") or url.startswith("https://"):
+        return url
+    base = str(request.base_url).rstrip("/")
+    return f"{base}{url}"
 
 
-async def _download_thumbnail(url: str, stem: str) -> Optional[str]:
-    """
-    Download a thumbnail to THUMBS_DIR.
-    Returns the saved filename (basename only) or None on failure.
-    """
+async def _download_to_thumbs(url: str, name_stem: str) -> Optional[str]:
+    """Download image to THUMBS_DIR; return basename or None."""
     url = (url or "").strip()
     if not url:
         return None
-    stem = "".join(c for c in stem.lower().replace(" ", "-") if c.isalnum() or c in "-_")[:64]
 
-    # Pick extension from URL or default to .jpg
+    safe = "".join(c for c in name_stem.lower().replace(" ", "-") if c.isalnum() or c in "-_")[:64]
     ext = ".jpg"
     for cand in (".png", ".jpg", ".jpeg", ".webp"):
         if url.lower().endswith(cand):
             ext = cand
             break
 
-    filename = f"{stem}{ext}"
+    filename = f"{safe}{ext}"
     dest = os.path.join(THUMBS_DIR, filename)
 
     try:
@@ -99,57 +99,65 @@ async def _download_thumbnail(url: str, stem: str) -> Optional[str]:
                     f.write(chunk)
         return filename
     except Exception:
-        # Keep quiet — a missing thumb should not break inserts
         return None
 
 
-def _game_to_out(g: Game) -> GameOut:
-    # Categories are stored as comma-separated text in DB
-    cats = [c.strip() for c in (g.categories or "").split(",") if c.strip()]
+def _game_row_to_dict(request: Request, g: Game) -> Dict:
+    """
+    Return a dict that includes BOTH your original public fields and
+    the alias keys the shipped frontend reads.
+    """
+    cats = _categories_to_list(getattr(g, "categories", None))
 
-    # Determine thumbnail URL preference:
-    # 1) stored absolute/path URL in DB (thumbnail_url)
-    # 2) local file (thumbnail_file)
-    thumb = (g.thumbnail_url or "").strip()
-    if not thumb and g.thumbnail_file:
-        thumb = _abs_thumb_from_file(g.thumbnail_file)
+    # Prefer explicit thumbnail_url; otherwise use local file if present
+    thumb = (getattr(g, "thumbnail_url", None) or "").strip()
+    if not thumb and getattr(g, "thumbnail_file", None):
+        thumb = f"/thumbs/{g.thumbnail_file}"
 
-    # If DB has a leading-slash path, normalize to absolute
-    if thumb and thumb.startswith("/") and PUBLIC_BASE_URL:
-        thumb = f"{PUBLIC_BASE_URL}{thumb}"
+    # Absolute for the image proxy
+    abs_thumb = _abs_url(request, thumb) if thumb else None
 
-    # Build the response with BOTH the new snake_case fields
-    # and all legacy aliases the current frontend might reference.
-    return GameOut(
-        id=g.id,
-        title=g.title or "",
-        categories=cats,
-        year=g.year,
-        players_min=g.players_min,
-        players_max=g.players_max,
-        playtime_min=g.playtime_min,
-        playtime_max=g.playtime_max,
-        thumbnail_url=thumb,
+    year = getattr(g, "year", None)
+    pmin = getattr(g, "players_min", None)
+    pmax = getattr(g, "players_max", None)
+    tmin = getattr(g, "playtime_min", None)
+    tmax = getattr(g, "playtime_max", None)
 
-        # flat mirrors (legacy)
-        thumbnail=thumb,
-        playersMin=g.players_min,
-        playersMax=g.players_max,
-        playtimeMin=g.playtime_min,
-        playtimeMax=g.playtime_max,
+    # single number the bundle expects; fall back smartly
+    playing_time = tmin or tmax
 
-        # additional common aliases and nested shapes
-        imageUrl=thumb,
-        image=thumb,
-        imageURL=thumb,
-        players=Range(min=g.players_min, max=g.players_max),
-        playtime=Range(min=g.playtime_min, max=g.playtime_max),
-    )
+    return {
+        # --- your existing public fields (keep unchanged) ---
+        "id": g.id,
+        "title": getattr(g, "title", "") or "",
+        "categories": cats,
+        "year": year,
+        "players_min": pmin,
+        "players_max": pmax,
+        "playtime_min": tmin,
+        "playtime_max": tmax,
+        "thumbnail_url": abs_thumb,  # keep absolute; helps when browsing raw JSON
+
+        # --- aliases the shipped bundle reads on the public catalogue ---
+        "image_url": abs_thumb,
+        "year_published": year,
+        "min_players": pmin,
+        "max_players": pmax,
+        "playing_time": playing_time,
+
+        # optional custom category used by chips, if you later store it
+        "mana_meeple_category": getattr(g, "mana_meeple_category", None),
+    }
 
 
-# -------------------------
+def _require_admin(token: Optional[str]):
+    if not ADMIN_TOKEN or token != ADMIN_TOKEN:
+        raise HTTPException(status_code=401, detail="invalid admin token")
+
+
+# ---------------------------------------------------------------------
 # Health
-# -------------------------
+# ---------------------------------------------------------------------
 @app.get("/api/health")
 def health():
     return {"ok": True}
@@ -158,19 +166,19 @@ def health():
 @app.get("/api/health/db")
 def health_db(db: Session = Depends(get_db)):
     try:
-        # trivial round-trip
         db.execute(select(func.count()).select_from(Game))
         return {"db_ok": True}
     except Exception:
         return {"db_ok": False}
 
 
-# -------------------------
-# Public: list games with paging/filtering
-# -------------------------
-@app.get("/api/public/games", response_model=PagedGames)
+# ---------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------
+@app.get("/api/public/games")  # no response_model => we can include alias keys freely
 def list_games(
-    q: str = Query("", description="search in title"),
+    request: Request,
+    q: str = Query("", description="search title"),
     page: int = Query(1, ge=1),
     page_size: int = Query(24, ge=1, le=100),
     sort: str = Query("title_asc", pattern="^(title_asc|title_desc)$"),
@@ -188,53 +196,39 @@ def list_games(
     else:
         base = base.order_by(Game.title.asc())
 
-    rows: List[Game] = db.execute(
+    rows = db.execute(
         base.offset((page - 1) * page_size).limit(page_size)
     ).scalars().all() or []
 
-    items = [_game_to_out(g) for g in rows]
+    items = [_game_row_to_dict(request, g) for g in rows]
     return {"total": int(total), "page": page, "page_size": page_size, "items": items}
 
 
-@app.get("/api/public/category-counts", response_model=CategoryCounts)
+@app.get("/api/public/category-counts")
 def category_counts(db: Session = Depends(get_db)):
-    """
-    Simple counts of categories from DB.
-    NOTE: Your UI's chips are custom; this returns BGG categories.
-    """
-    rows: List[Game] = db.execute(select(Game)).scalars().all() or []
+    rows = db.execute(select(Game)).scalars().all() or []
     counts: Dict[str, int] = {}
     for g in rows:
-        for c in [c.strip() for c in (g.categories or "").split(",") if c.strip()]:
+        for c in _categories_to_list(getattr(g, "categories", None)):
             counts[c] = counts.get(c, 0) + 1
-    return counts  # pydantic root model
+    return counts
 
 
-# -------------------------
-# Public: image proxy used by the frontend
-# -------------------------
 @app.get("/api/public/image-proxy")
 async def image_proxy(url: str = Query(..., description="Absolute image URL")):
-    """
-    The frontend always wraps image URLs through this proxy.
-    We support both:
-      - our own thumbnails under /thumbs/
-      - remote URLs (e.g. original BGG thumbnail, if ever used)
-    """
     if not url:
         raise HTTPException(status_code=400, detail="missing url")
 
-    # If it's one of our own /thumbs, serve from disk
+    # serve our own thumbs directly
     if PUBLIC_BASE_URL and url.startswith(f"{PUBLIC_BASE_URL}/thumbs/"):
         rel = url.replace(PUBLIC_BASE_URL, "").lstrip("/")
         abs_path = os.path.join(os.getcwd(), rel)
         if os.path.exists(abs_path):
-            # Guess type from extension
             ext = pathlib.Path(abs_path).suffix.lower()
             mime = "image/png" if ext == ".png" else "image/jpeg"
             return StreamingResponse(open(abs_path, "rb"), media_type=mime)
 
-    # Otherwise, fetch and stream
+    # otherwise proxy
     async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
         r = await client.get(url)
         r.raise_for_status()
@@ -242,29 +236,21 @@ async def image_proxy(url: str = Query(..., description="Absolute image URL")):
         return StreamingResponse(r.iter_bytes(), media_type=ctype)
 
 
-# -------------------------
-# Admin endpoints
-# -------------------------
-def _require_admin(x_admin_token: Optional[str]):
-    if not ADMIN_TOKEN or x_admin_token != ADMIN_TOKEN:
-        raise HTTPException(status_code=401, detail="invalid admin token")
-
-
+# ---------------------------------------------------------------------
+# Admin API
+# ---------------------------------------------------------------------
 @app.post("/api/admin/seed")
 def admin_seed(x_admin_token: Optional[str] = Header(None), db: Session = Depends(get_db)):
     _require_admin(x_admin_token)
-
     samples = [
         Game(title="Azul", categories="Abstract Strategy, Renaissance"),
         Game(title="Cascadia", categories="Animals, Environmental"),
         Game(title="Wingspan", categories="Animals, Card Game, Educational"),
     ]
-    inserted = 0
     for g in samples:
         db.add(g)
-        inserted += 1
     db.commit()
-    return {"inserted": inserted}
+    return {"inserted": len(samples)}
 
 
 @app.post("/api/admin/import/bgg")
@@ -279,13 +265,13 @@ async def admin_import_bgg(
 
     existing = db.execute(select(Game).where(Game.bgg_id == bgg_id)).scalar_one_or_none()
 
-    data = await fetch_bgg_thing(bgg_id)
+    data = await fetch_bgg_thing(bgg_id)  # expects: title, categories(list), year, players_min, players_max, playtime_min, playtime_max, thumbnail
     cats = ", ".join(data.get("categories") or [])
 
     if existing and not force:
         return {"ok": True, "id": existing.id, "cached": True}
 
-    if existing and force:
+    if existing:
         g = existing
         g.title = data["title"]
         g.categories = cats
@@ -294,7 +280,6 @@ async def admin_import_bgg(
         g.players_max = data.get("players_max")
         g.playtime_min = data.get("playtime_min")
         g.playtime_max = data.get("playtime_max")
-        # clear old thumbs to allow refresh
         g.thumbnail_file = None
         g.thumbnail_url = None
         db.add(g)
@@ -315,17 +300,16 @@ async def admin_import_bgg(
         db.commit()
         db.refresh(g)
 
-    # async thumb download & DB update
     async def _dl_and_set():
         try:
-            fname = await _download_thumbnail(data.get("thumbnail") or "", f"{g.id}-{g.title}")
+            fname = await _download_to_thumbs(data.get("thumbnail") or "", f"{g.id}-{g.title}")
             if fname:
                 db2 = SessionLocal()
                 try:
                     g2 = db2.get(Game, g.id)
                     if g2:
                         g2.thumbnail_file = fname
-                        g2.thumbnail_url = _abs_thumb_from_file(fname)
+                        g2.thumbnail_url = f"/thumbs/{fname}"
                         db2.add(g2)
                         db2.commit()
                 finally:
@@ -336,15 +320,13 @@ async def admin_import_bgg(
     if background is not None:
         background.add_task(_dl_and_set)
 
-    return {"ok": True, "id": g.id, "cached": existing is not None and not bool(force)}
+    return {"ok": True, "id": g.id, "cached": bool(existing and not force)}
 
 
-# -------------------------
+# ---------------------------------------------------------------------
 # Startup
-# -------------------------
+# ---------------------------------------------------------------------
 @app.on_event("startup")
-def _on_startup():
-    # Ensure DB tables exist
+def _startup():
     init_db()
-    # Ensure thumbs dir exists (Render persistent disk)
     os.makedirs(THUMBS_DIR, exist_ok=True)
