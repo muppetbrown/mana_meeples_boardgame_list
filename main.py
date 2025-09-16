@@ -806,6 +806,24 @@ async def bulk_categorize_csv(
         logger.error(f"Bulk categorize failed: {e}")
         raise HTTPException(status_code=500, detail=f"Bulk categorize failed: {str(e)}")
 
+@app.get("/api/debug/database-info")
+async def debug_database_info(db: Session = Depends(get_db)):
+    games = db.execute(select(Game)).scalars().all()
+    return {
+        "total_games": len(games),
+        "sample_games": [
+            {
+                "id": g.id,
+                "title": g.title,
+                "categories": g.categories,
+                "mana_meeple_category": g.mana_meeple_category,
+                "year": g.year,
+                "bgg_id": g.bgg_id
+            }
+            for g in games[:10]
+        ]
+    }
+
 # ------------------------------------------------------------------------------
 # Startup
 # ------------------------------------------------------------------------------
