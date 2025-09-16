@@ -19,4 +19,15 @@ class Game(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     bgg_id = Column(Integer, unique=True, nullable=True, index=True)
     thumbnail_file = Column(String(256), nullable=True)
-    mana_meeple_category = Column(String(50), nullable=True)  # ADD THIS LINE
+    mana_meeple_category = Column(String(50), nullable=True) 
+    description = Column(Text, nullable=True)
+    designers = Column(JSON, nullable=True)  # Store as JSON array
+    publishers = Column(JSON, nullable=True)  # Store as JSON array
+    mechanics = Column(JSON, nullable=True)  # Store as JSON array
+    artists = Column(JSON, nullable=True)  # Store as JSON array
+    average_rating = Column(Float, nullable=True)
+    complexity = Column(Float, nullable=True)
+    bgg_rank = Column(Integer, nullable=True)
+    users_rated = Column(Integer, nullable=True)
+    min_age = Column(Integer, nullable=True)
+    is_cooperative = Column(Boolean, nullable=True)
