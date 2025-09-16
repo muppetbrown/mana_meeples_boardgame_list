@@ -212,6 +212,35 @@ def _categorize_game(categories: List[str]) -> Optional[str]:
     
     return None
 
+@app.post("/api/admin/recategorize-all")
+async def recategorize_all_games(
+    x_admin_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Recategorize all existing games based on their BGG categories"""
+    _require_admin_token(x_admin_token)
+    
+    games = db.execute(select(Game)).scalars().all()
+    updated = 0
+    
+    for game in games:
+        categories = _parse_categories(game.categories)
+        new_category = _categorize_game(categories)
+        
+        if new_category != game.mana_meeple_category:
+            game.mana_meeple_category = new_category
+            updated += 1
+    
+    db.commit()
+    
+    return {
+        "message": f"Recategorized {updated} games",
+        "categories_assigned": {
+            game.title: game.mana_meeple_category 
+            for game in games
+        }
+    }
+
 def _make_absolute_url(request: Request, url: Optional[str]) -> Optional[str]:
     """Convert relative URLs to absolute URLs"""
     if not url:
