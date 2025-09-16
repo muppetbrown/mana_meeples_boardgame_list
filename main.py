@@ -288,6 +288,9 @@ async def _download_thumbnail(url: str, filename_base: str) -> Optional[str]:
 def _game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
     """Convert game model to dictionary for API response"""
     categories = _parse_categories(game.categories)
+    designers = json.loads(game.designers) if game.designers else []
+    publishers = json.loads(game.publishers) if game.publishers else []
+    mechanics = json.loads(game.mechanics) if game.mechanics else []
     
     # Handle thumbnail URL
     thumbnail_url = None
@@ -312,7 +315,15 @@ def _game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         "thumbnail_url": thumbnail_url,
         "image_url": thumbnail_url,  # Alias for frontend
         "mana_meeple_category": getattr(game, "mana_meeple_category", None),
-        "description": getattr(game, "description", None),
+        "description": game.description,
+        "designers": designers,
+        "publishers": publishers,  
+        "mechanics": mechanics,
+        "average_rating": game.average_rating,
+        "complexity": game.complexity,
+        "bgg_rank": game.bgg_rank,
+        "min_age": game.min_age,
+        "is_cooperative": game.is_cooperative,
         "bgg_id": getattr(game, "bgg_id", None),
         "created_at": game.created_at.isoformat() if hasattr(game, "created_at") and game.created_at else None,
     }
@@ -601,17 +612,28 @@ async def import_from_bgg(
         else:
             # Create new
             categories = _parse_categories(categories_str)
-            game = Game(
-                title=bgg_data["title"],
-                categories=categories_str,
-                year=bgg_data.get("year"),
-                players_min=bgg_data.get("players_min"),
-                players_max=bgg_data.get("players_max"),
-                playtime_min=bgg_data.get("playtime_min"),
-                playtime_max=bgg_data.get("playtime_max"),
-                bgg_id=bgg_id,
-                mana_meeple_category=_categorize_game(categories)
-            )
+                game = Game(
+                    title=bgg_data["title"],
+                    categories=", ".join(bgg_data.get("categories", [])),
+                    year=bgg_data.get("year"),
+                    players_min=bgg_data.get("players_min"),
+                    players_max=bgg_data.get("players_max"),
+                    playtime_min=bgg_data.get("playtime_min"),
+                    playtime_max=bgg_data.get("playtime_max"),
+                    description=bgg_data.get("description"),
+                    designers=json.dumps(bgg_data.get("designers", [])),
+                    publishers=json.dumps(bgg_data.get("publishers", [])),
+                    mechanics=json.dumps(bgg_data.get("mechanics", [])),
+                    artists=json.dumps(bgg_data.get("artists", [])),
+                    average_rating=bgg_data.get("average_rating"),
+                    complexity=bgg_data.get("complexity"),
+                    bgg_rank=bgg_data.get("bgg_rank"),
+                    users_rated=bgg_data.get("users_rated"),
+                    min_age=bgg_data.get("min_age"),
+                    is_cooperative=bgg_data.get("is_cooperative"),
+                    bgg_id=bgg_id,
+                    mana_meeple_category=_categorize_game(bgg_data.get("categories", []))
+                )
             db.add(game)
         
         db.commit()
@@ -824,6 +846,22 @@ async def debug_database_info(db: Session = Depends(get_db)):
         ]
     }
 
+@app.post("/api/admin/reimport-all-games")
+async def reimport_all_games(
+    x_admin_token: Optional[str] = Header(None),
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """Re-import all existing games to get enhanced BGG data"""
+    _require_admin_token(x_admin_token)
+    
+    games = db.execute(select(Game).where(Game.bgg_id.isnot(None))).scalars().all()
+    
+    for game in games:
+        background_tasks.add_task(_reimport_single_game, game.id, game.bgg_id)
+    
+    return {"message": f"Started re-importing {len(games)} games with enhanced data"}
+    
 # ------------------------------------------------------------------------------
 # Startup
 # ------------------------------------------------------------------------------
