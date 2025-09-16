@@ -49,6 +49,15 @@ BUCKET_MAP: dict[str, set[str]] = {
     # “Uncategorized” pill is computed as the remainder
 }
 
+CODE_TO_LABEL = {
+    "COOP_ADVENTURE":      "Co-op & Adventure",
+    "CORE_STRATEGY":       "Core Strategy & Epics",
+    "GATEWAY_STRATEGY":    "Gateway Strategy",
+    "KIDS_FAMILIES":       "Kids & Families",
+    "PARTY_ICEBREAKERS":   "Party & Icebreakers",
+}
+LABEL_TO_CODE = {v: k for k, v in CODE_TO_LABEL.items()}
+
 # ---------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------
@@ -265,32 +274,34 @@ def list_games(
 
 @app.get("/api/public/category-counts")
 def category_counts(db: Session = Depends(get_db)):
-    # Start counts at 0 for the 5 pills + uncategorized
-    counts: dict[str, int] = {
+    # Start at 0
+    by_label: dict[str, int] = {
         "All": 0,
-        "Co-op & Adventure": 0,
-        "Core Strategy & Epics": 0,
-        "Gateway Strategy": 0,
-        "Kids & Families": 0,
-        "Party & Icebreakers": 0,
+        **{label: 0 for label in CODE_TO_LABEL.values()},
         "Uncategorized": 0,
     }
 
     games = db.execute(select(Game)).scalars().all() or []
     for g in games:
-        counts["All"] += 1
+        by_label["All"] += 1
         cats = [c.lower() for c in _cat_list(getattr(g, "categories", None))]
         matched_any = False
-        for pill, keys in BUCKET_MAP.items():
-            if any(c in keys for c in cats):
-                counts[pill] += 1
+        for label, keywords in BUCKET_MAP.items():  # BUCKET_MAP is keyed by label
+            if any(c in keywords for c in cats):
+                by_label[label] += 1
                 matched_any = True
         if not matched_any:
-            counts["Uncategorized"] += 1
+            by_label["Uncategorized"] += 1
 
-    # Frontend expects a flat object of counts excluding "All" or including? 
-    # Your UI shows a separate "All" chip; keeping it is harmless.
-    return counts
+    # Mirror into the shape the frontend expects: keys by CODE
+    by_code = {LABEL_TO_CODE[label]: count for label, count in by_label.items()
+               if label in LABEL_TO_CODE}
+
+    # Return both for robustness
+    return {
+        **by_label,          # "All", labels, "Uncategorized"
+        **by_code            # "COOP_ADVENTURE", "CORE_STRATEGY", ...
+    }
 
 
 @app.get("/api/public/image-proxy")
