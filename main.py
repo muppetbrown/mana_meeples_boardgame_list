@@ -115,6 +115,14 @@ def _cat_list(value) -> list[str]:
         return [p.strip() for p in s.split(',') if p.strip()]
     return []
 
+def _categories_to_list(raw) -> List[str]:
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return [c.strip() for c in raw if c and str(c).strip()]
+    # assume comma-separated text
+    return [c.strip() for c in str(raw).split(",") if c.strip()]
+
 def _abs_url(request: Request, url: Optional[str]) -> Optional[str]:
     """Turn '/thumbs/x.png' into absolute https://host/thumbs/x.png for the proxy."""
     if not url:
