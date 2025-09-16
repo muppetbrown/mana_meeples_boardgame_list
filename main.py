@@ -165,55 +165,65 @@ def admin_seed(x_admin_token: str = Header(None), db: Session = Depends(get_db))
 @app.post("/api/admin/import/bgg")
 async def admin_import_bgg(
     bgg_id: int,
-    background: BackgroundTasks,
+    force: int = 0,                            # <— add this
+    background: BackgroundTasks = None,
     x_admin_token: str = Header(None),
     db: Session = Depends(get_db),
 ):
     if not ADMIN_TOKEN or x_admin_token != ADMIN_TOKEN:
         raise HTTPException(status_code=401, detail="invalid admin token")
 
-    # If we already have it, return it
     existing = db.execute(select(Game).where(Game.bgg_id == bgg_id)).scalar_one_or_none()
-    if existing:
+    if existing and not force:
         return {"ok": True, "id": existing.id, "cached": True}
 
-    # Fetch core data from BGG
+    # Fetch from BGG
     data = await fetch_bgg_thing(bgg_id)
     cats = ", ".join(data.get("categories") or [])
-    g = Game(
-        title=data["title"],
-        categories=cats,
-        year=data.get("year"),
-        players_min=data.get("players_min"),
-        players_max=data.get("players_max"),
-        playtime_min=data.get("playtime_min"),
-        playtime_max=data.get("playtime_max"),
-        bgg_id=bgg_id,
-    )
-    db.add(g)
-    db.commit()
-    db.refresh(g)
 
-    # Download thumbnail in background; persist filename + url
+    if existing and force:
+        g = existing
+        g.title        = data["title"]
+        g.categories   = cats
+        g.year         = data.get("year")
+        g.players_min  = data.get("players_min")
+        g.players_max  = data.get("players_max")
+        g.playtime_min = data.get("playtime_min")
+        g.playtime_max = data.get("playtime_max")
+        # clear old thumb fields so background task can refresh
+        g.thumbnail_file = None
+        g.thumbnail_url  = None
+        db.add(g); db.commit(); db.refresh(g)
+    else:
+        g = Game(
+            title=data["title"],
+            categories=cats,
+            year=data.get("year"),
+            players_min=data.get("players_min"),
+            players_max=data.get("players_max"),
+            playtime_min=data.get("playtime_min"),
+            playtime_max=data.get("playtime_max"),
+            bgg_id=bgg_id,
+        )
+        db.add(g); db.commit(); db.refresh(g)
+
     async def _dl_and_set():
         try:
             fn = await download_thumbnail(data.get("thumbnail") or "", f"{g.id}-{g.title}")
             if fn:
-                # open a fresh session because background task runs after response
                 db2 = SessionLocal()
                 try:
                     g2 = db2.get(Game, g.id)
                     if g2:
                         g2.thumbnail_file = fn
-                        g2.thumbnail_url = f"/thumbs/{fn}"
-                        db2.add(g2)
-                        db2.commit()
+                        g2.thumbnail_url  = f"/thumbs/{fn}"
+                        db2.add(g2); db2.commit()
                 finally:
                     db2.close()
         except Exception:
-            # swallow errors; we can re-run import to refresh if needed
             pass
 
-    background.add_task(_dl_and_set)
+    if background is not None:
+        background.add_task(_dl_and_set)
 
-    return {"ok": True, "id": g.id, "cached": False}
+    return {"ok": True, "id": g.id, "cached": existing is not None and not force}
