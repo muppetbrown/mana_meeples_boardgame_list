@@ -8,7 +8,7 @@ from typing import List
 
 import os
 
-from config import CORS_ORIGINS, ADMIN_TOKEN
+from config import CORS_ORIGINS, ADMIN_TOKEN, PUBLIC_BASE_URL
 from database import db_ping, SessionLocal, init_db
 from models import Game
 from schemas import GameOut, PagedGames
@@ -87,22 +87,31 @@ def list_games(
     offset = (page - 1) * page_size
     rows: List[Game] = db.execute(query.offset(offset).limit(page_size)).scalars().all()
 
-    def to_out(g: Game) -> GameOut:
-        cats = [c.strip() for c in (g.categories or "").split(",") if c.strip()]
-        thumb = g.thumbnail_url
-        if not thumb and getattr(g, "thumbnail_file", None):
+def to_out(g: Game) -> GameOut:
+    cats = [c.strip() for c in (g.categories or "").split(",") if c.strip()]
+    thumb = g.thumbnail_url
+    # If we only have a local file, build an absolute URL off the Render host
+    if not thumb and getattr(g, "thumbnail_file", None):
+        if PUBLIC_BASE_URL:
+            thumb = f"{PUBLIC_BASE_URL}/thumbs/{g.thumbnail_file}"
+        else:
+            # fallback (still works when called directly against Render)
             thumb = f"/thumbs/{g.thumbnail_file}"
-        return GameOut(
-            id=g.id,
-            title=g.title,
-            categories=cats,
-            year=g.year,
-            players_min=g.players_min,
-            players_max=g.players_max,
-            playtime_min=g.playtime_min,
-            playtime_max=g.playtime_max,
-            thumbnail_url=thumb,
-        )
+    # If DB holds a leading-slash path, also normalize to absolute
+    if thumb and thumb.startswith("/") and PUBLIC_BASE_URL:
+        thumb = f"{PUBLIC_BASE_URL}{thumb}"
+
+    return GameOut(
+        id=g.id,
+        title=g.title,
+        categories=cats,
+        year=g.year,
+        players_min=g.players_min,
+        players_max=g.players_max,
+        playtime_min=g.playtime_min,
+        playtime_max=g.playtime_max,
+        thumbnail_url=thumb,
+    )
 
     items = [to_out(g) for g in rows]
     return {"total": total, "page": page, "page_size": page_size, "items": items}
