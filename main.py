@@ -6,7 +6,7 @@ from typing import Optional, List, Dict
 import httpx
 from fastapi import FastAPI, Depends, Header, HTTPException, Query, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
@@ -24,6 +24,8 @@ ADMIN_TOKEN = (os.getenv("ADMIN_TOKEN") or "").strip()
 
 THUMBS_DIR = os.getenv("THUMBS_DIR", "/data/thumbs")
 os.makedirs(THUMBS_DIR, exist_ok=True)
+httpx_client = httpx.AsyncClient(follow_redirects=True, timeout=15)
+API_BASE = "https://mana-meeples-boardgame-list.onrender.com"  # your Render base
 
 # ---------------------------------------------------------------------
 # App
@@ -232,27 +234,34 @@ def category_counts(db: Session = Depends(get_db)):
             counts[c] = counts.get(c, 0) + 1
     return counts
 
-
 @app.get("/api/public/image-proxy")
-async def image_proxy(url: str = Query(..., description="Absolute image URL")):
-    if not url:
-        raise HTTPException(status_code=400, detail="missing url")
+async def image_proxy(url: str):
+    """
+    Proxies an image URL. If it's our own /thumbs/*, send a long-lived cache header.
+    Otherwise, set a short cache.
+    """
+    try:
+        # Fetch upstream
+        r = await httpx_client.get(url)
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=502, detail=f"Upstream error: {e!s}")
 
-    # serve our own thumbs directly
-    if PUBLIC_BASE_URL and url.startswith(f"{PUBLIC_BASE_URL}/thumbs/"):
-        rel = url.replace(PUBLIC_BASE_URL, "").lstrip("/")
-        abs_path = os.path.join(os.getcwd(), rel)
-        if os.path.exists(abs_path):
-            ext = pathlib.Path(abs_path).suffix.lower()
-            mime = "image/png" if ext == ".png" else "image/jpeg"
-            return StreamingResponse(open(abs_path, "rb"), media_type=mime)
+    # Pass through bytes and content-type
+    content_type = r.headers.get("content-type", "application/octet-stream")
+    headers = {"Content-Type": content_type}
 
-    # otherwise proxy
-    async with httpx.AsyncClient(follow_redirects=True, timeout=30) as client:
-        r = await client.get(url)
-        r.raise_for_status()
-        ctype = r.headers.get("content-type") or "application/octet-stream"
-        return StreamingResponse(r.iter_bytes(), media_type=ctype)
+    # Cache policy: long for our thumbs, short for anything else
+    try:
+        # normalize comparison (strip trailing slash on base)
+        base = API_BASE.rstrip("/")
+        if url.startswith(base + "/thumbs/"):
+            headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            headers["Cache-Control"] = "public, max-age=300"
+    except Exception:
+        headers["Cache-Control"] = "public, max-age=300"
+
+    return Response(content=r.content, status_code=r.status_code, headers=headers)
 
 
 # ---------------------------------------------------------------------
