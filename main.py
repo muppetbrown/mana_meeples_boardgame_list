@@ -10,6 +10,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from database import SessionLocal, init_db
 from models import Game
@@ -28,6 +29,24 @@ os.makedirs(THUMBS_DIR, exist_ok=True)
 # App
 # ---------------------------------------------------------------------
 app = FastAPI(title="Mana & Meeples API", version="1.0.0")
+
+class CacheThumbsMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                path = scope.get("path", "")
+                if path.startswith("/thumbs/"):
+                    # append Cache-Control header
+                    headers = message.setdefault("headers", [])
+                    headers.append((b"cache-control", b"public, max-age=31536000, immutable"))
+            await send(message)
+
+        await self.app(scope, receive, send_wrapper)
+
+app.add_middleware(CacheThumbsMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
