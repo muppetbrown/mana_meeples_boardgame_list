@@ -108,19 +108,19 @@ def get_db():
 # Helpers
 # ---------------------------------------------------------------------
 def _cat_list(value) -> list[str]:
+    import json
     if not value:
         return []
     if isinstance(value, list):
         return [str(x).strip() for x in value if str(x).strip()]
     if isinstance(value, str):
         s = value.strip()
-        if s.startswith('['):  # JSON in text column
+        if s.startswith('['):
             try:
                 arr = json.loads(s)
                 return [str(x).strip() for x in arr if str(x).strip()]
             except Exception:
                 pass
-        # comma-delimited fallback
         return [p.strip() for p in s.split(',') if p.strip()]
     return []
 
@@ -244,32 +244,40 @@ def health_db(db: Session = Depends(get_db)):
 # Public API
 # ---------------------------------------------------------------------
 @app.get("/api/public/games")  # no response_model => we can include alias keys freely
-def list_games(
-    request: Request,
-    q: str = Query("", description="search title"),
-    page: int = Query(1, ge=1),
-    page_size: int = Query(24, ge=1, le=100),
-    sort: str = Query("title_asc", pattern="^(title_asc|title_desc)$"),
+def public_games(
+    q: str = "",
+    page: int = 1,
+    page_size: int = 24,
+    sort: str = "title_asc",
+    category: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    base = select(Game)
+    query = db.query(Game)
+
+    # text search (if you have it)
     if q:
-        like = f"%{q.strip()}%"
-        base = base.where(Game.title.ilike(like))
+        query = query.filter(Game.title.ilike(f"%{q}%"))
 
-    total = db.scalar(select(func.count()).select_from(base.subquery())) or 0
+    # category filter by enum KEY
+    if category and category not in ("all", "uncategorized"):
+        query = query.filter(Game.mana_meeple_category == category)
 
+    # sort
     if sort == "title_desc":
-        base = base.order_by(Game.title.desc())
+        query = query.order_by(Game.title.desc())
     else:
-        base = base.order_by(Game.title.asc())
+        query = query.order_by(Game.title.asc())
 
-    rows = db.execute(
-        base.offset((page - 1) * page_size).limit(page_size)
-    ).scalars().all() or []
+    total = query.count()
+    items = query.offset((page - 1) * page_size).limit(page_size).all()
 
-    items = [_game_row_to_dict(request, g) for g in rows]
-    return {"total": int(total), "page": page, "page_size": page_size, "items": items}
+    # Build GameOut objects as you already do…
+    return PagedGames(
+        total=total,
+        page=page,
+        page_size=page_size,
+        items=[to_game_out(g) for g in items],
+    )
 
 
 @app.get("/api/public/category-counts")
