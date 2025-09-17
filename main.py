@@ -583,6 +583,9 @@ async def get_category_counts(db: Session = Depends(get_db)):
     games = db.execute(select(Game)).scalars().all()
     return _calculate_category_counts(games)
 
+@app.get("/api/public/games/by-designer/{designer_name}")
+async def get_games_by_designer(designer_name: str, db: Session = Depends(get_db)):
+
 @app.get("/api/public/image-proxy")
 async def image_proxy(url: str = Query(..., description="Image URL to proxy")):
     """Proxy external images with caching headers"""
