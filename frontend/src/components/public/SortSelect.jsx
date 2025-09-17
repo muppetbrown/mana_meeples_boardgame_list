@@ -28,7 +28,7 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
     }
   ];
 
-  const getCurrentSortKey = () => {
+  const getCurrentSortKey = React.useCallback(() => {
     // More robust parsing - handle edge cases
     const foundOption = sortOptions.find(option => sort.startsWith(option.key));
     if (!foundOption) {
@@ -36,11 +36,11 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
       return 'title';
     }
     return foundOption.key;
-  };
+  }, [sort, sortOptions]);
 
-  const getCurrentDirection = () => {
+  const getCurrentDirection = React.useCallback(() => {
     return sort.endsWith('_desc') ? 'desc' : 'asc';
-  };
+  }, [sort]);
 
   const handleSortClick = (key) => {
     const currentKey = getCurrentSortKey();
