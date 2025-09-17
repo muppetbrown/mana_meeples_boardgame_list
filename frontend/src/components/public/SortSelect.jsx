@@ -1,7 +1,7 @@
 import React from "react";
 
 export default function SortSelect({ sort, onChange, className, id, ...props }) {
-  const sortOptions = [
+  const sortOptions = React.useMemo(() => [
     { 
       key: 'title', 
       label: 'Title', 
@@ -26,7 +26,7 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
       defaultDir: 'asc',
       description: 'Sort by average playing time (shortest first by default)'
     }
-  ];
+  ], []);
 
   const getCurrentSortKey = React.useCallback(() => {
     // More robust parsing - handle edge cases
