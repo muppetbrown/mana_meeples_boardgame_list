@@ -508,6 +508,7 @@ async def get_public_games(
     page_size: int = Query(24, ge=1, le=100, description="Items per page"),
     sort: str = Query("title_asc", description="Sort order"),
     category: Optional[str] = Query(None, description="Category filter"),
+    designer: Optional[str] = Query(None, description="Designer filter"),
     db: Session = Depends(get_db)
 ):
     """Get paginated list of games with filtering and search"""
@@ -519,6 +520,12 @@ async def get_public_games(
     if q.strip():
         search_term = f"%{q.strip()}%"
         query = query.where(Game.title.ilike(search_term))
+    
+    # Apply designer filter
+    if designer and designer.strip():
+        designer_filter = f"%{designer.strip()}%"
+        if hasattr(Game, 'designers'):
+            query = query.where(Game.designers.ilike(designer_filter))
     
     # Apply sorting
     if sort == "title_desc":
