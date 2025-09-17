@@ -113,11 +113,11 @@ export const imageProxyUrl = (rawUrl) =>
   `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(rawUrl)}`;
 
 export async function updateGame(gameId, patch) {
-  const r = await api.put(`/api/games/${gameId}`, patch, { headers: getAdminHeaders() });
+  const r = await api.put(`/api/admin/games/${gameId}`, patch, { headers: getAdminHeaders() });
   return r.data;
 }
 
 export async function deleteGame(gameId) {
-  const r = await api.delete(`/api/games/${gameId}`, { headers: getAdminHeaders() });
+  const r = await api.delete(`/api/admin/games/${gameId}`, { headers: getAdminHeaders() });
   return r.data;
 }

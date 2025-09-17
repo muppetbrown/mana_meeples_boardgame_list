@@ -20,9 +20,49 @@ from schemas import BGGGameImport, CSVImport
 from exceptions import GameServiceError, GameNotFoundError, BGGServiceError, ValidationError, DatabaseError
 
 # ------------------------------------------------------------------------------
-# Logging setup
+# Logging setup with structured logging
 # ------------------------------------------------------------------------------
-logging.basicConfig(level=logging.INFO)
+import json
+
+# Enhanced logging with structured format
+class StructuredFormatter(logging.Formatter):
+    def format(self, record):
+        log_entry = {
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'level': record.levelname,
+            'message': record.getMessage(),
+            'module': record.module,
+            'function': record.funcName,
+            'line': record.lineno
+        }
+        
+        # Add extra fields if they exist
+        if hasattr(record, 'user_id'):
+            log_entry['user_id'] = record.user_id
+        if hasattr(record, 'request_id'):
+            log_entry['request_id'] = record.request_id
+        if hasattr(record, 'bgg_id'):
+            log_entry['bgg_id'] = record.bgg_id
+        if hasattr(record, 'game_id'):
+            log_entry['game_id'] = record.game_id
+            
+        return json.dumps(log_entry)
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+    ]
+)
+
+# Use structured logging in production
+if os.getenv('ENVIRONMENT') == 'production':
+    handler = logging.StreamHandler()
+    handler.setFormatter(StructuredFormatter())
+    logging.getLogger().handlers = [handler]
+
 logger = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------------------
@@ -128,6 +168,106 @@ async def bgg_service_error_handler(request: Request, exc: BGGServiceError):
 async def database_error_handler(request: Request, exc: DatabaseError):
     return JSONResponse(status_code=500, content={"detail": "Database operation failed"})
 
+import time
+import uuid
+from collections import defaultdict, deque
+
+# Performance monitoring
+class PerformanceMonitor:
+    def __init__(self):
+        self.request_times = deque(maxlen=1000)  # Keep last 1000 requests
+        self.endpoint_stats = defaultdict(lambda: {"count": 0, "total_time": 0, "errors": 0})
+        self.slow_queries = deque(maxlen=100)  # Keep last 100 slow queries
+    
+    def record_request(self, path: str, method: str, duration: float, status_code: int):
+        self.request_times.append(duration)
+        endpoint_key = f"{method} {path}"
+        stats = self.endpoint_stats[endpoint_key]
+        stats["count"] += 1
+        stats["total_time"] += duration
+        if status_code >= 400:
+            stats["errors"] += 1
+        
+        # Record slow queries (>2 seconds)
+        if duration > 2.0:
+            self.slow_queries.append({
+                "path": path,
+                "method": method,
+                "duration": duration,
+                "timestamp": time.time()
+            })
+    
+    def get_stats(self):
+        if not self.request_times:
+            return {"message": "No requests recorded yet"}
+        
+        total_requests = len(self.request_times)
+        avg_response_time = sum(self.request_times) / total_requests
+        
+        return {
+            "total_requests": total_requests,
+            "avg_response_time_ms": round(avg_response_time * 1000, 2),
+            "slowest_endpoints": sorted([
+                {
+                    "endpoint": endpoint,
+                    "avg_time_ms": round((stats["total_time"] / stats["count"]) * 1000, 2),
+                    "requests": stats["count"],
+                    "errors": stats["errors"]
+                }
+                for endpoint, stats in self.endpoint_stats.items()
+            ], key=lambda x: x["avg_time_ms"], reverse=True)[:10],
+            "recent_slow_queries": list(self.slow_queries)[-10:]
+        }
+
+performance_monitor = PerformanceMonitor()
+
+class RequestLoggingMiddleware:
+    def __init__(self, app: ASGIApp):
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        start_time = time.time()
+        request_id = str(uuid.uuid4())[:8]
+        status_code = 200  # Default
+        
+        # Add request ID to scope for downstream handlers
+        scope["request_id"] = request_id
+        
+        path = scope.get("path", "")
+        method = scope.get("method", "")
+        
+        logger.info(f"Request started: {method} {path}", extra={'request_id': request_id})
+        
+        # Capture status code from response
+        async def send_wrapper(message):
+            nonlocal status_code
+            if message["type"] == "http.response.start":
+                status_code = message.get("status", 200)
+            await send(message)
+        
+        try:
+            await self.app(scope, receive, send_wrapper)
+        except Exception as e:
+            duration = time.time() - start_time
+            status_code = 500
+            performance_monitor.record_request(path, method, duration, status_code)
+            logger.error(
+                f"Request failed: {method} {path} - {str(e)} ({duration:.3f}s)", 
+                extra={'request_id': request_id}
+            )
+            raise
+        else:
+            duration = time.time() - start_time
+            performance_monitor.record_request(path, method, duration, status_code)
+            logger.info(
+                f"Request completed: {method} {path} ({duration:.3f}s)", 
+                extra={'request_id': request_id}
+            )
+
 class CacheThumbsMiddleware:
     def __init__(self, app: ASGIApp):
         self.app = app
@@ -142,6 +282,7 @@ class CacheThumbsMiddleware:
             await send(message)
         await self.app(scope, receive, send_wrapper)
 
+app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(CacheThumbsMiddleware)
 
 # CORS middleware
@@ -519,6 +660,13 @@ async def debug_database_info(db: Session = Depends(get_db)):
         ]
     }
 
+
+@app.get("/api/debug/performance")
+async def get_performance_stats(x_admin_token: Optional[str] = Header(None)):
+    """Get performance monitoring stats (admin only)"""
+    _require_admin_token(x_admin_token)
+    return performance_monitor.get_stats()
+
 # ------------------------------------------------------------------------------
 # Public API endpoints
 # ------------------------------------------------------------------------------
@@ -570,7 +718,6 @@ async def get_public_games(
             query = query.order_by(Game.title.asc())
     elif sort == "time_asc":
         # Sort by average playing time (min + max) / 2, ascending
-        from sqlalchemy import case, func
         avg_time = case(
             [
                 # Both min and max exist
@@ -586,7 +733,6 @@ async def get_public_games(
         query = query.order_by(avg_time.asc())
     elif sort == "time_desc":
         # Sort by average playing time (min + max) / 2, descending
-        from sqlalchemy import case, func
         avg_time = case(
             [
                 # Both min and max exist
@@ -1065,6 +1211,109 @@ async def reimport_all_games(
         background_tasks.add_task(_reimport_single_game, game.id, game.bgg_id)
     
     return {"message": f"Started re-importing {len(games)} games with enhanced data"}
+
+
+@app.get("/api/admin/games")
+async def get_admin_games(
+    x_admin_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Get all games for admin interface"""
+    _require_admin_token(x_admin_token)
+    
+    games = db.execute(select(Game)).scalars().all()
+    return [_game_to_dict(None, game) for game in games]
+
+
+@app.get("/api/admin/games/{game_id}")
+async def get_admin_game(
+    game_id: int = Path(..., description="Game ID"),
+    x_admin_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Get single game for admin interface"""
+    _require_admin_token(x_admin_token)
+    
+    game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
+    if not game:
+        raise GameNotFoundError(f"Game {game_id} not found")
+    
+    return _game_to_dict(None, game)
+
+
+@app.put("/api/admin/games/{game_id}")
+async def update_admin_game(
+    game_id: int = Path(..., description="Game ID"),
+    game_data: Dict[str, Any],
+    x_admin_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Update game (admin only)"""
+    _require_admin_token(x_admin_token)
+    
+    game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
+    if not game:
+        raise GameNotFoundError(f"Game {game_id} not found")
+    
+    try:
+        # Update allowed fields
+        if "title" in game_data:
+            game.title = game_data["title"]
+        if "year" in game_data:
+            game.year = game_data["year"]
+        if "description" in game_data and hasattr(game, 'description'):
+            game.description = game_data["description"]
+        if "mana_meeple_category" in game_data:
+            game.mana_meeple_category = game_data["mana_meeple_category"]
+        if "players_min" in game_data:
+            game.players_min = game_data["players_min"]
+        if "players_max" in game_data:
+            game.players_max = game_data["players_max"]
+        if "playtime_min" in game_data:
+            game.playtime_min = game_data["playtime_min"]
+        if "playtime_max" in game_data:
+            game.playtime_max = game_data["playtime_max"]
+        if "min_age" in game_data and hasattr(game, 'min_age'):
+            game.min_age = game_data["min_age"]
+        
+        db.commit()
+        db.refresh(game)
+        
+        logger.info(f"Updated game: {game.title} (ID: {game.id})", extra={'game_id': game.id})
+        return _game_to_dict(None, game)
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to update game {game_id}: {e}", extra={'game_id': game_id})
+        raise HTTPException(status_code=500, detail="Failed to update game")
+
+
+@app.delete("/api/admin/games/{game_id}")
+async def delete_admin_game(
+    game_id: int = Path(..., description="Game ID"),
+    x_admin_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Delete game (admin only)"""
+    _require_admin_token(x_admin_token)
+    
+    game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
+    if not game:
+        raise GameNotFoundError(f"Game {game_id} not found")
+    
+    try:
+        game_title = game.title
+        db.delete(game)
+        db.commit()
+        
+        logger.info(f"Deleted game: {game_title} (ID: {game_id})", extra={'game_id': game_id})
+        return {"message": f"Game '{game_title}' deleted successfully"}
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to delete game {game_id}: {e}", extra={'game_id': game_id})
+        raise HTTPException(status_code=500, detail="Failed to delete game")
+
     
 # ------------------------------------------------------------------------------
 # Startup
