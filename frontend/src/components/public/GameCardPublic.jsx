@@ -68,7 +68,7 @@ export default function GameCardPublic({ game, lazy = false, onShare }) {
           {imgSrc ? (
             <img
               src={imgSrc}
-              alt={`Cover image for ${game.title}`}
+              alt={`Cover for ${game.title}`}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
               loading={lazy ? "lazy" : "eager"}
               onError={(e) => {

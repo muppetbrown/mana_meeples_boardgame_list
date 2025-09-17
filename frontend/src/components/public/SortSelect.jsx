@@ -68,7 +68,7 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
       parsedKey: getCurrentSortKey(),
       parsedDirection: getCurrentDirection()
     });
-  }, [sort]);
+  }, [sort, getCurrentSortKey, getCurrentDirection]);
 
   return (
     <div className="w-full">

@@ -1,6 +1,6 @@
 // src/components/GameImage.jsx
 import React from "react";
-import { imageProxyUrl } from "../api/client";
+import { imageProxyUrl } from "../utils/api";
 
 export default function GameImage({ url, alt, className, fallbackClass }) {
   if (!url) {
