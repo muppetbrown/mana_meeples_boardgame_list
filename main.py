@@ -527,6 +527,13 @@ async def get_public_games(
         query = query.order_by(Game.year.desc().nulls_last())
     elif sort == "year_asc":
         query = query.order_by(Game.year.asc().nulls_last())
+    elif sort == "rating_desc":
+        query = query.order_by(Game.average_rating.desc().nulls_last())
+    elif sort == "time_asc":
+        query = query.order_by(
+            Game.playtime_min.asc().nulls_last(),
+            Game.playtime_max.asc().nulls_last()
+        )
     else:  # Default to title_asc
         query = query.order_by(Game.title.asc())
     
