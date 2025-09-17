@@ -9,7 +9,7 @@ from fastapi import FastAPI, Depends, Header, HTTPException, Query, Request, Bac
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import case, select, func, and_, or_
 from sqlalchemy.orm import Session
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -537,12 +537,49 @@ async def get_public_games(
     elif sort == "year_asc":
         query = query.order_by(Game.year.asc().nulls_last())
     elif sort == "rating_desc":
-        query = query.order_by(Game.average_rating.desc().nulls_last())
+        if hasattr(Game, 'average_rating'):
+            query = query.order_by(Game.average_rating.desc().nulls_last())
+        else:
+            # Fallback to title if rating field doesn't exist
+            query = query.order_by(Game.title.asc())
+    elif sort == "rating_asc":
+        if hasattr(Game, 'average_rating'):
+            query = query.order_by(Game.average_rating.asc().nulls_last())
+        else:
+            # Fallback to title if rating field doesn't exist
+            query = query.order_by(Game.title.asc())
     elif sort == "time_asc":
-        query = query.order_by(
-            Game.playtime_min.asc().nulls_last(),
-            Game.playtime_max.asc().nulls_last()
+        # Sort by average playing time (min + max) / 2, ascending
+        from sqlalchemy import case, func
+        avg_time = case(
+            [
+                # Both min and max exist
+                (and_(Game.playtime_min.isnot(None), Game.playtime_max.isnot(None)), 
+                 (Game.playtime_min + Game.playtime_max) / 2),
+                # Only min exists, use min
+                (Game.playtime_min.isnot(None), Game.playtime_min),
+                # Only max exists, use max
+                (Game.playtime_max.isnot(None), Game.playtime_max),
+            ],
+            else_=999999  # Put games with no time data at the end
         )
+        query = query.order_by(avg_time.asc())
+    elif sort == "time_desc":
+        # Sort by average playing time (min + max) / 2, descending
+        from sqlalchemy import case, func
+        avg_time = case(
+            [
+                # Both min and max exist
+                (and_(Game.playtime_min.isnot(None), Game.playtime_max.isnot(None)), 
+                 (Game.playtime_min + Game.playtime_max) / 2),
+                # Only min exists, use min
+                (Game.playtime_min.isnot(None), Game.playtime_min),
+                # Only max exists, use max
+                (Game.playtime_max.isnot(None), Game.playtime_max),
+            ],
+            else_=0  # Put games with no time data at the end
+        )
+        query = query.order_by(avg_time.desc())
     else:  # Default to title_asc
         query = query.order_by(Game.title.asc())
     
