@@ -481,7 +481,7 @@ def _game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         "created_at": game.created_at.isoformat() if hasattr(game, "created_at") and game.created_at else None,
     }
 
-def _calculate_category_counts(games: List[Game]) -> Dict[str, int]:
+def _calculate_category_counts(games) -> Dict[str, int]:
     """Calculate counts for each category"""
     counts = {"all": len(games), "uncategorized": 0}
     
@@ -491,7 +491,13 @@ def _calculate_category_counts(games: List[Game]) -> Dict[str, int]:
     
     # Count games by category
     for game in games:
-        category = getattr(game, "mana_meeple_category", None)
+        # Handle both Game objects and tuples from select queries
+        if hasattr(game, 'mana_meeple_category'):
+            category = game.mana_meeple_category
+        else:
+            # Assume it's a tuple (id, mana_meeple_category)
+            category = game[1]
+            
         if category and category in CATEGORY_KEYS:
             counts[category] += 1
         else:
@@ -623,11 +629,13 @@ async def health_check_db(db: Session = Depends(get_db)):
 @app.get("/api/debug/categories")
 async def debug_categories(db: Session = Depends(get_db)):
     """Debug endpoint to see all unique categories in the database"""
-    games = db.execute(select(Game)).scalars().all()
+    # Only select the columns we need to avoid missing column errors
+    games = db.execute(select(Game.id, Game.categories)).all()
     all_categories = []
     
     for game in games:
-        categories = _parse_categories(game.categories)
+        # Handle tuple from select query
+        categories = _parse_categories(game[1])
         all_categories.extend(categories)
     
     unique_categories = sorted(list(set(all_categories)))
@@ -641,24 +649,29 @@ async def debug_categories(db: Session = Depends(get_db)):
 @app.get("/api/debug/database-info")
 async def debug_database_info(db: Session = Depends(get_db)):
     """Debug endpoint to see database structure and sample data"""
-    games = db.execute(select(Game)).scalars().all()
+    # Select only core columns that we know exist to avoid missing column errors
+    games = db.execute(select(
+        Game.id, Game.title, Game.categories, Game.mana_meeple_category, 
+        Game.year, Game.bgg_id
+    )).all()
+    
     return {
         "total_games": len(games),
         "sample_games": [
             {
-                "id": g.id,
-                "title": g.title,
-                "categories": g.categories,
-                "mana_meeple_category": g.mana_meeple_category,
-                "year": g.year,
-                "description": getattr(g, "description", "NOT_IN_SCHEMA"),
-                "designers": getattr(g, "designers", "NOT_IN_SCHEMA"),
-                "publishers": getattr(g, "publishers", "NOT_IN_SCHEMA"),
-                "mechanics": getattr(g, "mechanics", "NOT_IN_SCHEMA"),
-                "average_rating": getattr(g, "average_rating", "NOT_IN_SCHEMA"),
-                "complexity": getattr(g, "complexity", "NOT_IN_SCHEMA"),
-                "bgg_rank": getattr(g, "bgg_rank", "NOT_IN_SCHEMA"),
-                "bgg_id": g.bgg_id
+                "id": g[0],
+                "title": g[1], 
+                "categories": g[2],
+                "mana_meeple_category": g[3],
+                "year": g[4],
+                "bgg_id": g[5],
+                "description": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
+                "designers": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
+                "publishers": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
+                "mechanics": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
+                "average_rating": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
+                "complexity": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
+                "bgg_rank": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB"
             }
             for g in games[:5]  # Show first 5 games
         ]
@@ -794,7 +807,8 @@ async def get_public_game(
 @app.get("/api/public/category-counts")
 async def get_category_counts(db: Session = Depends(get_db)):
     """Get counts for each category"""
-    games = db.execute(select(Game)).scalars().all()
+    # Only select the columns we need to avoid missing column errors
+    games = db.execute(select(Game.id, Game.mana_meeple_category)).all()
     return _calculate_category_counts(games)
 
 @app.get("/api/public/games/by-designer/{designer_name}")
