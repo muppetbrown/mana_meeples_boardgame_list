@@ -789,7 +789,6 @@ async def import_from_bgg(
 async def bulk_import_csv(
     csv_data: dict,
     background_tasks: BackgroundTasks,
-    x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """Bulk import games from CSV data (admin only)"""
