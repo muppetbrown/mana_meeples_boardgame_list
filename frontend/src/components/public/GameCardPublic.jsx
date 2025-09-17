@@ -116,24 +116,24 @@ export default function GameCardPublic({ game, lazy = false, onShare }) {
         </div>
 
         {/* Content Section */}
-        <div className="p-4">
+        <div className="p-3 sm:p-4">
           {/* Title */}
-          <h3 className="font-bold text-lg text-slate-800 mb-3 group-hover:text-emerald-700 transition-colors duration-300 line-clamp-2 leading-tight min-h-[3.5rem]">
+          <h3 className="font-bold text-base sm:text-lg text-slate-800 mb-2 sm:mb-3 group-hover:text-emerald-700 transition-colors duration-300 line-clamp-2 leading-tight min-h-[2.5rem] sm:min-h-[3.5rem]">
             {game.title}
           </h3>
           
-          {/* Game Info Grid */}
-          <div className="grid grid-cols-2 gap-3 mb-4">
+          {/* Game Info Grid - Single column on mobile, 2 columns on larger screens */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 mb-3 sm:mb-4">
             {/* Players */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-emerald-700" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-emerald-700" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
                 </svg>
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Players</div>
-                <div className="text-sm font-bold text-slate-800 truncate">
+                <div className="text-sm font-bold text-slate-800">
                   {game.min_players && game.max_players 
                     ? `${game.min_players}-${game.max_players}`
                     : "Unknown"
@@ -144,14 +144,14 @@ export default function GameCardPublic({ game, lazy = false, onShare }) {
 
             {/* Time */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-amber-700" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-amber-700" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd"/>
                 </svg>
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Time</div>
-                <div className="text-sm font-bold text-slate-800 truncate">
+                <div className="text-sm font-bold text-slate-800">
                   {formatTime()}
                 </div>
               </div>
@@ -159,14 +159,14 @@ export default function GameCardPublic({ game, lazy = false, onShare }) {
 
             {/* Year */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-blue-700" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-blue-700" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd"/>
                 </svg>
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Year</div>
-                <div className="text-sm font-bold text-slate-800 truncate">
+                <div className="text-sm font-bold text-slate-800">
                   {game.year || "Unknown"}
                 </div>
               </div>
@@ -174,14 +174,14 @@ export default function GameCardPublic({ game, lazy = false, onShare }) {
 
             {/* Rating */}
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-yellow-700" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 sm:w-4 sm:h-4 text-yellow-700" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Rating</div>
-                <div className="text-sm font-bold text-slate-800 truncate">
+                <div className="text-sm font-bold text-slate-800">
                   {formatRating(game.average_rating) || "Unrated"}
                 </div>
               </div>
@@ -189,12 +189,12 @@ export default function GameCardPublic({ game, lazy = false, onShare }) {
           </div>
 
           {/* Action Indicator */}
-          <div className="flex items-center justify-between pt-3 border-t border-slate-200">
-            <span className="text-emerald-600 font-semibold text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+          <div className="flex items-center justify-between pt-2 sm:pt-3 border-t border-slate-200">
+            <span className="text-emerald-600 font-semibold text-xs sm:text-sm opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
               View Details
             </span>
             <svg 
-              className="w-5 h-5 text-emerald-600 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0" 
+              className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0" 
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24" 

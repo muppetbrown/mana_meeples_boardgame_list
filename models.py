@@ -17,6 +17,7 @@ class Game(Base):
     playtime_min = Column(Integer, nullable=True)
     playtime_max = Column(Integer, nullable=True)
     thumbnail_url = Column(String(512), nullable=True)
+    image = Column(String(512), nullable=True)  # Full-size image URL from BGG
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     bgg_id = Column(Integer, unique=True, nullable=True, index=True)
     thumbnail_file = Column(String(256), nullable=True)

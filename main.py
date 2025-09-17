@@ -572,6 +572,10 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
             game.min_age = bgg_data.get("min_age")
         if hasattr(game, 'is_cooperative'):
             game.is_cooperative = bgg_data.get("is_cooperative")
+        if hasattr(game, 'image'):
+            game.image = bgg_data.get("image")  # Store the full-size image URL
+        if hasattr(game, 'thumbnail_url'):
+            game.thumbnail_url = bgg_data.get("thumbnail")  # Store the thumbnail URL separately
         
         # Re-categorize based on new data
         categories = _parse_categories(game.categories)
@@ -1000,6 +1004,10 @@ async def import_from_bgg(
                 game.min_age = bgg_data.get("min_age")
             if hasattr(game, 'is_cooperative'):
                 game.is_cooperative = bgg_data.get("is_cooperative")
+            if hasattr(game, 'image'):
+                game.image = bgg_data.get("image")  # Store the full-size image URL
+            if hasattr(game, 'thumbnail_url'):
+                game.thumbnail_url = bgg_data.get("thumbnail")  # Store the thumbnail URL separately
             
             db.add(game)
 
@@ -1081,6 +1089,35 @@ async def bulk_import_csv(
                         bgg_id=bgg_id,
                         mana_meeple_category=_categorize_game(categories)
                     )
+                    
+                    # Add enhanced fields if they exist in the model
+                    if hasattr(game, 'description'):
+                        game.description = bgg_data.get("description")
+                    if hasattr(game, 'designers'):
+                        game.designers = json.dumps(bgg_data.get("designers", []))
+                    if hasattr(game, 'publishers'):
+                        game.publishers = json.dumps(bgg_data.get("publishers", []))
+                    if hasattr(game, 'mechanics'):
+                        game.mechanics = json.dumps(bgg_data.get("mechanics", []))
+                    if hasattr(game, 'artists'):
+                        game.artists = json.dumps(bgg_data.get("artists", []))
+                    if hasattr(game, 'average_rating'):
+                        game.average_rating = bgg_data.get("average_rating")
+                    if hasattr(game, 'complexity'):
+                        game.complexity = bgg_data.get("complexity")
+                    if hasattr(game, 'bgg_rank'):
+                        game.bgg_rank = bgg_data.get("bgg_rank")
+                    if hasattr(game, 'users_rated'):
+                        game.users_rated = bgg_data.get("users_rated")
+                    if hasattr(game, 'min_age'):
+                        game.min_age = bgg_data.get("min_age")
+                    if hasattr(game, 'is_cooperative'):
+                        game.is_cooperative = bgg_data.get("is_cooperative")
+                    if hasattr(game, 'image'):
+                        game.image = bgg_data.get("image")  # Store the full-size image URL
+                    if hasattr(game, 'thumbnail_url'):
+                        game.thumbnail_url = bgg_data.get("thumbnail")  # Store the thumbnail URL separately
+                    
                     db.add(game)
                     db.commit()
                     db.refresh(game)
