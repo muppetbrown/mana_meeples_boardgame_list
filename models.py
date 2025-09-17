@@ -20,7 +20,7 @@ class Game(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     bgg_id = Column(Integer, unique=True, nullable=True, index=True)
     thumbnail_file = Column(String(256), nullable=True)
-    mana_meeple_category = Column(String(50), nullable=True) 
+    mana_meeple_category = Column(String(50), nullable=True, index=True) 
     description = Column(Text, nullable=True)
     designers = Column(JSON, nullable=True)  # Store as JSON array
     publishers = Column(JSON, nullable=True)  # Store as JSON array
