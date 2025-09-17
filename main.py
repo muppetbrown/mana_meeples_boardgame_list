@@ -16,6 +16,8 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 from database import SessionLocal, init_db
 from models import Game
 from bgg_service import fetch_bgg_thing
+from schemas import BGGGameImport, CSVImport
+from exceptions import GameServiceError, GameNotFoundError, BGGServiceError, ValidationError, DatabaseError
 
 # ------------------------------------------------------------------------------
 # Logging setup
@@ -34,6 +36,7 @@ os.makedirs(THUMBS_DIR, exist_ok=True)
 
 # Single shared HTTP client
 httpx_client = httpx.AsyncClient(follow_redirects=True, timeout=30)
+
 
 # API base for thumbnails
 API_BASE = PUBLIC_BASE_URL or "https://mana-meeples-boardgame-list.onrender.com"
@@ -107,6 +110,23 @@ CATEGORY_MAPPING = {
 # App setup
 # ------------------------------------------------------------------------------
 app = FastAPI(title="Mana & Meeples API", version="2.0.0")
+
+# Exception handlers
+@app.exception_handler(GameNotFoundError)
+async def game_not_found_handler(request: Request, exc: GameNotFoundError):
+    return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+@app.exception_handler(ValidationError)
+async def validation_error_handler(request: Request, exc: ValidationError):
+    return JSONResponse(status_code=400, content={"detail": str(exc)})
+
+@app.exception_handler(BGGServiceError)
+async def bgg_service_error_handler(request: Request, exc: BGGServiceError):
+    return JSONResponse(status_code=503, content={"detail": f"BGG service error: {str(exc)}"})
+
+@app.exception_handler(DatabaseError)
+async def database_error_handler(request: Request, exc: DatabaseError):
+    return JSONResponse(status_code=500, content={"detail": "Database operation failed"})
 
 class CacheThumbsMiddleware:
     def __init__(self, app: ASGIApp):
@@ -341,7 +361,7 @@ def _calculate_category_counts(games: List[Game]) -> Dict[str, int]:
 def _require_admin_token(token: Optional[str]):
     """Validate admin token"""
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        logger.warning(f"Invalid admin token attempt: {token}")
+        logger.warning("Invalid admin token attempt from request")
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
 async def _download_and_update_thumbnail(game_id: int, thumbnail_url: str):
@@ -583,22 +603,20 @@ async def get_public_games(
     else:  # Default to title_asc
         query = query.order_by(Game.title.asc())
     
-    # Get all matching games first
-    all_games = db.execute(query).scalars().all()
-    
-    # Apply category filtering (server-side for known categories)
-    filtered_games = all_games
+    # Apply category filtering at database level for better performance
     if category and category != "all":
         if category == "uncategorized":
-            filtered_games = [g for g in all_games if not getattr(g, "mana_meeple_category", None)]
+            query = query.where(Game.mana_meeple_category.is_(None))
         elif category in CATEGORY_KEYS:
-            filtered_games = [g for g in all_games if getattr(g, "mana_meeple_category", None) == category]
+            query = query.where(Game.mana_meeple_category == category)
     
-    # Calculate pagination
-    total = len(filtered_games)
-    start_idx = (page - 1) * page_size
-    end_idx = start_idx + page_size
-    page_games = filtered_games[start_idx:end_idx]
+    # Get total count for pagination
+    total = db.execute(select(func.count()).select_from(query.subquery())).scalar()
+    
+    # Apply pagination at database level
+    page_games = db.execute(
+        query.offset((page - 1) * page_size).limit(page_size)
+    ).scalars().all()
     
     # Convert to response format
     items = [_game_to_dict(request, game) for game in page_games]
@@ -619,7 +637,7 @@ async def get_public_game(
     """Get details for a specific game"""
     game = db.get(Game, game_id)
     if not game:
-        raise HTTPException(status_code=404, detail="Game not found")
+        raise GameNotFoundError("Game not found")
     
     return _game_to_dict(request, game)
 
@@ -744,6 +762,10 @@ async def import_from_bgg(
     """Import game from BoardGameGeek (admin only)"""
     _require_admin_token(x_admin_token)
     
+    # Validate BGG ID
+    if bgg_id <= 0 or bgg_id > 999999:
+        raise ValidationError("BGG ID must be between 1 and 999999")
+    
     try:
         # Check if already exists
         existing = db.execute(select(Game).where(Game.bgg_id == bgg_id)).scalar_one_or_none()
@@ -855,6 +877,7 @@ async def import_from_bgg(
 async def bulk_import_csv(
     csv_data: dict,
     background_tasks: BackgroundTasks,
+    x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """Bulk import games from CSV data (admin only)"""
@@ -1026,23 +1049,6 @@ async def bulk_categorize_csv(
         logger.error(f"Bulk categorize failed: {e}")
         raise HTTPException(status_code=500, detail=f"Bulk categorize failed: {str(e)}")
 
-@app.get("/api/debug/database-info")
-async def debug_database_info(db: Session = Depends(get_db)):
-    games = db.execute(select(Game)).scalars().all()
-    return {
-        "total_games": len(games),
-        "sample_games": [
-            {
-                "id": g.id,
-                "title": g.title,
-                "categories": g.categories,
-                "mana_meeple_category": g.mana_meeple_category,
-                "year": g.year,
-                "bgg_id": g.bgg_id
-            }
-            for g in games[:10]
-        ]
-    }
 
 @app.post("/api/admin/reimport-all-games")
 async def reimport_all_games(

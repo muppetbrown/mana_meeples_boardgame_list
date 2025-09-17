@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import Optional, List, Dict
 
 class Range(BaseModel):
@@ -28,3 +28,21 @@ class PagedGames(BaseModel):
 
 class CategoryCounts(BaseModel):
     __root__: Dict[str, int]
+
+class BGGGameImport(BaseModel):
+    bgg_id: int
+    
+    @validator('bgg_id')
+    def validate_bgg_id(cls, v):
+        if v <= 0 or v > 999999:
+            raise ValueError('BGG ID must be between 1 and 999999')
+        return v
+
+class CSVImport(BaseModel):
+    csv_data: str
+    
+    @validator('csv_data')
+    def validate_csv_data(cls, v):
+        if not v.strip():
+            raise ValueError('CSV data cannot be empty')
+        return v
