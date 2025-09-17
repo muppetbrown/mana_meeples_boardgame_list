@@ -4,6 +4,7 @@ import xml.etree.ElementTree as ET
 from typing import Dict, List, Optional
 import httpx
 import logging
+import html
 
 logger = logging.getLogger(__name__)
 
@@ -90,11 +91,13 @@ def _extract_comprehensive_game_data(item) -> Dict:
     if description_elem is not None and description_elem.text:
         # Clean up BGG's HTML-like description text
         description = description_elem.text.strip()
+        # Decode HTML entities first
+        description = html.unescape(description)
         # Remove common BGG markup
         description = description.replace('&#10;', '\n')
         description = description.replace('&quot;', '"')
         description = description.replace('&amp;', '&')
-        data['description'] = description[:2000] if description else None  # Limit length
+        data['description'] = description[:2000] if description else None
     else:
         data['description'] = None
     
