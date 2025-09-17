@@ -980,7 +980,6 @@ async def debug_database_info(db: Session = Depends(get_db)):
 
 @app.post("/api/admin/reimport-all-games")
 async def reimport_all_games(
-    x_admin_token: Optional[str] = Header(None),
     background_tasks: BackgroundTasks,
     x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
