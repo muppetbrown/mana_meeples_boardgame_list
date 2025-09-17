@@ -505,7 +505,7 @@ async def get_public_games(
     request: Request,
     q: str = Query("", description="Search query"),
     page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(24, ge=1, le=100, description="Items per page"),
+    page_size: int = Query(24, ge=1, le=1000, description="Items per page"),
     sort: str = Query("title_asc", description="Sort order"),
     category: Optional[str] = Query(None, description="Category filter"),
     designer: Optional[str] = Query(None, description="Designer filter"),
