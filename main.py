@@ -592,6 +592,17 @@ async def get_category_counts(db: Session = Depends(get_db)):
 
 @app.get("/api/public/games/by-designer/{designer_name}")
 async def get_games_by_designer(designer_name: str, db: Session = Depends(get_db)):
+    """Get games by a specific designer"""
+    try:
+        designer_filter = f"%{designer_name}%"
+        query = select(Game)
+        if hasattr(Game, 'designers'):
+            query = query.where(Game.designers.ilike(designer_filter))
+        
+        games = db.execute(query).scalars().all()
+        return {"designer": designer_name, "games": [_game_to_dict(request, game) for game in games]}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch games by designer: {str(e)}")
 
 @app.get("/api/public/image-proxy")
 async def image_proxy(url: str = Query(..., description="Image URL to proxy")):
@@ -599,7 +610,6 @@ async def image_proxy(url: str = Query(..., description="Image URL to proxy")):
     try:
         response = await httpx_client.get(url)
         response.raise_for_status()
-        
         content_type = response.headers.get("content-type", "application/octet-stream")
         
         # Set cache headers based on URL
