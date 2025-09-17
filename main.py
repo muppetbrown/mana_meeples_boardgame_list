@@ -280,10 +280,12 @@ def _game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
     mechanics = _parse_json_field(getattr(game, 'mechanics', None))
     artists = _parse_json_field(getattr(game, 'artists', None))
     
-    # Handle thumbnail URL
+    # Handle thumbnail URL - prioritize larger image over thumbnail
     thumbnail_url = None
     if hasattr(game, 'thumbnail_file') and game.thumbnail_file:
         thumbnail_url = _make_absolute_url(request, f"/thumbs/{game.thumbnail_file}")
+    elif hasattr(game, 'image') and game.image:  # Use the larger image first
+        thumbnail_url = game.image
     elif hasattr(game, 'thumbnail_url') and game.thumbnail_url:
         thumbnail_url = game.thumbnail_url
     
@@ -418,7 +420,7 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
         db.commit()
         
         # Download new thumbnail if available
-        thumbnail_url = bgg_data.get("thumbnail")
+        thumbnail_url = bgg_data.get("image") or bgg_data.get("thumbnail")  # Use larger image first
         if thumbnail_url:
             await _download_and_update_thumbnail(game_id, thumbnail_url)
         
@@ -682,7 +684,7 @@ async def create_game(
         db.refresh(game)
         
         # Download thumbnail in background if provided
-        thumbnail_url = game_data.get("thumbnail_url") or game_data.get("image_url")
+        thumbnail_url = game_data.get("image") or game_data.get("thumbnail_url") or game_data.get("image_url")
         if thumbnail_url:
             background_tasks.add_task(_download_and_update_thumbnail, game.id, thumbnail_url)
         
@@ -800,7 +802,7 @@ async def import_from_bgg(
         db.refresh(game)
         
         # Download thumbnail in background
-        thumbnail_url = bgg_data.get("thumbnail")
+        thumbnail_url = bgg_data.get("image") or bgg_data.get("thumbnail")  # Prioritize image over thumbnail
         if thumbnail_url and background_tasks:
             background_tasks.add_task(_download_and_update_thumbnail, game.id, thumbnail_url)
         
@@ -880,7 +882,7 @@ async def bulk_import_csv(
                     added.append(f"BGG ID {bgg_id}: {game.title}")
                     
                     # Download thumbnail in background
-                    thumbnail_url = bgg_data.get("thumbnail")
+                    thumbnail_url = bgg_data.get("image") or bgg_data.get("thumbnail")  # Prioritize image over thumbnail
                     if thumbnail_url and background_tasks:
                         background_tasks.add_task(_download_and_update_thumbnail, game.id, thumbnail_url)
                     
