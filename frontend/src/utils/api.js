@@ -24,8 +24,18 @@ export const imageProxyUrl = (url) => {
   
   // For BGG images, try to get higher resolution
   if (url.includes('cf.geekdo-images.com')) {
-    // Replace thumbnail size with larger size
-    const largerUrl = url.replace('_t.', '_d.');  // thumbnail to detail size
+    let largerUrl = url;
+    
+    // Try multiple size replacements for better quality
+    largerUrl = largerUrl.replace('_t.', '_d.');  // thumbnail to detail size
+    largerUrl = largerUrl.replace('_mt.', '_d.'); // medium thumbnail to detail
+    largerUrl = largerUrl.replace('_original.', '_d.'); // sometimes original is lower res than detail
+    
+    // Ensure we're not using tiny thumbnails
+    if (largerUrl.includes('_t.') || largerUrl.includes('_mt.')) {
+      largerUrl = largerUrl.replace('_t.', '_d.').replace('_mt.', '_d.');
+    }
+    
     return `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(largerUrl)}`;
   }
   
