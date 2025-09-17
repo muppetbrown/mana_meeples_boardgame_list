@@ -9,11 +9,11 @@ from fastapi import FastAPI, Depends, Header, HTTPException, Query, Request, Bac
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import case, select, func, and_, or_
+from sqlalchemy import case, select, func, and_, or_, text
 from sqlalchemy.orm import Session
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from database import SessionLocal, init_db
+from database import SessionLocal, init_db, engine
 from models import Game
 from bgg_service import fetch_bgg_thing
 from schemas import BGGGameImport, CSVImport
@@ -1351,7 +1351,26 @@ async def delete_admin_game(
         logger.error(f"Failed to delete game {game_id}: {e}", extra={'game_id': game_id})
         raise HTTPException(status_code=500, detail="Failed to delete game")
 
-    
+def run_migrations():
+    """Run database migrations to ensure schema is up to date."""
+    try:
+        with engine.connect() as conn:
+            # Check if the image column exists in the games table
+            result = conn.execute(text("PRAGMA table_info(games)"))
+            columns = [row[1] for row in result]
+            
+            if 'image' not in columns:
+                logger.info("Adding missing 'image' column to games table...")
+                conn.execute(text("ALTER TABLE games ADD COLUMN image VARCHAR(512)"))
+                conn.commit()
+                logger.info("Successfully added 'image' column to games table")
+            else:
+                logger.info("Database schema is up to date")
+                
+    except Exception as e:
+        logger.error(f"Error running migrations: {e}")
+        raise
+
 # ------------------------------------------------------------------------------
 # Startup
 # ------------------------------------------------------------------------------
@@ -1360,6 +1379,7 @@ async def startup_event():
     """Initialize database and create thumbs directory"""
     logger.info("Starting Mana & Meeples API...")
     init_db()
+    run_migrations()
     os.makedirs(THUMBS_DIR, exist_ok=True)
     logger.info(f"Thumbnails directory: {THUMBS_DIR}")
     logger.info("API startup complete")
