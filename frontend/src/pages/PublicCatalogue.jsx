@@ -4,7 +4,6 @@ import { useSearchParams } from "react-router-dom";
 import { getPublicGames, getPublicCategoryCounts } from "../api/client";
 import { CATEGORY_KEYS, CATEGORY_LABELS } from "../constants/categories";
 import GameCardPublic from "../components/public/GameCardPublic";
-import Pagination from "../components/public/Pagination";
 import SortSelect from "../components/public/SortSelect";
 import SearchBox from "../components/public/SearchBox";
 

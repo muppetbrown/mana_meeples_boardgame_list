@@ -12,7 +12,6 @@ import {
   getGames,
   bulkImportCsv,
   bulkCategorizeCsv,
-  addGame as apiAdd,
   updateGame,
   deleteGame,
 } from "./api/client";

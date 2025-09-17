@@ -18,23 +18,27 @@ function resolveApiBase() {
 
 export const API_BASE = resolveApiBase().replace(/\/+$/, "");
 
-// In your utils/api.js or wherever imageProxyUrl is defined
+// Enhanced image proxy for better desktop quality
 export const imageProxyUrl = (url) => {
   if (!url) return null;
   
-  // For BGG images, try to get higher resolution
+  // For BGG images, try to get highest resolution available
   if (url.includes('cf.geekdo-images.com')) {
     let largerUrl = url;
     
-    // Try multiple size replacements for better quality
-    largerUrl = largerUrl.replace('_t.', '_d.');  // thumbnail to detail size
-    largerUrl = largerUrl.replace('_mt.', '_d.'); // medium thumbnail to detail
-    largerUrl = largerUrl.replace('_original.', '_d.'); // sometimes original is lower res than detail
+    // Priority order for BGG image sizes (best to worst quality):
+    // _original, _d (detail), _md (medium detail), _mt (medium thumb), _t (thumbnail)
     
-    // Ensure we're not using tiny thumbnails
-    if (largerUrl.includes('_t.') || largerUrl.includes('_mt.')) {
-      largerUrl = largerUrl.replace('_t.', '_d.').replace('_mt.', '_d.');
+    // First try to get original size (best quality)
+    if (!largerUrl.includes('_original.')) {
+      largerUrl = largerUrl.replace('_t.', '_original.');
+      largerUrl = largerUrl.replace('_mt.', '_original.'); 
+      largerUrl = largerUrl.replace('_md.', '_original.');
+      largerUrl = largerUrl.replace('_d.', '_original.');
     }
+    
+    // If original doesn't work, backend can fallback to detail size
+    // The backend should handle the fallback chain: original -> detail -> medium -> thumbnail
     
     return `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(largerUrl)}`;
   }
