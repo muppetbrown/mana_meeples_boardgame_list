@@ -1347,8 +1347,8 @@ async def get_admin_games(
 
 @app.get("/api/admin/games/{game_id}")
 async def get_admin_game(
-    game_id: int = Path(..., description="Game ID"),
     request: Request,
+    game_id: int = Path(..., description="Game ID"),
     x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
@@ -1365,8 +1365,8 @@ async def get_admin_game(
 @app.put("/api/admin/games/{game_id}")
 async def update_admin_game(
     game_data: Dict[str, Any],
-    game_id: int = Path(..., description="Game ID"),
     request: Request,
+    game_id: int = Path(..., description="Game ID"),
     x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
@@ -1412,8 +1412,8 @@ async def update_admin_game(
 
 @app.delete("/api/admin/games/{game_id}")
 async def delete_admin_game(
-    game_id: int = Path(..., description="Game ID"),
     request: Request,
+    game_id: int = Path(..., description="Game ID"),
     x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
