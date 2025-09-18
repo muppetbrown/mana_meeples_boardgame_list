@@ -1,5 +1,6 @@
 import os, re, httpx
 from typing import Optional
+from config import HTTP_TIMEOUT
 
 THUMBS_DIR = "/data/thumbs"
 
@@ -23,7 +24,7 @@ async def download_thumbnail(url: str, basename: str) -> Optional[str]:
         return None
     ensure_dir()
     
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         # First, do a HEAD request to check content type and size
         try:
             head_response = await client.head(url)
@@ -55,7 +56,7 @@ async def download_thumbnail(url: str, basename: str) -> Optional[str]:
     if os.path.exists(path) and os.path.getsize(path) > 0:
         return filename
     
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         r = await client.get(url)
         r.raise_for_status()
         

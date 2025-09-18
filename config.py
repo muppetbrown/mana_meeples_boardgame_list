@@ -10,3 +10,11 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
 
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
+
+# HTTP client configuration
+HTTP_TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "30"))
+HTTP_RETRIES = int(os.getenv("HTTP_RETRIES", "3"))
+
+# Rate limiting configuration
+RATE_LIMIT_ATTEMPTS = int(os.getenv("RATE_LIMIT_ATTEMPTS", "5"))
+RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "300"))  # 5 minutes

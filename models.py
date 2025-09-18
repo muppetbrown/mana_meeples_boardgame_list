@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Float, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, Float, Boolean, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -33,3 +33,11 @@ class Game(Base):
     users_rated = Column(Integer, nullable=True)
     min_age = Column(Integer, nullable=True)
     is_cooperative = Column(Boolean, nullable=True)
+    
+    # Performance indexes for common queries
+    __table_args__ = (
+        Index('idx_year_category', 'year', 'mana_meeple_category'),
+        Index('idx_players_playtime', 'players_min', 'players_max', 'playtime_min', 'playtime_max'),
+        Index('idx_rating_rank', 'average_rating', 'bgg_rank'),
+        Index('idx_created_category', 'created_at', 'mana_meeple_category'),
+    )
