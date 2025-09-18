@@ -22,6 +22,7 @@ import { CATEGORY_KEYS, labelFor } from "./constants/categories";
 // ---- UI components ----
 import CategoryFilter from "./components/CategoryFilter";
 import CategorySelectModal from "./components/CategorySelectModal";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 // ---- Staff components ----
 import LibraryCard from "./components/staff/LibraryCard";
@@ -343,13 +344,15 @@ function StaffView() {
  * -------------------------------- */
 export default function App() {
   return (
-    <Routes>
-      {/* Fixed: Remove leading slashes for nested routing */}
-      <Route path="/" element={<PublicCatalogue />} />
-      <Route path="game/:id" element={<GameDetails />} />
-      <Route path="staff/login" element={<AdminLogin />} />
-      <Route path="staff" element={<StaffView />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <ErrorBoundary>
+      <Routes>
+        {/* Fixed: Remove leading slashes for nested routing */}
+        <Route path="/" element={<ErrorBoundary><PublicCatalogue /></ErrorBoundary>} />
+        <Route path="game/:id" element={<ErrorBoundary><GameDetails /></ErrorBoundary>} />
+        <Route path="staff/login" element={<ErrorBoundary><AdminLogin /></ErrorBoundary>} />
+        <Route path="staff" element={<ErrorBoundary><StaffView /></ErrorBoundary>} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </ErrorBoundary>
   );
 }

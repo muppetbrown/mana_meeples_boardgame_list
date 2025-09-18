@@ -1,8 +1,10 @@
 import os
 import json
 import logging
+import time
 from typing import Optional, List, Dict, Any
 from datetime import datetime
+from collections import defaultdict
 
 import httpx
 from fastapi import FastAPI, Depends, Header, HTTPException, Query, Request, BackgroundTasks, Path
@@ -18,11 +20,11 @@ from models import Game
 from bgg_service import fetch_bgg_thing
 from schemas import BGGGameImport, CSVImport
 from exceptions import GameServiceError, GameNotFoundError, BGGServiceError, ValidationError, DatabaseError
+from config import HTTP_TIMEOUT, HTTP_RETRIES, RATE_LIMIT_ATTEMPTS, RATE_LIMIT_WINDOW
 
 # ------------------------------------------------------------------------------
 # Logging setup with structured logging
 # ------------------------------------------------------------------------------
-import json
 
 # Enhanced logging with structured format
 class StructuredFormatter(logging.Formatter):
@@ -71,11 +73,14 @@ logger = logging.getLogger(__name__)
 PUBLIC_BASE_URL = (os.getenv("PUBLIC_BASE_URL") or "").rstrip("/")
 ADMIN_TOKEN = (os.getenv("ADMIN_TOKEN") or "").strip()
 
+# Rate limiting for admin authentication attempts
+admin_attempt_tracker = defaultdict(list)
+
 THUMBS_DIR = os.getenv("THUMBS_DIR", "/data/thumbs")
 os.makedirs(THUMBS_DIR, exist_ok=True)
 
 # Single shared HTTP client
-httpx_client = httpx.AsyncClient(follow_redirects=True, timeout=30)
+httpx_client = httpx.AsyncClient(follow_redirects=True, timeout=HTTP_TIMEOUT)
 
 
 # API base for thumbnails
@@ -505,10 +510,68 @@ def _calculate_category_counts(games) -> Dict[str, int]:
     
     return counts
 
-def _require_admin_token(token: Optional[str]):
-    """Validate admin token"""
+def _get_client_ip(request: Request) -> str:
+    """Extract client IP from request"""
+    if request.client:
+        return request.client.host
+    # Check for forwarded headers in case of proxy
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip
+    return "unknown"
+
+def _success_response(data: Any = None, message: str = "Success") -> Dict[str, Any]:
+    """Standardized success response format"""
+    response = {
+        "success": True,
+        "message": message,
+        "timestamp": datetime.utcnow().isoformat() + 'Z'
+    }
+    if data is not None:
+        response["data"] = data
+    return response
+
+def _error_response(message: str, error_code: str = "GENERAL_ERROR", details: Any = None) -> Dict[str, Any]:
+    """Standardized error response format"""
+    response = {
+        "success": False,
+        "error": {
+            "code": error_code,
+            "message": message
+        },
+        "timestamp": datetime.utcnow().isoformat() + 'Z'
+    }
+    if details is not None:
+        response["error"]["details"] = details
+    return response
+
+def _require_admin_token(token: Optional[str], client_ip: str = "unknown"):
+    """Validate admin token with rate limiting"""
+    current_time = time.time()
+    
+    # Clean old attempts from tracker (older than rate limit window)
+    cutoff_time = current_time - RATE_LIMIT_WINDOW
+    admin_attempt_tracker[client_ip] = [
+        attempt_time for attempt_time in admin_attempt_tracker[client_ip] 
+        if attempt_time > cutoff_time
+    ]
+    
+    # Check if rate limited
+    if len(admin_attempt_tracker[client_ip]) >= RATE_LIMIT_ATTEMPTS:
+        logger.warning(f"Rate limited admin token attempts from {client_ip}")
+        raise HTTPException(
+            status_code=429, 
+            detail="Too many failed authentication attempts. Please try again later."
+        )
+    
+    # Validate token
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
-        logger.warning("Invalid admin token attempt from request")
+        # Record failed attempt
+        admin_attempt_tracker[client_ip].append(current_time)
+        logger.warning(f"Invalid admin token attempt from {client_ip}")
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
 async def _download_and_update_thumbnail(game_id: int, thumbnail_url: str):
@@ -679,9 +742,10 @@ async def debug_database_info(db: Session = Depends(get_db)):
 
 
 @app.get("/api/debug/performance")
-async def get_performance_stats(x_admin_token: Optional[str] = Header(None)):
+async def get_performance_stats(request: Request, x_admin_token: Optional[str] = Header(None)):
     """Get performance monitoring stats (admin only)"""
-    _require_admin_token(x_admin_token)
+    client_ip = request.client.host if request.client else "unknown"
+    _require_admin_token(x_admin_token, client_ip)
     return performance_monitor.get_stats()
 
 # ------------------------------------------------------------------------------
@@ -919,12 +983,13 @@ async def create_game(
 async def import_from_bgg(
     bgg_id: int = Query(..., description="BGG game ID"),
     force: bool = Query(False, description="Force reimport if exists"),
+    request: Request,
     x_admin_token: Optional[str] = Header(None),
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db)
 ):
     """Import game from BoardGameGeek (admin only)"""
-    _require_admin_token(x_admin_token)
+    _require_admin_token(x_admin_token, _get_client_ip(request))
     
     # Validate BGG ID
     if bgg_id <= 0 or bgg_id > 999999:
@@ -1045,11 +1110,12 @@ async def import_from_bgg(
 async def bulk_import_csv(
     csv_data: dict,
     background_tasks: BackgroundTasks,
+    request: Request,
     x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """Bulk import games from CSV data (admin only)"""
-    _require_admin_token(x_admin_token)
+    _require_admin_token(x_admin_token, _get_client_ip(request))
     
     try:
         csv_text = csv_data.get("csv_data", "")
@@ -1165,11 +1231,12 @@ async def bulk_import_csv(
 @app.post("/api/admin/bulk-categorize-csv")
 async def bulk_categorize_csv(
     csv_data: dict,
+    request: Request,
     x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """Bulk categorize existing games from CSV data (admin only)"""
-    _require_admin_token(x_admin_token)
+    _require_admin_token(x_admin_token, _get_client_ip(request))
     
     try:
         csv_text = csv_data.get("csv_data", "")
@@ -1250,11 +1317,12 @@ async def bulk_categorize_csv(
 @app.post("/api/admin/reimport-all-games")
 async def reimport_all_games(
     background_tasks: BackgroundTasks,
+    request: Request,
     x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """Re-import all existing games to get enhanced BGG data"""
-    _require_admin_token(x_admin_token)
+    _require_admin_token(x_admin_token, _get_client_ip(request))
     
     games = db.execute(select(Game).where(Game.bgg_id.isnot(None))).scalars().all()
     
@@ -1266,11 +1334,12 @@ async def reimport_all_games(
 
 @app.get("/api/admin/games")
 async def get_admin_games(
+    request: Request,
     x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """Get all games for admin interface"""
-    _require_admin_token(x_admin_token)
+    _require_admin_token(x_admin_token, _get_client_ip(request))
     
     games = db.execute(select(Game)).scalars().all()
     return [_game_to_dict(None, game) for game in games]
@@ -1279,11 +1348,12 @@ async def get_admin_games(
 @app.get("/api/admin/games/{game_id}")
 async def get_admin_game(
     game_id: int = Path(..., description="Game ID"),
+    request: Request,
     x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """Get single game for admin interface"""
-    _require_admin_token(x_admin_token)
+    _require_admin_token(x_admin_token, _get_client_ip(request))
     
     game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
     if not game:
@@ -1296,11 +1366,12 @@ async def get_admin_game(
 async def update_admin_game(
     game_data: Dict[str, Any],
     game_id: int = Path(..., description="Game ID"),
+    request: Request,
     x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """Update game (admin only)"""
-    _require_admin_token(x_admin_token)
+    _require_admin_token(x_admin_token, _get_client_ip(request))
     
     game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
     if not game:
@@ -1342,11 +1413,12 @@ async def update_admin_game(
 @app.delete("/api/admin/games/{game_id}")
 async def delete_admin_game(
     game_id: int = Path(..., description="Game ID"),
+    request: Request,
     x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """Delete game (admin only)"""
-    _require_admin_token(x_admin_token)
+    _require_admin_token(x_admin_token, _get_client_ip(request))
     
     game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
     if not game:

@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import httpx
 import logging
 import html
+from config import HTTP_TIMEOUT, HTTP_RETRIES
 
 logger = logging.getLogger(__name__)
 
@@ -12,15 +13,16 @@ class BGGServiceError(Exception):
     """Custom exception for BGG service errors"""
     pass
 
-async def fetch_bgg_thing(bgg_id: int, retries: int = 3) -> Dict:
+async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
     """
     Enhanced BGG data fetcher that captures comprehensive game information
     including descriptions, mechanics, designers, publishers, and ratings
+    Uses exponential backoff for retries.
     """
     url = "https://boardgamegeek.com/xmlapi2/thing"
     params = {"id": str(bgg_id), "stats": "1"}
     
-    async with httpx.AsyncClient(timeout=30.0) as client:
+    async with httpx.AsyncClient(timeout=float(HTTP_TIMEOUT)) as client:
         for attempt in range(retries):
             try:
                 logger.info(f"Fetching BGG data for game {bgg_id} (attempt {attempt + 1})")
@@ -28,8 +30,9 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = 3) -> Dict:
                 
                 # Handle BGG's queue system
                 if response.status_code in (202, 500, 503):
-                    logger.warning(f"BGG returned {response.status_code} for game {bgg_id}, retrying...")
-                    await asyncio.sleep(2)
+                    delay = (2 ** attempt) + (attempt * 0.5)  # Exponential backoff with jitter
+                    logger.warning(f"BGG returned {response.status_code} for game {bgg_id}, retrying in {delay:.1f}s...")
+                    await asyncio.sleep(delay)
                     continue
                 
                 if response.status_code == 400:
@@ -42,13 +45,15 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = 3) -> Dict:
                 logger.error(f"Timeout fetching BGG data for game {bgg_id}")
                 if attempt == retries - 1:
                     raise BGGServiceError(f"Timeout fetching game {bgg_id}")
-                await asyncio.sleep(2)
+                delay = (2 ** attempt) + (attempt * 0.5)  # Exponential backoff with jitter
+                await asyncio.sleep(delay)
                 
             except httpx.HTTPError as e:
                 logger.error(f"HTTP error fetching BGG data for game {bgg_id}: {e}")
                 if attempt == retries - 1:
                     raise BGGServiceError(f"Failed to fetch game {bgg_id}: {e}")
-                await asyncio.sleep(2)
+                delay = (2 ** attempt) + (attempt * 0.5)  # Exponential backoff with jitter
+                await asyncio.sleep(delay)
     
     # Parse XML response
     try:
