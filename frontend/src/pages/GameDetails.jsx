@@ -94,27 +94,27 @@ export default function GameDetails() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-emerald-50 to-teal-50">
-      <div className="mx-auto max-w-6xl px-4 py-8">
+      <div className="mx-auto max-w-6xl px-3 sm:px-4 py-4 sm:py-8">
         {/* Back Button */}
-        <nav className="mb-8">
+        <nav className="mb-4 sm:mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="group inline-flex items-center px-6 py-3 bg-white/80 backdrop-blur-sm rounded-xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+            className="group inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-white/80 backdrop-blur-sm rounded-xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 min-h-[44px] touch-manipulation"
             aria-label="Go back to previous page"
           >
-            <svg className="w-5 h-5 mr-3 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            <span className="font-medium text-slate-700">Back to games</span>
+            <span className="font-medium text-slate-700 text-sm sm:text-base">Back to games</span>
           </button>
         </nav>
 
         {/* Main Content */}
         <main>
-          <article className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl border border-white/50 overflow-hidden">
+          <article className="bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl border border-white/50 overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-[400px,1fr] gap-0">
               {/* Image Section */}
-              <div className="relative bg-gradient-to-br from-slate-100 to-slate-200 lg:aspect-square">
+              <div className="relative bg-gradient-to-br from-slate-100 to-slate-200 aspect-[4/3] sm:aspect-square lg:aspect-square">
                 {img ? (
                   <img
                     src={img}
@@ -123,20 +123,20 @@ export default function GameDetails() {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-64 lg:h-full flex flex-col items-center justify-center text-slate-400">
-                    <div className="w-20 h-20 rounded-full bg-slate-300 flex items-center justify-center mb-4">
-                      <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-300 flex items-center justify-center mb-3 sm:mb-4">
+                      <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                         <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <span className="text-lg font-medium">No Image Available</span>
+                    <span className="text-base sm:text-lg font-medium">No Image Available</span>
                   </div>
                 )}
                 
                 {/* Category Badge */}
                 {cat && (
-                  <div className="absolute top-6 right-6">
-                    <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-xl ${getCategoryStyle(game.mana_meeple_category)}`}>
+                  <div className="absolute top-3 right-3 sm:top-6 sm:right-6">
+                    <span className={`px-2 py-1 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl ${getCategoryStyle(game.mana_meeple_category)}`}>
                       {cat}
                     </span>
                   </div>
@@ -144,16 +144,16 @@ export default function GameDetails() {
               </div>
 
               {/* Content Section */}
-              <div className="p-8 lg:p-12">
+              <div className="p-4 sm:p-6 lg:p-8 xl:p-12">
                 {/* Title and Basic Info */}
-                <header className="mb-8">
-                  <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-4">
+                <header className="mb-6 sm:mb-8">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3 sm:mb-4">
                     {game.title}
                   </h1>
                   
                   {/* Game Stats */}
-                  <div className="flex flex-wrap gap-4 text-sm">
-                    <div className="flex items-center bg-emerald-100 rounded-full px-4 py-2">
+                  <div className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4 text-sm">
+                    <div className="flex items-center bg-emerald-100 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] sm:min-h-auto">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-emerald-800">Players: </span>
                       <span className="font-bold text-emerald-900 ml-1">
@@ -161,7 +161,7 @@ export default function GameDetails() {
                       </span>
                     </div>
                     
-                    <div className="flex items-center bg-amber-100 rounded-full px-4 py-2">
+                    <div className="flex items-center bg-amber-100 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] sm:min-h-auto">
                       <span className="w-2 h-2 rounded-full bg-amber-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-amber-800">Time: </span>
                       <span className="font-bold text-amber-900 ml-1">
@@ -169,7 +169,7 @@ export default function GameDetails() {
                       </span>
                     </div>
                     
-                    <div className="flex items-center bg-blue-100 rounded-full px-4 py-2">
+                    <div className="flex items-center bg-blue-100 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] sm:min-h-auto">
                       <span className="w-2 h-2 rounded-full bg-blue-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-blue-800">Year: </span>
                       <span className="font-bold text-blue-900 ml-1">
