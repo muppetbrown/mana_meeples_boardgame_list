@@ -981,9 +981,9 @@ async def create_game(
 
 @app.post("/api/admin/import/bgg")
 async def import_from_bgg(
+    request: Request,
     bgg_id: int = Query(..., description="BGG game ID"),
     force: bool = Query(False, description="Force reimport if exists"),
-    request: Request,
     x_admin_token: Optional[str] = Header(None),
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db)
