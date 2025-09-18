@@ -135,8 +135,8 @@ export default function GameDetails() {
                 
                 {/* Category Badge */}
                 {cat && (
-                  <div className="absolute top-3 right-3 sm:top-6 sm:right-6">
-                    <span className={`px-2 py-1 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl ${getCategoryStyle(game.mana_meeple_category)}`}>
+                  <div className="absolute top-2 right-2 sm:top-3 sm:right-3 lg:top-6 lg:right-6">
+                    <span className={`px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl ${getCategoryStyle(game.mana_meeple_category)}`}>
                       {cat}
                     </span>
                   </div>
@@ -153,7 +153,7 @@ export default function GameDetails() {
                   
                   {/* Game Stats */}
                   <div className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4 text-sm">
-                    <div className="flex items-center bg-emerald-100 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] sm:min-h-auto">
+                    <div className="flex items-center bg-emerald-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-[44px] sm:min-h-auto">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-emerald-800">Players: </span>
                       <span className="font-bold text-emerald-900 ml-1">
@@ -161,7 +161,7 @@ export default function GameDetails() {
                       </span>
                     </div>
                     
-                    <div className="flex items-center bg-amber-100 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] sm:min-h-auto">
+                    <div className="flex items-center bg-amber-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-[44px] sm:min-h-auto">
                       <span className="w-2 h-2 rounded-full bg-amber-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-amber-800">Time: </span>
                       <span className="font-bold text-amber-900 ml-1">
@@ -169,7 +169,7 @@ export default function GameDetails() {
                       </span>
                     </div>
                     
-                    <div className="flex items-center bg-blue-100 rounded-full px-3 py-1.5 sm:px-4 sm:py-2 min-h-[44px] sm:min-h-auto">
+                    <div className="flex items-center bg-blue-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-[44px] sm:min-h-auto">
                       <span className="w-2 h-2 rounded-full bg-blue-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-blue-800">Year: </span>
                       <span className="font-bold text-blue-900 ml-1">
