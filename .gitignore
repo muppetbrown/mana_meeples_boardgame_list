@@ -2,13 +2,11 @@
 
 # dependencies
 /node_modules
-/build
 /venv
 /.pnp
 .pnp.js
 
 # production
-/frontend/build
 /frontend/node_modules
 
 # misc
