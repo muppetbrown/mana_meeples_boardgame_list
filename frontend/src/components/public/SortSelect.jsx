@@ -76,7 +76,7 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
       <span className="sr-only">Choose how to sort games</span>
       
       {/* Grid layout for sort buttons */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {sortOptions.map(option => {
           const isActive = getCurrentSortKey() === option.key;
           const direction = isActive ? getCurrentDirection() : option.defaultDir;

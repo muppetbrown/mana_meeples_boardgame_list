@@ -429,7 +429,7 @@ export default function PublicCatalogue() {
             {/* Game Results */}
             <section aria-live="polite" id="game-results">
               {loading ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 mb-6">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 mb-6">
                   {Array.from({ length: 8 }, (_, i) => (
                     <SkeletonCard key={i} />
                   ))}
@@ -552,7 +552,7 @@ export default function PublicCatalogue() {
                   </div>
 
                   {/* Game Cards Grid with lazy loading */}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4 mb-6">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 mb-6">
                     {items.map((game) => (
                       <div key={game.id} className="transform transition-all duration-300 hover:scale-105 hover:z-50 relative">
                         <GameCardPublic 
