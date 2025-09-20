@@ -710,33 +710,60 @@ async def debug_categories(db: Session = Depends(get_db)):
     }
 
 @app.get("/api/debug/database-info")
-async def debug_database_info(db: Session = Depends(get_db)):
+async def debug_database_info(
+    limit: Optional[int] = Query(None, description="Number of games to return (default: all)"),
+    db: Session = Depends(get_db)
+):
     """Debug endpoint to see database structure and sample data"""
-    # Select only core columns that we know exist to avoid missing column errors
-    games = db.execute(select(
-        Game.id, Game.title, Game.categories, Game.mana_meeple_category, 
-        Game.year, Game.bgg_id
-    )).all()
+    # Select all columns from your schema
+    query = select(
+        Game.id, Game.title, Game.categories, Game.year, 
+        Game.players_min, Game.players_max, Game.playtime_min, Game.playtime_max,
+        Game.thumbnail_url, Game.image, Game.created_at, Game.bgg_id,
+        Game.thumbnail_file, Game.mana_meeple_category, Game.description,
+        Game.designers, Game.publishers, Game.mechanics, Game.artists,
+        Game.average_rating, Game.complexity, Game.bgg_rank, Game.users_rated,
+        Game.min_age, Game.is_cooperative
+    )
+    
+    games = db.execute(query).all()
+    
+    # Apply limit if specified, otherwise return all
+    if limit is not None:
+        games = games[:limit]
     
     return {
-        "total_games": len(games),
+        "total_games_in_db": db.execute(select(func.count()).select_from(Game)).scalar(),
+        "games_returned": len(games),
         "sample_games": [
             {
                 "id": g[0],
-                "title": g[1], 
+                "title": g[1],
                 "categories": g[2],
-                "mana_meeple_category": g[3],
-                "year": g[4],
-                "bgg_id": g[5],
-                "description": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
-                "designers": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
-                "publishers": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
-                "mechanics": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
-                "average_rating": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
-                "complexity": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB",
-                "bgg_rank": "COLUMN_MAY_NOT_EXIST_IN_PRODUCTION_DB"
+                "year": g[3],
+                "players_min": g[4],
+                "players_max": g[5],
+                "playtime_min": g[6],
+                "playtime_max": g[7],
+                "thumbnail_url": g[8],
+                "image": g[9],
+                "created_at": g[10].isoformat() if g[10] else None,
+                "bgg_id": g[11],
+                "thumbnail_file": g[12],
+                "mana_meeple_category": g[13],
+                "description": g[14],
+                "designers": g[15],
+                "publishers": g[16],
+                "mechanics": g[17],
+                "artists": g[18],
+                "average_rating": g[19],
+                "complexity": g[20],
+                "bgg_rank": g[21],
+                "users_rated": g[22],
+                "min_age": g[23],
+                "is_cooperative": g[24]
             }
-            for g in games[:5]  # Show first 5 games
+            for g in games
         ]
     }
 
