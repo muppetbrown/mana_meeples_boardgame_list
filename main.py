@@ -484,6 +484,7 @@ def _game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         "users_rated": getattr(game, "users_rated", None),
         "bgg_id": getattr(game, "bgg_id", None),
         "created_at": game.created_at.isoformat() if hasattr(game, "created_at") and game.created_at else None,
+        "nz_designer": getattr(game, "nz_designer", False),
     }
 
 def _calculate_category_counts(games) -> Dict[str, int]:
@@ -762,6 +763,7 @@ async def debug_database_info(
                 "users_rated": g[22],
                 "min_age": g[23],
                 "is_cooperative": g[24]
+                "nz_designer": g[25]
             }
             for g in games
         ]
@@ -787,6 +789,7 @@ async def get_public_games(
     sort: str = Query("title_asc", description="Sort order"),
     category: Optional[str] = Query(None, description="Category filter"),
     designer: Optional[str] = Query(None, description="Designer filter"),
+    nz_designer: Optional[bool] = Query(None, description="Filter by NZ designers"),
     db: Session = Depends(get_db)
 ):
     """Get paginated list of games with filtering and search"""
@@ -804,6 +807,10 @@ async def get_public_games(
         designer_filter = f"%{designer.strip()}%"
         if hasattr(Game, 'designers'):
             query = query.where(Game.designers.ilike(designer_filter))
+
+    #Apply NZ designer filter
+    if nz_designer is not None:
+        query = query.where(Game.nz_designer == nz_designer)
     
     # Apply sorting
     if sort == "title_desc":
@@ -1358,6 +1365,73 @@ async def reimport_all_games(
     
     return {"message": f"Started re-importing {len(games)} games with enhanced data"}
 
+@app.post("/api/admin/bulk-update-nz-designers")
+async def bulk_update_nz_designers(
+    csv_data: dict,
+    request: Request,
+    x_admin_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Bulk update NZ designer status from CSV (admin only)"""
+    _require_admin_token(x_admin_token, _get_client_ip(request))
+    
+    try:
+        csv_text = csv_data.get("csv_data", "")
+        if not csv_text.strip():
+            raise HTTPException(status_code=400, detail="No CSV data provided")
+        
+        lines = [line.strip() for line in csv_text.strip().split('\n') if line.strip()]
+        updated = []
+        not_found = []
+        errors = []
+        
+        for line_num, line in enumerate(lines, 1):
+            try:
+                # Expected format: bgg_id,true/false or game_title,true/false
+                parts = [p.strip() for p in line.split(',')]
+                if len(parts) != 2:
+                    errors.append(f"Line {line_num}: Must have format 'identifier,true/false'")
+                    continue
+                
+                identifier = parts[0]
+                nz_status = parts[1].lower() in ['true', '1', 'yes', 'y']
+                
+                # Try to find by BGG ID first, then by title
+                game = None
+                try:
+                    bgg_id = int(identifier)
+                    game = db.execute(select(Game).where(Game.bgg_id == bgg_id)).scalar_one_or_none()
+                except ValueError:
+                    # Not a number, try by title
+                    game = db.execute(select(Game).where(Game.title.ilike(f"%{identifier}%"))).scalar_one_or_none()
+                
+                if not game:
+                    not_found.append(f"'{identifier}': Game not found")
+                    continue
+                
+                old_status = game.nz_designer
+                game.nz_designer = nz_status
+                db.add(game)
+                
+                updated.append(f"{game.title}: {old_status} → {nz_status}")
+                
+            except Exception as e:
+                errors.append(f"Line {line_num}: {str(e)}")
+        
+        db.commit()
+        
+        return {
+            "message": f"Processed {len(lines)} lines",
+            "updated": updated,
+            "not_found": not_found,
+            "errors": errors
+        }
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Bulk NZ designer update failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Bulk update failed: {str(e)}")
+
 
 @app.get("/api/admin/games")
 async def get_admin_games(
@@ -1424,6 +1498,8 @@ async def update_admin_game(
             game.playtime_max = game_data["playtime_max"]
         if "min_age" in game_data and hasattr(game, 'min_age'):
             game.min_age = game_data["min_age"]
+        if "nz_designer" in game_data:
+            game.nz_designer = game_data["nz_designer"]
         
         db.commit()
         db.refresh(game)
@@ -1468,17 +1544,25 @@ def run_migrations():
     """Run database migrations to ensure schema is up to date."""
     try:
         with engine.connect() as conn:
-            # Check if the image column exists in the games table
+            # Check existing columns
             result = conn.execute(text("PRAGMA table_info(games)"))
             columns = [row[1] for row in result]
             
+            # Add image column if missing
             if 'image' not in columns:
                 logger.info("Adding missing 'image' column to games table...")
                 conn.execute(text("ALTER TABLE games ADD COLUMN image VARCHAR(512)"))
                 conn.commit()
                 logger.info("Successfully added 'image' column to games table")
-            else:
-                logger.info("Database schema is up to date")
+            
+            # Add nz_designer column if missing
+            if 'nz_designer' not in columns:
+                logger.info("Adding missing 'nz_designer' column to games table...")
+                conn.execute(text("ALTER TABLE games ADD COLUMN nz_designer BOOLEAN DEFAULT FALSE"))
+                conn.commit()
+                logger.info("Successfully added 'nz_designer' column to games table")
+            
+            logger.info("Database schema is up to date")
                 
     except Exception as e:
         logger.error(f"Error running migrations: {e}")
