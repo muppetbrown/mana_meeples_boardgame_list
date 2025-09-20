@@ -16,6 +16,7 @@ export default function PublicCatalogue() {
   const [qDebounced, setQDebounced] = useState(q);
   const [category, setCategory] = useState(searchParams.get("category") || "all");
   const [designer, setDesigner] = useState(searchParams.get("designer") || "");
+  const [nzDesigner, setNzDesigner] = useState(searchParams.get("nz_designer") === "true");
   const [sort, setSort] = useState(searchParams.get("sort") || "title_asc");
   const [page, setPage] = useState(parseInt(searchParams.get("page")) || 1);
   const [pageSize] = useState(24);
@@ -36,17 +37,18 @@ export default function PublicCatalogue() {
     return () => clearTimeout(id);
   }, [q]);
 
-  // Update URL when filters change
-  useEffect(() => {
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    if (category !== "all") params.set("category", category);
-    if (designer) params.set("designer", designer);
-    if (sort !== "title_asc") params.set("sort", sort);
-    if (page !== 1) params.set("page", page.toString());
-    
-    setSearchParams(params, { replace: true });
-  }, [q, category, designer, sort, page, setSearchParams]);
+// Update URL when filters change
+useEffect(() => {
+  const params = new URLSearchParams();
+  if (q) params.set("q", q);
+  if (category !== "all") params.set("category", category);
+  if (designer) params.set("designer", designer);
+  if (nzDesigner) params.set("nz_designer", "true"); // Add this line
+  if (sort !== "title_asc") params.set("sort", sort);
+  if (page !== 1) params.set("page", page.toString());
+  
+  setSearchParams(params, { replace: true });
+}, [q, category, designer, nzDesigner, sort, page, setSearchParams]);
 
   // Fetch category counts
   useEffect(() => {
@@ -77,6 +79,9 @@ export default function PublicCatalogue() {
         }
         if (designer) {
           params.designer = designer;
+        }
+        if (nzDesigner) {
+           params.nz_designer = true;
         }
         
         const data = await getPublicGames(params);
@@ -119,6 +124,7 @@ export default function PublicCatalogue() {
     setQ("");
     setCategory("all");
     setDesigner("");
+    setNzDesigner(false); // Add this line
     setSort("title_asc");
     setPage(1);
     setQuickSort(null);
@@ -135,6 +141,11 @@ export default function PublicCatalogue() {
     setSort("time_asc");
     setQuickSort("shortest");
     setPage(1);
+  };
+
+  const toggleNzDesigner = () => {
+  setNzDesigner(!nzDesigner);
+  setPage(1);
   };
 
   // Share game function
@@ -154,14 +165,14 @@ export default function PublicCatalogue() {
     }
   };
 
-  // Active filters count
   const activeFiltersCount = useMemo(() => {
     let count = 0;
     if (q) count++;
     if (category !== "all") count++;
     if (designer) count++;
+    if (nzDesigner) count++; // Add this line
     return count;
-  }, [q, category, designer]);
+  }, [q, category, designer, nzDesigner]);
 
   // Skeleton loader component - smaller to prevent layout shift
   const SkeletonCard = () => (
@@ -286,6 +297,25 @@ export default function PublicCatalogue() {
                           <span className="flex items-center gap-2">
                             <span aria-hidden="true">⚡</span>
                             <span>Quick Games</span>
+                          </span>
+                        </button>
+
+                        <button
+                          onClick={toggleNzDesigner}
+                          className={`
+                            min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
+                            transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                            ${nzDesigner 
+                              ? "bg-blue-600 text-white shadow-lg focus:ring-blue-300" 
+                              : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 focus:ring-blue-300"
+                            }
+                          `}
+                          aria-pressed={nzDesigner}
+                          aria-label="Filter by New Zealand designers"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span aria-hidden="true">🇳🇿</span>
+                            <span>NZ Designed</span>
                           </span>
                         </button>
                       </div>
@@ -474,7 +504,26 @@ export default function PublicCatalogue() {
                       <span>Quick</span>
                     </span>
                   </button>
-                </div>
+
+                  <button
+                      onClick={toggleNzDesigner}
+                      className={`
+                        min-h-[48px] px-2 py-2.5 text-sm font-medium rounded-xl 
+                        transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                        ${nzDesigner 
+                          ? "bg-blue-600 text-white shadow-lg focus:ring-blue-300" 
+                          : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 focus:ring-blue-300"
+                        }
+                      `}
+                      aria-pressed={nzDesigner}
+                      aria-label="Filter by New Zealand designers"
+                    >
+                      <span className="flex items-center justify-center gap-1">
+                        <span aria-hidden="true">🇳🇿</span>
+                        <span>Kiwi</span>
+                      </span>
+                    </button>
+                  </div>
                 
                 {/* Clear Filters - Mobile (full width) */}
                 {activeFiltersCount > 0 && (
@@ -545,6 +594,19 @@ export default function PublicCatalogue() {
                           onClick={() => setDesigner("")}
                           className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                           aria-label={`Remove designer: ${designer}`}
+                        >
+                          <span aria-hidden="true" className="text-sm leading-none">×</span>
+                        </button>
+                      </span>
+                    )}
+
+                    {nzDesigner && (
+                      <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
+                        <span>NZ Designed</span>
+                        <button
+                          onClick={() => setNzDesigner(false)}
+                          className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          aria-label="Remove NZ designer filter"
                         >
                           <span aria-hidden="true" className="text-sm leading-none">×</span>
                         </button>
