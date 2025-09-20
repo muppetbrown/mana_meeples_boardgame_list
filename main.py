@@ -762,7 +762,7 @@ async def debug_database_info(
                 "bgg_rank": g[21],
                 "users_rated": g[22],
                 "min_age": g[23],
-                "is_cooperative": g[24]
+                "is_cooperative": g[24],
                 "nz_designer": g[25]
             }
             for g in games
@@ -1513,6 +1513,54 @@ async def update_admin_game(
         raise HTTPException(status_code=500, detail="Failed to update game")
 
 
+@app.post("/api/admin/games/{game_id}/update")
+async def update_admin_game_post(
+    game_data: Dict[str, Any],
+    request: Request,
+    game_id: int = Path(..., description="Game ID"),
+    x_admin_token: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Update game via POST (admin only) - alternative to PUT for proxy compatibility"""
+    _require_admin_token(x_admin_token, _get_client_ip(request))
+
+    game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
+    if not game:
+        raise GameNotFoundError(f"Game {game_id} not found")
+
+    try:
+        # Update allowed fields
+        if "title" in game_data:
+            game.title = game_data["title"]
+        if "year" in game_data:
+            game.year = game_data["year"]
+        if "description" in game_data and hasattr(game, 'description'):
+            game.description = game_data["description"]
+        if "mana_meeple_category" in game_data:
+            game.mana_meeple_category = game_data["mana_meeple_category"]
+        if "players_min" in game_data:
+            game.players_min = game_data["players_min"]
+        if "players_max" in game_data:
+            game.players_max = game_data["players_max"]
+        if "playtime_min" in game_data:
+            game.playtime_min = game_data["playtime_min"]
+        if "playtime_max" in game_data:
+            game.playtime_max = game_data["playtime_max"]
+        if "min_age" in game_data and hasattr(game, 'min_age'):
+            game.min_age = game_data["min_age"]
+
+        db.commit()
+        db.refresh(game)
+
+        logger.info(f"Updated game via POST: {game.title} (ID: {game.id})", extra={'game_id': game.id})
+        return _game_to_dict(None, game)
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to update game {game_id} via POST: {e}", extra={'game_id': game_id})
+        raise HTTPException(status_code=500, detail="Failed to update game")
+
+
 @app.delete("/api/admin/games/{game_id}")
 async def delete_admin_game(
     request: Request,
@@ -1522,19 +1570,19 @@ async def delete_admin_game(
 ):
     """Delete game (admin only)"""
     _require_admin_token(x_admin_token, _get_client_ip(request))
-    
+
     game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
     if not game:
         raise GameNotFoundError(f"Game {game_id} not found")
-    
+
     try:
         game_title = game.title
         db.delete(game)
         db.commit()
-        
+
         logger.info(f"Deleted game: {game_title} (ID: {game_id})", extra={'game_id': game_id})
         return {"message": f"Game '{game_title}' deleted successfully"}
-        
+
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to delete game {game_id}: {e}", extra={'game_id': game_id})
