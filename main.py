@@ -762,7 +762,7 @@ async def debug_database_info(
                 "bgg_rank": g[21],
                 "users_rated": g[22],
                 "min_age": g[23],
-                "is_cooperative": g[24]
+                "is_cooperative": g[24],
                 "nz_designer": g[25]
             }
             for g in games
