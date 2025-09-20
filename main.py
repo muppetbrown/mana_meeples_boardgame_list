@@ -724,7 +724,7 @@ async def debug_database_info(
         Game.thumbnail_file, Game.mana_meeple_category, Game.description,
         Game.designers, Game.publishers, Game.mechanics, Game.artists,
         Game.average_rating, Game.complexity, Game.bgg_rank, Game.users_rated,
-        Game.min_age, Game.is_cooperative
+        Game.min_age, Game.is_cooperative, Game.nz_designer
     )
     
     games = db.execute(query).all()
