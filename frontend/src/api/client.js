@@ -113,7 +113,7 @@ export const imageProxyUrl = (rawUrl) =>
   `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(rawUrl)}`;
 
 export async function updateGame(gameId, patch) {
-  const r = await api.put(`/api/admin/games/${gameId}`, patch, { headers: getAdminHeaders() });
+  const r = await api.post(`/api/admin/games/${gameId}/update`, patch, { headers: getAdminHeaders() });
   return r.data;
 }
 
