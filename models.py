@@ -33,6 +33,7 @@ class Game(Base):
     users_rated = Column(Integer, nullable=True)
     min_age = Column(Integer, nullable=True)
     is_cooperative = Column(Boolean, nullable=True)
+    nz_designer = Column(Boolean, nullable=True, default=False, index=True)
     
     # Performance indexes for common queries
     __table_args__ = (
