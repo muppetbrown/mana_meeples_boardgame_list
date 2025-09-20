@@ -205,6 +205,9 @@ export default function PublicCatalogue() {
 
           <main id="main-content">
             {/* Compact WCAG AAA Compliant Search and Filter Controls */}
+            {/* Redesigned Search and Filter Controls */}
+            {/* Redesigned Search and Filter Controls */}
+            {/* Redesigned Search and Filter Controls */}
             <section 
               className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 lg:p-6 shadow-lg border border-slate-200/50 mb-6"
               aria-labelledby="search-filters-heading"
@@ -214,23 +217,23 @@ export default function PublicCatalogue() {
                 Search and Filter Games
               </h2>
               
-              <div className="space-y-4 lg:space-y-5">
-                {/* Search and Sort Row - More Compact */}
-                <div className="flex flex-col lg:flex-row gap-3 lg:gap-4">
-                  <div className="flex-1 min-w-0">
-                    <label htmlFor="game-search" className="block text-sm font-semibold text-slate-700 mb-1.5">
+              {/* Desktop Layout - Hidden on mobile */}
+              <div className="hidden md:block space-y-4">
+                {/* First Row: Search + Top 2 Sort Buttons (Title, Year) */}
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1">
+                    <label htmlFor="game-search-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Search Games
                     </label>
                     <div className="relative">
                       <SearchBox
-                        id="game-search"
+                        id="game-search-desktop"
                         value={q}
                         onChange={updateSearch}
                         placeholder="Search by title, designer, or keyword..."
-                        aria-describedby="search-help"
+                        aria-describedby="search-help-desktop"
                         className="w-full min-h-[48px] px-4 py-3 text-base border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
                       />
-                      {/* Search icon */}
                       <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
                         <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -238,152 +241,318 @@ export default function PublicCatalogue() {
                       </div>
                     </div>
                     {q && (
-                      <div id="search-help" className="mt-1 text-sm text-slate-600">
+                      <div id="search-help-desktop" className="mt-1 text-sm text-slate-600">
                         <span className="font-medium">
                           {total} game{total !== 1 ? 's' : ''} found
                         </span>
                       </div>
                     )}
+                    
+                    {/* Second Row: Quick Actions + Bottom 2 Sort Buttons + Clear Filters */}
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="flex gap-3">
+                        <button
+                          onClick={showNewestGames}
+                          className={`
+                            min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
+                            transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                            ${quickSort === "newest" 
+                              ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
+                              : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-2 border-emerald-200 focus:ring-emerald-300"
+                            }
+                          `}
+                          aria-pressed={quickSort === "newest"}
+                          aria-label="Show newest games first"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span aria-hidden="true">🆕</span>
+                            <span>Newest Games</span>
+                          </span>
+                        </button>
+                        
+                        <button
+                          onClick={showShortestGames}
+                          className={`
+                            min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
+                            transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                            ${quickSort === "shortest" 
+                              ? "bg-amber-600 text-white shadow-lg focus:ring-amber-300" 
+                              : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-2 border-amber-200 focus:ring-amber-300"
+                            }
+                          `}
+                          aria-pressed={quickSort === "shortest"}
+                          aria-label="Show shortest games first"
+                        >
+                          <span className="flex items-center gap-2">
+                            <span aria-hidden="true">⚡</span>
+                            <span>Quick Games</span>
+                          </span>
+                        </button>
+                      </div>
+                      
+                      {/* Clear Filters - Desktop */}
+                      {activeFiltersCount > 0 && (
+                        <button
+                          onClick={clearAllFilters}
+                          className="
+                            min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
+                            bg-slate-100 text-slate-800 hover:bg-slate-200 
+                            border-2 border-slate-300 hover:border-slate-400
+                            transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-slate-300 focus:ring-offset-2
+                          "
+                          aria-label={`Clear all ${activeFiltersCount} active filters`}
+                        >
+                          <span className="flex items-center justify-center gap-2">
+                            <span aria-hidden="true">🗑️</span>
+                            <span>Clear Filters</span>
+                            <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                              {activeFiltersCount}
+                            </span>
+                          </span>
+                        </button>
+                      )}
+                    </div>
                   </div>
                   
-                  <div className="lg:w-64">
-                    <label htmlFor="sort-select" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  <div className="w-64">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Sort By
                     </label>
                     <SortSelect
-                      id="sort-select"
                       sort={sort}
                       onChange={updateSort}
-                      className="w-full min-h-[48px] px-4 py-3 text-base border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
-                      aria-describedby="sort-help"
                     />
-                    <div id="sort-help" className="sr-only">
-                      Change how games are ordered
-                    </div>
                   </div>
                 </div>
-                
-                {/* Quick Actions - More Compact Layout */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={showNewestGames}
-                      className={`
-                        min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
-                        transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                        ${quickSort === "newest" 
-                          ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
-                          : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-2 border-emerald-200 focus:ring-emerald-300"
-                        }
-                      `}
-                      aria-pressed={quickSort === "newest"}
-                      aria-label="Show newest games first"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span aria-hidden="true">🆕</span>
-                        <span>Newest Games</span>
-                      </span>
-                    </button>
-                    
-                    <button
-                      onClick={showShortestGames}
-                      className={`
-                        min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
-                        transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                        ${quickSort === "shortest" 
-                          ? "bg-amber-600 text-white shadow-lg focus:ring-amber-300" 
-                          : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-2 border-amber-200 focus:ring-amber-300"
-                        }
-                      `}
-                      aria-pressed={quickSort === "shortest"}
-                      aria-label="Show shortest games first"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span aria-hidden="true">⚡</span>
-                        <span>Quick Games</span>
-                      </span>
-                    </button>
+              </div>
+
+              {/* Mobile Layout - Hidden on desktop */}
+              <div className="md:hidden space-y-4">
+                {/* Row 1: Search */}
+                <div>
+                  <label htmlFor="game-search-mobile" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Search Games
+                  </label>
+                  <div className="relative">
+                    <SearchBox
+                      id="game-search-mobile"
+                      value={q}
+                      onChange={updateSearch}
+                      placeholder="Search games..."
+                      aria-describedby="search-help-mobile"
+                      className="w-full min-h-[48px] px-3 py-2.5 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
+                    />
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
                   </div>
-                  
-                  {/* Clear Filters */}
-                  {activeFiltersCount > 0 && (
-                    <button
-                      onClick={clearAllFilters}
-                      className="
-                        min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
-                        bg-slate-100 text-slate-800 hover:bg-slate-200 
-                        border-2 border-slate-300 hover:border-slate-400
-                        transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-slate-300 focus:ring-offset-2
-                        w-full sm:w-auto
-                      "
-                      aria-label={`Clear all ${activeFiltersCount} active filters`}
-                    >
-                      <span className="flex items-center justify-center gap-2">
-                        <span aria-hidden="true">🗑️</span>
-                        <span>Clear Filters</span>
-                        <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
-                          {activeFiltersCount}
-                        </span>
+                  {q && (
+                    <div id="search-help-mobile" className="mt-1 text-sm text-slate-600 text-center">
+                      <span className="font-medium">
+                        {total} game{total !== 1 ? 's' : ''} found
                       </span>
-                    </button>
+                    </div>
                   )}
                 </div>
                 
-                {/* Active Search Status - Only show if filters are active */}
-                {(q || category !== "all" || designer) && (
-                  <div 
-                    className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3"
-                    role="status"
-                    aria-live="polite"
+                {/* Row 2: First 2 Sort Buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => updateSort('title_asc')}
+                    className={`
+                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
+                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                      ${sort.startsWith('title') 
+                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
+                        : "bg-white text-slate-700 border-2 border-slate-300 hover:bg-emerald-50 hover:border-emerald-300 focus:ring-emerald-300"
+                      }
+                    `}
+                    aria-pressed={sort.startsWith('title')}
                   >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-sm font-semibold text-blue-800 flex items-center gap-2">
-                        <span aria-hidden="true">🔍</span>
-                        <span>Active:</span>
+                    <span className="flex items-center justify-center gap-1.5">
+                      <span>Title</span>
+                      <span aria-hidden="true">{sort === 'title_desc' ? '↓' : '↑'}</span>
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => updateSort('year_desc')}
+                    className={`
+                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
+                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                      ${sort.startsWith('year') 
+                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
+                        : "bg-white text-slate-700 border-2 border-slate-300 hover:bg-emerald-50 hover:border-emerald-300 focus:ring-emerald-300"
+                      }
+                    `}
+                    aria-pressed={sort.startsWith('year')}
+                  >
+                    <span className="flex items-center justify-center gap-1.5">
+                      <span>Year</span>
+                      <span aria-hidden="true">{sort === 'year_asc' ? '↑' : '↓'}</span>
+                    </span>
+                  </button>
+                </div>
+                
+                {/* Row 3: Second 2 Sort Buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => updateSort('rating_desc')}
+                    className={`
+                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
+                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                      ${sort.startsWith('rating') 
+                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
+                        : "bg-white text-slate-700 border-2 border-slate-300 hover:bg-emerald-50 hover:border-emerald-300 focus:ring-emerald-300"
+                      }
+                    `}
+                    aria-pressed={sort.startsWith('rating')}
+                  >
+                    <span className="flex items-center justify-center gap-1.5">
+                      <span>Rating</span>
+                      <span aria-hidden="true">{sort === 'rating_asc' ? '↑' : '↓'}</span>
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={() => updateSort('time_asc')}
+                    className={`
+                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
+                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                      ${sort.startsWith('time') 
+                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
+                        : "bg-white text-slate-700 border-2 border-slate-300 hover:bg-emerald-50 hover:border-emerald-300 focus:ring-emerald-300"
+                      }
+                    `}
+                    aria-pressed={sort.startsWith('time')}
+                  >
+                    <span className="flex items-center justify-center gap-1.5">
+                      <span>Time</span>
+                      <span aria-hidden="true">{sort === 'time_desc' ? '↓' : '↑'}</span>
+                    </span>
+                  </button>
+                </div>
+                
+                {/* Row 4: Quick Action Buttons */}
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={showNewestGames}
+                    className={`
+                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
+                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                      ${quickSort === "newest" 
+                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
+                        : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-2 border-emerald-200 focus:ring-emerald-300"
+                      }
+                    `}
+                    aria-pressed={quickSort === "newest"}
+                    aria-label="Show newest games first"
+                  >
+                    <span className="flex items-center justify-center gap-1.5">
+                      <span aria-hidden="true">🆕</span>
+                      <span>Newest</span>
+                    </span>
+                  </button>
+                  
+                  <button
+                    onClick={showShortestGames}
+                    className={`
+                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
+                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                      ${quickSort === "shortest" 
+                        ? "bg-amber-600 text-white shadow-lg focus:ring-amber-300" 
+                        : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-2 border-amber-200 focus:ring-amber-300"
+                      }
+                    `}
+                    aria-pressed={quickSort === "shortest"}
+                    aria-label="Show shortest games first"
+                  >
+                    <span className="flex items-center justify-center gap-1.5">
+                      <span aria-hidden="true">⚡</span>
+                      <span>Quick</span>
+                    </span>
+                  </button>
+                </div>
+                
+                {/* Clear Filters - Mobile (full width) */}
+                {activeFiltersCount > 0 && (
+                  <button
+                    onClick={clearAllFilters}
+                    className="
+                      w-full min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
+                      bg-slate-100 text-slate-800 hover:bg-slate-200 
+                      border-2 border-slate-300 hover:border-slate-400
+                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-slate-300 focus:ring-offset-2
+                    "
+                    aria-label={`Clear all ${activeFiltersCount} active filters`}
+                  >
+                    <span className="flex items-center justify-center gap-2">
+                      <span aria-hidden="true">🗑️</span>
+                      <span>Clear Filters</span>
+                      <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                        {activeFiltersCount}
                       </span>
-                      
-                      {q && (
-                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
-                          <span>"{q}"</span>
-                          <button
-                            onClick={() => updateSearch("")}
-                            className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            aria-label={`Remove search: ${q}`}
-                          >
-                            <span aria-hidden="true" className="text-sm leading-none">×</span>
-                          </button>
-                        </span>
-                      )}
-                      
-                      {category !== "all" && (
-                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
-                          <span>{CATEGORY_LABELS[category]}</span>
-                          <button
-                            onClick={() => updateCategory("all")}
-                            className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            aria-label={`Remove category: ${CATEGORY_LABELS[category]}`}
-                          >
-                            <span aria-hidden="true" className="text-sm leading-none">×</span>
-                          </button>
-                        </span>
-                      )}
-                      
-                      {designer && (
-                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
-                          <span>{designer}</span>
-                          <button
-                            onClick={() => setDesigner("")}
-                            className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                            aria-label={`Remove designer: ${designer}`}
-                          >
-                            <span aria-hidden="true" className="text-sm leading-none">×</span>
-                          </button>
-                        </span>
-                      )}
-                    </div>
-                  </div>
+                    </span>
+                  </button>
                 )}
               </div>
+              
+              {/* Active Search Status - Shared for both layouts */}
+              {(q || category !== "all" || designer) && (
+                <div 
+                  className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 mt-4"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                      <span aria-hidden="true">🔍</span>
+                      <span>Active:</span>
+                    </span>
+                    
+                    {q && (
+                      <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
+                        <span>"{q}"</span>
+                        <button
+                          onClick={() => updateSearch("")}
+                          className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          aria-label={`Remove search: ${q}`}
+                        >
+                          <span aria-hidden="true" className="text-sm leading-none">×</span>
+                        </button>
+                      </span>
+                    )}
+                    
+                    {category !== "all" && (
+                      <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
+                        <span>{CATEGORY_LABELS[category]}</span>
+                        <button
+                          onClick={() => updateCategory("all")}
+                          className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          aria-label={`Remove category: ${CATEGORY_LABELS[category]}`}
+                        >
+                          <span aria-hidden="true" className="text-sm leading-none">×</span>
+                        </button>
+                      </span>
+                    )}
+                    
+                    {designer && (
+                      <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
+                        <span>{designer}</span>
+                        <button
+                          onClick={() => setDesigner("")}
+                          className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          aria-label={`Remove designer: ${designer}`}
+                        >
+                          <span aria-hidden="true" className="text-sm leading-none">×</span>
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </section>
 
             {/* Categories - Mobile Optimized */}
