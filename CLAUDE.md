@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Mana & Meeples Board Game Library** - A public board game catalogue system connecting a FastAPI backend with a React frontend. Enables visitors to browse the café's complete game collection, filter by category, and view detailed game information including player counts, play time, release year, images, and BoardGameGeek links.
+**Mana & Meeples Board Game Library** - A public board game catalogue system connecting a FastAPI backend with a React frontend. Enables visitors to browse the café's complete game collection, filter by category and New Zealand designers, and view detailed game information including player counts, play time, release year, images, and BoardGameGeek links.
 
 ## Architecture
 
@@ -47,35 +47,8 @@ bgg_rank = Column(Integer, nullable=True)  # BGG overall rank
 users_rated = Column(Integer, nullable=True)  # Number of BGG users who rated
 min_age = Column(Integer, nullable=True)  # Minimum recommended age
 is_cooperative = Column(Boolean, nullable=True)  # Cooperative game flag
+nz_designer = Column(Boolean, nullable=True, default=False, index=True)  # New Zealand designer flag
 ```
-
-## API Endpoints
-
-### Public Endpoints
-- `GET /api/public/games` - List games with filtering, search, pagination, and sorting
-  - Query params: `q` (search), `page`, `page_size`, `sort`, `category`, `designer`
-- `GET /api/public/games/{game_id}` - Individual game details  
-- `GET /api/public/category-counts` - Category counts for filter buttons
-- `GET /api/public/games/by-designer/{designer_name}` - Games by specific designer
-- `GET /api/public/image-proxy` - Proxy external images with caching
-
-### Admin Endpoints (X-Admin-Token Header Required)
-- `POST /api/admin/games` - Create new game manually
-- `POST /api/admin/import/bgg?bgg_id={id}&force={bool}` - Import from BoardGameGeek
-- `GET /api/admin/games` - List all games (admin view)
-- `GET /api/admin/games/{game_id}` - Get single game (admin view)
-- `PUT /api/admin/games/{game_id}` - Update existing game
-- `DELETE /api/admin/games/{game_id}` - Delete game
-- `POST /api/admin/bulk-import-csv` - Bulk import games by BGG ID from CSV
-- `POST /api/admin/bulk-categorize-csv` - Bulk categorize existing games from CSV
-- `POST /api/admin/reimport-all-games` - Re-import all games with enhanced BGG data
-
-### Health & Debug Endpoints
-- `GET /api/health` - Basic health check
-- `GET /api/health/db` - Database health check with game count
-- `GET /api/debug/categories` - View all unique BGG categories in database
-- `GET /api/debug/database-info` - Database structure and sample data
-- `GET /api/debug/performance` - Performance monitoring stats (admin only)
 
 ## BoardGameGeek Integration
 
@@ -98,15 +71,30 @@ is_cooperative = Column(Boolean, nullable=True)  # Cooperative game flag
 - **mechanics**: JSON array of game mechanics
 - **publishers, artists**: JSON arrays for completeness
 
+## Game Categories
+
 ```javascript
-export const CATEGORY_KEYS = {
-  GATEWAY_STRATEGY: "Gateway Strategy",
-  KIDS_FAMILIES: "Kids & Families", 
-  CORE_STRATEGY: "Core Strategy & Epics",
+export const CATEGORY_KEYS = [
+  "COOP_ADVENTURE",
+  "CORE_STRATEGY",
+  "GATEWAY_STRATEGY",
+  "KIDS_FAMILIES",
+  "PARTY_ICEBREAKERS",
+];
+
+export const CATEGORY_LABELS = {
   COOP_ADVENTURE: "Co-op & Adventure",
-  PARTY_ICEBREAKERS: "Party & Icebreakers"
+  CORE_STRATEGY: "Core Strategy & Epics",
+  GATEWAY_STRATEGY: "Gateway Strategy",
+  KIDS_FAMILIES: "Kids & Families",
+  PARTY_ICEBREAKERS: "Party & Icebreakers",
 };
 ```
+
+**Category System**: 
+- **FINAL and proven**: 5-category system has received excellent user feedback
+- **No auto-mapping rules**: Manual curation ensures café/convention/team-building suitability
+- **Expanded categories exist**: Additional internal categorization beyond the public 5
 
 **Category Usage**:
 - **Gateway Strategy**: Accessible strategic games for new players
@@ -115,12 +103,132 @@ export const CATEGORY_KEYS = {
 - **Co-op & Adventure**: Collaborative and story-driven games
 - **Party & Icebreakers**: Large group social games
 
+## Content Curation Philosophy
+
+**Quality Control**: Manual review ensures only café/convention/team-building appropriate games
+**Accidental additions**: Some games may slip through but systematic curation is the goal
+**Use case focus**: Every game should serve at least one of: café play, conventions, corporate team-building
+**New Zealand Focus**: Special attention to highlighting local game designers with `nz_designer` field
+
+## API Endpoints
+
+### Public Endpoints
+- `GET /api/public/games` - List games with filtering, search, pagination, and sorting
+  - Query params: `q` (search), `page`, `page_size`, `sort`, `category`, `designer`, `nz_designer`
+- `GET /api/public/games/{game_id}` - Individual game details  
+- `GET /api/public/category-counts` - Category counts for filter buttons
+- `GET /api/public/games/by-designer/{designer_name}` - Games by specific designer
+- `GET /api/public/image-proxy` - Proxy external images with caching
+
+### Admin Endpoints (X-Admin-Token Header Required)
+- `POST /api/admin/games` - Create new game manually
+- `POST /api/admin/import/bgg?bgg_id={id}&force={bool}` - Import from BoardGameGeek
+- `GET /api/admin/games` - List all games (admin view)
+- `GET /api/admin/games/{game_id}` - Get single game (admin view)
+- `PUT /api/admin/games/{game_id}` - Update existing game
+- `DELETE /api/admin/games/{game_id}` - Delete game
+- `POST /api/admin/bulk-import-csv` - Bulk import games by BGG ID from CSV
+- `POST /api/admin/bulk-categorize-csv` - Bulk categorize existing games from CSV
+- `POST /api/admin/bulk-update-nz-designers` - Bulk update NZ designer status from CSV
+- `POST /api/admin/reimport-all-games` - Re-import all games with enhanced BGG data
+
+### Health & Debug Endpoints
+- `GET /api/health` - Basic health check
+- `GET /api/health/db` - Database health check with game count
+- `GET /api/debug/categories` - View all unique BGG categories in database
+- `GET /api/debug/database-info?limit={n}` - Database structure and sample data
+- `GET /api/debug/export-games-csv?limit={n}` - Export all game data as CSV
+- `GET /api/debug/performance` - Performance monitoring stats (admin only)
+
+## Search & Display Priorities
+
+### Current Search Implementation
+- **Search scope**: Title only (despite UI text mentioning "title, designers, or keyword")
+- **KNOWN ISSUE**: Search description text doesn't match actual functionality
+- **Performance consideration**: JSON column searches (designers, mechanics) need careful optimization
+
+### Display Field Priorities
+- **Catalogue cards**: Complexity rating is CRITICAL for user decision-making
+- **Game detail pages**: Designer information is CRITICAL
+- **BGG rank**: Nice-to-have feature, not essential for user experience
+- **NZ Designer filter**: Special prominence for local content discovery
+- **Future considerations**: mechanics, publishers, artists available but not currently prioritized
+
+### Performance Requirements
+- **Expected scale**: 400+ games minimum
+- **Performance concern**: JSON column queries and search performance at scale
+- **Optimization needed**: Careful indexing and query structure for JSON fields
+
+## Configuration & Environment
+
+### Backend Environment Variables (Render)
+```
+ADMIN_TOKEN=b2f6f6f7af1e4db9a43a8ed5e0d86a38a22fdad8a1e7b4730f9207d767fab1cc
+CORS_ORIGINS=https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz
+DATABASE_URL=sqlite:////data/app.db
+PUBLIC_BASE_URL=https://mana-meeples-boardgame-list.onrender.com
+PYTHON_VERSION=3.11.9
+```
+
+### Frontend API Configuration
+Multi-layer API base resolution in `utils/api.js`:
+1. **Hard override**: `window.__API_BASE__` (set in index.html for production)
+2. **Meta tag**: `<meta name="api-base" content="...">` in index.html
+3. **Build-time env**: `process.env.REACT_APP_API_BASE`
+4. **Dev fallback**: `http://127.0.0.1:8000`
+
+### Image Optimization Strategy
+Advanced BGG image quality enhancement in `imageProxyUrl()`:
+- **Priority order**: `_original` > `_d` (detail) > `_md` (medium) > `_mt` (medium thumb) > `_t` (thumbnail)
+- **Automatic upscaling**: Frontend requests highest quality, backend handles fallback chain
+- **Proxy caching**: All external images routed through `/api/public/image-proxy`
+
+## Component Architecture Details
+
+### Error Handling System
+**ErrorBoundary.jsx**: Production-ready React error boundary with:
+- **Graceful fallback UI** with retry and refresh options
+- **Development mode debugging** with full error stack traces
+- **User-friendly error messages** without technical jargon
+- **Accessibility-compliant design** with proper ARIA attributes and focus management
+
+### Image Management System  
+**GameImage.jsx**: Sophisticated image component featuring:
+- **Progressive loading** with opacity transitions and loading placeholders
+- **Automatic fallback** to styled "No Image" placeholder on errors
+- **Loading states** with skeleton animation using Tailwind's `animate-pulse`
+- **Lazy loading** support with configurable loading strategy
+- **BGG image optimization** integration with `imageProxyUrl()` from utils/api.js
+
+### API Architecture
+**utils/api.js**: Core API utilities handling:
+- **Multi-environment configuration** with 4-tier fallback system
+- **BGG image quality enhancement** with automatic resolution upgrading
+- **JSON validation** with comprehensive error handling
+- **Proxy integration** for all external image requests
+
+**api/client.js**: Higher-level API communication layer (separate from utils/api.js)
+
+### Category System
+**constants/categories.js**: Centralized category management with:
+- **Backend synchronization**: CATEGORY_KEYS match main.py exactly
+- **UI-friendly labels**: Human-readable category names for display
+- **Backward compatibility**: Legacy aliases for gradual migration
+
+### Filter System
+**PublicCatalogue.jsx**: Advanced filtering with:
+- **URL parameter persistence**: All filters maintain state in URL for sharing/bookmarking
+- **Debounced search**: 150ms delay for optimal performance
+- **Multi-filter support**: Category, search, designer, NZ designer, sort combinations
+- **Active filter display**: Visual chips showing current filters with individual remove buttons
+- **Mobile-optimized**: Responsive button layouts with proper touch targets
+
 ## Frontend Structure
 
 ```
 src/
 ├── pages/
-│   ├── PublicCatalogue.jsx    # Main public game browser
+│   ├── PublicCatalogue.jsx    # Main public game browser with advanced filtering
 │   ├── GameDetails.jsx        # Individual game details
 │   └── AdminLogin.jsx         # Staff authentication
 ├── components/
@@ -146,96 +254,50 @@ src/
 └── App.js                     # Main router and state
 ```
 
-## Search & Display Priorities
+## Cross-Platform Requirements
 
-### Current Search Implementation
-- **Search scope**: Title only (despite UI text mentioning "title, designers, or keyword")
-- **KNOWN ISSUE**: Search description text doesn't match actual functionality
-- **Performance consideration**: JSON column searches (designers, mechanics) need careful optimization
+### Desktop vs Mobile Considerations
+**Critical deployment requirement**: The library must work excellently on both desktop and mobile with different UX requirements:
 
-### Display Field Priorities
-- **Catalogue cards**: Complexity rating is CRITICAL for user decision-making
-- **Game detail pages**: Designer information is CRITICAL
-- **BGG rank**: Nice-to-have feature, not essential for user experience
-- **Future considerations**: mechanics, publishers, artists available but not currently prioritized
+**Desktop Focus:**
+- **Larger screens**: More information density, grid layouts, hover interactions
+- **Mouse interactions**: Precise clicking, hover states, right-click context menus
+- **Keyboard navigation**: Full accessibility with tab navigation and shortcuts
+- **Performance**: Can handle larger images and more complex interactions
 
-### Performance Requirements
-- **Expected scale**: 400+ games minimum
-- **Performance concern**: JSON column queries and search performance at scale
-- **Optimization needed**: Careful indexing and query structure for JSON fields
+**Mobile Focus:**  
+- **Touch interfaces**: Minimum 44px touch targets, swipe gestures, touch-friendly spacing
+- **Smaller screens**: Single-column layouts, prioritized information hierarchy
+- **Performance**: Optimized images, lazy loading, efficient rendering
+- **Network considerations**: Works well on slower mobile connections
 
-- **IDE**: VS Code with Python virtual environment
-- **Node.js**: Create React App development server
-- **Python**: FastAPI with uvicorn for local backend development
-
-## Design & UX Standards
-
-### Accessibility Requirements
-- **WCAG AAA compliance** as core requirement, not afterthought
-- Semantic HTML structure for screen readers and SEO
-- Proper ARIA labels and focus management
-- High contrast ratios and scalable text
-
-### Mobile-First Design
-- **Touch-friendly interfaces** with adequate target sizes (44px minimum)
-- **Responsive layouts** that work excellently on both mobile and desktop
-- **Progressive enhancement** from mobile base to desktop features
-- **Performance optimization** for mobile networks
-
-### Visual Design Standards
-- **Professional polish** with premium visual design quality
-- **Micro-interactions** and smooth transitions for engagement
-- **Modern React patterns** with clean component architecture
-- **Consistent spacing** using design system principles
-
-### Component Patterns
-- **Clean component structure** with proper separation of concerns
-- **React Hooks** for state management (useState, useEffect, useMemo)
-- **Debounced search** for performance (300ms delay)
-- **Proper error handling** with user-friendly messages
-- **Loading states** with skeleton screens or spinners
-
-## Technical Requirements
-
-### Code Quality
-- **Semantic HTML** structure for accessibility and SEO
-- **Performance consciousness** with lazy loading and optimized renders
-- **Error boundaries** and comprehensive error handling
-- **TypeScript-style prop validation** where applicable
-
-### API Integration
-- **Proper HTTP status handling** (200, 404, 500, etc.)
-- **Request debouncing** for search and filtering
-- **Cache management** for repeated requests
-- **CORS handling** through PHP proxy layer
-
-### Deployment Considerations
-- **Static build optimization** for cPanel hosting
-- **URL rewriting** configuration for React Router
-- **Environment variable management** for different deployments
-- **Build verification** before deployment
-
-## Current Implementation Status
+**Shared Requirements:**
+- **Accessibility**: WCAG AAA compliance across all devices
+- **Performance**: Fast loading and smooth interactions on both platforms
+- **Visual consistency**: Cohesive design that adapts appropriately to each platform
 
 ## Current Implementation Status
 
 ### Working Features ✅
 - **Enhanced BGG Integration**: Full sync with designers, mechanics, ratings, complexity, rank
-- **Advanced filtering**: Category, designer, search with multiple sort options
-- **Bulk operations**: CSV import and categorization workflows
+- **Advanced filtering**: Category, designer, NZ designer, search with multiple sort options
+- **Bulk operations**: CSV import, categorization, and NZ designer status workflows
 - **Image handling**: Both thumbnail and full-size image support with local caching
 - **Performance monitoring**: Request timing and slow query tracking
 - **Comprehensive logging**: Structured logging with request IDs
 - **Admin authentication**: Token-based with rate limiting
 - **Database migrations**: Automatic schema updates on startup
+- **URL state persistence**: All filters maintain state in URL for sharing/bookmarking
 
 ### API Features
 - **Advanced search**: Title search with designer filtering capability
 - **Sorting options**: title_asc/desc, year_asc/desc, rating_asc/desc, time_asc/desc  
 - **Pagination**: Configurable page sizes up to 1000 items
 - **Category filtering**: Server-side filtering including "uncategorized" support
+- **NZ Designer filtering**: Boolean filter for highlighting local content
 - **Image proxy**: External image caching with appropriate headers
 - **Health endpoints**: Database health checks and performance stats
+- **CSV export**: Complete data export functionality with configurable limits
 
 ### Known Issues 🔧
 - **Search functionality mismatch**: UI claims "title, designers, or keyword" but only searches title
@@ -250,6 +312,7 @@ src/
 - **Enhanced search**: Include designers, mechanics, and keyword search
 - **Admin roles**: Multiple admin user system beyond single token
 - **Performance optimization**: JSON field indexing and query optimization
+- **Advanced NZ content**: Designer profiles and local game showcase features
 
 ## Development Workflow
 
@@ -257,6 +320,7 @@ src/
 2. **Frontend changes**: Update React code → `npm run build` → Upload to cPanel
 3. **Database changes**: Apply migrations → Update API endpoints → Update frontend
 4. **Category changes**: Update constants → Update both backend mapping and frontend displays
+5. **NZ Designer updates**: Use bulk CSV endpoint or individual game admin interface
 
 ## Quality Assurance
 
@@ -264,9 +328,11 @@ src/
 - **Accessibility testing** with screen readers and keyboard navigation  
 - **Performance monitoring** with lighthouse scores
 - **Real user scenario testing** across different use cases
+- **Filter combination testing** ensuring all combinations work properly
+- **URL sharing verification** that bookmarked filter states work correctly
 
 ## Iterative Improvement Philosophy
 
 Focus on **complete implementations** rather than partial fixes, following **web standards** consistently, testing in **real-world scenarios**, and being willing to **revisit and enhance** based on actual usage patterns.
 
-The goal is production-ready code that serves real users in a café environment, not just portfolio demonstrations.
+The goal is production-ready code that serves real users in a café environment, not just portfolio demonstrations. Special emphasis on making New Zealand content discoverable while maintaining the proven 5-category system that users love.
