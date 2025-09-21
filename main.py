@@ -789,7 +789,7 @@ async def get_public_games(
     sort: str = Query("title_asc", description="Sort order"),
     category: Optional[str] = Query(None, description="Category filter"),
     designer: Optional[str] = Query(None, description="Designer filter"),
-    nz_designer: Optional[bool] = Query(None, description="Filter by NZ designers"),
+    nz_designer: Optional[str] = Query(None, description="Filter by NZ designers"),
     db: Session = Depends(get_db)
 ):
     """Get paginated list of games with filtering and search"""
