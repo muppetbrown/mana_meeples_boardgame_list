@@ -143,10 +143,12 @@ useEffect(() => {
     setPage(1);
   };
 
+  {/*
   const toggleNzDesigner = () => {
   setNzDesigner(!nzDesigner);
   setPage(1);
   };
+  */}
 
   // Share game function
   const shareGame = (game) => {
@@ -300,6 +302,7 @@ useEffect(() => {
                           </span>
                         </button>
 
+                        {/*
                         <button
                           onClick={toggleNzDesigner}
                           className={`
@@ -318,6 +321,7 @@ useEffect(() => {
                             <span>NZ Designed</span>
                           </span>
                         </button>
+                        */}
                       </div>
                       
                       {/* Clear Filters - Desktop */}
@@ -505,6 +509,7 @@ useEffect(() => {
                     </span>
                   </button>
 
+                  {/*
                   <button
                       onClick={toggleNzDesigner}
                       className={`
@@ -523,6 +528,7 @@ useEffect(() => {
                         <span>Kiwi</span>
                       </span>
                     </button>
+                    */}
                   </div>
                 
                 {/* Clear Filters - Mobile (full width) */}
