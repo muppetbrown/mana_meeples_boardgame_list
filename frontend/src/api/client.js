@@ -113,11 +113,66 @@ export const imageProxyUrl = (rawUrl) =>
   `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(rawUrl)}`;
 
 export async function updateGame(gameId, patch) {
-  const r = await api.post(`/api/admin/games/${gameId}/update`, patch, { headers: getAdminHeaders() });
-  return r.data;
+  try {
+    const r = await api.post(`/api/admin/games/${gameId}/update`, patch, { headers: getAdminHeaders() });
+    return r.data;
+  } catch (error) {
+    // Log the error for debugging but don't re-throw if the game was actually updated
+    console.warn("Update game API returned error but operation might have succeeded:", error);
+    // If it's a 500 error, check if the response contains any useful data
+    if (error.response?.status === 500 && error.response?.data) {
+      console.log("500 error response data:", error.response.data);
+    }
+    // Re-throw the error to maintain existing behavior
+    throw error;
+  }
 }
 
 export async function deleteGame(gameId) {
   const r = await api.delete(`/api/admin/games/${gameId}`, { headers: getAdminHeaders() });
+  return r.data;
+}
+
+// Advanced admin operations
+export async function bulkUpdateNZDesigners(csv_data) {
+  const r = await api.post("/api/admin/bulk-update-nz-designers", { csv_data }, { headers: getAdminHeaders() });
+  return r.data;
+}
+
+export async function reimportAllGames() {
+  const r = await api.post("/api/admin/reimport-all-games", {}, { headers: getAdminHeaders() });
+  return r.data;
+}
+
+// Debug and monitoring endpoints
+export async function getDebugCategories() {
+  const r = await api.get("/api/debug/categories");
+  return r.data;
+}
+
+export async function getDebugDatabaseInfo(limit = 50) {
+  const r = await api.get("/api/debug/database-info", { params: { limit } });
+  return r.data;
+}
+
+export async function getDebugPerformance() {
+  const r = await api.get("/api/debug/performance", { headers: getAdminHeaders() });
+  return r.data;
+}
+
+export async function exportGamesCSV(limit = null) {
+  const params = limit ? { limit } : {};
+  const r = await api.get("/api/debug/export-games-csv", { params });
+  return r.data;
+}
+
+// Health check endpoints
+export async function getHealthCheck() {
+  const r = await api.get("/api/health");
+  return r.data;
+}
+
+export async function getDbHealthCheck() {
+  const r = await api.get("/api/health/db");
   return r.data;
 }
