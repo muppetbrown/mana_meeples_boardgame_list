@@ -27,6 +27,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 // ---- Staff components ----
 import LibraryCard from "./components/staff/LibraryCard";
 import { BulkImportPanel, BulkCategorizePanel } from "./components/staff/BulkPanels";
+import { AdminToolsPanel } from "./components/staff/AdminToolsPanel";
 
 /** Tiny toast */
 function Toast({ message, type }) {
@@ -323,6 +324,15 @@ function StaffView() {
             value={csvCategorizeText}
             onChange={setCsvCategorizeText}
             onSubmit={doBulkCategorize}
+          />
+        </section>
+
+        {/* Advanced Admin Tools */}
+        <section>
+          <h2 className="text-xl font-semibold mb-4">Advanced Admin Tools</h2>
+          <AdminToolsPanel
+            onToast={showToast}
+            onLibraryReload={loadLibrary}
           />
         </section>
       </main>
