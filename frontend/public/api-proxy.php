@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 $UPSTREAM = 'https://mana-meeples-boardgame-list.onrender.com';
-$ALLOWED_METHODS = ['GET', 'POST'];
+$ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'DELETE'];
 
 // Enable error reporting for debugging
 error_reporting(E_ALL);
@@ -10,7 +10,7 @@ ini_set('display_errors', 1);
 
 // Add CORS headers
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Admin-Token');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
