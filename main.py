@@ -724,7 +724,7 @@ async def debug_database_info(
         Game.thumbnail_file, Game.mana_meeple_category, Game.description,
         Game.designers, Game.publishers, Game.mechanics, Game.artists,
         Game.average_rating, Game.complexity, Game.bgg_rank, Game.users_rated,
-        Game.min_age, Game.is_cooperative, Game.nz_designer
+        Game.min_age, Game.is_cooperative, Game.nz_designer, Game.game_type
     )
     
     games = db.execute(query).all()
@@ -763,7 +763,8 @@ async def debug_database_info(
                 "users_rated": g[22],
                 "min_age": g[23],
                 "is_cooperative": g[24],
-                "nz_designer": g[25]
+                "nz_designer": g[25],
+                "game_type": g[26]
             }
             for g in games
         ]
