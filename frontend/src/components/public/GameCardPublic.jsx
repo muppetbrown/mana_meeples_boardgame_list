@@ -45,12 +45,13 @@ export default function GameCardPublic({ game, lazy = false, onShare }) {
 
   // Create structured data for screen readers
   const gameDetails = [
-    game.min_players && game.max_players 
+    game.min_players && game.max_players
       ? `${game.min_players} to ${game.max_players} players`
       : "Player count unknown",
     formatTime(),
     game.year ? `Published ${game.year}` : "Publication year unknown",
-    formatRating(game.average_rating) 
+    game.game_type ? `Type: ${game.game_type}` : "Game type unknown",
+    formatRating(game.average_rating)
       ? `Rated ${formatRating(game.average_rating)} out of 10`
       : "No rating available"
   ].filter(Boolean);
@@ -155,6 +156,21 @@ export default function GameCardPublic({ game, lazy = false, onShare }) {
                 <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Year</div>
                 <div className="text-sm font-bold text-slate-800 truncate">
                   {game.year || "Unknown"}
+                </div>
+              </div>
+            </div>
+
+            {/* Game Type */}
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+                <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-700" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <path fillRule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd"/>
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Type</div>
+                <div className="text-sm font-bold text-slate-800 truncate">
+                  {game.game_type || "Unknown"}
                 </div>
               </div>
             </div>
