@@ -101,7 +101,7 @@ useEffect(() => {
       }
     })();
     return () => { cancelled = true; };
-  }, [qDebounced, page, pageSize, category, designer, sort]);
+  }, [qDebounced, page, pageSize, category, designer, nzDesigner, sort]);
 
   // Helper functions
   const updateCategory = (newCategory) => {
@@ -143,12 +143,10 @@ useEffect(() => {
     setPage(1);
   };
 
-  {/*
   const toggleNzDesigner = () => {
-  setNzDesigner(!nzDesigner);
-  setPage(1);
+    setNzDesigner(!nzDesigner);
+    setPage(1);
   };
-  */}
 
   // Share game function
   const shareGame = (game) => {
@@ -302,14 +300,13 @@ useEffect(() => {
                           </span>
                         </button>
 
-                        {/*
                         <button
                           onClick={toggleNzDesigner}
                           className={`
-                            min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
+                            min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
                             transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                            ${nzDesigner 
-                              ? "bg-blue-600 text-white shadow-lg focus:ring-blue-300" 
+                            ${nzDesigner
+                              ? "bg-blue-600 text-white shadow-lg focus:ring-blue-300"
                               : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 focus:ring-blue-300"
                             }
                           `}
@@ -321,7 +318,6 @@ useEffect(() => {
                             <span>NZ Designed</span>
                           </span>
                         </button>
-                        */}
                       </div>
                       
                       {/* Clear Filters - Desktop */}
@@ -469,67 +465,65 @@ useEffect(() => {
                   </button>
                 </div>
                 
-                {/* Row 4: Quick Action Buttons */}
-                <div className="grid grid-cols-2 gap-3">
+                {/* Row 4: Quick Action Buttons and NZ Designer Filter */}
+                <div className="grid grid-cols-3 gap-3">
                   <button
                     onClick={showNewestGames}
                     className={`
-                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
+                      min-h-[48px] px-2 py-2.5 text-sm font-medium rounded-xl
                       transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                      ${quickSort === "newest" 
-                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
+                      ${quickSort === "newest"
+                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300"
                         : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-2 border-emerald-200 focus:ring-emerald-300"
                       }
                     `}
                     aria-pressed={quickSort === "newest"}
                     aria-label="Show newest games first"
                   >
-                    <span className="flex items-center justify-center gap-1.5">
+                    <span className="flex items-center justify-center gap-1">
                       <span aria-hidden="true">🆕</span>
                       <span>Newest</span>
                     </span>
                   </button>
-                  
+
                   <button
                     onClick={showShortestGames}
                     className={`
-                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
+                      min-h-[48px] px-2 py-2.5 text-sm font-medium rounded-xl
                       transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                      ${quickSort === "shortest" 
-                        ? "bg-amber-600 text-white shadow-lg focus:ring-amber-300" 
+                      ${quickSort === "shortest"
+                        ? "bg-amber-600 text-white shadow-lg focus:ring-amber-300"
                         : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-2 border-amber-200 focus:ring-amber-300"
                       }
                     `}
                     aria-pressed={quickSort === "shortest"}
                     aria-label="Show shortest games first"
                   >
-                    <span className="flex items-center justify-center gap-1.5">
+                    <span className="flex items-center justify-center gap-1">
                       <span aria-hidden="true">⚡</span>
                       <span>Quick</span>
                     </span>
                   </button>
 
-                  {/*
                   <button
-                      onClick={toggleNzDesigner}
-                      className={`
-                        min-h-[48px] px-2 py-2.5 text-sm font-medium rounded-xl 
-                        transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                        ${nzDesigner 
-                          ? "bg-blue-600 text-white shadow-lg focus:ring-blue-300" 
-                          : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 focus:ring-blue-300"
-                        }
-                      `}
-                      aria-pressed={nzDesigner}
-                      aria-label="Filter by New Zealand designers"
-                    >
-                      <span className="flex items-center justify-center gap-1">
-                        <span aria-hidden="true">🇳🇿</span>
-                        <span>Kiwi</span>
-                      </span>
-                    </button>
-                    */}
-                  </div>
+                    onClick={toggleNzDesigner}
+                    className={`
+                      min-h-[48px] px-2 py-2.5 text-sm font-medium rounded-xl
+                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                      ${nzDesigner
+                        ? "bg-blue-600 text-white shadow-lg focus:ring-blue-300"
+                        : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 focus:ring-blue-300"
+                      }
+                    `}
+                    aria-pressed={nzDesigner}
+                    aria-label="Filter by New Zealand designers"
+                  >
+                    <span className="flex items-center justify-center gap-1">
+                      <span aria-hidden="true">🇳🇿</span>
+                      <span>Kiwi</span>
+                    </span>
+                  </button>
+                </div>
                 
                 {/* Clear Filters - Mobile (full width) */}
                 {activeFiltersCount > 0 && (
@@ -555,7 +549,7 @@ useEffect(() => {
               </div>
               
               {/* Active Search Status - Shared for both layouts */}
-              {(q || category !== "all" || designer) && (
+              {(q || category !== "all" || designer || nzDesigner) && (
                 <div 
                   className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 mt-4"
                   role="status"
