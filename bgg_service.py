@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import httpx
 import logging
 import html
+import config
 from config import HTTP_TIMEOUT, HTTP_RETRIES
 
 logger = logging.getLogger(__name__)
@@ -218,24 +219,113 @@ def _extract_comprehensive_game_data(item) -> Dict:
             except (ValueError, TypeError):
                 data['complexity'] = None
             
-            # BGG Rank
-            try:
-                ranks = ratings.find("ranks")
-                if ranks is not None:
-                    # Get overall boardgame rank
-                    main_rank = ranks.find("rank[@name='boardgame']")
-                    if main_rank is not None:
-                        rank_value = main_rank.attrib.get('value', '')
-                        if rank_value and rank_value != 'Not Ranked':
-                            data['bgg_rank'] = int(rank_value)
+            # BGG Rank and Game Type from ranks
+            ranks = ratings.find("ranks")
+            if ranks is not None:
+                main_rank = ''
+                game_types = []
+                has_consensus = False
+                not_ranked_category = None
+
+                # First pass: check if any category has a numerical rank (consensus)
+                for rank in ranks.findall("rank"):
+                    rank_name = rank.attrib.get('name', '')
+                    rank_value = rank.attrib.get('value', '')
+
+                    if rank_name == 'boardgame' and rank_value and rank_value != 'Not Ranked':
+                        main_rank = rank_value
+                    elif rank_name != 'boardgame' and rank_value and rank_value != 'Not Ranked' and rank_value.isdigit():
+                        has_consensus = True
+                        break
+
+                # Second pass: collect game types based on consensus
+                for rank in ranks.findall("rank"):
+                    rank_name = rank.attrib.get('name', '')
+                    rank_value = rank.attrib.get('value', '')
+
+                    if rank_name != 'boardgame':
+                        if has_consensus:
+                            # Enough votes for consensus - use ALL ranked categories
+                            if rank_value and rank_value != 'Not Ranked' and rank_value.isdigit():
+                                game_types.append((int(rank_value), rank_name))
                         else:
-                            data['bgg_rank'] = None
-                    else:
-                        data['bgg_rank'] = None
-                else:
+                            # Not enough votes - use the "Not Ranked" category
+                            if rank_value == 'Not Ranked' and not_ranked_category is None:
+                                not_ranked_category = rank_name
+
+                try:
+                    data['bgg_rank'] = int(main_rank) if main_rank else None
+                except (ValueError, TypeError):
                     data['bgg_rank'] = None
-            except (ValueError, TypeError):
+
+                # Determine final game type
+                if has_consensus and game_types:
+                    # Sort by rank and convert to friendly names
+                    game_types.sort(key=lambda x: x[0])  # Sort by numerical rank
+
+                    friendly_names = {
+                        'strategygames': 'Strategy',
+                        'familygames': 'Family',
+                        'thematic': 'Thematic',
+                        'partygames': 'Party',
+                        'abstracts': 'Abstract',
+                        'cgs': 'Card Game',
+                        'childrensgames': "Children's",
+                        'wargames': 'War Game'
+                    }
+
+                    friendly_categories = []
+                    for rank_num, category in game_types:
+                        friendly_name = friendly_names.get(category, category.title())
+                        friendly_categories.append(friendly_name)
+
+                    data['game_type'] = ' • '.join(friendly_categories)
+
+                    if config.SAVE_DEBUG_INFO:
+                        print(f"    Consensus found - ranked categories: {[cat for _, cat in game_types]}")
+                        print(f"    Combined game type: {data['game_type']}")
+
+                elif not_ranked_category:
+                    # No consensus - use "Not Ranked" category + first boardgame category
+                    friendly_names = {
+                        'strategygames': 'Strategy',
+                        'familygames': 'Family',
+                        'thematic': 'Thematic',
+                        'partygames': 'Party',
+                        'abstracts': 'Abstract',
+                        'cgs': 'Card Game',
+                        'childrensgames': "Children's",
+                        'wargames': 'War Game'
+                    }
+
+                    rank_type = friendly_names.get(not_ranked_category, not_ranked_category.title())
+
+                    # Get first boardgame category for additional context
+                    first_category = categories[0] if categories else None
+
+                    if first_category:
+                        data['game_type'] = f"{rank_type} • {first_category}"
+                    else:
+                        data['game_type'] = rank_type
+
+                    if config.SAVE_DEBUG_INFO:
+                        print(f"    No consensus - using Not Ranked category: {not_ranked_category}")
+                        print(f"    First boardgame category: {first_category}")
+                        print(f"    Combined game type: {data['game_type']}")
+                else:
+                    # Fallback to our classification system
+                    data['game_type'] = _get_game_classification(item)
+                    if config.SAVE_DEBUG_INFO:
+                        print(f"    No BGG ranking data, using fallback classification: {data['game_type']}")
+
+                if config.SAVE_DEBUG_INFO:
+                    print(f"    Found main rank: {data['bgg_rank']}")
+            else:
+                if config.SAVE_DEBUG_INFO:
+                    print(f"    ranks element not found in ratings")
+                # Fallback for both rank and game type
                 data['bgg_rank'] = None
+                data['game_type'] = _get_game_classification(item)
             
             # Number of ratings
             try:
@@ -252,26 +342,45 @@ def _extract_comprehensive_game_data(item) -> Dict:
             data['complexity'] = None
             data['bgg_rank'] = None
             data['users_rated'] = None
+            data['game_type'] = _get_game_classification(item)
     else:
         # No statistics data
         data['average_rating'] = None
         data['complexity'] = None
         data['bgg_rank'] = None
         data['users_rated'] = None
+        data['game_type'] = _get_game_classification(item)
     
+    # Game classification - ensure game_type is always set
+    if 'game_type' not in data or not data['game_type']:
+        data['game_type'] = _get_game_classification(item)
+
     # Determine if cooperative
     is_cooperative = any('cooperative' in mechanic.lower() for mechanic in mechanics)
     data['is_cooperative'] = is_cooperative
-    
+
     logger.info(f"Successfully extracted comprehensive data for '{data['title']}'")
-    
+
     return data
 
-def _determine_game_type(categories: List[str], mechanics: List[str]) -> str:
+def _get_game_classification(item) -> str:
     """
-    Determine game type based on categories and mechanics
-    Enhanced version of your classification system
+    Fallback game classification system based on categories and mechanics
+    when BGG ranking data is not available
     """
+    # Extract categories and mechanics from the item
+    categories = []
+    for link in item.findall("link[@type='boardgamecategory']"):
+        category = link.attrib.get('value', '').strip()
+        if category:
+            categories.append(category)
+
+    mechanics = []
+    for link in item.findall("link[@type='boardgamemechanic']"):
+        mechanic = link.attrib.get('value', '').strip()
+        if mechanic:
+            mechanics.append(mechanic)
+
     # Primary game types (most recognizable)
     primary_types = {
         'party': ['party game'],
@@ -285,7 +394,7 @@ def _determine_game_type(categories: List[str], mechanics: List[str]) -> str:
         'economic': ['economic'],
         'thematic': ['thematic'],
     }
-    
+
     # Check categories first for primary type
     for game_type, keywords in primary_types.items():
         for keyword in keywords:
@@ -303,11 +412,11 @@ def _determine_game_type(categories: List[str], mechanics: List[str]) -> str:
                     'thematic': 'Thematic'
                 }
                 return type_names[game_type]
-    
+
     # Check mechanics for cooperative games
     if any('cooperative' in mech.lower() for mech in mechanics):
         return 'Co-op'
-    
+
     # Mechanic-based classification
     mechanic_priority = [
         ('deck building', 'Deck Builder'),
@@ -329,10 +438,10 @@ def _determine_game_type(categories: List[str], mechanics: List[str]) -> str:
         ('auction', 'Auction'),
         ('trading', 'Trading'),
     ]
-    
+
     for keyword, display_name in mechanic_priority:
         if any(keyword in mech.lower() for mech in mechanics):
             return display_name
-    
+
     # Fallback to strategy if nothing else matches
     return 'Strategy'

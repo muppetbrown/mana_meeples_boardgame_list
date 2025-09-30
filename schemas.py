@@ -15,6 +15,7 @@ class GameOut(BaseModel):
     playtime_min: Optional[int] = None
     playtime_max: Optional[int] = None
     thumbnail_url: Optional[str] = None
+    game_type: Optional[str] = None
 
     class Config:
         orm_mode = True

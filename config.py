@@ -18,3 +18,6 @@ HTTP_RETRIES = int(os.getenv("HTTP_RETRIES", "3"))
 # Rate limiting configuration
 RATE_LIMIT_ATTEMPTS = int(os.getenv("RATE_LIMIT_ATTEMPTS", "5"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "300"))  # 5 minutes
+
+# Debug configuration for BGG data extraction
+SAVE_DEBUG_INFO = os.getenv("SAVE_DEBUG_INFO", "false").lower() in ("true", "1", "yes")

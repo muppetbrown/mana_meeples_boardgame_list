@@ -176,6 +176,16 @@ export default function GameDetails() {
                         {game.year_published || "–"}
                       </span>
                     </div>
+
+                    {game.game_type && (
+                      <div className="flex items-center bg-purple-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-[44px] sm:min-h-auto">
+                        <span className="w-2 h-2 rounded-full bg-purple-500 mr-2" aria-hidden="true"></span>
+                        <span className="font-medium text-purple-800">Type: </span>
+                        <span className="font-bold text-purple-900 ml-1">
+                          {game.game_type}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </header>
 
