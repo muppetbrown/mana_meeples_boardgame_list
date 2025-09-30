@@ -808,9 +808,11 @@ async def get_public_games(
         if hasattr(Game, 'designers'):
             query = query.where(Game.designers.ilike(designer_filter))
 
-    #Apply NZ designer filter
+    # Apply NZ designer filter
     if nz_designer is not None:
-        query = query.where(Game.nz_designer == nz_designer)
+        # Convert string parameter to boolean for database comparison
+        nz_designer_bool = nz_designer.lower() in ['true', '1', 'yes'] if isinstance(nz_designer, str) else bool(nz_designer)
+        query = query.where(Game.nz_designer == nz_designer_bool)
     
     # Apply sorting
     if sort == "title_desc":
