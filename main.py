@@ -485,6 +485,7 @@ def _game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         "bgg_id": getattr(game, "bgg_id", None),
         "created_at": game.created_at.isoformat() if hasattr(game, "created_at") and game.created_at else None,
         "nz_designer": getattr(game, "nz_designer", False),
+        "game_type": getattr(game, "game_type", None),
     }
 
 def _calculate_category_counts(games) -> Dict[str, int]:
@@ -800,10 +801,23 @@ async def get_public_games(
     # Build base query
     query = select(Game)
     
-    # Apply search filter
+    # Apply search filter - search across title, designers, and description (keywords)
     if q.strip():
         search_term = f"%{q.strip()}%"
-        query = query.where(Game.title.ilike(search_term))
+        search_conditions = [
+            Game.title.ilike(search_term)
+        ]
+
+        # Add designer search if the field exists and has data
+        if hasattr(Game, 'designers'):
+            search_conditions.append(Game.designers.ilike(search_term))
+
+        # Add description search for keyword functionality
+        if hasattr(Game, 'description'):
+            search_conditions.append(Game.description.ilike(search_term))
+
+        # Combine all search conditions with OR
+        query = query.where(or_(*search_conditions))
     
     # Apply designer filter
     if designer and designer.strip():
