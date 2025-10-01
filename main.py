@@ -642,6 +642,8 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
             game.min_age = bgg_data.get("min_age")
         if hasattr(game, 'is_cooperative'):
             game.is_cooperative = bgg_data.get("is_cooperative")
+        if hasattr(game, 'game_type'):
+            game.game_type = bgg_data.get("game_type")
         if hasattr(game, 'image'):
             game.image = bgg_data.get("image")  # Store the full-size image URL
         if hasattr(game, 'thumbnail_url'):
@@ -1075,7 +1077,9 @@ async def import_from_bgg(
                 existing.min_age = bgg_data.get("min_age")
             if hasattr(existing, 'is_cooperative'):
                 existing.is_cooperative = bgg_data.get("is_cooperative")
-            
+            if hasattr(existing, 'game_type'):
+                existing.game_type = bgg_data.get("game_type")
+
             # Re-categorize
             categories = _parse_categories(categories_str)
             existing.mana_meeple_category = _categorize_game(categories)
@@ -1120,6 +1124,8 @@ async def import_from_bgg(
                 game.min_age = bgg_data.get("min_age")
             if hasattr(game, 'is_cooperative'):
                 game.is_cooperative = bgg_data.get("is_cooperative")
+            if hasattr(game, 'game_type'):
+                game.game_type = bgg_data.get("game_type")
             if hasattr(game, 'image'):
                 game.image = bgg_data.get("image")  # Store the full-size image URL
             if hasattr(game, 'thumbnail_url'):
@@ -1230,6 +1236,8 @@ async def bulk_import_csv(
                         game.min_age = bgg_data.get("min_age")
                     if hasattr(game, 'is_cooperative'):
                         game.is_cooperative = bgg_data.get("is_cooperative")
+                    if hasattr(game, 'game_type'):
+                        game.game_type = bgg_data.get("game_type")
                     if hasattr(game, 'image'):
                         game.image = bgg_data.get("image")  # Store the full-size image URL
                     if hasattr(game, 'thumbnail_url'):
@@ -1612,7 +1620,14 @@ def run_migrations():
                 conn.execute(text("ALTER TABLE games ADD COLUMN nz_designer BOOLEAN DEFAULT FALSE"))
                 conn.commit()
                 logger.info("Successfully added 'nz_designer' column to games table")
-            
+
+            # Add game_type column if missing
+            if 'game_type' not in columns:
+                logger.info("Adding missing 'game_type' column to games table...")
+                conn.execute(text("ALTER TABLE games ADD COLUMN game_type VARCHAR(255)"))
+                conn.commit()
+                logger.info("Successfully added 'game_type' column to games table")
+
             logger.info("Database schema is up to date")
                 
     except Exception as e:
