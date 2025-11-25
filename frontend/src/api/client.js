@@ -1,11 +1,12 @@
 // src/api/client.js
 import axios from "axios";
 
-// FIXED: Match the variable name used in index.html and api.js
+// API Base URL resolution - matches utils/api.js pattern
 const API_BASE =
   (window.__API_BASE__ && String(window.__API_BASE__)) ||
   document.querySelector('meta[name="api-base"]')?.content ||
-  "https://manaandmeeples.co.nz/library/api-proxy.php?path=";
+  process.env.REACT_APP_API_BASE ||
+  "https://mana-meeples-boardgame-list.onrender.com";
 
 export const api = axios.create({
   baseURL: API_BASE,
