@@ -1,4 +1,5 @@
 services:
+  # FastAPI Backend Service
   - type: web
     name: mana-meeples-boardgame-list
     runtime: python
@@ -15,7 +16,7 @@ services:
       - key: ADMIN_TOKEN
         sync: false  # Set securely in Render dashboard
       - key: CORS_ORIGINS
-        value: https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz
+        value: https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz,https://library.manaandmeeples.co.nz,https://mana-meeples-library-web.onrender.com
       - key: PUBLIC_BASE_URL
         value: https://mana-meeples-boardgame-list.onrender.com
       - key: THUMBS_DIR
@@ -24,3 +25,19 @@ services:
       - name: thumbs-storage
         mountPath: /var/data
         sizeGB: 1
+
+  # React Frontend Static Site
+  - type: web
+    name: mana-meeples-library-web
+    runtime: static
+    region: singapore
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/build
+    envVars:
+      - key: REACT_APP_API_BASE
+        value: https://mana-meeples-boardgame-list.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
