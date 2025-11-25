@@ -628,13 +628,13 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
         if hasattr(game, 'description'):
             game.description = bgg_data.get("description")
         if hasattr(game, 'designers'):
-            game.designers = json.dumps(bgg_data.get("designers", []))
+            game.designers = bgg_data.get("designers", [])
         if hasattr(game, 'publishers'):
-            game.publishers = json.dumps(bgg_data.get("publishers", []))
+            game.publishers = bgg_data.get("publishers", [])
         if hasattr(game, 'mechanics'):
-            game.mechanics = json.dumps(bgg_data.get("mechanics", []))
+            game.mechanics = bgg_data.get("mechanics", [])
         if hasattr(game, 'artists'):
-            game.artists = json.dumps(bgg_data.get("artists", []))
+            game.artists = bgg_data.get("artists", [])
         if hasattr(game, 'average_rating'):
             game.average_rating = bgg_data.get("average_rating")
         if hasattr(game, 'complexity'):
@@ -1008,11 +1008,11 @@ async def create_game(
         if hasattr(game, 'description'):
             game.description = game_data.get("description")
         if hasattr(game, 'designers'):
-            game.designers = json.dumps(game_data.get("designers", []))
+            game.designers = game_data.get("designers", [])
         if hasattr(game, 'publishers'):
-            game.publishers = json.dumps(game_data.get("publishers", []))
+            game.publishers = game_data.get("publishers", [])
         if hasattr(game, 'mechanics'):
-            game.mechanics = json.dumps(game_data.get("mechanics", []))
+            game.mechanics = game_data.get("mechanics", [])
         
         # Auto-categorize if no category provided
         if not game.mana_meeple_category:
@@ -1076,13 +1076,13 @@ async def import_from_bgg(
             if hasattr(existing, 'description'):
                 existing.description = bgg_data.get("description")
             if hasattr(existing, 'designers'):
-                existing.designers = json.dumps(bgg_data.get("designers", []))
+                existing.designers = bgg_data.get("designers", [])
             if hasattr(existing, 'publishers'):
-                existing.publishers = json.dumps(bgg_data.get("publishers", []))
+                existing.publishers = bgg_data.get("publishers", [])
             if hasattr(existing, 'mechanics'):
-                existing.mechanics = json.dumps(bgg_data.get("mechanics", []))
+                existing.mechanics = bgg_data.get("mechanics", [])
             if hasattr(existing, 'artists'):
-                existing.artists = json.dumps(bgg_data.get("artists", []))
+                existing.artists = bgg_data.get("artists", [])
             if hasattr(existing, 'average_rating'):
                 existing.average_rating = bgg_data.get("average_rating")
             if hasattr(existing, 'complexity'):
@@ -1123,13 +1123,13 @@ async def import_from_bgg(
             if hasattr(game, 'description'):
                 game.description = bgg_data.get("description")
             if hasattr(game, 'designers'):
-                game.designers = json.dumps(bgg_data.get("designers", []))
+                game.designers = bgg_data.get("designers", [])
             if hasattr(game, 'publishers'):
-                game.publishers = json.dumps(bgg_data.get("publishers", []))
+                game.publishers = bgg_data.get("publishers", [])
             if hasattr(game, 'mechanics'):
-                game.mechanics = json.dumps(bgg_data.get("mechanics", []))
+                game.mechanics = bgg_data.get("mechanics", [])
             if hasattr(game, 'artists'):
-                game.artists = json.dumps(bgg_data.get("artists", []))
+                game.artists = bgg_data.get("artists", [])
             if hasattr(game, 'average_rating'):
                 game.average_rating = bgg_data.get("average_rating")
             if hasattr(game, 'complexity'):
@@ -1235,13 +1235,13 @@ async def bulk_import_csv(
                     if hasattr(game, 'description'):
                         game.description = bgg_data.get("description")
                     if hasattr(game, 'designers'):
-                        game.designers = json.dumps(bgg_data.get("designers", []))
+                        game.designers = bgg_data.get("designers", [])
                     if hasattr(game, 'publishers'):
-                        game.publishers = json.dumps(bgg_data.get("publishers", []))
+                        game.publishers = bgg_data.get("publishers", [])
                     if hasattr(game, 'mechanics'):
-                        game.mechanics = json.dumps(bgg_data.get("mechanics", []))
+                        game.mechanics = bgg_data.get("mechanics", [])
                     if hasattr(game, 'artists'):
-                        game.artists = json.dumps(bgg_data.get("artists", []))
+                        game.artists = bgg_data.get("artists", [])
                     if hasattr(game, 'average_rating'):
                         game.average_rating = bgg_data.get("average_rating")
                     if hasattr(game, 'complexity'):
