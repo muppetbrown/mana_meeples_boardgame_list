@@ -1,20 +1,25 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import QueuePool
 from config import DATABASE_URL
 from models import Base
+import logging
 
-# SQLite tuning for FastAPI
-connect_args = {}
-engine_kwargs = {}
+logger = logging.getLogger(__name__)
 
-if DATABASE_URL.startswith("sqlite:"):
-    connect_args["check_same_thread"] = False
-    # StaticPool only for in-memory SQLite, not needed for file-based
-    if DATABASE_URL in ("sqlite://", "sqlite:///:memory:"):
-        engine_kwargs["poolclass"] = StaticPool
+# PostgreSQL connection pooling configuration
+engine_kwargs = {
+    "poolclass": QueuePool,
+    "pool_size": 5,          # Number of permanent connections
+    "max_overflow": 10,      # Additional connections when pool is full
+    "pool_timeout": 30,      # Seconds to wait for connection from pool
+    "pool_recycle": 3600,    # Recycle connections after 1 hour
+    "pool_pre_ping": True,   # Test connections before using them
+    "echo": False,           # Set to True for SQL debugging
+}
 
-engine = create_engine(DATABASE_URL, connect_args=connect_args, future=True, **engine_kwargs)
+logger.info(f"Configuring database engine for: {DATABASE_URL.split('@')[0]}@...")
+engine = create_engine(DATABASE_URL, future=True, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, future=True)
 
 def db_ping() -> bool:

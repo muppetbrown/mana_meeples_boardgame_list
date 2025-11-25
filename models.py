@@ -6,7 +6,7 @@ from sqlalchemy.orm import relationship
 Base = declarative_base()
 
 class Game(Base):
-    __tablename__ = "games"
+    __tablename__ = "boardgames"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     title = Column(String(255), index=True, nullable=False)

@@ -1613,41 +1613,6 @@ async def delete_admin_game(
         logger.error(f"Failed to delete game {game_id}: {e}", extra={'game_id': game_id})
         raise HTTPException(status_code=500, detail="Failed to delete game")
 
-def run_migrations():
-    """Run database migrations to ensure schema is up to date."""
-    try:
-        with engine.connect() as conn:
-            # Check existing columns
-            result = conn.execute(text("PRAGMA table_info(games)"))
-            columns = [row[1] for row in result]
-            
-            # Add image column if missing
-            if 'image' not in columns:
-                logger.info("Adding missing 'image' column to games table...")
-                conn.execute(text("ALTER TABLE games ADD COLUMN image VARCHAR(512)"))
-                conn.commit()
-                logger.info("Successfully added 'image' column to games table")
-            
-            # Add nz_designer column if missing
-            if 'nz_designer' not in columns:
-                logger.info("Adding missing 'nz_designer' column to games table...")
-                conn.execute(text("ALTER TABLE games ADD COLUMN nz_designer BOOLEAN DEFAULT FALSE"))
-                conn.commit()
-                logger.info("Successfully added 'nz_designer' column to games table")
-
-            # Add game_type column if missing
-            if 'game_type' not in columns:
-                logger.info("Adding missing 'game_type' column to games table...")
-                conn.execute(text("ALTER TABLE games ADD COLUMN game_type VARCHAR(255)"))
-                conn.commit()
-                logger.info("Successfully added 'game_type' column to games table")
-
-            logger.info("Database schema is up to date")
-                
-    except Exception as e:
-        logger.error(f"Error running migrations: {e}")
-        raise
-
 # ------------------------------------------------------------------------------
 # Startup
 # ------------------------------------------------------------------------------
@@ -1655,8 +1620,14 @@ def run_migrations():
 async def startup_event():
     """Initialize database and create thumbs directory"""
     logger.info("Starting Mana & Meeples API...")
-    init_db()
-    run_migrations()
+    logger.info("Verifying database connection...")
+
+    # Verify database connection
+    if not db_ping():
+        logger.error("Database connection failed!")
+        raise RuntimeError("Cannot connect to PostgreSQL database")
+
+    logger.info("Database connection verified")
     os.makedirs(THUMBS_DIR, exist_ok=True)
     logger.info(f"Thumbnails directory: {THUMBS_DIR}")
     logger.info("API startup complete")
