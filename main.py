@@ -15,7 +15,7 @@ from sqlalchemy import case, select, func, and_, or_, text
 from sqlalchemy.orm import Session
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from database import SessionLocal, init_db, engine
+from database import SessionLocal, init_db, engine, db_ping
 from models import Game
 from bgg_service import fetch_bgg_thing
 from schemas import BGGGameImport, CSVImport
@@ -306,6 +306,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Create thumbs directory if it doesn't exist (required for StaticFiles mount)
+os.makedirs(THUMBS_DIR, exist_ok=True)
 
 # Serve static thumbs
 app.mount("/thumbs", StaticFiles(directory=THUMBS_DIR), name="thumbs")
