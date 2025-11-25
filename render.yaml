@@ -18,3 +18,9 @@ services:
         value: https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz
       - key: PUBLIC_BASE_URL
         value: https://mana-meeples-boardgame-list.onrender.com
+      - key: THUMBS_DIR
+        value: /var/data/thumbs
+    disks:
+      - name: thumbs-storage
+        mountPath: /var/data
+        sizeGB: 1
