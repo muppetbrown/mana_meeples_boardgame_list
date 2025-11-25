@@ -295,6 +295,8 @@ app.add_middleware(CacheThumbsMiddleware)
 cors_origins = [
     "https://manaandmeeples.co.nz",
     "https://www.manaandmeeples.co.nz",
+    "https://library.manaandmeeples.co.nz",
+    "https://mana-meeples-library-web.onrender.com",
     "http://localhost:3000",
     "http://127.0.0.1:3000"
 ]
