@@ -8,7 +8,8 @@
 
 ### Backend (Python FastAPI)
 - **Platform**: Render.com hosting
-- **Database**: SQLite with BoardGameGeek API synchronization  
+- **Database**: PostgreSQL with BoardGameGeek API synchronization
+- **Table**: `boardgames` (migrated from SQLite `games` table)
 - **API Base**: `https://mana-meeples-boardgame-list.onrender.com`
 - **Proxy**: `https://manaandmeeples.co.nz/library/api-proxy.php`
 
@@ -20,8 +21,10 @@
 
 ## Database Schema
 
+**Table Name**: `boardgames` (PostgreSQL)
+
 ```python
-# SQLAlchemy Model Definition
+# SQLAlchemy Model Definition (models.py)
 id = Column(Integer, primary_key=True, autoincrement=True)
 title = Column(String(255), index=True, nullable=False)
 categories = Column(Text, default="", nullable=False)  # BGG categories as text
@@ -163,12 +166,15 @@ export const CATEGORY_LABELS = {
 
 ### Backend Environment Variables (Render)
 ```
-ADMIN_TOKEN=b2f6f6f7af1e4db9a43a8ed5e0d86a38a22fdad8a1e7b4730f9207d767fab1cc
+ADMIN_TOKEN=<secure-token-set-in-render-dashboard>
 CORS_ORIGINS=https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz
-DATABASE_URL=sqlite:////data/app.db
+DATABASE_URL=postgresql://tcg_admin:<password>@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles
 PUBLIC_BASE_URL=https://mana-meeples-boardgame-list.onrender.com
 PYTHON_VERSION=3.11.9
 ```
+
+**Important**: Sensitive credentials should be set securely in Render dashboard, not hardcoded in code.
+Use the `render.yaml` blueprint for infrastructure-as-code deployment with secure secret management.
 
 ### Frontend API Configuration
 Multi-layer API base resolution in `utils/api.js`:
@@ -182,6 +188,37 @@ Advanced BGG image quality enhancement in `imageProxyUrl()`:
 - **Priority order**: `_original` > `_d` (detail) > `_md` (medium) > `_mt` (medium thumb) > `_t` (thumbnail)
 - **Automatic upscaling**: Frontend requests highest quality, backend handles fallback chain
 - **Proxy caching**: All external images routed through `/api/public/image-proxy`
+
+### Database Infrastructure
+
+**PostgreSQL Configuration**:
+- **Provider**: Render PostgreSQL (Singapore region)
+- **Database**: `tcg_singles`
+- **Table**: `boardgames` (migrated from SQLite November 2025)
+- **Connection pooling**: QueuePool with 5 permanent connections, 10 overflow
+- **Health checks**: Pool pre-ping enabled for connection validation
+- **Driver**: psycopg2-binary 2.9.9
+
+**Connection Pool Settings** (database.py):
+```python
+pool_size=5          # Permanent connections
+max_overflow=10      # Additional connections when busy
+pool_timeout=30      # Wait time for available connection
+pool_recycle=3600    # Recycle connections hourly
+pool_pre_ping=True   # Test connections before use
+```
+
+**Deployment with Render Blueprint**:
+- **File**: `render.yaml` - Infrastructure as code configuration
+- **Security**: Sensitive credentials managed via Render dashboard (not in code)
+- **Health checks**: Automatic monitoring via `/api/health` endpoint
+- **Auto-deploy**: Enabled from Git repository
+
+**Migration Notes**:
+- Data migrated from SQLite `games` table to PostgreSQL `boardgames` table
+- All JSON columns (designers, mechanics, publishers, artists) use native PostgreSQL JSON type
+- Removed SQLite-specific PRAGMA-based migrations
+- Indexes maintained for performance (title, bgg_id, mana_meeple_category, nz_designer)
 
 ## Component Architecture Details
 

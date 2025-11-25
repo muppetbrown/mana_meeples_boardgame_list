@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: mana-meeples-boardgame-list
+    runtime: python
+    region: singapore
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        sync: false  # Set securely in Render dashboard: postgresql://tcg_admin:***@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles
+      - key: ADMIN_TOKEN
+        sync: false  # Set securely in Render dashboard
+      - key: CORS_ORIGINS
+        value: https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz
+      - key: PUBLIC_BASE_URL
+        value: https://mana-meeples-boardgame-list.onrender.com
