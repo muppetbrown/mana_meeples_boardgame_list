@@ -64,13 +64,21 @@ This approach uses the `render.yaml` file for infrastructure-as-code deployment.
 If you prefer to update your existing Render service:
 
 1. **Go to your existing service** in Render Dashboard
-2. **Update Environment Variables**:
+
+2. **Remove persistent disk** (if you had one mounted at `/data` for SQLite):
+   - Go to your service → "Disks" section
+   - Remove any disk mounts (no longer needed with external PostgreSQL)
+   - This prevents permission errors
+
+3. **Update Environment Variables**:
    - `DATABASE_URL`: Change from SQLite to PostgreSQL URL
    ```
    postgresql://tcg_admin:1FhON1ZvCR7bRry4L9UoonvorMD4BjAR@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles
    ```
-3. **Trigger manual deploy** or push code to trigger auto-deploy
-4. **Monitor logs** during deployment
+
+4. **Trigger manual deploy** or push code to trigger auto-deploy
+
+5. **Monitor logs** during deployment
 
 ---
 
@@ -220,6 +228,8 @@ If something goes wrong, you can rollback:
 | Migration | PRAGMA-based | Removed (data pre-migrated) |
 | Config | Hardcoded | Environment variables |
 | Deployment | Manual | Blueprint (render.yaml) |
+| Thumbnails | `/data/thumbs` (persistent disk) | `/tmp/thumbs` (ephemeral) |
+| Disk Mount | Required for SQLite | Not needed (external DB) |
 
 ---
 

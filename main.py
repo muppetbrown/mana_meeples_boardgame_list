@@ -76,8 +76,9 @@ ADMIN_TOKEN = (os.getenv("ADMIN_TOKEN") or "").strip()
 # Rate limiting for admin authentication attempts
 admin_attempt_tracker = defaultdict(list)
 
-THUMBS_DIR = os.getenv("THUMBS_DIR", "/data/thumbs")
-os.makedirs(THUMBS_DIR, exist_ok=True)
+# Thumbnail storage directory (using /tmp for Render free tier compatibility)
+# Note: /tmp is ephemeral and cleared on restart, but thumbnails can be re-cached from BGG URLs
+THUMBS_DIR = os.getenv("THUMBS_DIR", "/tmp/thumbs")
 
 # Single shared HTTP client
 httpx_client = httpx.AsyncClient(follow_redirects=True, timeout=HTTP_TIMEOUT)
