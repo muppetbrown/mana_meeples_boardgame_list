@@ -2,7 +2,8 @@ import os, re, httpx
 from typing import Optional
 from config import HTTP_TIMEOUT
 
-THUMBS_DIR = "/data/thumbs"
+# Use /tmp for Render free tier compatibility (ephemeral storage)
+THUMBS_DIR = os.getenv("THUMBS_DIR", "/tmp/thumbs")
 
 # File validation constants
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
