@@ -11,13 +11,13 @@
 - **Database**: PostgreSQL with BoardGameGeek API synchronization
 - **Table**: `boardgames` (migrated from SQLite `games` table)
 - **API Base**: `https://mana-meeples-boardgame-list.onrender.com`
-- **Proxy**: `https://manaandmeeples.co.nz/library/api-proxy.php`
 
 ### Frontend (React)
-- **Platform**: cPanel hosting at `/library/` path
+- **Platform**: Render.com static site hosting
 - **Framework**: React 18 with React Router
 - **Build Tool**: Create React App
-- **Deployment**: Static build uploaded to cPanel
+- **Deployment**: Automatic deployment from Git via Render
+- **Public URL**: `https://library.manaandmeeples.co.nz` (CNAME → `mana-meeples-library-web.onrender.com`)
 
 ## Database Schema
 
@@ -167,7 +167,7 @@ export const CATEGORY_LABELS = {
 ### Backend Environment Variables (Render)
 ```
 ADMIN_TOKEN=<secure-token-set-in-render-dashboard>
-CORS_ORIGINS=https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz
+CORS_ORIGINS=https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz,https://library.manaandmeeples.co.nz,https://mana-meeples-library-web.onrender.com
 DATABASE_URL=postgresql://tcg_admin:<password>@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles
 PUBLIC_BASE_URL=https://mana-meeples-boardgame-list.onrender.com
 PYTHON_VERSION=3.11.9
@@ -177,11 +177,11 @@ PYTHON_VERSION=3.11.9
 Use the `render.yaml` blueprint for infrastructure-as-code deployment with secure secret management.
 
 ### Frontend API Configuration
-Multi-layer API base resolution in `utils/api.js`:
-1. **Hard override**: `window.__API_BASE__` (set in index.html for production)
-2. **Meta tag**: `<meta name="api-base" content="...">` in index.html
-3. **Build-time env**: `process.env.REACT_APP_API_BASE`
-4. **Dev fallback**: `http://127.0.0.1:8000`
+API base resolution in `utils/api.js` with automatic environment detection:
+1. **Build-time env**: `process.env.REACT_APP_API_BASE` (set in render.yaml)
+2. **Dev fallback**: `http://127.0.0.1:8000` for local development
+
+**Production setup**: The frontend is deployed as a separate static site on Render with `REACT_APP_API_BASE` pointing to the backend API service.
 
 ### Image Optimization Strategy
 Advanced BGG image quality enhancement in `imageProxyUrl()`:
@@ -353,11 +353,13 @@ src/
 
 ## Development Workflow
 
-1. **Backend changes**: Update Python code → Deploy to Render → Test API endpoints
-2. **Frontend changes**: Update React code → `npm run build` → Upload to cPanel
+1. **Backend changes**: Update Python code → Push to Git → Auto-deploy to Render → Test API endpoints
+2. **Frontend changes**: Update React code → Push to Git → Auto-deploy to Render → Test on library.manaandmeeples.co.nz
 3. **Database changes**: Apply migrations → Update API endpoints → Update frontend
 4. **Category changes**: Update constants → Update both backend mapping and frontend displays
 5. **NZ Designer updates**: Use bulk CSV endpoint or individual game admin interface
+
+**Note**: Both frontend and backend are now hosted on Render with automatic deployments from Git. No manual build/upload steps required!
 
 ## Quality Assurance
 
