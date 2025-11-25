@@ -1,5 +1,4 @@
 services:
-  # FastAPI Backend Service
   - type: web
     name: mana-meeples-boardgame-list
     runtime: python
@@ -12,9 +11,9 @@ services:
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: DATABASE_URL
-        sync: false  # Set securely in Render dashboard: postgresql://tcg_admin:***@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles
+        sync: false
       - key: ADMIN_TOKEN
-        sync: false  # Set securely in Render dashboard
+        sync: false
       - key: CORS_ORIGINS
         value: https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz,https://library.manaandmeeples.co.nz,https://mana-meeples-library-web.onrender.com
       - key: PUBLIC_BASE_URL
@@ -26,7 +25,6 @@ services:
       mountPath: /var/data
       sizeGB: 1
 
-  # React Frontend Static Site
   - type: web
     name: mana-meeples-library-web
     runtime: static
