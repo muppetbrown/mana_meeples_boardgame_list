@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { validateAdminToken } from "../api/client";
 
 export default function AdminLogin() {
   const [token, setToken] = useState("");
@@ -19,34 +20,25 @@ export default function AdminLogin() {
     // Store token temporarily to test it
     localStorage.setItem("ADMIN_TOKEN", token.trim());
 
-    // FIXED: Use the proxy URL for API calls
-    const API_BASE = window.__API_BASE__ || "/library/api-proxy.php?path=";
-
     try {
-      // Test if the token is valid by calling the validation endpoint
-      const response = await fetch(`${API_BASE}/api/admin/validate`, {
-        method: "GET",
-        headers: {
-          "X-Admin-Token": token.trim()
-        }
-      });
+      // Use the API client to validate the token
+      await validateAdminToken();
+      // Token is valid, proceed to staff dashboard
+      navigate("/staff");
+    } catch (error) {
+      // Clear invalid token
+      localStorage.removeItem("ADMIN_TOKEN");
 
-      if (response.ok) {
-        // Token is valid, proceed to staff dashboard
-        navigate("/staff");
-      } else if (response.status === 401) {
+      // Handle different error types
+      if (error.response?.status === 401) {
         setErr("Invalid admin token");
-        localStorage.removeItem("ADMIN_TOKEN");
-      } else if (response.status === 429) {
+      } else if (error.response?.status === 429) {
         setErr("Too many attempts. Please try again later.");
-        localStorage.removeItem("ADMIN_TOKEN");
+      } else if (error.message?.includes("Network Error") || error.code === "ERR_NETWORK") {
+        setErr("Network error - cannot connect to API");
       } else {
         setErr("Authentication failed");
-        localStorage.removeItem("ADMIN_TOKEN");
       }
-    } catch (error) {
-      setErr("Network error - cannot connect to API");
-      localStorage.removeItem("ADMIN_TOKEN");
     }
   };
 
