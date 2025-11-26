@@ -20,7 +20,7 @@ from models import Game
 from bgg_service import fetch_bgg_thing
 from schemas import BGGGameImport, CSVImport
 from exceptions import GameServiceError, GameNotFoundError, BGGServiceError, ValidationError, DatabaseError
-from config import HTTP_TIMEOUT, HTTP_RETRIES, RATE_LIMIT_ATTEMPTS, RATE_LIMIT_WINDOW
+from config import HTTP_TIMEOUT, HTTP_RETRIES, RATE_LIMIT_ATTEMPTS, RATE_LIMIT_WINDOW, CORS_ORIGINS
 
 # ------------------------------------------------------------------------------
 # Logging setup with structured logging
@@ -291,15 +291,19 @@ class CacheThumbsMiddleware:
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(CacheThumbsMiddleware)
 
-# CORS middleware
-cors_origins = [
+# CORS middleware - use environment variable or fallback to defaults
+cors_origins = CORS_ORIGINS or [
     "https://manaandmeeples.co.nz",
     "https://www.manaandmeeples.co.nz",
     "https://library.manaandmeeples.co.nz",
     "https://mana-meeples-library-web.onrender.com",
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
 ]
+
+# Always add localhost for development
+if "http://localhost:3000" not in cors_origins:
+    cors_origins = cors_origins + ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+logger.info(f"CORS origins configured: {cors_origins}")
 
 app.add_middleware(
     CORSMiddleware,
