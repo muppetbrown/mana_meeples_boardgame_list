@@ -17,6 +17,7 @@ export default function PublicCatalogue() {
   const [category, setCategory] = useState(searchParams.get("category") || "all");
   const [designer, setDesigner] = useState(searchParams.get("designer") || "");
   const [nzDesigner, setNzDesigner] = useState(searchParams.get("nz_designer") === "true");
+  const [players, setPlayers] = useState(searchParams.get("players") || "");
   const [sort, setSort] = useState(searchParams.get("sort") || "title_asc");
   const [page, setPage] = useState(parseInt(searchParams.get("page")) || 1);
   const [pageSize] = useState(24);
@@ -43,12 +44,13 @@ useEffect(() => {
   if (q) params.set("q", q);
   if (category !== "all") params.set("category", category);
   if (designer) params.set("designer", designer);
-  if (nzDesigner) params.set("nz_designer", "true"); // Add this line
+  if (nzDesigner) params.set("nz_designer", "true");
+  if (players) params.set("players", players);
   if (sort !== "title_asc") params.set("sort", sort);
   if (page !== 1) params.set("page", page.toString());
-  
+
   setSearchParams(params, { replace: true });
-}, [q, category, designer, nzDesigner, sort, page, setSearchParams]);
+}, [q, category, designer, nzDesigner, players, sort, page, setSearchParams]);
 
   // Fetch category counts
   useEffect(() => {
@@ -70,7 +72,7 @@ useEffect(() => {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    
+
     (async () => {
       try {
         const params = { q: qDebounced, page, page_size: pageSize, sort };
@@ -83,10 +85,13 @@ useEffect(() => {
         if (nzDesigner) {
            params.nz_designer = true;
         }
-        
+        if (players) {
+          params.players = parseInt(players);
+        }
+
         const data = await getPublicGames(params);
         if (cancelled) return;
-        
+
         setItems(data.items || []);
         setTotal(data.total || 0);
         setError(null);
@@ -101,7 +106,7 @@ useEffect(() => {
       }
     })();
     return () => { cancelled = true; };
-  }, [qDebounced, page, pageSize, category, designer, nzDesigner, sort]);
+  }, [qDebounced, page, pageSize, category, designer, nzDesigner, players, sort]);
 
   // Helper functions
   const updateCategory = (newCategory) => {
@@ -124,7 +129,8 @@ useEffect(() => {
     setQ("");
     setCategory("all");
     setDesigner("");
-    setNzDesigner(false); // Add this line
+    setNzDesigner(false);
+    setPlayers("");
     setSort("title_asc");
     setPage(1);
     setQuickSort(null);
@@ -145,6 +151,11 @@ useEffect(() => {
 
   const toggleNzDesigner = () => {
     setNzDesigner(!nzDesigner);
+    setPage(1);
+  };
+
+  const updatePlayers = (newPlayers) => {
+    setPlayers(newPlayers);
     setPage(1);
   };
 
@@ -170,9 +181,10 @@ useEffect(() => {
     if (q) count++;
     if (category !== "all") count++;
     if (designer) count++;
-    if (nzDesigner) count++; // Add this line
+    if (nzDesigner) count++;
+    if (players) count++;
     return count;
-  }, [q, category, designer, nzDesigner]);
+  }, [q, category, designer, nzDesigner, players]);
 
   // Skeleton loader component - smaller to prevent layout shift
   const SkeletonCard = () => (
@@ -343,7 +355,31 @@ useEffect(() => {
                       )}
                     </div>
                   </div>
-                  
+
+                  <div className="w-48">
+                    <label htmlFor="player-count-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Players
+                    </label>
+                    <select
+                      id="player-count-desktop"
+                      value={players}
+                      onChange={(e) => updatePlayers(e.target.value)}
+                      className="w-full min-h-[48px] px-4 py-3 text-base border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
+                      aria-label="Filter by player count"
+                    >
+                      <option value="">Any</option>
+                      <option value="1">1 player</option>
+                      <option value="2">2 players</option>
+                      <option value="3">3 players</option>
+                      <option value="4">4 players</option>
+                      <option value="5">5 players</option>
+                      <option value="6">6 players</option>
+                      <option value="7">7+ players</option>
+                      <option value="8">8+ players</option>
+                      <option value="10">10+ players</option>
+                    </select>
+                  </div>
+
                   <div className="w-64">
                     <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Sort By
@@ -387,7 +423,32 @@ useEffect(() => {
                   )}
                 </div>
 
-                {/* Row 2: Sort Dropdown + Direction Button */}
+                {/* Row 2: Player Count Dropdown */}
+                <div>
+                  <label htmlFor="player-count-mobile" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Players
+                  </label>
+                  <select
+                    id="player-count-mobile"
+                    value={players}
+                    onChange={(e) => updatePlayers(e.target.value)}
+                    className="w-full min-h-[48px] px-3 py-2.5 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
+                    aria-label="Filter by player count"
+                  >
+                    <option value="">Any number of players</option>
+                    <option value="1">1 player</option>
+                    <option value="2">2 players</option>
+                    <option value="3">3 players</option>
+                    <option value="4">4 players</option>
+                    <option value="5">5 players</option>
+                    <option value="6">6 players</option>
+                    <option value="7">7+ players</option>
+                    <option value="8">8+ players</option>
+                    <option value="10">10+ players</option>
+                  </select>
+                </div>
+
+                {/* Row 3: Sort Dropdown */}
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1.5">
                     Sort By
@@ -398,7 +459,7 @@ useEffect(() => {
                   />
                 </div>
 
-                {/* Row 3: Quick Action Buttons and NZ Designer Filter */}
+                {/* Row 4: Quick Action Buttons and NZ Designer Filter */}
                 <div className="grid grid-cols-3 gap-3">
                   <button
                     onClick={showNewestGames}
@@ -482,8 +543,8 @@ useEffect(() => {
               </div>
               
               {/* Active Search Status - Shared for both layouts */}
-              {(q || category !== "all" || designer || nzDesigner) && (
-                <div 
+              {(q || category !== "all" || designer || nzDesigner || players) && (
+                <div
                   className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 mt-4"
                   role="status"
                   aria-live="polite"
@@ -493,7 +554,7 @@ useEffect(() => {
                       <span aria-hidden="true">🔍</span>
                       <span>Active:</span>
                     </span>
-                    
+
                     {q && (
                       <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
                         <span>"{q}"</span>
@@ -506,7 +567,7 @@ useEffect(() => {
                         </button>
                       </span>
                     )}
-                    
+
                     {category !== "all" && (
                       <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
                         <span>{CATEGORY_LABELS[category]}</span>
@@ -519,7 +580,7 @@ useEffect(() => {
                         </button>
                       </span>
                     )}
-                    
+
                     {designer && (
                       <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
                         <span>{designer}</span>
@@ -540,6 +601,19 @@ useEffect(() => {
                           onClick={() => setNzDesigner(false)}
                           className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
                           aria-label="Remove NZ designer filter"
+                        >
+                          <span aria-hidden="true" className="text-sm leading-none">×</span>
+                        </button>
+                      </span>
+                    )}
+
+                    {players && (
+                      <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
+                        <span>{players} player{players === "1" ? "" : "s"}</span>
+                        <button
+                          onClick={() => updatePlayers("")}
+                          className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                          aria-label="Remove player count filter"
                         >
                           <span aria-hidden="true" className="text-sm leading-none">×</span>
                         </button>
