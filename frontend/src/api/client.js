@@ -52,6 +52,17 @@ ${body}`;
 
     console.error(msg);
     showOverlay(msg);
+
+    // Handle 401 errors by clearing token and redirecting to login
+    if (status === 401 && cfg.url?.includes("/api/admin")) {
+      console.warn("Admin token invalid or expired, clearing and redirecting to login");
+      localStorage.removeItem("ADMIN_TOKEN");
+      // Only redirect if we're not already on the login page
+      if (!window.location.pathname.includes("/staff/login")) {
+        window.location.href = window.location.origin + window.location.pathname.replace(/\/staff.*/, "/staff/login");
+      }
+    }
+
     return Promise.reject(err);
   }
 );
@@ -175,5 +186,11 @@ export async function getHealthCheck() {
 
 export async function getDbHealthCheck() {
   const r = await api.get("/api/health/db");
+  return r.data;
+}
+
+// Admin authentication
+export async function validateAdminToken() {
+  const r = await api.get("/api/admin/validate", { headers: getAdminHeaders() });
   return r.data;
 }
