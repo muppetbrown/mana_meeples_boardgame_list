@@ -5,20 +5,22 @@ export default function Pagination({ page, pageSize, total, onPage, showResultsC
 
   return (
     <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 shadow-lg border border-white/50">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
         {/* Results count */}
         {showResultsCount && (
-          <div className="text-sm text-slate-600 text-center sm:text-left">
+          <div className="text-xs sm:text-sm text-slate-600 text-left flex-shrink-0">
             <span className="font-bold text-emerald-600">
               {Math.min((page - 1) * pageSize + 1, total)}-{Math.min(page * pageSize, total)}
-            </span> of{" "}
+            </span>
+            <span className="hidden sm:inline"> of{" "}</span>
+            <span className="sm:hidden">/</span>
             <span className="font-bold text-emerald-600">{total}</span>
             <span className="hidden sm:inline"> games</span>
           </div>
         )}
 
         {/* Mobile-Optimized Pagination */}
-        <nav aria-label="Game results pagination" className="flex items-center justify-center gap-1 sm:gap-2">
+        <nav aria-label="Game results pagination" className="flex items-center justify-center gap-1 sm:gap-2 flex-shrink-0">
           {/* First page button - only show if not on first few pages */}
           {page > 3 && (
             <>
