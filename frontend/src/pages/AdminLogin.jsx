@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { validateAdminToken } from "../api/client";
+import { adminLogin } from "../api/client";
 
 export default function AdminLogin() {
   const [token, setToken] = useState("");
@@ -17,18 +17,12 @@ export default function AdminLogin() {
       return;
     }
 
-    // Store token temporarily to test it
-    localStorage.setItem("ADMIN_TOKEN", token.trim());
-
     try {
-      // Use the API client to validate the token
-      await validateAdminToken();
-      // Token is valid, proceed to staff dashboard
+      // Use new secure cookie-based login
+      await adminLogin(token.trim());
+      // Login successful, cookie is set automatically
       navigate("/staff");
     } catch (error) {
-      // Clear invalid token
-      localStorage.removeItem("ADMIN_TOKEN");
-
       // Handle different error types
       if (error.response?.status === 401) {
         setErr("Invalid admin token");

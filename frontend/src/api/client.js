@@ -10,7 +10,7 @@ const API_BASE =
 
 export const api = axios.create({
   baseURL: API_BASE,
-  withCredentials: false, // FIXED: Set to false for proxy setup
+  withCredentials: true, // FIXED: Set to true for cookie-based authentication
 });
 
 // --- move the overlay + interceptors HERE ---
@@ -53,10 +53,9 @@ ${body}`;
     console.error(msg);
     showOverlay(msg);
 
-    // Handle 401 errors by clearing token and redirecting to login
+    // Handle 401 errors by redirecting to login (cookie is cleared by server)
     if (status === 401 && cfg.url?.includes("/api/admin")) {
-      console.warn("Admin token invalid or expired, clearing and redirecting to login");
-      localStorage.removeItem("ADMIN_TOKEN");
+      console.warn("Admin session invalid or expired, redirecting to login");
       // Only redirect if we're not already on the login page
       if (!window.location.pathname.includes("/staff/login")) {
         window.location.href = window.location.origin + window.location.pathname.replace(/\/staff.*/, "/staff/login");
@@ -190,6 +189,16 @@ export async function getDbHealthCheck() {
 }
 
 // Admin authentication
+export async function adminLogin(token) {
+  const r = await api.post("/api/admin/login", { token });
+  return r.data;
+}
+
+export async function adminLogout() {
+  const r = await api.post("/api/admin/logout");
+  return r.data;
+}
+
 export async function validateAdminToken() {
   const r = await api.get("/api/admin/validate", { headers: getAdminHeaders() });
   return r.data;

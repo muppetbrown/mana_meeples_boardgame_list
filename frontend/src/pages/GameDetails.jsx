@@ -1,6 +1,7 @@
 // src/pages/GameDetails.jsx
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import DOMPurify from "dompurify";
 import { fetchJson, imageProxyUrl } from "../utils/api";
 import { labelFor } from "../constants/categories";
 
@@ -233,9 +234,15 @@ export default function GameDetails() {
                     <section>
                       <h2 className="font-bold text-slate-800 mb-4">About This Game</h2>
                       <div className="prose prose-slate max-w-none">
-                        <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">
-                          {game.description}
-                        </p>
+                        <div
+                          className="text-slate-700 leading-relaxed"
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(game.description, {
+                              ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li'],
+                              ALLOWED_ATTR: ['href', 'target', 'rel']
+                            })
+                          }}
+                        />
                       </div>
                     </section>
                   )}

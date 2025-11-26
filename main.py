@@ -2,25 +2,29 @@ import os
 import json
 import logging
 import time
+import secrets
 from typing import Optional, List, Dict, Any
 from datetime import datetime, timedelta
-from collections import defaultdict
+from collections import defaultdict, deque, OrderedDict
 
 import httpx
-from fastapi import FastAPI, Depends, Header, HTTPException, Query, Request, BackgroundTasks, Path
+from fastapi import FastAPI, Depends, Header, HTTPException, Query, Request, BackgroundTasks, Path, Cookie
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import case, select, func, and_, or_, text
 from sqlalchemy.orm import Session
 from starlette.types import ASGIApp, Receive, Scope, Send
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from database import SessionLocal, init_db, engine, db_ping, run_migrations
 from models import Game
 from bgg_service import fetch_bgg_thing
-from schemas import BGGGameImport, CSVImport
+from schemas import BGGGameImport, CSVImport, AdminLogin
 from exceptions import GameServiceError, GameNotFoundError, BGGServiceError, ValidationError, DatabaseError
-from config import HTTP_TIMEOUT, HTTP_RETRIES, RATE_LIMIT_ATTEMPTS, RATE_LIMIT_WINDOW, CORS_ORIGINS
+from config import HTTP_TIMEOUT, HTTP_RETRIES, RATE_LIMIT_ATTEMPTS, RATE_LIMIT_WINDOW, CORS_ORIGINS, SESSION_SECRET, SESSION_TIMEOUT_SECONDS
 
 # ------------------------------------------------------------------------------
 # Logging setup with structured logging
@@ -75,6 +79,10 @@ ADMIN_TOKEN = (os.getenv("ADMIN_TOKEN") or "").strip()
 
 # Rate limiting for admin authentication attempts
 admin_attempt_tracker = defaultdict(list)
+
+# Session storage for admin authentication
+# Format: {session_token: {"created_at": datetime, "ip": str}}
+admin_sessions: Dict[str, Dict[str, Any]] = {}
 
 # Thumbnail storage directory (using /tmp for Render free tier compatibility)
 # Note: /tmp is ephemeral and cleared on restart, but thumbnails can be re-cached from BGG URLs
@@ -157,6 +165,11 @@ CATEGORY_MAPPING = {
 # ------------------------------------------------------------------------------
 app = FastAPI(title="Mana & Meeples API", version="2.0.0")
 
+# Rate limiting setup
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Exception handlers
 @app.exception_handler(GameNotFoundError)
 async def game_not_found_handler(request: Request, exc: GameNotFoundError):
@@ -182,17 +195,29 @@ from collections import defaultdict, deque
 class PerformanceMonitor:
     def __init__(self):
         self.request_times = deque(maxlen=1000)  # Keep last 1000 requests
-        self.endpoint_stats = defaultdict(lambda: {"count": 0, "total_time": 0, "errors": 0})
+        self.endpoint_stats = OrderedDict()  # FIXED: Use OrderedDict to prevent unbounded growth
+        self.max_endpoints = 100  # Maximum unique endpoints to track
         self.slow_queries = deque(maxlen=100)  # Keep last 100 slow queries
-    
+
     def record_request(self, path: str, method: str, duration: float, status_code: int):
         self.request_times.append(duration)
         endpoint_key = f"{method} {path}"
-        stats = self.endpoint_stats[endpoint_key]
+
+        # Trim old endpoints if we've hit the limit (LRU eviction)
+        if endpoint_key not in self.endpoint_stats and len(self.endpoint_stats) >= self.max_endpoints:
+            self.endpoint_stats.popitem(last=False)  # Remove oldest endpoint
+
+        # Initialize stats if new endpoint
+        if endpoint_key not in self.endpoint_stats:
+            self.endpoint_stats[endpoint_key] = {"count": 0, "total_time": 0, "errors": 0}
+
+        # Move to end (mark as recently used)
+        stats = self.endpoint_stats.pop(endpoint_key)
         stats["count"] += 1
         stats["total_time"] += duration
         if status_code >= 400:
             stats["errors"] += 1
+        self.endpoint_stats[endpoint_key] = stats
         
         # Record slow queries (>2 seconds)
         if duration > 2.0:
@@ -563,25 +588,85 @@ def _error_response(message: str, error_code: str = "GENERAL_ERROR", details: An
         response["error"]["details"] = details
     return response
 
-def _require_admin_token(token: Optional[str], client_ip: str = "unknown"):
-    """Validate admin token with rate limiting"""
+def _create_session(client_ip: str) -> str:
+    """Create a new admin session and return session token"""
+    session_token = secrets.token_urlsafe(32)
+    admin_sessions[session_token] = {
+        "created_at": datetime.utcnow(),
+        "ip": client_ip
+    }
+    logger.info(f"Created new admin session from {client_ip}")
+    return session_token
+
+def _validate_session(session_token: Optional[str], client_ip: str) -> bool:
+    """Validate admin session token"""
+    if not session_token or session_token not in admin_sessions:
+        return False
+
+    session = admin_sessions[session_token]
+
+    # Check if session has expired
+    session_age = (datetime.utcnow() - session["created_at"]).total_seconds()
+    if session_age > SESSION_TIMEOUT_SECONDS:
+        logger.info(f"Session expired for {client_ip} (age: {session_age}s)")
+        del admin_sessions[session_token]
+        return False
+
+    # Optional: Verify IP hasn't changed (comment out if clients have dynamic IPs)
+    # if session["ip"] != client_ip:
+    #     logger.warning(f"Session IP mismatch: {session['ip']} != {client_ip}")
+    #     return False
+
+    return True
+
+def _cleanup_expired_sessions():
+    """Remove expired sessions from storage"""
+    current_time = datetime.utcnow()
+    expired_tokens = [
+        token for token, session in admin_sessions.items()
+        if (current_time - session["created_at"]).total_seconds() > SESSION_TIMEOUT_SECONDS
+    ]
+    for token in expired_tokens:
+        del admin_sessions[token]
+    if expired_tokens:
+        logger.info(f"Cleaned up {len(expired_tokens)} expired sessions")
+
+def _revoke_session(session_token: Optional[str]):
+    """Revoke/logout an admin session"""
+    if session_token and session_token in admin_sessions:
+        del admin_sessions[session_token]
+        logger.info(f"Revoked admin session")
+
+def _require_admin_token(token: Optional[str], session_cookie: Optional[str] = None, client_ip: str = "unknown"):
+    """
+    Validate admin authentication with rate limiting.
+    Checks session cookie first (secure method), falls back to header token (legacy).
+    """
+    # Clean up expired sessions periodically
+    _cleanup_expired_sessions()
+
+    # Try session cookie first (preferred method)
+    if session_cookie and _validate_session(session_cookie, client_ip):
+        return  # Valid session, authentication successful
+
+    # Fall back to legacy header-based token authentication
     current_time = time.time()
-    
+
     # Clean old attempts from tracker (older than rate limit window)
     cutoff_time = current_time - RATE_LIMIT_WINDOW
     admin_attempt_tracker[client_ip] = [
-        attempt_time for attempt_time in admin_attempt_tracker[client_ip] 
+        attempt_time for attempt_time in admin_attempt_tracker[client_ip]
         if attempt_time > cutoff_time
     ]
-    
+
     # Check if rate limited
     if len(admin_attempt_tracker[client_ip]) >= RATE_LIMIT_ATTEMPTS:
         logger.warning(f"Rate limited admin token attempts from {client_ip}")
         raise HTTPException(
-            status_code=429, 
+            status_code=429,
             detail="Too many failed authentication attempts. Please try again later."
         )
-    
+
     # Validate token
     if not ADMIN_TOKEN or token != ADMIN_TOKEN:
         # Record failed attempt
@@ -707,9 +792,14 @@ async def health_check_db(db: Session = Depends(get_db)):
 # Debug endpoints
 # ------------------------------------------------------------------------------
 @app.get("/api/debug/categories")
-async def debug_categories(x_admin_token: Optional[str] = Header(None), db: Session = Depends(get_db)):
+async def debug_categories(
+    request: Request,
+    x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
+    db: Session = Depends(get_db)
+):
     """Debug endpoint to see all unique categories in the database"""
-    _require_admin_token(x_admin_token, "unknown")
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
     # Only select the columns we need to avoid missing column errors
     games = db.execute(select(Game.id, Game.categories)).all()
     all_categories = []
@@ -729,12 +819,14 @@ async def debug_categories(x_admin_token: Optional[str] = Header(None), db: Sess
 
 @app.get("/api/debug/database-info")
 async def debug_database_info(
+    request: Request,
     limit: Optional[int] = Query(None, description="Number of games to return (default: all)"),
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
     """Debug endpoint to see database structure and sample data"""
-    _require_admin_token(x_admin_token, "unknown")
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
     # Select all columns from your schema
     query = select(
         Game.id, Game.title, Game.categories, Game.year, 
@@ -791,16 +883,20 @@ async def debug_database_info(
 
 
 @app.get("/api/debug/performance")
-async def get_performance_stats(request: Request, x_admin_token: Optional[str] = Header(None)):
+async def get_performance_stats(
+    request: Request,
+    x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None)
+):
     """Get performance monitoring stats (admin only)"""
-    client_ip = request.client.host if request.client else "unknown"
-    _require_admin_token(x_admin_token, client_ip)
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
     return performance_monitor.get_stats()
 
 # ------------------------------------------------------------------------------
 # Public API endpoints
 # ------------------------------------------------------------------------------
 @app.get("/api/public/games")
+@limiter.limit("100/minute")  # Allow 100 requests per minute per IP
 async def get_public_games(
     request: Request,
     q: str = Query("", description="Search query"),
@@ -954,6 +1050,7 @@ async def get_public_games(
     }
 
 @app.get("/api/public/games/{game_id}")
+@limiter.limit("120/minute")  # Allow 120 game detail views per minute
 async def get_public_game(
     request: Request,
     game_id: int = Path(..., description="Game ID"),
@@ -967,14 +1064,16 @@ async def get_public_game(
     return _game_to_dict(request, game)
 
 @app.get("/api/public/category-counts")
-async def get_category_counts(db: Session = Depends(get_db)):
+@limiter.limit("60/minute")  # Category counts change infrequently
+async def get_category_counts(request: Request, db: Session = Depends(get_db)):
     """Get counts for each category"""
     # Only select the columns we need to avoid missing column errors
     games = db.execute(select(Game.id, Game.mana_meeple_category)).all()
     return _calculate_category_counts(games)
 
 @app.get("/api/public/games/by-designer/{designer_name}")
-async def get_games_by_designer(designer_name: str, db: Session = Depends(get_db)):
+@limiter.limit("60/minute")  # Designer searches
+async def get_games_by_designer(request: Request, designer_name: str, db: Session = Depends(get_db)):
     """Get games by a specific designer"""
     try:
         designer_filter = f"%{designer_name}%"
@@ -988,7 +1087,8 @@ async def get_games_by_designer(designer_name: str, db: Session = Depends(get_db
         raise HTTPException(status_code=500, detail=f"Failed to fetch games by designer: {str(e)}")
 
 @app.get("/api/public/image-proxy")
-async def image_proxy(url: str = Query(..., description="Image URL to proxy")):
+@limiter.limit("200/minute")  # Higher limit for image loading
+async def image_proxy(request: Request, url: str = Query(..., description="Image URL to proxy")):
     """Proxy external images with caching headers"""
     try:
         response = await httpx_client.get(url)
@@ -1017,12 +1117,14 @@ async def image_proxy(url: str = Query(..., description="Image URL to proxy")):
 @app.post("/api/admin/games")
 async def create_game(
     game_data: Dict[str, Any],
+    request: Request,
     background_tasks: BackgroundTasks,
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
     """Create a new game (admin only)"""
-    _require_admin_token(x_admin_token)
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
     
     try:
         # Check if game already exists by BGG ID
@@ -1083,11 +1185,12 @@ async def import_from_bgg(
     bgg_id: int = Query(..., description="BGG game ID"),
     force: bool = Query(False, description="Force reimport if exists"),
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db)
 ):
     """Import game from BoardGameGeek (admin only)"""
-    _require_admin_token(x_admin_token, _get_client_ip(request))
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
     
     # Validate BGG ID
     if bgg_id <= 0 or bgg_id > 999999:
@@ -1214,10 +1317,11 @@ async def bulk_import_csv(
     background_tasks: BackgroundTasks,
     request: Request,
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
     """Bulk import games from CSV data (admin only)"""
-    _require_admin_token(x_admin_token, _get_client_ip(request))
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
     
     try:
         csv_text = csv_data.get("csv_data", "")
@@ -1337,10 +1441,11 @@ async def bulk_categorize_csv(
     csv_data: dict,
     request: Request,
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
     """Bulk categorize existing games from CSV data (admin only)"""
-    _require_admin_token(x_admin_token, _get_client_ip(request))
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
     
     try:
         csv_text = csv_data.get("csv_data", "")
@@ -1423,10 +1528,11 @@ async def reimport_all_games(
     background_tasks: BackgroundTasks,
     request: Request,
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
     """Re-import all existing games to get enhanced BGG data"""
-    _require_admin_token(x_admin_token, _get_client_ip(request))
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
     
     games = db.execute(select(Game).where(Game.bgg_id.isnot(None))).scalars().all()
     
@@ -1440,10 +1546,11 @@ async def bulk_update_nz_designers(
     csv_data: dict,
     request: Request,
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
     """Bulk update NZ designer status from CSV (admin only)"""
-    _require_admin_token(x_admin_token, _get_client_ip(request))
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
     
     try:
         csv_text = csv_data.get("csv_data", "")
@@ -1503,24 +1610,104 @@ async def bulk_update_nz_designers(
         raise HTTPException(status_code=500, detail=f"Bulk update failed: {str(e)}")
 
 
+# ------------------------------------------------------------------------------
+# Admin Authentication Endpoints
+# ------------------------------------------------------------------------------
+
+@app.post("/api/admin/login")
+async def admin_login(
+    request: Request,
+    credentials: AdminLogin,
+    response: Response
+):
+    """
+    Admin login endpoint - validates token and creates secure session cookie.
+    This replaces the insecure localStorage-based authentication.
+    """
+    client_ip = _get_client_ip(request)
+    current_time = time.time()
+
+    # Clean old attempts from tracker
+    cutoff_time = current_time - RATE_LIMIT_WINDOW
+    admin_attempt_tracker[client_ip] = [
+        attempt_time for attempt_time in admin_attempt_tracker[client_ip]
+        if attempt_time > cutoff_time
+    ]
+
+    # Check if rate limited
+    if len(admin_attempt_tracker[client_ip]) >= RATE_LIMIT_ATTEMPTS:
+        logger.warning(f"Rate limited admin login attempts from {client_ip}")
+        raise HTTPException(
+            status_code=429,
+            detail="Too many login attempts. Please try again later."
+        )
+
+    # Validate admin token
+    if not ADMIN_TOKEN or credentials.token != ADMIN_TOKEN:
+        admin_attempt_tracker[client_ip].append(current_time)
+        logger.warning(f"Invalid admin login attempt from {client_ip}")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    # Create session
+    session_token = _create_session(client_ip)
+
+    # Set httpOnly secure cookie
+    response.set_cookie(
+        key="admin_session",
+        value=session_token,
+        httponly=True,  # Prevents JavaScript access (XSS protection)
+        secure=True,     # Only sent over HTTPS
+        samesite="lax",  # CSRF protection
+        max_age=SESSION_TIMEOUT_SECONDS,
+        path="/"
+    )
+
+    logger.info(f"Successful admin login from {client_ip}")
+    return {
+        "success": True,
+        "message": "Login successful",
+        "expires_in": SESSION_TIMEOUT_SECONDS
+    }
+
+
+@app.post("/api/admin/logout")
+async def admin_logout(
+    response: Response,
+    admin_session: Optional[str] = Cookie(None)
+):
+    """
+    Admin logout endpoint - revokes session and clears cookie.
+    """
+    # Revoke session
+    _revoke_session(admin_session)
+
+    # Clear cookie
+    response.delete_cookie(key="admin_session", path="/")
+
+    logger.info("Admin logout")
+    return {"success": True, "message": "Logged out successfully"}
+
+
 @app.get("/api/admin/validate")
 async def validate_admin_token(
     request: Request,
-    x_admin_token: Optional[str] = Header(None)
+    x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None)
 ):
-    """Validate admin token (admin only)"""
-    _require_admin_token(x_admin_token, _get_client_ip(request))
-    return {"valid": True, "message": "Token is valid"}
+    """Validate admin authentication (checks both session cookie and header token)"""
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
+    return {"valid": True, "message": "Authentication valid"}
 
 
 @app.get("/api/admin/games")
 async def get_admin_games(
     request: Request,
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
     """Get all games for admin interface"""
-    _require_admin_token(x_admin_token, _get_client_ip(request))
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
 
     games = db.execute(select(Game)).scalars().all()
     return [_game_to_dict(None, game) for game in games]
@@ -1531,10 +1718,11 @@ async def get_admin_game(
     request: Request,
     game_id: int = Path(..., description="Game ID"),
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
     """Get single game for admin interface"""
-    _require_admin_token(x_admin_token, _get_client_ip(request))
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
     
     game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
     if not game:
@@ -1549,10 +1737,11 @@ async def update_admin_game(
     request: Request,
     game_id: int = Path(..., description="Game ID"),
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
     """Update game (admin only)"""
-    _require_admin_token(x_admin_token, _get_client_ip(request))
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
     
     game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
     if not game:
@@ -1599,10 +1788,11 @@ async def update_admin_game_post(
     request: Request,
     game_id: int = Path(..., description="Game ID"),
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
     """Update game via POST (admin only) - alternative to PUT for proxy compatibility"""
-    _require_admin_token(x_admin_token, _get_client_ip(request))
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
 
     game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
     if not game:
@@ -1646,10 +1836,11 @@ async def delete_admin_game(
     request: Request,
     game_id: int = Path(..., description="Game ID"),
     x_admin_token: Optional[str] = Header(None),
+    admin_session: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ):
     """Delete game (admin only)"""
-    _require_admin_token(x_admin_token, _get_client_ip(request))
+    _require_admin_token(x_admin_token, admin_session, _get_client_ip(request))
 
     game = db.execute(select(Game).where(Game.id == game_id)).scalar_one_or_none()
     if not game:
