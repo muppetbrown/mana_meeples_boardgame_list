@@ -706,8 +706,9 @@ async def health_check_db(db: Session = Depends(get_db)):
 # Debug endpoints
 # ------------------------------------------------------------------------------
 @app.get("/api/debug/categories")
-async def debug_categories(db: Session = Depends(get_db)):
+async def debug_categories(x_admin_token: Optional[str] = Header(None), db: Session = Depends(get_db)):
     """Debug endpoint to see all unique categories in the database"""
+    _require_admin_token(x_admin_token, "unknown")
     # Only select the columns we need to avoid missing column errors
     games = db.execute(select(Game.id, Game.categories)).all()
     all_categories = []
@@ -728,9 +729,11 @@ async def debug_categories(db: Session = Depends(get_db)):
 @app.get("/api/debug/database-info")
 async def debug_database_info(
     limit: Optional[int] = Query(None, description="Number of games to return (default: all)"),
+    x_admin_token: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ):
     """Debug endpoint to see database structure and sample data"""
+    _require_admin_token(x_admin_token, "unknown")
     # Select all columns from your schema
     query = select(
         Game.id, Game.title, Game.categories, Game.year, 
