@@ -6,6 +6,7 @@ import { CATEGORY_KEYS, CATEGORY_LABELS } from "../constants/categories";
 import GameCardPublic from "../components/public/GameCardPublic";
 import SortSelect from "../components/public/SortSelect";
 import SearchBox from "../components/public/SearchBox";
+import Pagination from "../components/public/Pagination";
 
 export default function PublicCatalogue() {
   // Use URL parameters to preserve state
@@ -32,11 +33,24 @@ export default function PublicCatalogue() {
   // Quick search shortcuts
   const [quickSort, setQuickSort] = useState(null);
 
+  // Scroll to top button visibility
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
   // Debounce search input - faster response
   useEffect(() => {
     const id = setTimeout(() => setQDebounced(q), 150);
     return () => clearTimeout(id);
   }, [q]);
+
+  // Handle scroll for "back to top" button
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
 // Update URL when filters change
 useEffect(() => {
@@ -163,7 +177,7 @@ useEffect(() => {
   const shareGame = (game) => {
     const url = `${window.location.origin}/game/${game.id}`;
     const text = `Check out ${game.title} - ${game.min_players || '?'}-${game.max_players || '?'} players, ${game.playing_time || '?'} min`;
-    
+
     if (navigator.share) {
       navigator.share({
         title: game.title,
@@ -174,6 +188,14 @@ useEffect(() => {
       navigator.clipboard.writeText(`${text} ${url}`);
       // Could show a toast notification here
     }
+  };
+
+  // Scroll to top function
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   };
 
   const activeFiltersCount = useMemo(() => {
@@ -852,113 +874,62 @@ useEffect(() => {
                 </div>
               ) : (
                 <>
-                  {/* Mobile-Optimized Results Summary & Pagination */}
-                  <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 shadow-lg border border-white/50 mb-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                      {/* Results count */}
-                      <div className="text-sm text-slate-600 text-center sm:text-left">
-                        <span className="font-bold text-emerald-600">
-                          {Math.min((page - 1) * pageSize + 1, total)}-{Math.min(page * pageSize, total)}
-                        </span> of{" "}
-                        <span className="font-bold text-emerald-600">{total}</span>
-                        <span className="hidden sm:inline"> games</span>
-                      </div>
-                      
-                      {/* Mobile-Optimized Pagination */}
-                      <nav aria-label="Game results pagination" className="flex items-center justify-center gap-1 sm:gap-2">
-                        {/* First page button - only show if not on first few pages */}
-                        {page > 3 && (
-                          <>
-                            <button
-                              onClick={() => setPage(1)}
-                              className="px-2 sm:px-3 py-2 text-sm border rounded hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
-                              aria-label="Go to first page"
-                            >
-                              1
-                            </button>
-                            <span className="text-slate-400 px-1" aria-hidden="true">...</span>
-                          </>
-                        )}
-                        
-                        {/* Previous button */}
-                        <button
-                          onClick={() => setPage(page - 1)}
-                          disabled={page <= 1}
-                          className="px-2 sm:px-3 py-2 text-sm border rounded disabled:opacity-50 hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
-                          aria-label="Previous page"
-                        >
-                          <span className="hidden sm:inline">← Prev</span>
-                          <span className="sm:hidden" aria-hidden="true">←</span>
-                        </button>
-                        
-                        {/* Page numbers - show current and adjacent */}
-                        {Array.from({ length: Math.min(3, Math.ceil(total / pageSize)) }, (_, i) => {
-                          const pageNum = Math.max(1, page - 1) + i;
-                          if (pageNum > Math.ceil(total / pageSize)) return null;
-                          
-                          return (
-                            <button
-                              key={pageNum}
-                              onClick={() => setPage(pageNum)}
-                              className={`px-2 sm:px-3 py-2 text-sm rounded min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 transition-colors ${
-                                pageNum === page
-                                  ? "bg-emerald-500 text-white focus:ring-emerald-300"
-                                  : "border hover:bg-emerald-50 focus:ring-emerald-300"
-                              }`}
-                              aria-label={pageNum === page ? `Current page ${pageNum}` : `Go to page ${pageNum}`}
-                              aria-current={pageNum === page ? "page" : undefined}
-                            >
-                              {pageNum}
-                            </button>
-                          );
-                        })}
-                        
-                        {/* Next button */}
-                        <button
-                          onClick={() => setPage(page + 1)}
-                          disabled={page >= Math.ceil(total / pageSize)}
-                          className="px-2 sm:px-3 py-2 text-sm border rounded disabled:opacity-50 hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
-                          aria-label="Next page"
-                        >
-                          <span className="hidden sm:inline">Next →</span>
-                          <span className="sm:hidden" aria-hidden="true">→</span>
-                        </button>
-
-                        {/* Last page button - only show if far from end */}
-                        {page < Math.ceil(total / pageSize) - 2 && (
-                          <>
-                            <span className="text-slate-400 px-1" aria-hidden="true">...</span>
-                            <button
-                              onClick={() => setPage(Math.ceil(total / pageSize))}
-                              className="px-2 sm:px-3 py-2 text-sm border rounded hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
-                              aria-label="Go to last page"
-                            >
-                              {Math.ceil(total / pageSize)}
-                            </button>
-                          </>
-                        )}
-                      </nav>
-                    </div>
-                  </div>
+                  {/* Top Pagination */}
+                  <Pagination
+                    page={page}
+                    pageSize={pageSize}
+                    total={total}
+                    onPage={setPage}
+                    showResultsCount={true}
+                  />
 
                   {/* Game Cards Grid with lazy loading */}
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 mb-6">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 my-6">
                     {items.map((game) => (
                       <div key={game.id} className="transform transition-all duration-300 hover:scale-105 hover:z-50 relative">
-                        <GameCardPublic 
-                          game={game} 
+                        <GameCardPublic
+                          game={game}
                           onShare={() => shareGame(game)}
                           lazy={true}
                         />
                       </div>
                     ))}
                   </div>
+
+                  {/* Bottom Pagination */}
+                  <Pagination
+                    page={page}
+                    pageSize={pageSize}
+                    total={total}
+                    onPage={setPage}
+                    showResultsCount={false}
+                  />
                 </>
               )}
             </section>
           </main>
         </div>
       </div>
+
+      {/* Floating Back to Top Button */}
+      {showScrollTop && (
+        <button
+          onClick={scrollToTop}
+          className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-full shadow-2xl hover:shadow-emerald-500/50 hover:scale-110 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-emerald-300 focus:ring-offset-2 group"
+          aria-label="Scroll back to top"
+          title="Back to top"
+        >
+          <svg
+            className="w-6 h-6 transition-transform group-hover:-translate-y-1"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+          </svg>
+        </button>
+      )}
 
       <style jsx>{`
         .scrollbar-hide {
