@@ -271,9 +271,10 @@ useEffect(() => {
                 Search and Filter Games
               </h2>
 
-              {/* Desktop Layout - Compact Single Row */}
+              {/* Desktop Layout - Two Rows */}
               <div className="hidden lg:block">
-                <div className="flex gap-3 items-end">
+                {/* Row 1: Search + Players */}
+                <div className="flex gap-3 items-end mb-3">
                   {/* Search - Takes most space */}
                   <div className="flex-1 min-w-0">
                     <label htmlFor="game-search-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
@@ -296,8 +297,8 @@ useEffect(() => {
                     </div>
                   </div>
 
-                  {/* Players Dropdown - Compact */}
-                  <div className="w-36">
+                  {/* Players Dropdown */}
+                  <div className="w-40">
                     <label htmlFor="player-count-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Players
                     </label>
@@ -309,19 +310,22 @@ useEffect(() => {
                       aria-label="Filter by player count"
                     >
                       <option value="">Any</option>
-                      <option value="1">1p</option>
-                      <option value="2">2p</option>
-                      <option value="3">3p</option>
-                      <option value="4">4p</option>
-                      <option value="5">5p</option>
-                      <option value="6">6p</option>
-                      <option value="7">7p+</option>
-                      <option value="8">8p+</option>
-                      <option value="10">10p+</option>
+                      <option value="1">1 player</option>
+                      <option value="2">2 players</option>
+                      <option value="3">3 players</option>
+                      <option value="4">4 players</option>
+                      <option value="5">5 players</option>
+                      <option value="6">6 players</option>
+                      <option value="7">7+ players</option>
+                      <option value="8">8+ players</option>
+                      <option value="10">10+ players</option>
                     </select>
                   </div>
+                </div>
 
-                  {/* Quick Action Buttons - Compact */}
+                {/* Row 2: Quick Action Buttons + Sort + Clear */}
+                <div className="flex gap-3 items-center">
+                  {/* Quick Action Buttons */}
                   <div className="flex gap-2">
                     <button
                       onClick={showNewestGames}
@@ -404,39 +408,34 @@ useEffect(() => {
                     </button>
                   </div>
 
-                  {/* Sort - Compact */}
-                  <div className="w-56">
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                      Sort By
-                    </label>
+                  {/* Sort - Takes remaining space */}
+                  <div className="flex-1">
                     <SortSelect
                       sort={sort}
                       onChange={updateSort}
                     />
                   </div>
 
-                  {/* Clear Filters - Compact Icon Button */}
+                  {/* Clear Filters */}
                   {activeFiltersCount > 0 && (
-                    <div className="flex items-end">
-                      <button
-                        onClick={clearAllFilters}
-                        className="
-                          min-h-[48px] px-4 py-2 text-sm font-medium rounded-xl
-                          bg-slate-100 text-slate-800 hover:bg-slate-200
-                          border-2 border-slate-300 hover:border-slate-400
-                          transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2
-                        "
-                        aria-label={`Clear all ${activeFiltersCount} active filters`}
-                        title={`Clear ${activeFiltersCount} filters`}
-                      >
-                        <span className="flex items-center gap-2">
-                          <span aria-hidden="true">🗑️</span>
-                          <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
-                            {activeFiltersCount}
-                          </span>
+                    <button
+                      onClick={clearAllFilters}
+                      className="
+                        min-h-[48px] px-4 py-2 text-sm font-medium rounded-xl
+                        bg-slate-100 text-slate-800 hover:bg-slate-200
+                        border-2 border-slate-300 hover:border-slate-400
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2
+                      "
+                      aria-label={`Clear all ${activeFiltersCount} active filters`}
+                      title={`Clear ${activeFiltersCount} filters`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span aria-hidden="true">🗑️</span>
+                        <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                          {activeFiltersCount}
                         </span>
-                      </button>
-                    </div>
+                      </span>
+                    </button>
                   )}
                 </div>
 
