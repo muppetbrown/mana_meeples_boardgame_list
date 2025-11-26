@@ -386,86 +386,19 @@ useEffect(() => {
                     </div>
                   )}
                 </div>
-                
-                {/* Row 2: First 2 Sort Buttons */}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => updateSort('title_asc')}
-                    className={`
-                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
-                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                      ${sort.startsWith('title') 
-                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
-                        : "bg-white text-slate-700 border-2 border-slate-300 hover:bg-emerald-50 hover:border-emerald-300 focus:ring-emerald-300"
-                      }
-                    `}
-                    aria-pressed={sort.startsWith('title')}
-                  >
-                    <span className="flex items-center justify-center gap-1.5">
-                      <span>Title</span>
-                      <span aria-hidden="true">{sort === 'title_desc' ? '↓' : '↑'}</span>
-                    </span>
-                  </button>
-                  
-                  <button
-                    onClick={() => updateSort('year_desc')}
-                    className={`
-                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
-                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                      ${sort.startsWith('year') 
-                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
-                        : "bg-white text-slate-700 border-2 border-slate-300 hover:bg-emerald-50 hover:border-emerald-300 focus:ring-emerald-300"
-                      }
-                    `}
-                    aria-pressed={sort.startsWith('year')}
-                  >
-                    <span className="flex items-center justify-center gap-1.5">
-                      <span>Year</span>
-                      <span aria-hidden="true">{sort === 'year_asc' ? '↑' : '↓'}</span>
-                    </span>
-                  </button>
+
+                {/* Row 2: Sort Dropdown + Direction Button */}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Sort By
+                  </label>
+                  <SortSelect
+                    sort={sort}
+                    onChange={updateSort}
+                  />
                 </div>
-                
-                {/* Row 3: Second 2 Sort Buttons */}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => updateSort('rating_desc')}
-                    className={`
-                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
-                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                      ${sort.startsWith('rating') 
-                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
-                        : "bg-white text-slate-700 border-2 border-slate-300 hover:bg-emerald-50 hover:border-emerald-300 focus:ring-emerald-300"
-                      }
-                    `}
-                    aria-pressed={sort.startsWith('rating')}
-                  >
-                    <span className="flex items-center justify-center gap-1.5">
-                      <span>Rating</span>
-                      <span aria-hidden="true">{sort === 'rating_asc' ? '↑' : '↓'}</span>
-                    </span>
-                  </button>
-                  
-                  <button
-                    onClick={() => updateSort('time_asc')}
-                    className={`
-                      min-h-[48px] px-3 py-2.5 text-sm font-medium rounded-xl 
-                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                      ${sort.startsWith('time') 
-                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
-                        : "bg-white text-slate-700 border-2 border-slate-300 hover:bg-emerald-50 hover:border-emerald-300 focus:ring-emerald-300"
-                      }
-                    `}
-                    aria-pressed={sort.startsWith('time')}
-                  >
-                    <span className="flex items-center justify-center gap-1.5">
-                      <span>Time</span>
-                      <span aria-hidden="true">{sort === 'time_desc' ? '↓' : '↑'}</span>
-                    </span>
-                  </button>
-                </div>
-                
-                {/* Row 4: Quick Action Buttons and NZ Designer Filter */}
+
+                {/* Row 3: Quick Action Buttons and NZ Designer Filter */}
                 <div className="grid grid-cols-3 gap-3">
                   <button
                     onClick={showNewestGames}

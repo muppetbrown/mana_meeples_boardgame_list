@@ -70,64 +70,82 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
     });
   }, [sort, getCurrentSortKey, getCurrentDirection]);
 
+  const handleFieldChange = (e) => {
+    const newKey = e.target.value;
+    const option = sortOptions.find(opt => opt.key === newKey);
+    const newSort = `${newKey}_${option.defaultDir}`;
+    console.log(`Changing sort field: ${sort} → ${newSort}`);
+    onChange(newSort);
+  };
+
+  const handleDirectionToggle = () => {
+    const currentKey = getCurrentSortKey();
+    const currentDir = getCurrentDirection();
+    const newDir = currentDir === 'asc' ? 'desc' : 'asc';
+    const newSort = `${currentKey}_${newDir}`;
+    console.log(`Toggling sort direction: ${sort} → ${newSort}`);
+    onChange(newSort);
+  };
+
+  const currentKey = getCurrentSortKey();
+  const currentDir = getCurrentDirection();
+  const directionIcon = currentDir === 'desc' ? '↓' : '↑';
+  const directionText = currentDir === 'desc' ? 'descending' : 'ascending';
+
   return (
     <div className="w-full">
       {/* Screen reader label */}
       <span className="sr-only">Choose how to sort games</span>
-      
-      {/* Grid layout for sort buttons */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {sortOptions.map(option => {
-          const isActive = getCurrentSortKey() === option.key;
-          const direction = isActive ? getCurrentDirection() : option.defaultDir;
-          const directionIcon = direction === 'desc' ? '↓' : '↑';
-          const directionText = direction === 'desc' ? 'descending' : 'ascending';
-          
-          return (
-            <button
-              key={option.key}
-              onClick={() => handleSortClick(option.key)}
-              className={`
-                group relative px-3 py-2.5 text-sm font-medium rounded-lg border-2 
-                transition-all duration-200 min-h-[44px]
-                focus:outline-none focus:ring-3 focus:ring-offset-2
-                ${isActive 
-                  ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg focus:ring-emerald-300 transform scale-105' 
-                  : 'bg-white text-slate-700 border-slate-300 hover:bg-emerald-50 hover:border-emerald-300 focus:ring-emerald-300 hover:shadow-md'
-                }
-              `}
-              title={`${option.description}. Currently ${directionText}. Click to ${isActive ? 'toggle direction' : 'select this sort option'}.`}
-              aria-pressed={isActive}
-              aria-describedby={`sort-${option.key}-help`}
-            >
-              <span className="flex items-center justify-center gap-1.5">
-                <span>{option.label}</span>
-                <span 
-                  className={`text-sm transition-transform duration-200 ${
-                    isActive ? 'scale-110' : 'opacity-75'
-                  }`}
-                  aria-hidden="true"
-                >
-                  {directionIcon}
-                </span>
-              </span>
-              
-              {/* Hidden help text for screen readers */}
-              <span id={`sort-${option.key}-help`} className="sr-only">
-                {option.description}. Current direction: {directionText}.
-              </span>
-            </button>
-          );
-        })}
+
+      {/* Dropdown + Direction Button Layout */}
+      <div className="flex gap-2">
+        {/* Dropdown for sort field */}
+        <select
+          value={currentKey}
+          onChange={handleFieldChange}
+          className="
+            flex-1 px-3 py-2.5 text-sm font-medium rounded-lg border-2 border-slate-300
+            bg-white text-slate-700
+            hover:border-emerald-300 hover:bg-emerald-50
+            focus:outline-none focus:ring-3 focus:ring-emerald-300 focus:ring-offset-2 focus:border-emerald-500
+            transition-all duration-200 min-h-[44px] cursor-pointer
+          "
+          aria-label="Choose sort field"
+        >
+          {sortOptions.map(option => (
+            <option key={option.key} value={option.key}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+
+        {/* Direction toggle button */}
+        <button
+          onClick={handleDirectionToggle}
+          className="
+            px-4 py-2.5 text-sm font-medium rounded-lg border-2
+            bg-emerald-500 text-white border-emerald-500 shadow-lg
+            hover:bg-emerald-600 hover:border-emerald-600
+            focus:outline-none focus:ring-3 focus:ring-emerald-300 focus:ring-offset-2
+            transition-all duration-200 min-h-[44px] min-w-[44px]
+            flex items-center justify-center
+          "
+          title={`Currently sorting ${directionText}. Click to toggle direction.`}
+          aria-label={`Toggle sort direction. Currently ${directionText}`}
+        >
+          <span className="text-lg" aria-hidden="true">
+            {directionIcon}
+          </span>
+        </button>
       </div>
-      
+
       {/* Debug info - remove in production */}
       {process.env.NODE_ENV === 'development' && (
         <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600">
           <strong>Debug:</strong> sort="{sort}", key="{getCurrentSortKey()}", dir="{getCurrentDirection()}"
         </div>
       )}
-      
+
       {/* Current sort status for screen readers */}
       <div className="sr-only" aria-live="polite" role="status">
         Currently sorting by {getCurrentSortKey()} in {getCurrentDirection() === 'desc' ? 'descending' : 'ascending'} order
