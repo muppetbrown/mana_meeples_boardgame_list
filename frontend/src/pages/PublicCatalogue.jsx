@@ -227,24 +227,21 @@ useEffect(() => {
           </header>
 
           <main id="main-content">
-            {/* Compact WCAG AAA Compliant Search and Filter Controls */}
-            {/* Redesigned Search and Filter Controls */}
-            {/* Redesigned Search and Filter Controls */}
-            {/* Redesigned Search and Filter Controls */}
-            <section 
-              className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 lg:p-6 shadow-lg border border-slate-200/50 mb-6"
+            {/* Compact Search and Filter Controls */}
+            <section
+              className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 lg:p-5 shadow-lg border border-slate-200/50 mb-6"
               aria-labelledby="search-filters-heading"
             >
               {/* Screen reader heading */}
               <h2 id="search-filters-heading" className="sr-only">
                 Search and Filter Games
               </h2>
-              
-              {/* Desktop Layout - Hidden on mobile */}
-              <div className="hidden md:block space-y-4">
-                {/* First Row: Search + Top 2 Sort Buttons (Title, Year) */}
-                <div className="flex gap-4 items-end">
-                  <div className="flex-1">
+
+              {/* Desktop Layout - Compact Single Row */}
+              <div className="hidden lg:block">
+                <div className="flex gap-3 items-end">
+                  {/* Search - Takes most space */}
+                  <div className="flex-1 min-w-0">
                     <label htmlFor="game-search-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Search Games
                     </label>
@@ -253,110 +250,20 @@ useEffect(() => {
                         id="game-search-desktop"
                         value={q}
                         onChange={updateSearch}
-                        placeholder="Search by title, designer, or keyword..."
+                        placeholder="Search by title..."
                         aria-describedby="search-help-desktop"
-                        className="w-full min-h-[48px] px-4 py-3 text-base border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
+                        className="w-full min-h-[48px] px-4 py-3 pr-10 text-base border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
                       />
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
                         <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                       </div>
                     </div>
-                    {q && (
-                      <div id="search-help-desktop" className="mt-1 text-sm text-slate-600">
-                        <span className="font-medium">
-                          {total} game{total !== 1 ? 's' : ''} found
-                        </span>
-                      </div>
-                    )}
-                    
-                    {/* Second Row: Quick Actions + Bottom 2 Sort Buttons + Clear Filters */}
-                    <div className="flex items-center justify-between mt-4">
-                      <div className="flex gap-3">
-                        <button
-                          onClick={showNewestGames}
-                          className={`
-                            min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
-                            transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                            ${quickSort === "newest" 
-                              ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300" 
-                              : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-2 border-emerald-200 focus:ring-emerald-300"
-                            }
-                          `}
-                          aria-pressed={quickSort === "newest"}
-                          aria-label="Show newest games first"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span aria-hidden="true">🆕</span>
-                            <span>Newest Games</span>
-                          </span>
-                        </button>
-                        
-                        <button
-                          onClick={showShortestGames}
-                          className={`
-                            min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
-                            transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                            ${quickSort === "shortest" 
-                              ? "bg-amber-600 text-white shadow-lg focus:ring-amber-300" 
-                              : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-2 border-amber-200 focus:ring-amber-300"
-                            }
-                          `}
-                          aria-pressed={quickSort === "shortest"}
-                          aria-label="Show shortest games first"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span aria-hidden="true">⚡</span>
-                            <span>Quick Games</span>
-                          </span>
-                        </button>
-
-                        <button
-                          onClick={toggleNzDesigner}
-                          className={`
-                            min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
-                            transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
-                            ${nzDesigner
-                              ? "bg-blue-600 text-white shadow-lg focus:ring-blue-300"
-                              : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 focus:ring-blue-300"
-                            }
-                          `}
-                          aria-pressed={nzDesigner}
-                          aria-label="Filter by New Zealand designers"
-                        >
-                          <span className="flex items-center gap-2">
-                            <span aria-hidden="true">🇳🇿</span>
-                            <span>NZ Designed</span>
-                          </span>
-                        </button>
-                      </div>
-                      
-                      {/* Clear Filters - Desktop */}
-                      {activeFiltersCount > 0 && (
-                        <button
-                          onClick={clearAllFilters}
-                          className="
-                            min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
-                            bg-slate-100 text-slate-800 hover:bg-slate-200 
-                            border-2 border-slate-300 hover:border-slate-400
-                            transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-slate-300 focus:ring-offset-2
-                          "
-                          aria-label={`Clear all ${activeFiltersCount} active filters`}
-                        >
-                          <span className="flex items-center justify-center gap-2">
-                            <span aria-hidden="true">🗑️</span>
-                            <span>Clear Filters</span>
-                            <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
-                              {activeFiltersCount}
-                            </span>
-                          </span>
-                        </button>
-                      )}
-                    </div>
                   </div>
 
-                  <div className="w-48">
+                  {/* Players Dropdown - Compact */}
+                  <div className="w-36">
                     <label htmlFor="player-count-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Players
                     </label>
@@ -364,7 +271,164 @@ useEffect(() => {
                       id="player-count-desktop"
                       value={players}
                       onChange={(e) => updatePlayers(e.target.value)}
-                      className="w-full min-h-[48px] px-4 py-3 text-base border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
+                      className="w-full min-h-[48px] px-3 py-3 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
+                      aria-label="Filter by player count"
+                    >
+                      <option value="">Any</option>
+                      <option value="1">1p</option>
+                      <option value="2">2p</option>
+                      <option value="3">3p</option>
+                      <option value="4">4p</option>
+                      <option value="5">5p</option>
+                      <option value="6">6p</option>
+                      <option value="7">7p+</option>
+                      <option value="8">8p+</option>
+                      <option value="10">10p+</option>
+                    </select>
+                  </div>
+
+                  {/* Quick Action Buttons - Compact */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={showNewestGames}
+                      className={`
+                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+                        ${quickSort === "newest"
+                          ? "bg-emerald-600 text-white shadow-md focus:ring-emerald-300"
+                          : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-2 border-emerald-200 focus:ring-emerald-300"
+                        }
+                      `}
+                      aria-pressed={quickSort === "newest"}
+                      aria-label="Show newest games first"
+                      title="Show newest games"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span aria-hidden="true">🆕</span>
+                        <span>New</span>
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={showShortestGames}
+                      className={`
+                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+                        ${quickSort === "shortest"
+                          ? "bg-amber-600 text-white shadow-md focus:ring-amber-300"
+                          : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-2 border-amber-200 focus:ring-amber-300"
+                        }
+                      `}
+                      aria-pressed={quickSort === "shortest"}
+                      aria-label="Show shortest games first"
+                      title="Show quick games"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span aria-hidden="true">⚡</span>
+                        <span>Quick</span>
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={toggleNzDesigner}
+                      className={`
+                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+                        ${nzDesigner
+                          ? "bg-blue-600 text-white shadow-md focus:ring-blue-300"
+                          : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 focus:ring-blue-300"
+                        }
+                      `}
+                      aria-pressed={nzDesigner}
+                      aria-label="Filter by New Zealand designers"
+                      title="NZ designed games"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span aria-hidden="true">🇳🇿</span>
+                        <span>Kiwi</span>
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Sort - Compact */}
+                  <div className="w-56">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Sort By
+                    </label>
+                    <SortSelect
+                      sort={sort}
+                      onChange={updateSort}
+                    />
+                  </div>
+
+                  {/* Clear Filters - Compact Icon Button */}
+                  {activeFiltersCount > 0 && (
+                    <div className="flex items-end">
+                      <button
+                        onClick={clearAllFilters}
+                        className="
+                          min-h-[48px] px-4 py-2 text-sm font-medium rounded-xl
+                          bg-slate-100 text-slate-800 hover:bg-slate-200
+                          border-2 border-slate-300 hover:border-slate-400
+                          transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2
+                        "
+                        aria-label={`Clear all ${activeFiltersCount} active filters`}
+                        title={`Clear ${activeFiltersCount} filters`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span aria-hidden="true">🗑️</span>
+                          <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                            {activeFiltersCount}
+                          </span>
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Search results count - below search bar */}
+                {q && (
+                  <div id="search-help-desktop" className="mt-2 text-sm text-slate-600">
+                    <span className="font-medium">
+                      {total} game{total !== 1 ? 's' : ''} found
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Tablet Layout - 2 Rows */}
+              <div className="hidden md:block lg:hidden">
+                {/* Row 1: Search + Players */}
+                <div className="flex gap-3 items-end mb-3">
+                  <div className="flex-1">
+                    <label htmlFor="game-search-tablet" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Search Games
+                    </label>
+                    <div className="relative">
+                      <SearchBox
+                        id="game-search-tablet"
+                        value={q}
+                        onChange={updateSearch}
+                        placeholder="Search by title..."
+                        className="w-full min-h-[48px] px-4 py-3 pr-10 text-base border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
+                      />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="w-40">
+                    <label htmlFor="player-count-tablet" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Players
+                    </label>
+                    <select
+                      id="player-count-tablet"
+                      value={players}
+                      onChange={(e) => updatePlayers(e.target.value)}
+                      className="w-full min-h-[48px] px-3 py-3 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
                       aria-label="Filter by player count"
                     >
                       <option value="">Any</option>
@@ -379,22 +443,109 @@ useEffect(() => {
                       <option value="10">10+ players</option>
                     </select>
                   </div>
+                </div>
 
-                  <div className="w-64">
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                      Sort By
-                    </label>
+                {/* Row 2: Quick Actions + Sort + Clear */}
+                <div className="flex gap-3 items-center">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={showNewestGames}
+                      className={`
+                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+                        ${quickSort === "newest"
+                          ? "bg-emerald-600 text-white shadow-md focus:ring-emerald-300"
+                          : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-2 border-emerald-200 focus:ring-emerald-300"
+                        }
+                      `}
+                      aria-pressed={quickSort === "newest"}
+                      aria-label="Show newest games first"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span aria-hidden="true">🆕</span>
+                        <span>New</span>
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={showShortestGames}
+                      className={`
+                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+                        ${quickSort === "shortest"
+                          ? "bg-amber-600 text-white shadow-md focus:ring-amber-300"
+                          : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-2 border-amber-200 focus:ring-amber-300"
+                        }
+                      `}
+                      aria-pressed={quickSort === "shortest"}
+                      aria-label="Show shortest games first"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span aria-hidden="true">⚡</span>
+                        <span>Quick</span>
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={toggleNzDesigner}
+                      className={`
+                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+                        ${nzDesigner
+                          ? "bg-blue-600 text-white shadow-md focus:ring-blue-300"
+                          : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 focus:ring-blue-300"
+                        }
+                      `}
+                      aria-pressed={nzDesigner}
+                      aria-label="Filter by New Zealand designers"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span aria-hidden="true">🇳🇿</span>
+                        <span>Kiwi</span>
+                      </span>
+                    </button>
+                  </div>
+
+                  <div className="flex-1">
                     <SortSelect
                       sort={sort}
                       onChange={updateSort}
                     />
                   </div>
+
+                  {activeFiltersCount > 0 && (
+                    <button
+                      onClick={clearAllFilters}
+                      className="
+                        min-h-[48px] px-4 py-2 text-sm font-medium rounded-xl
+                        bg-slate-100 text-slate-800 hover:bg-slate-200
+                        border-2 border-slate-300 hover:border-slate-400
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2
+                      "
+                      aria-label={`Clear all ${activeFiltersCount} active filters`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span aria-hidden="true">🗑️</span>
+                        <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                          {activeFiltersCount}
+                        </span>
+                      </span>
+                    </button>
+                  )}
                 </div>
+
+                {q && (
+                  <div className="mt-2 text-sm text-slate-600">
+                    <span className="font-medium">
+                      {total} game{total !== 1 ? 's' : ''} found
+                    </span>
+                  </div>
+                )}
               </div>
 
-              {/* Mobile Layout - Hidden on desktop */}
-              <div className="md:hidden space-y-4">
-                {/* Row 1: Search */}
+              {/* Mobile Layout - Compact */}
+              <div className="md:hidden space-y-3">
+                {/* Search */}
                 <div>
                   <label htmlFor="game-search-mobile" className="block text-sm font-semibold text-slate-700 mb-1.5">
                     Search Games
@@ -404,18 +555,18 @@ useEffect(() => {
                       id="game-search-mobile"
                       value={q}
                       onChange={updateSearch}
-                      placeholder="Search games..."
+                      placeholder="Search by title..."
                       aria-describedby="search-help-mobile"
-                      className="w-full min-h-[48px] px-3 py-2.5 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
+                      className="w-full min-h-[48px] px-3 py-2.5 pr-10 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                      <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                       </svg>
                     </div>
                   </div>
                   {q && (
-                    <div id="search-help-mobile" className="mt-1 text-sm text-slate-600 text-center">
+                    <div id="search-help-mobile" className="mt-1.5 text-xs text-slate-600 text-center">
                       <span className="font-medium">
                         {total} game{total !== 1 ? 's' : ''} found
                       </span>
@@ -423,78 +574,79 @@ useEffect(() => {
                   )}
                 </div>
 
-                {/* Row 2: Player Count Dropdown */}
-                <div>
-                  <label htmlFor="player-count-mobile" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                    Players
-                  </label>
-                  <select
-                    id="player-count-mobile"
-                    value={players}
-                    onChange={(e) => updatePlayers(e.target.value)}
-                    className="w-full min-h-[48px] px-3 py-2.5 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
-                    aria-label="Filter by player count"
-                  >
-                    <option value="">Any number of players</option>
-                    <option value="1">1 player</option>
-                    <option value="2">2 players</option>
-                    <option value="3">3 players</option>
-                    <option value="4">4 players</option>
-                    <option value="5">5 players</option>
-                    <option value="6">6 players</option>
-                    <option value="7">7+ players</option>
-                    <option value="8">8+ players</option>
-                    <option value="10">10+ players</option>
-                  </select>
+                {/* Players & Sort - Two column layout */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="player-count-mobile" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Players
+                    </label>
+                    <select
+                      id="player-count-mobile"
+                      value={players}
+                      onChange={(e) => updatePlayers(e.target.value)}
+                      className="w-full min-h-[48px] px-2.5 py-2.5 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white"
+                      aria-label="Filter by player count"
+                    >
+                      <option value="">Any</option>
+                      <option value="1">1p</option>
+                      <option value="2">2p</option>
+                      <option value="3">3p</option>
+                      <option value="4">4p</option>
+                      <option value="5">5p</option>
+                      <option value="6">6p</option>
+                      <option value="7">7p+</option>
+                      <option value="8">8p+</option>
+                      <option value="10">10p+</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Sort
+                    </label>
+                    <SortSelect
+                      sort={sort}
+                      onChange={updateSort}
+                    />
+                  </div>
                 </div>
 
-                {/* Row 3: Sort Dropdown */}
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                    Sort By
-                  </label>
-                  <SortSelect
-                    sort={sort}
-                    onChange={updateSort}
-                  />
-                </div>
-
-                {/* Row 4: Quick Action Buttons and NZ Designer Filter */}
-                <div className="grid grid-cols-3 gap-3">
+                {/* Quick Action Buttons - 3 columns */}
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     onClick={showNewestGames}
                     className={`
-                      min-h-[48px] px-2 py-2.5 text-sm font-medium rounded-xl
-                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                      min-h-[48px] px-2 py-2 text-xs font-medium rounded-xl
+                      transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
                       ${quickSort === "newest"
-                        ? "bg-emerald-600 text-white shadow-lg focus:ring-emerald-300"
+                        ? "bg-emerald-600 text-white shadow-md focus:ring-emerald-300"
                         : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-2 border-emerald-200 focus:ring-emerald-300"
                       }
                     `}
                     aria-pressed={quickSort === "newest"}
                     aria-label="Show newest games first"
                   >
-                    <span className="flex items-center justify-center gap-1">
-                      <span aria-hidden="true">🆕</span>
-                      <span>Newest</span>
+                    <span className="flex flex-col items-center gap-1">
+                      <span aria-hidden="true" className="text-base">🆕</span>
+                      <span>New</span>
                     </span>
                   </button>
 
                   <button
                     onClick={showShortestGames}
                     className={`
-                      min-h-[48px] px-2 py-2.5 text-sm font-medium rounded-xl
-                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                      min-h-[48px] px-2 py-2 text-xs font-medium rounded-xl
+                      transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
                       ${quickSort === "shortest"
-                        ? "bg-amber-600 text-white shadow-lg focus:ring-amber-300"
+                        ? "bg-amber-600 text-white shadow-md focus:ring-amber-300"
                         : "bg-amber-50 text-amber-800 hover:bg-amber-100 border-2 border-amber-200 focus:ring-amber-300"
                       }
                     `}
                     aria-pressed={quickSort === "shortest"}
                     aria-label="Show shortest games first"
                   >
-                    <span className="flex items-center justify-center gap-1">
-                      <span aria-hidden="true">⚡</span>
+                    <span className="flex flex-col items-center gap-1">
+                      <span aria-hidden="true" className="text-base">⚡</span>
                       <span>Quick</span>
                     </span>
                   </button>
@@ -502,32 +654,32 @@ useEffect(() => {
                   <button
                     onClick={toggleNzDesigner}
                     className={`
-                      min-h-[48px] px-2 py-2.5 text-sm font-medium rounded-xl
-                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-offset-2
+                      min-h-[48px] px-2 py-2 text-xs font-medium rounded-xl
+                      transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
                       ${nzDesigner
-                        ? "bg-blue-600 text-white shadow-lg focus:ring-blue-300"
+                        ? "bg-blue-600 text-white shadow-md focus:ring-blue-300"
                         : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 focus:ring-blue-300"
                       }
                     `}
                     aria-pressed={nzDesigner}
                     aria-label="Filter by New Zealand designers"
                   >
-                    <span className="flex items-center justify-center gap-1">
-                      <span aria-hidden="true">🇳🇿</span>
+                    <span className="flex flex-col items-center gap-1">
+                      <span aria-hidden="true" className="text-base">🇳🇿</span>
                       <span>Kiwi</span>
                     </span>
                   </button>
                 </div>
-                
-                {/* Clear Filters - Mobile (full width) */}
+
+                {/* Clear Filters - Mobile */}
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={clearAllFilters}
                     className="
-                      w-full min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl 
-                      bg-slate-100 text-slate-800 hover:bg-slate-200 
+                      w-full min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
+                      bg-slate-100 text-slate-800 hover:bg-slate-200
                       border-2 border-slate-300 hover:border-slate-400
-                      transition-all duration-200 focus:outline-none focus:ring-3 focus:ring-slate-300 focus:ring-offset-2
+                      transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2
                     "
                     aria-label={`Clear all ${activeFiltersCount} active filters`}
                   >
