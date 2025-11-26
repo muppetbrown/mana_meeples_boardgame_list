@@ -809,6 +809,7 @@ async def get_public_games(
     category: Optional[str] = Query(None, description="Category filter"),
     designer: Optional[str] = Query(None, description="Designer filter"),
     nz_designer: Optional[str] = Query(None, description="Filter by NZ designers"),
+    players: Optional[int] = Query(None, ge=1, description="Filter by player count"),
     db: Session = Depends(get_db)
 ):
     """Get paginated list of games with filtering and search"""
@@ -845,7 +846,18 @@ async def get_public_games(
         # Convert string parameter to boolean for database comparison
         nz_designer_bool = nz_designer.lower() in ['true', '1', 'yes'] if isinstance(nz_designer, str) else bool(nz_designer)
         query = query.where(Game.nz_designer == nz_designer_bool)
-    
+
+    # Apply player count filter
+    if players is not None:
+        # Filter games that support the specified player count
+        # Game is suitable if players_min <= players <= players_max
+        query = query.where(
+            and_(
+                or_(Game.players_min.is_(None), Game.players_min <= players),
+                or_(Game.players_max.is_(None), Game.players_max >= players)
+            )
+        )
+
     # Apply sorting
     if sort == "title_desc":
         query = query.order_by(Game.title.desc())
