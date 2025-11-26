@@ -19,6 +19,7 @@ export default function PublicCatalogue() {
   const [designer, setDesigner] = useState(searchParams.get("designer") || "");
   const [nzDesigner, setNzDesigner] = useState(searchParams.get("nz_designer") === "true");
   const [players, setPlayers] = useState(searchParams.get("players") || "");
+  const [recentlyAdded, setRecentlyAdded] = useState(searchParams.get("recently_added") === "30");
   const [sort, setSort] = useState(searchParams.get("sort") || "title_asc");
   const [page, setPage] = useState(parseInt(searchParams.get("page")) || 1);
   const [pageSize] = useState(24);
@@ -60,11 +61,12 @@ useEffect(() => {
   if (designer) params.set("designer", designer);
   if (nzDesigner) params.set("nz_designer", "true");
   if (players) params.set("players", players);
+  if (recentlyAdded) params.set("recently_added", "30");
   if (sort !== "title_asc") params.set("sort", sort);
   if (page !== 1) params.set("page", page.toString());
 
   setSearchParams(params, { replace: true });
-}, [q, category, designer, nzDesigner, players, sort, page, setSearchParams]);
+}, [q, category, designer, nzDesigner, players, recentlyAdded, sort, page, setSearchParams]);
 
   // Fetch category counts
   useEffect(() => {
@@ -102,6 +104,9 @@ useEffect(() => {
         if (players) {
           params.players = parseInt(players);
         }
+        if (recentlyAdded) {
+          params.recently_added = 30;
+        }
 
         const data = await getPublicGames(params);
         if (cancelled) return;
@@ -120,7 +125,7 @@ useEffect(() => {
       }
     })();
     return () => { cancelled = true; };
-  }, [qDebounced, page, pageSize, category, designer, nzDesigner, players, sort]);
+  }, [qDebounced, page, pageSize, category, designer, nzDesigner, players, recentlyAdded, sort]);
 
   // Helper functions
   const updateCategory = (newCategory) => {
@@ -145,6 +150,7 @@ useEffect(() => {
     setDesigner("");
     setNzDesigner(false);
     setPlayers("");
+    setRecentlyAdded(false);
     setSort("title_asc");
     setPage(1);
     setQuickSort(null);
@@ -165,6 +171,11 @@ useEffect(() => {
 
   const toggleNzDesigner = () => {
     setNzDesigner(!nzDesigner);
+    setPage(1);
+  };
+
+  const toggleRecentlyAdded = () => {
+    setRecentlyAdded(!recentlyAdded);
     setPage(1);
   };
 
@@ -205,8 +216,9 @@ useEffect(() => {
     if (designer) count++;
     if (nzDesigner) count++;
     if (players) count++;
+    if (recentlyAdded) count++;
     return count;
-  }, [q, category, designer, nzDesigner, players]);
+  }, [q, category, designer, nzDesigner, players, recentlyAdded]);
 
   // Skeleton loader component - smaller to prevent layout shift
   const SkeletonCard = () => (
@@ -370,6 +382,26 @@ useEffect(() => {
                         <span>Kiwi</span>
                       </span>
                     </button>
+
+                    <button
+                      onClick={toggleRecentlyAdded}
+                      className={`
+                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+                        ${recentlyAdded
+                          ? "bg-purple-600 text-white shadow-md focus:ring-purple-300"
+                          : "bg-purple-50 text-purple-800 hover:bg-purple-100 border-2 border-purple-200 focus:ring-purple-300"
+                        }
+                      `}
+                      aria-pressed={recentlyAdded}
+                      aria-label="Show games added in the last 30 days"
+                      title="Recently added games"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span aria-hidden="true">✨</span>
+                        <span>Recent</span>
+                      </span>
+                    </button>
                   </div>
 
                   {/* Sort - Compact */}
@@ -526,6 +558,25 @@ useEffect(() => {
                         <span>Kiwi</span>
                       </span>
                     </button>
+
+                    <button
+                      onClick={toggleRecentlyAdded}
+                      className={`
+                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+                        ${recentlyAdded
+                          ? "bg-purple-600 text-white shadow-md focus:ring-purple-300"
+                          : "bg-purple-50 text-purple-800 hover:bg-purple-100 border-2 border-purple-200 focus:ring-purple-300"
+                        }
+                      `}
+                      aria-pressed={recentlyAdded}
+                      aria-label="Show games added in the last 30 days"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <span aria-hidden="true">✨</span>
+                        <span>Recent</span>
+                      </span>
+                    </button>
                   </div>
 
                   <div className="flex-1">
@@ -633,8 +684,8 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {/* Quick Action Buttons - 3 columns */}
-                <div className="grid grid-cols-3 gap-2">
+                {/* Quick Action Buttons - 2x2 grid */}
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={showNewestGames}
                     className={`
@@ -689,6 +740,25 @@ useEffect(() => {
                     <span className="flex flex-col items-center gap-1">
                       <span aria-hidden="true" className="text-base">🇳🇿</span>
                       <span>Kiwi</span>
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={toggleRecentlyAdded}
+                    className={`
+                      min-h-[48px] px-2 py-2 text-xs font-medium rounded-xl
+                      transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
+                      ${recentlyAdded
+                        ? "bg-purple-600 text-white shadow-md focus:ring-purple-300"
+                        : "bg-purple-50 text-purple-800 hover:bg-purple-100 border-2 border-purple-200 focus:ring-purple-300"
+                      }
+                    `}
+                    aria-pressed={recentlyAdded}
+                    aria-label="Show games added in the last 30 days"
+                  >
+                    <span className="flex flex-col items-center gap-1">
+                      <span aria-hidden="true" className="text-base">✨</span>
+                      <span>Recent</span>
                     </span>
                   </button>
                 </div>

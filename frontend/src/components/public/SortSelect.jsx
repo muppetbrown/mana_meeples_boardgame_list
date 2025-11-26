@@ -2,29 +2,35 @@ import React from "react";
 
 export default function SortSelect({ sort, onChange, className, id, ...props }) {
   const sortOptions = React.useMemo(() => [
-    { 
-      key: 'title', 
-      label: 'Title', 
+    {
+      key: 'title',
+      label: 'Title',
       defaultDir: 'asc',
       description: 'Sort alphabetically by game title'
     },
-    { 
-      key: 'year', 
-      label: 'Year', 
+    {
+      key: 'year',
+      label: 'Year',
       defaultDir: 'desc',
       description: 'Sort by publication year (newest first by default)'
     },
-    { 
-      key: 'rating', 
-      label: 'Rating', 
+    {
+      key: 'rating',
+      label: 'Rating',
       defaultDir: 'desc',
       description: 'Sort by BGG rating (highest first by default)'
     },
-    { 
-      key: 'time', 
-      label: 'Time', 
+    {
+      key: 'time',
+      label: 'Time',
       defaultDir: 'asc',
       description: 'Sort by average playing time (shortest first by default)'
+    },
+    {
+      key: 'date_added',
+      label: 'Added',
+      defaultDir: 'desc',
+      description: 'Sort by date added to collection (most recent first by default)'
     }
   ], []);
 

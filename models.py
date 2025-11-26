@@ -19,6 +19,7 @@ class Game(Base):
     thumbnail_url = Column(String(512), nullable=True)
     image = Column(String(512), nullable=True)  # Full-size image URL from BGG
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    date_added = Column(DateTime, default=datetime.utcnow, nullable=True, index=True)  # Date game was added to physical collection
     bgg_id = Column(Integer, unique=True, nullable=True, index=True)
     thumbnail_file = Column(String(256), nullable=True)
     mana_meeple_category = Column(String(50), nullable=True, index=True) 
