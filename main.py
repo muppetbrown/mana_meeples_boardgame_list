@@ -1503,6 +1503,16 @@ async def bulk_update_nz_designers(
         raise HTTPException(status_code=500, detail=f"Bulk update failed: {str(e)}")
 
 
+@app.get("/api/admin/validate")
+async def validate_admin_token(
+    request: Request,
+    x_admin_token: Optional[str] = Header(None)
+):
+    """Validate admin token (admin only)"""
+    _require_admin_token(x_admin_token, _get_client_ip(request))
+    return {"valid": True, "message": "Token is valid"}
+
+
 @app.get("/api/admin/games")
 async def get_admin_games(
     request: Request,
@@ -1511,7 +1521,7 @@ async def get_admin_games(
 ):
     """Get all games for admin interface"""
     _require_admin_token(x_admin_token, _get_client_ip(request))
-    
+
     games = db.execute(select(Game)).scalars().all()
     return [_game_to_dict(None, game) for game in games]
 

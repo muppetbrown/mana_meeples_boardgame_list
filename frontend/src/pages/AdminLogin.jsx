@@ -9,31 +9,43 @@ export default function AdminLogin() {
   const submit = async (e) => {
     e.preventDefault();
     setErr("");
+
+    // Basic validation
+    if (token.trim().length < 10) {
+      setErr("Token must be at least 10 characters");
+      return;
+    }
+
+    // Store token temporarily to test it
     localStorage.setItem("ADMIN_TOKEN", token.trim());
-    
+
     // FIXED: Use the proxy URL for API calls
     const API_BASE = window.__API_BASE__ || "/library/api-proxy.php?path=";
-    
+
     try {
-      // Test with a public endpoint that should work, then verify admin access
-      const publicTest = await fetch(`${API_BASE}/api/public/category-counts`);
-      if (!publicTest.ok) {
-        setErr("Cannot connect to API");
+      // Test if the token is valid by calling the validation endpoint
+      const response = await fetch(`${API_BASE}/api/admin/validate`, {
+        method: "GET",
+        headers: {
+          "X-Admin-Token": token.trim()
+        }
+      });
+
+      if (response.ok) {
+        // Token is valid, proceed to staff dashboard
+        navigate("/staff");
+      } else if (response.status === 401) {
+        setErr("Invalid admin token");
         localStorage.removeItem("ADMIN_TOKEN");
-        return;
-      }
-      
-      // For now, just check if the token format looks valid
-      if (token.trim().length < 10) {
-        setErr("Invalid token format");
+      } else if (response.status === 429) {
+        setErr("Too many attempts. Please try again later.");
         localStorage.removeItem("ADMIN_TOKEN");
-        return;
+      } else {
+        setErr("Authentication failed");
+        localStorage.removeItem("ADMIN_TOKEN");
       }
-      
-      // Accept the token and proceed to staff dashboard
-      navigate("/staff");
-    } catch {
-      setErr("Network error");
+    } catch (error) {
+      setErr("Network error - cannot connect to API");
       localStorage.removeItem("ADMIN_TOKEN");
     }
   };

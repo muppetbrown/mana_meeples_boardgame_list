@@ -14,6 +14,7 @@ import {
   bulkCategorizeCsv,
   updateGame,
   deleteGame,
+  validateAdminToken,
 } from "./api/client";
 
 // ---- Categories ----
@@ -71,9 +72,28 @@ function downloadText(name, text) {
  * -------------------------------- */
 function StaffView() {
   const navigate = useNavigate();
+  const [isValidating, setIsValidating] = useState(true);
+
+  // Validate token on mount
   useEffect(() => {
-    const t = localStorage.getItem("ADMIN_TOKEN");
-    if (!t) navigate("/staff/login");
+    const validateToken = async () => {
+      const t = localStorage.getItem("ADMIN_TOKEN");
+      if (!t) {
+        navigate("/staff/login");
+        return;
+      }
+
+      try {
+        await validateAdminToken();
+        setIsValidating(false);
+      } catch (error) {
+        // Token is invalid, clear it and redirect to login
+        localStorage.removeItem("ADMIN_TOKEN");
+        navigate("/staff/login");
+      }
+    };
+
+    validateToken();
   }, [navigate]);
 
   // ----- State -----
@@ -247,15 +267,43 @@ function StaffView() {
     }
   }, [csvCategorizeText, loadLibrary]);
 
+  const handleLogout = () => {
+    if (window.confirm("Are you sure you want to logout?")) {
+      localStorage.removeItem("ADMIN_TOKEN");
+      navigate("/staff/login");
+    }
+  };
+
+  // Show loading state while validating token
+  if (isValidating) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mb-4"></div>
+          <p className="text-gray-600">Validating credentials...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold">Mana & Meeples — Library (Staff)</h1>
-          <div className="text-sm text-gray-600">
-            Games: <b>{stats.total}</b> · Available: <b>{stats.available}</b> · Avg rating:{" "}
-            <b>{stats.avgRating}</b>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-600">
+              Games: <b>{stats.total}</b> · Available: <b>{stats.available}</b> · Avg rating:{" "}
+              <b>{stats.avgRating}</b>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+              title="Logout"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>
