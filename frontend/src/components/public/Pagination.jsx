@@ -1,73 +1,97 @@
 import React from "react";
 
-export default function Pagination({ page, pageSize, total, onPage }) {
-  const pages = Math.max(1, Math.ceil(total / pageSize));
-  const prev = () => onPage(Math.max(1, page - 1));
-  const next = () => onPage(Math.min(pages, page + 1));
-  
-  const hasPrev = page > 1;
-  const hasNext = page < pages;
+export default function Pagination({ page, pageSize, total, onPage, showResultsCount = true }) {
+  const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <nav aria-label="Game pagination" className="flex flex-col sm:flex-row items-center justify-between gap-4">
-      {/* Previous Button */}
-      <button
-        onClick={prev}
-        disabled={!hasPrev}
-        aria-label={hasPrev ? `Go to previous page (page ${page - 1} of ${pages})` : "No previous page available"}
-        className="group flex items-center px-6 py-3 rounded-xl border-2 border-slate-200 hover:border-emerald-400 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-      >
-        <svg 
-          className="w-4 h-4 mr-2 transition-transform group-hover:-translate-x-1 group-disabled:group-hover:translate-x-0" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-        </svg>
-        <span className="font-medium">Previous</span>
-      </button>
+    <div className="bg-white/80 backdrop-blur-sm rounded-xl p-3 sm:p-4 shadow-lg border border-white/50">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        {/* Results count */}
+        {showResultsCount && (
+          <div className="text-sm text-slate-600 text-center sm:text-left">
+            <span className="font-bold text-emerald-600">
+              {Math.min((page - 1) * pageSize + 1, total)}-{Math.min(page * pageSize, total)}
+            </span> of{" "}
+            <span className="font-bold text-emerald-600">{total}</span>
+            <span className="hidden sm:inline"> games</span>
+          </div>
+        )}
 
-      {/* Page Info */}
-      <div className="flex items-center space-x-2">
-        <span className="text-slate-600">Page</span>
-        <span 
-          className="px-3 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-bold"
-          aria-label={`Current page ${page}`}
-        >
-          {page}
-        </span>
-        <span className="text-slate-600">of</span>
-        <span 
-          className="px-3 py-2 bg-slate-100 rounded-lg font-bold text-slate-700"
-          aria-label={`Total pages ${pages}`}
-        >
-          {pages}
-        </span>
-        <span className="text-slate-500 text-sm" aria-label={`Total games ${total}`}>
-          ({total} games)
-        </span>
+        {/* Mobile-Optimized Pagination */}
+        <nav aria-label="Game results pagination" className="flex items-center justify-center gap-1 sm:gap-2">
+          {/* First page button - only show if not on first few pages */}
+          {page > 3 && (
+            <>
+              <button
+                onClick={() => onPage(1)}
+                className="px-2 sm:px-3 py-2 text-sm border rounded hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
+                aria-label="Go to first page"
+              >
+                1
+              </button>
+              <span className="text-slate-400 px-1" aria-hidden="true">...</span>
+            </>
+          )}
+
+          {/* Previous button */}
+          <button
+            onClick={() => onPage(page - 1)}
+            disabled={page <= 1}
+            className="px-2 sm:px-3 py-2 text-sm border rounded disabled:opacity-50 hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
+            aria-label="Previous page"
+          >
+            <span className="hidden sm:inline">← Prev</span>
+            <span className="sm:hidden" aria-hidden="true">←</span>
+          </button>
+
+          {/* Page numbers - show current and adjacent */}
+          {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+            const pageNum = Math.max(1, page - 1) + i;
+            if (pageNum > totalPages) return null;
+
+            return (
+              <button
+                key={pageNum}
+                onClick={() => onPage(pageNum)}
+                className={`px-2 sm:px-3 py-2 text-sm rounded min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 transition-colors ${
+                  pageNum === page
+                    ? "bg-emerald-500 text-white focus:ring-emerald-300"
+                    : "border hover:bg-emerald-50 focus:ring-emerald-300"
+                }`}
+                aria-label={pageNum === page ? `Current page ${pageNum}` : `Go to page ${pageNum}`}
+                aria-current={pageNum === page ? "page" : undefined}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+
+          {/* Next button */}
+          <button
+            onClick={() => onPage(page + 1)}
+            disabled={page >= totalPages}
+            className="px-2 sm:px-3 py-2 text-sm border rounded disabled:opacity-50 hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
+            aria-label="Next page"
+          >
+            <span className="hidden sm:inline">Next →</span>
+            <span className="sm:hidden" aria-hidden="true">→</span>
+          </button>
+
+          {/* Last page button - only show if far from end */}
+          {page < totalPages - 2 && (
+            <>
+              <span className="text-slate-400 px-1" aria-hidden="true">...</span>
+              <button
+                onClick={() => onPage(totalPages)}
+                className="px-2 sm:px-3 py-2 text-sm border rounded hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
+                aria-label="Go to last page"
+              >
+                {totalPages}
+              </button>
+            </>
+          )}
+        </nav>
       </div>
-
-      {/* Next Button */}
-      <button
-        onClick={next}
-        disabled={!hasNext}
-        aria-label={hasNext ? `Go to next page (page ${page + 1} of ${pages})` : "No next page available"}
-        className="group flex items-center px-6 py-3 rounded-xl border-2 border-slate-200 hover:border-emerald-400 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
-      >
-        <span className="font-medium">Next</span>
-        <svg 
-          className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1 group-disabled:group-hover:translate-x-0" 
-          fill="none" 
-          stroke="currentColor" 
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
-      </button>
-    </nav>
+    </div>
   );
 }
