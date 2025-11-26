@@ -156,23 +156,62 @@ function StaffView() {
 
   // ----- Actions -----
   const addGameByBggId = useCallback(async (bggId) => {
-    try {
-      const API_BASE = window.__API_BASE__ || '/library/api-proxy.php?path=';
-      const response = await fetch(`${API_BASE}/api/admin/import/bgg?bgg_id=${bggId}`, {
-        method: 'POST',
-        headers: {
-          'X-Admin-Token': localStorage.getItem('ADMIN_TOKEN')
+    const MAX_RETRIES = 4;
+    const RETRY_DELAYS = [2000, 4000, 8000, 16000]; // Exponential backoff in ms
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (attempt > 0) {
+          showToast(`Retrying... (attempt ${attempt + 1}/${MAX_RETRIES + 1})`, "info", 3000);
+        } else {
+          showToast(`Adding game from BGG ID ${bggId}...`, "info", 2000);
         }
-      });
-      if (response.ok) {
-        const result = await response.json();
-        showToast(`Added "${result.title}" successfully!`, "success");
-        await loadLibrary();
-      } else {
-        showToast("Failed to add game", "error");
+
+        const API_BASE = window.__API_BASE__ || '/library/api-proxy.php?path=';
+        const response = await fetch(`${API_BASE}/api/admin/import/bgg?bgg_id=${bggId}`, {
+          method: 'POST',
+          headers: {
+            'X-Admin-Token': localStorage.getItem('ADMIN_TOKEN')
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          showToast(`Added "${result.title}" successfully!`, "success");
+          await loadLibrary();
+          return; // Success - exit retry loop
+        } else {
+          // Handle HTTP error responses
+          const errorData = await response.json().catch(() => ({}));
+          const errorMessage = errorData.detail || `Server error (${response.status})`;
+
+          // Don't retry on 4xx errors (client errors) except network issues
+          if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+            showToast(`Failed to add game: ${errorMessage}`, "error", 4000);
+            return; // Exit - client error won't be fixed by retry
+          }
+
+          // For server errors or rate limiting, retry if we have attempts left
+          if (attempt < MAX_RETRIES) {
+            const delay = RETRY_DELAYS[attempt];
+            showToast(`Server error. Retrying in ${delay / 1000}s...`, "warning", delay);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue; // Retry
+          } else {
+            showToast(`Failed after ${MAX_RETRIES + 1} attempts: ${errorMessage}`, "error", 5000);
+          }
+        }
+      } catch (e) {
+        // Handle network errors (fetch exceptions)
+        if (attempt < MAX_RETRIES) {
+          const delay = RETRY_DELAYS[attempt];
+          showToast(`Network error. Retrying in ${delay / 1000}s...`, "warning", delay);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue; // Retry
+        } else {
+          showToast(`Network error after ${MAX_RETRIES + 1} attempts. Please check your connection.`, "error", 5000);
+        }
       }
-    } catch (e) {
-      showToast("Network error", "error");
     }
   }, [loadLibrary]);
 
