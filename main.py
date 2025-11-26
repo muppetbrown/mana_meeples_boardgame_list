@@ -3,7 +3,7 @@ import json
 import logging
 import time
 from typing import Optional, List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timedelta
 from collections import defaultdict
 
 import httpx
@@ -15,7 +15,7 @@ from sqlalchemy import case, select, func, and_, or_, text
 from sqlalchemy.orm import Session
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from database import SessionLocal, init_db, engine, db_ping
+from database import SessionLocal, init_db, engine, db_ping, run_migrations
 from models import Game
 from bgg_service import fetch_bgg_thing
 from schemas import BGGGameImport, CSVImport
@@ -496,6 +496,7 @@ def _game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         "users_rated": getattr(game, "users_rated", None),
         "bgg_id": getattr(game, "bgg_id", None),
         "created_at": game.created_at.isoformat() if hasattr(game, "created_at") and game.created_at else None,
+        "date_added": game.date_added.isoformat() if hasattr(game, "date_added") and game.date_added else None,
         "nz_designer": getattr(game, "nz_designer", False),
         "game_type": getattr(game, "game_type", None),
     }
@@ -810,6 +811,7 @@ async def get_public_games(
     designer: Optional[str] = Query(None, description="Designer filter"),
     nz_designer: Optional[str] = Query(None, description="Filter by NZ designers"),
     players: Optional[int] = Query(None, ge=1, description="Filter by player count"),
+    recently_added: Optional[int] = Query(None, ge=1, description="Filter games added within last N days"),
     db: Session = Depends(get_db)
 ):
     """Get paginated list of games with filtering and search"""
@@ -858,6 +860,12 @@ async def get_public_games(
             )
         )
 
+    # Apply recently added filter
+    if recently_added is not None:
+        cutoff_date = datetime.utcnow() - timedelta(days=recently_added)
+        if hasattr(Game, 'date_added'):
+            query = query.where(Game.date_added >= cutoff_date)
+
     # Apply sorting
     if sort == "title_desc":
         query = query.order_by(Game.title.desc())
@@ -865,6 +873,16 @@ async def get_public_games(
         query = query.order_by(Game.year.desc().nulls_last())
     elif sort == "year_asc":
         query = query.order_by(Game.year.asc().nulls_last())
+    elif sort == "date_added_desc":
+        if hasattr(Game, 'date_added'):
+            query = query.order_by(Game.date_added.desc().nulls_last())
+        else:
+            query = query.order_by(Game.title.asc())
+    elif sort == "date_added_asc":
+        if hasattr(Game, 'date_added'):
+            query = query.order_by(Game.date_added.asc().nulls_last())
+        else:
+            query = query.order_by(Game.title.asc())
     elif sort == "rating_desc":
         if hasattr(Game, 'average_rating'):
             query = query.order_by(Game.average_rating.desc().nulls_last())
@@ -1655,6 +1673,10 @@ async def startup_event():
         raise RuntimeError("Cannot connect to PostgreSQL database")
 
     logger.info("Database connection verified")
+
+    # Run migrations to update schema
+    run_migrations()
+
     os.makedirs(THUMBS_DIR, exist_ok=True)
     logger.info(f"Thumbnails directory: {THUMBS_DIR}")
     logger.info("API startup complete")

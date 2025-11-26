@@ -1,8 +1,9 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
 from config import DATABASE_URL
 from models import Base
+from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,3 +33,51 @@ def db_ping() -> bool:
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+
+def run_migrations():
+    """
+    Run database migrations for schema updates.
+    This handles adding new columns and updating existing data.
+    """
+    logger.info("Running database migrations...")
+
+    with engine.connect() as conn:
+        # Migration: Add date_added column if it doesn't exist
+        try:
+            # Check if column exists
+            result = conn.execute(text("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name='boardgames' AND column_name='date_added'
+            """))
+            column_exists = result.fetchone() is not None
+
+            if not column_exists:
+                logger.info("Adding date_added column to boardgames table...")
+                conn.execute(text("""
+                    ALTER TABLE boardgames
+                    ADD COLUMN date_added TIMESTAMP
+                """))
+                conn.commit()
+                logger.info("date_added column added successfully")
+
+            # Set default date for existing games with NULL date_added
+            # July 1, 2025
+            default_date = datetime(2025, 7, 1)
+            result = conn.execute(text("""
+                UPDATE boardgames
+                SET date_added = :default_date
+                WHERE date_added IS NULL
+            """), {"default_date": default_date})
+            conn.commit()
+
+            rows_updated = result.rowcount
+            if rows_updated > 0:
+                logger.info(f"Set date_added to July 1, 2025 for {rows_updated} existing games")
+
+        except Exception as e:
+            logger.error(f"Migration error: {e}")
+            conn.rollback()
+            raise
+
+    logger.info("Database migrations completed")
