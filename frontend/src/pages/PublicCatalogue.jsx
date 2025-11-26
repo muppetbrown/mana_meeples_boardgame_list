@@ -323,14 +323,14 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {/* Row 2: Quick Action Buttons + Sort + Clear */}
-                <div className="flex gap-3 items-center">
+                {/* Row 2: Quick Action Buttons + Sort */}
+                <div className="flex gap-3 items-end">
                   {/* Quick Action Buttons */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2.5">
                     <button
                       onClick={showNewestGames}
                       className={`
-                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
                         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
                         ${quickSort === "newest"
                           ? "bg-emerald-600 text-white shadow-md focus:ring-emerald-300"
@@ -350,7 +350,7 @@ useEffect(() => {
                     <button
                       onClick={showShortestGames}
                       className={`
-                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
                         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
                         ${quickSort === "shortest"
                           ? "bg-amber-600 text-white shadow-md focus:ring-amber-300"
@@ -370,7 +370,7 @@ useEffect(() => {
                     <button
                       onClick={toggleNzDesigner}
                       className={`
-                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
                         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
                         ${nzDesigner
                           ? "bg-blue-600 text-white shadow-md focus:ring-blue-300"
@@ -390,7 +390,7 @@ useEffect(() => {
                     <button
                       onClick={toggleRecentlyAdded}
                       className={`
-                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
                         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
                         ${recentlyAdded
                           ? "bg-purple-600 text-white shadow-md focus:ring-purple-300"
@@ -408,35 +408,17 @@ useEffect(() => {
                     </button>
                   </div>
 
-                  {/* Sort - Takes remaining space */}
-                  <div className="flex-1">
+                  {/* Sort - Fixed width matching Players */}
+                  <div className="w-40">
+                    <label htmlFor="sort-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Sort By
+                    </label>
                     <SortSelect
+                      id="sort-desktop"
                       sort={sort}
                       onChange={updateSort}
                     />
                   </div>
-
-                  {/* Clear Filters */}
-                  {activeFiltersCount > 0 && (
-                    <button
-                      onClick={clearAllFilters}
-                      className="
-                        min-h-[48px] px-4 py-2 text-sm font-medium rounded-xl
-                        bg-slate-100 text-slate-800 hover:bg-slate-200
-                        border-2 border-slate-300 hover:border-slate-400
-                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2
-                      "
-                      aria-label={`Clear all ${activeFiltersCount} active filters`}
-                      title={`Clear ${activeFiltersCount} filters`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span aria-hidden="true">🗑️</span>
-                        <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
-                          {activeFiltersCount}
-                        </span>
-                      </span>
-                    </button>
-                  )}
                 </div>
 
                 {/* Search results count - below search bar */}
@@ -498,13 +480,13 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {/* Row 2: Quick Actions + Sort + Clear */}
-                <div className="flex gap-3 items-center">
-                  <div className="flex gap-2">
+                {/* Row 2: Quick Actions + Sort */}
+                <div className="flex gap-3 items-end">
+                  <div className="flex gap-2.5">
                     <button
                       onClick={showNewestGames}
                       className={`
-                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
                         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
                         ${quickSort === "newest"
                           ? "bg-emerald-600 text-white shadow-md focus:ring-emerald-300"
@@ -523,7 +505,7 @@ useEffect(() => {
                     <button
                       onClick={showShortestGames}
                       className={`
-                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
                         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
                         ${quickSort === "shortest"
                           ? "bg-amber-600 text-white shadow-md focus:ring-amber-300"
@@ -542,7 +524,7 @@ useEffect(() => {
                     <button
                       onClick={toggleNzDesigner}
                       className={`
-                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
                         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
                         ${nzDesigner
                           ? "bg-blue-600 text-white shadow-md focus:ring-blue-300"
@@ -561,7 +543,7 @@ useEffect(() => {
                     <button
                       onClick={toggleRecentlyAdded}
                       className={`
-                        min-h-[48px] px-3 py-2 text-sm font-medium rounded-xl
+                        min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
                         transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2
                         ${recentlyAdded
                           ? "bg-purple-600 text-white shadow-md focus:ring-purple-300"
@@ -578,32 +560,16 @@ useEffect(() => {
                     </button>
                   </div>
 
-                  <div className="flex-1">
+                  <div className="w-40">
+                    <label htmlFor="sort-tablet" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Sort By
+                    </label>
                     <SortSelect
+                      id="sort-tablet"
                       sort={sort}
                       onChange={updateSort}
                     />
                   </div>
-
-                  {activeFiltersCount > 0 && (
-                    <button
-                      onClick={clearAllFilters}
-                      className="
-                        min-h-[48px] px-4 py-2 text-sm font-medium rounded-xl
-                        bg-slate-100 text-slate-800 hover:bg-slate-200
-                        border-2 border-slate-300 hover:border-slate-400
-                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2
-                      "
-                      aria-label={`Clear all ${activeFiltersCount} active filters`}
-                    >
-                      <span className="flex items-center gap-2">
-                        <span aria-hidden="true">🗑️</span>
-                        <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
-                          {activeFiltersCount}
-                        </span>
-                      </span>
-                    </button>
-                  )}
                 </div>
 
                 {q && (
@@ -761,28 +727,6 @@ useEffect(() => {
                     </span>
                   </button>
                 </div>
-
-                {/* Clear Filters - Mobile */}
-                {activeFiltersCount > 0 && (
-                  <button
-                    onClick={clearAllFilters}
-                    className="
-                      w-full min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl
-                      bg-slate-100 text-slate-800 hover:bg-slate-200
-                      border-2 border-slate-300 hover:border-slate-400
-                      transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2
-                    "
-                    aria-label={`Clear all ${activeFiltersCount} active filters`}
-                  >
-                    <span className="flex items-center justify-center gap-2">
-                      <span aria-hidden="true">🗑️</span>
-                      <span>Clear Filters</span>
-                      <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
-                        {activeFiltersCount}
-                      </span>
-                    </span>
-                  </button>
-                )}
               </div>
               
               {/* Active Search Status - Shared for both layouts */}
@@ -792,76 +736,100 @@ useEffect(() => {
                   role="status"
                   aria-live="polite"
                 >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold text-blue-800 flex items-center gap-2">
-                      <span aria-hidden="true">🔍</span>
-                      <span>Active:</span>
-                    </span>
-
-                    {q && (
-                      <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
-                        <span>"{q}"</span>
-                        <button
-                          onClick={() => updateSearch("")}
-                          className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                          aria-label={`Remove search: ${q}`}
-                        >
-                          <span aria-hidden="true" className="text-sm leading-none">×</span>
-                        </button>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-blue-800 flex items-center gap-2">
+                        <span aria-hidden="true">🔍</span>
+                        <span>Active:</span>
                       </span>
-                    )}
 
-                    {category !== "all" && (
-                      <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
-                        <span>{CATEGORY_LABELS[category]}</span>
-                        <button
-                          onClick={() => updateCategory("all")}
-                          className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                          aria-label={`Remove category: ${CATEGORY_LABELS[category]}`}
-                        >
-                          <span aria-hidden="true" className="text-sm leading-none">×</span>
-                        </button>
-                      </span>
-                    )}
+                      {q && (
+                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
+                          <span>"{q}"</span>
+                          <button
+                            onClick={() => updateSearch("")}
+                            className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            aria-label={`Remove search: ${q}`}
+                          >
+                            <span aria-hidden="true" className="text-sm leading-none">×</span>
+                          </button>
+                        </span>
+                      )}
 
-                    {designer && (
-                      <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
-                        <span>{designer}</span>
-                        <button
-                          onClick={() => setDesigner("")}
-                          className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                          aria-label={`Remove designer: ${designer}`}
-                        >
-                          <span aria-hidden="true" className="text-sm leading-none">×</span>
-                        </button>
-                      </span>
-                    )}
+                      {category !== "all" && (
+                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
+                          <span>{CATEGORY_LABELS[category]}</span>
+                          <button
+                            onClick={() => updateCategory("all")}
+                            className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            aria-label={`Remove category: ${CATEGORY_LABELS[category]}`}
+                          >
+                            <span aria-hidden="true" className="text-sm leading-none">×</span>
+                          </button>
+                        </span>
+                      )}
 
-                    {nzDesigner && (
-                      <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
-                        <span>NZ Designed</span>
-                        <button
-                          onClick={() => setNzDesigner(false)}
-                          className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                          aria-label="Remove NZ designer filter"
-                        >
-                          <span aria-hidden="true" className="text-sm leading-none">×</span>
-                        </button>
-                      </span>
-                    )}
+                      {designer && (
+                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
+                          <span>{designer}</span>
+                          <button
+                            onClick={() => setDesigner("")}
+                            className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            aria-label={`Remove designer: ${designer}`}
+                          >
+                            <span aria-hidden="true" className="text-sm leading-none">×</span>
+                          </button>
+                        </span>
+                      )}
 
-                    {players && (
-                      <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
-                        <span>{players} player{players === "1" ? "" : "s"}</span>
-                        <button
-                          onClick={() => updatePlayers("")}
-                          className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
-                          aria-label="Remove player count filter"
-                        >
-                          <span aria-hidden="true" className="text-sm leading-none">×</span>
-                        </button>
+                      {nzDesigner && (
+                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
+                          <span>NZ Designed</span>
+                          <button
+                            onClick={() => setNzDesigner(false)}
+                            className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            aria-label="Remove NZ designer filter"
+                          >
+                            <span aria-hidden="true" className="text-sm leading-none">×</span>
+                          </button>
+                        </span>
+                      )}
+
+                      {players && (
+                        <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-900 px-3 py-1.5 rounded-lg text-sm font-medium border border-blue-200">
+                          <span>{players} player{players === "1" ? "" : "s"}</span>
+                          <button
+                            onClick={() => updatePlayers("")}
+                            className="ml-1 p-1 hover:bg-blue-200 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-400"
+                            aria-label="Remove player count filter"
+                          >
+                            <span aria-hidden="true" className="text-sm leading-none">×</span>
+                          </button>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Clear All Filters Button */}
+                    <button
+                      onClick={clearAllFilters}
+                      className="
+                        min-h-[44px] px-4 py-2 text-sm font-medium rounded-xl
+                        bg-slate-100 text-slate-800 hover:bg-slate-200
+                        border-2 border-slate-300 hover:border-slate-400
+                        transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2
+                        flex-shrink-0
+                      "
+                      aria-label={`Clear all ${activeFiltersCount} active filters`}
+                      title={`Clear ${activeFiltersCount} filters`}
+                    >
+                      <span className="flex items-center gap-2">
+                        <span aria-hidden="true">🗑️</span>
+                        <span className="hidden sm:inline">Clear All</span>
+                        <span className="bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full text-xs font-bold">
+                          {activeFiltersCount}
+                        </span>
                       </span>
-                    )}
+                    </button>
                   </div>
                 </div>
               )}
