@@ -37,3 +37,15 @@ RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "300"))  # 5 minutes
 
 # Debug configuration for BGG data extraction
 SAVE_DEBUG_INFO = os.getenv("SAVE_DEBUG_INFO", "false").lower() in ("true", "1", "yes")
+
+# Session configuration
+# In production, set SESSION_SECRET to a secure random value
+# Generate with: python -c "import secrets; print(secrets.token_hex(32))"
+SESSION_SECRET = os.getenv("SESSION_SECRET", "")
+if not SESSION_SECRET:
+    import secrets
+    SESSION_SECRET = secrets.token_hex(32)
+    print("WARNING: SESSION_SECRET not set - generated temporary secret (not suitable for multi-instance deployment)", file=sys.stderr)
+
+# Session timeout (1 hour by default)
+SESSION_TIMEOUT_SECONDS = int(os.getenv("SESSION_TIMEOUT_SECONDS", "3600"))

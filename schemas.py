@@ -41,9 +41,18 @@ class BGGGameImport(BaseModel):
 
 class CSVImport(BaseModel):
     csv_data: str
-    
+
     @validator('csv_data')
     def validate_csv_data(cls, v):
         if not v.strip():
             raise ValueError('CSV data cannot be empty')
         return v
+
+class AdminLogin(BaseModel):
+    token: str
+
+    @validator('token')
+    def validate_token(cls, v):
+        if not v or len(v.strip()) < 10:
+            raise ValueError('Token must be at least 10 characters')
+        return v.strip()
