@@ -99,7 +99,7 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
   const directionText = currentDir === 'desc' ? 'descending' : 'ascending';
 
   return (
-    <div className="w-full">
+    <div className={`w-full ${className || ''}`}>
       {/* Screen reader label */}
       <span className="sr-only">Choose how to sort games</span>
 
@@ -107,6 +107,7 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
       <div className="flex gap-2">
         {/* Dropdown for sort field */}
         <select
+          id={id}
           value={currentKey}
           onChange={handleFieldChange}
           className="
@@ -117,6 +118,7 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
             transition-all duration-200 min-h-[44px] cursor-pointer
           "
           aria-label="Choose sort field"
+          {...props}
         >
           {sortOptions.map(option => (
             <option key={option.key} value={option.key}>
