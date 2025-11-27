@@ -203,3 +203,12 @@ export async function validateAdminToken() {
   const r = await api.get("/api/admin/validate", { headers: getAdminHeaders() });
   return r.data;
 }
+
+// Import game from BoardGameGeek by BGG ID
+export async function importFromBGG(bggId, force = false) {
+  const r = await api.post("/api/admin/import/bgg", null, {
+    params: { bgg_id: bggId, force },
+    headers: getAdminHeaders()
+  });
+  return r.data;
+}
