@@ -28,17 +28,19 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
             try:
                 logger.info(f"Fetching BGG data for game {bgg_id} (attempt {attempt + 1})")
                 response = await client.get(url, params=params)
-                
-                # Handle BGG's queue system
-                if response.status_code in (202, 500, 503):
+
+                # Handle BGG's queue system and rate limiting
+                # 401 is often used by BGG for rate limiting (not actual auth)
+                # 202 = request queued, 500/503 = temporary server issues
+                if response.status_code in (202, 401, 500, 503):
                     delay = (2 ** attempt) + (attempt * 0.5)  # Exponential backoff with jitter
                     logger.warning(f"BGG returned {response.status_code} for game {bgg_id}, retrying in {delay:.1f}s...")
                     await asyncio.sleep(delay)
                     continue
-                
+
                 if response.status_code == 400:
                     raise BGGServiceError(f"Invalid BGG ID: {bgg_id}")
-                
+
                 response.raise_for_status()
                 break
                 
