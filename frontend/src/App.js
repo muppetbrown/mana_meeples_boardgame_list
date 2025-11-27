@@ -15,6 +15,7 @@ import {
   updateGame,
   deleteGame,
   validateAdminToken,
+  importFromBGG,
 } from "./api/client";
 
 // ---- Categories ----
@@ -167,49 +168,36 @@ function StaffView() {
           showToast(`Adding game from BGG ID ${bggId}...`, "info", 2000);
         }
 
-        const API_BASE = window.__API_BASE__ || '/library/api-proxy.php?path=';
-        const response = await fetch(`${API_BASE}/api/admin/import/bgg?bgg_id=${bggId}`, {
-          method: 'POST',
-          headers: {
-            'X-Admin-Token': localStorage.getItem('ADMIN_TOKEN')
-          }
-        });
+        // Use the API client which has correct base URL configuration
+        const result = await importFromBGG(bggId);
+        showToast(`Added "${result.title}" successfully!`, "success");
+        await loadLibrary();
+        return; // Success - exit retry loop
 
-        if (response.ok) {
-          const result = await response.json();
-          showToast(`Added "${result.title}" successfully!`, "success");
-          await loadLibrary();
-          return; // Success - exit retry loop
-        } else {
-          // Handle HTTP error responses
-          const errorData = await response.json().catch(() => ({}));
-          const errorMessage = errorData.detail || `Server error (${response.status})`;
+      } catch (error) {
+        // Check if it's an HTTP error with response
+        const status = error.response?.status;
+        const errorMessage = error.response?.data?.detail || error.message;
 
-          // Don't retry on 4xx errors (client errors) except network issues
-          if (response.status >= 400 && response.status < 500 && response.status !== 429) {
-            showToast(`Failed to add game: ${errorMessage}`, "error", 4000);
-            return; // Exit - client error won't be fixed by retry
-          }
-
-          // For server errors or rate limiting, retry if we have attempts left
-          if (attempt < MAX_RETRIES) {
-            const delay = RETRY_DELAYS[attempt];
-            showToast(`Server error. Retrying in ${delay / 1000}s...`, "warning", delay);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue; // Retry
-          } else {
-            showToast(`Failed after ${MAX_RETRIES + 1} attempts: ${errorMessage}`, "error", 5000);
-          }
+        // Don't retry on 4xx errors (client errors) except rate limiting
+        if (status && status >= 400 && status < 500 && status !== 429) {
+          showToast(`Failed to add game: ${errorMessage}`, "error", 4000);
+          return; // Exit - client error won't be fixed by retry
         }
-      } catch (e) {
-        // Handle network errors (fetch exceptions)
+
+        // For server errors, rate limiting, or network errors, retry if attempts left
         if (attempt < MAX_RETRIES) {
           const delay = RETRY_DELAYS[attempt];
-          showToast(`Network error. Retrying in ${delay / 1000}s...`, "warning", delay);
+          const errorType = status ? `Server error (${status})` : 'Network error';
+          showToast(`${errorType}. Retrying in ${delay / 1000}s...`, "warning", delay);
           await new Promise(resolve => setTimeout(resolve, delay));
           continue; // Retry
         } else {
-          showToast(`Network error after ${MAX_RETRIES + 1} attempts. Please check your connection.`, "error", 5000);
+          // Final attempt failed
+          const finalMessage = status
+            ? `Failed after ${MAX_RETRIES + 1} attempts: ${errorMessage}`
+            : `Network error after ${MAX_RETRIES + 1} attempts. Please check your connection.`;
+          showToast(finalMessage, "error", 5000);
         }
       }
     }
