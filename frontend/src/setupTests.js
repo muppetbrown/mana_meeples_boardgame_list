@@ -4,6 +4,10 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
+// Mock react-router-dom (React Router v7 is ESM-only, incompatible with Jest)
+// The actual mock implementation is in src/__mocks__/react-router-dom.js
+jest.mock('react-router-dom');
+
 // Mock window.matchMedia (not implemented in JSDOM)
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

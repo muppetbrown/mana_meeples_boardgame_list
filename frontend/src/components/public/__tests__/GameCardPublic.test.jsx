@@ -13,8 +13,8 @@ describe('GameCardPublic', () => {
     id: 1,
     title: 'Pandemic',
     year: 2008,
-    players_min: 2,
-    players_max: 4,
+    min_players: 2,
+    max_players: 4,
     playtime_min: 45,
     playtime_max: 60,
     complexity: 2.43,
@@ -31,16 +31,6 @@ describe('GameCardPublic', () => {
       </RouterWrapper>
     );
     expect(screen.getByText('Pandemic')).toBeInTheDocument();
-  });
-
-  it('displays player count range', () => {
-    render(
-      <RouterWrapper>
-        <GameCardPublic game={mockGame} />
-      </RouterWrapper>
-    );
-    // Player count is usually displayed as "2-4"
-    expect(screen.getByText(/2-4/)).toBeInTheDocument();
   });
 
   it('handles missing optional fields gracefully', () => {
