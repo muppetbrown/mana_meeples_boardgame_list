@@ -15,6 +15,7 @@ import {
   updateGame,
   deleteGame,
   validateAdminToken,
+  importFromBGG,
 } from "./api/client";
 
 // ---- Categories ----
@@ -156,23 +157,49 @@ function StaffView() {
 
   // ----- Actions -----
   const addGameByBggId = useCallback(async (bggId) => {
-    try {
-      const API_BASE = window.__API_BASE__ || '/library/api-proxy.php?path=';
-      const response = await fetch(`${API_BASE}/api/admin/import/bgg?bgg_id=${bggId}`, {
-        method: 'POST',
-        headers: {
-          'X-Admin-Token': localStorage.getItem('ADMIN_TOKEN')
+    const MAX_RETRIES = 4;
+    const RETRY_DELAYS = [2000, 4000, 8000, 16000]; // Exponential backoff in ms
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        if (attempt > 0) {
+          showToast(`Retrying... (attempt ${attempt + 1}/${MAX_RETRIES + 1})`, "info", 3000);
+        } else {
+          showToast(`Adding game from BGG ID ${bggId}...`, "info", 2000);
         }
-      });
-      if (response.ok) {
-        const result = await response.json();
+
+        // Use the API client which has correct base URL configuration
+        const result = await importFromBGG(bggId);
         showToast(`Added "${result.title}" successfully!`, "success");
         await loadLibrary();
-      } else {
-        showToast("Failed to add game", "error");
+        return; // Success - exit retry loop
+
+      } catch (error) {
+        // Check if it's an HTTP error with response
+        const status = error.response?.status;
+        const errorMessage = error.response?.data?.detail || error.message;
+
+        // Don't retry on 4xx errors (client errors) except rate limiting
+        if (status && status >= 400 && status < 500 && status !== 429) {
+          showToast(`Failed to add game: ${errorMessage}`, "error", 4000);
+          return; // Exit - client error won't be fixed by retry
+        }
+
+        // For server errors, rate limiting, or network errors, retry if attempts left
+        if (attempt < MAX_RETRIES) {
+          const delay = RETRY_DELAYS[attempt];
+          const errorType = status ? `Server error (${status})` : 'Network error';
+          showToast(`${errorType}. Retrying in ${delay / 1000}s...`, "warning", delay);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue; // Retry
+        } else {
+          // Final attempt failed
+          const finalMessage = status
+            ? `Failed after ${MAX_RETRIES + 1} attempts: ${errorMessage}`
+            : `Network error after ${MAX_RETRIES + 1} attempts. Please check your connection.`;
+          showToast(finalMessage, "error", 5000);
+        }
       }
-    } catch (e) {
-      showToast("Network error", "error");
     }
   }, [loadLibrary]);
 
