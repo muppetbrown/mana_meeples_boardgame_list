@@ -81,3 +81,12 @@ def run_migrations():
             raise
 
     logger.info("Database migrations completed")
+
+
+def get_db():
+    """Database session dependency for FastAPI endpoints"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

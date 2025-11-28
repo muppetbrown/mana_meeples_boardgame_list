@@ -27,6 +27,9 @@ else:
 
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
 
+# API base URL for image proxying and absolute URLs
+API_BASE = PUBLIC_BASE_URL or "https://mana-meeples-boardgame-list.onrender.com"
+
 # HTTP client configuration
 HTTP_TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "30"))
 HTTP_RETRIES = int(os.getenv("HTTP_RETRIES", "3"))
