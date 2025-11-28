@@ -67,7 +67,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
         if item is None:
             raise BGGServiceError(f"No game data found for BGG ID {bgg_id}")
         
-        return _extract_comprehensive_game_data(item)
+        return _extract_comprehensive_game_data(item, bgg_id)
         
     except ET.ParseError as e:
         logger.error(f"XML parse error for game {bgg_id}: {e}")
@@ -79,9 +79,10 @@ def _strip_namespace(root):
         if '}' in elem.tag:
             elem.tag = elem.tag.split('}', 1)[1]
 
-def _extract_comprehensive_game_data(item) -> Dict:
+def _extract_comprehensive_game_data(item, bgg_id: int) -> Dict:
     """Extract comprehensive game data from BGG XML response"""
     data = {}
+    data['bgg_id'] = bgg_id
     
     # Basic information
     name_elem = item.find("name[@type='primary']") or item.find("name")
