@@ -1,70 +1,199 @@
-# Getting Started with Create React App
+# Mana & Meeples Board Game Library - Frontend
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+React 18 frontend for the board game catalogue system. This is the **deployed production frontend** served at [library.manaandmeeples.co.nz](https://library.manaandmeeples.co.nz).
 
-## Available Scripts
+## 🚀 Quick Start
 
-In the project directory, you can run:
+### Development Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm start
+```
+
+Visit `http://localhost:3000` to view the app.
+
+### Environment Configuration
+
+The app connects to the backend API. Configuration is handled automatically:
+
+**Development**: Uses `http://127.0.0.1:8000` (local backend)
+**Production**: Uses `REACT_APP_API_BASE` environment variable (set in Render)
+
+## 📁 Project Structure
+
+```
+frontend/
+├── src/
+│   ├── pages/               # Page components
+│   │   ├── PublicCatalogue.jsx    # Main game browser
+│   │   ├── GameDetails.jsx        # Individual game view
+│   │   └── AdminLogin.jsx         # Admin authentication
+│   │
+│   ├── components/          # Reusable components
+│   │   ├── public/          # Public-facing components
+│   │   │   ├── GameCardPublic.jsx
+│   │   │   ├── Pagination.jsx
+│   │   │   ├── SortSelect.jsx
+│   │   │   └── SearchBox.jsx
+│   │   ├── staff/           # Admin components
+│   │   │   ├── LibraryCard.jsx
+│   │   │   ├── SearchBGGPanel.jsx
+│   │   │   └── BulkPanels.jsx
+│   │   ├── CategoryFilter.jsx
+│   │   ├── CategorySelectModal.jsx
+│   │   ├── ErrorBoundary.jsx
+│   │   └── GameImage.jsx
+│   │
+│   ├── utils/               # Utility functions
+│   │   └── api.js           # API communication utilities
+│   │
+│   ├── api/                 # API client
+│   │   └── client.js        # API communication layer
+│   │
+│   ├── constants/           # App constants
+│   │   └── categories.js    # Category definitions
+│   │
+│   ├── App.js               # Main app component & router
+│   └── index.js             # App entry point
+│
+├── public/                  # Static assets
+├── build/                   # Production build (generated)
+├── package.json
+└── tailwind.config.js       # Tailwind CSS configuration
+```
+
+## 🛠️ Available Scripts
 
 ### `npm start`
-
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
-
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Runs the app in development mode at `http://localhost:3000`.
 
 ### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Launches the test runner in interactive watch mode.
 
 ### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Builds the app for production to the `build` folder.
+- Optimized and minified
+- Includes content hashes for caching
+- Ready for deployment
 
 ### `npm run eject`
+⚠️ **One-way operation** - Ejects from Create React App for full configuration control.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## 🎨 Styling
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+**Framework**: Tailwind CSS
+**Configuration**: `tailwind.config.js`
+**PostCSS**: `postcss.config.js`
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### Key Design Patterns
+- Responsive mobile-first design
+- Touch-friendly 44px minimum targets
+- Accessible color contrast (WCAG AAA)
+- Consistent spacing and typography
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+## 🔑 Key Features
 
-## Learn More
+### Public Catalogue
+- Advanced filtering (category, designer, NZ designer, players)
+- Full-text search across titles, designers, and descriptions
+- Multiple sort options (title, year, rating, playtime)
+- Responsive pagination
+- URL state persistence for shareable links
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Admin Interface
+- Secure session-based authentication
+- Game CRUD operations
+- BGG import integration
+- Bulk operations (CSV import, categorization)
+- Category management
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Image Handling
+- Progressive loading with opacity transitions
+- Automatic fallback to placeholder
+- Lazy loading support
+- BGG image quality optimization
 
-### Code Splitting
+### Error Handling
+- Production-ready error boundaries
+- Graceful fallback UI
+- Development debugging mode
+- User-friendly error messages
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## 🚢 Deployment
 
-### Analyzing the Bundle Size
+**Platform**: Render.com static site
+**URL**: https://library.manaandmeeples.co.nz
+**Auto-deploy**: Enabled from Git repository
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### Deployment Process
+1. Push changes to main branch
+2. Render detects changes
+3. Runs `npm run build`
+4. Deploys static files
+5. Live in ~2-3 minutes
 
-### Making a Progressive Web App
+### Environment Variables (Set in Render)
+```
+REACT_APP_API_BASE=https://mana-meeples-boardgame-list.onrender.com
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## 🧪 Testing
 
-### Advanced Configuration
+```bash
+# Run tests
+npm test
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+# Run tests with coverage
+npm test -- --coverage
+```
 
-### Deployment
+## 📱 Browser Support
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- Chrome (latest 2 versions)
+- Firefox (latest 2 versions)
+- Safari (latest 2 versions)
+- Edge (latest 2 versions)
+- Mobile browsers (iOS Safari, Chrome Mobile)
 
-### `npm run build` fails to minify
+## 🔗 Related Documentation
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- **[Project README](../README.md)** - Main project overview
+- **[CLAUDE.md](../CLAUDE.md)** - Complete architecture documentation
+- **[Frontend Architecture](../docs/refactoring/REFACTORING_PLAN.md)** - Phase 3 frontend refactoring plan
+
+## 📦 Dependencies
+
+**Core:**
+- React 18.x
+- React Router v7
+- Tailwind CSS
+
+**Utilities:**
+- DOMPurify (XSS protection)
+- Axios (API communication)
+
+See `package.json` for complete dependency list.
+
+## 🐛 Known Issues
+
+- Search UI claims "title, designers, or keyword" but currently only searches title
+- Category filtering should use API integration (not client-side)
+
+See [Refactoring Plan](../docs/refactoring/REFACTORING_PLAN.md) for planned improvements.
+
+## 🤝 Contributing
+
+1. Create feature branch
+2. Make changes
+3. Test locally (`npm start`)
+4. Commit with descriptive message
+5. Push and create PR
+6. Auto-deploy to preview environment
+
+---
+
+Built with ❤️ for Mana & Meeples Café

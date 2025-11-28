@@ -1,6 +1,6 @@
 // src/components/GameImage.jsx
 import React, { useState } from "react";
-import { imageProxyUrl } from "../utils/api";
+import { imageProxyUrl } from "../api/client";
 
 export default function GameImage({ url, alt, className, fallbackClass, loading = "lazy" }) {
   const [imageError, setImageError] = useState(false);

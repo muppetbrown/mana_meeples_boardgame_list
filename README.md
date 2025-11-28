@@ -1,0 +1,194 @@
+# Mana & Meeples Board Game Library
+
+A comprehensive board game catalogue system connecting a FastAPI backend with a React frontend, enabling visitors to browse the café's complete game collection with advanced filtering, search, and BoardGameGeek integration.
+
+## 🎯 Project Overview
+
+**Live Site**: [library.manaandmeeples.co.nz](https://library.manaandmeeples.co.nz)
+**Backend API**: [mana-meeples-boardgame-list.onrender.com](https://mana-meeples-boardgame-list.onrender.com)
+**Platform**: Render.com (auto-deploy from Git)
+
+### Key Features
+- 🎲 Browse 400+ board games with detailed information
+- 🔍 Advanced search and filtering (category, designer, players, complexity)
+- 🇳🇿 Special highlighting for New Zealand designers
+- 📊 BoardGameGeek integration for ratings, complexity, and metadata
+- 🖼️ Image proxying and caching for optimal performance
+- 🔐 Secure admin interface for game management
+
+## 📁 Project Structure
+
+```
+mana_meeples_boardgame_list/
+├── 📄 README.md                 # You are here
+├── 📄 CLAUDE.md                 # Project configuration and architecture
+├── 📄 render.yaml               # Deployment configuration
+│
+├── 📁 api/                      # API routers (modular endpoints)
+│   ├── dependencies.py          # Shared dependencies & auth
+│   └── routers/                 # Organized by function
+│       ├── public.py            # Public game browsing
+│       ├── admin.py             # Admin CRUD & auth
+│       ├── bulk.py              # Bulk operations
+│       └── health.py            # Health & debug endpoints
+│
+├── 📁 middleware/               # Request/response middleware
+│   ├── logging.py               # Request logging
+│   └── performance.py           # Performance monitoring
+│
+├── 📁 utils/                    # Shared utilities
+│   └── helpers.py               # Helper functions
+│
+├── 📁 frontend/                 # React 18 frontend (deployed separately)
+│   ├── src/                     # React source code
+│   ├── public/                  # Static assets
+│   └── build/                   # Production build
+│
+├── 📁 docs/                     # All documentation
+│   ├── admin/                   # Admin guides
+│   ├── deployment/              # Deployment guides
+│   ├── refactoring/             # Code review & refactoring docs
+│   └── misc/                    # Other documentation
+│
+├── 📁 tests/                    # Test suite
+│   ├── test_main.py
+│   └── test_db_connection.py
+│
+├── 📁 scripts/                  # Utility scripts
+│   ├── thumbs.py                # Thumbnail management
+│   └── game_cats.csv            # Category data
+│
+├── 📄 main.py                   # FastAPI app entry point
+├── 📄 config.py                 # Configuration management
+├── 📄 database.py               # Database connection & migrations
+├── 📄 models.py                 # SQLAlchemy models
+├── 📄 schemas.py                # Pydantic schemas
+├── 📄 exceptions.py             # Custom exceptions
+└── 📄 bgg_service.py            # BoardGameGeek API integration
+```
+
+## 🚀 Quick Start
+
+### Backend Development
+
+```bash
+# Install dependencies
+pip install -r requirements.txt
+
+# Set environment variables
+cp .env.example .env
+# Edit .env with your configuration
+
+# Run development server
+python main.py
+```
+
+Access API docs at: `http://localhost:8000/docs`
+
+### Frontend Development
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+Access frontend at: `http://localhost:3000`
+
+## 📚 Documentation
+
+- **[CLAUDE.md](CLAUDE.md)** - Complete project configuration and architecture
+- **[Documentation Index](docs/README.md)** - All documentation organized by category
+- **[Admin Guide](docs/admin/ADMIN_GUIDE.md)** - Admin operations guide
+- **[Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md)** - Deployment instructions
+- **[Refactoring Plan](docs/refactoring/REFACTORING_PLAN.md)** - Code improvement roadmap
+
+## 🏗️ Architecture
+
+### Backend (Python FastAPI)
+- **Database**: PostgreSQL (Render managed)
+- **Authentication**: Session-based with httpOnly cookies
+- **Rate Limiting**: Per-endpoint limits (60-200 req/min)
+- **Caching**: Image proxy with cache headers
+- **Monitoring**: Performance metrics and structured logging
+
+### Frontend (React)
+- **Framework**: React 18 with React Router v7
+- **Styling**: Tailwind CSS
+- **Build Tool**: Create React App
+- **Deployment**: Static site on Render
+
+### Key Integrations
+- **BoardGameGeek API**: Game metadata, ratings, complexity
+- **Render PostgreSQL**: Production database
+- **Image Proxying**: BGG image caching and optimization
+
+## 🔒 Security Features
+
+- ✅ Secure session management (httpOnly cookies)
+- ✅ XSS protection with DOMPurify
+- ✅ Rate limiting on all endpoints
+- ✅ CSRF protection (SameSite cookies)
+- ✅ SQL injection prevention (SQLAlchemy ORM)
+- ✅ Input validation (Pydantic schemas)
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+pytest tests/
+
+# Run with coverage
+pytest --cov=. tests/
+
+# Run specific test
+pytest tests/test_main.py
+```
+
+## 🚢 Deployment
+
+Both backend and frontend auto-deploy from Git via Render:
+
+```bash
+# Commit changes
+git add .
+git commit -m "Your changes"
+git push origin main
+
+# Render automatically:
+# 1. Detects push
+# 2. Builds application
+# 3. Runs migrations
+# 4. Deploys to production
+```
+
+See [Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md) for details.
+
+## 📊 Current Status
+
+**Phase 2 Complete** ✅ Backend reorganization with modular router architecture
+
+**Next Steps**:
+- Phase 3: Frontend reorganization
+- Phase 4: Testing & CI/CD
+- Phase 5-8: Documentation, accessibility, dependencies, monitoring
+
+See [Refactoring Plan](docs/refactoring/REFACTORING_PLAN.md) for full roadmap.
+
+## 🤝 Contributing
+
+1. Create feature branch from `main`
+2. Make changes and test thoroughly
+3. Commit with clear, descriptive messages
+4. Push and create pull request
+5. Wait for automatic deployment to preview environment
+
+## 📝 License
+
+Proprietary - Mana & Meeples Café
+
+## 🔗 Links
+
+- **Live Site**: https://library.manaandmeeples.co.nz
+- **API Docs**: https://mana-meeples-boardgame-list.onrender.com/docs
+- **Café Website**: https://manaandmeeples.co.nz
