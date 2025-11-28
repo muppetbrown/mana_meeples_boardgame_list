@@ -2,7 +2,7 @@
 import React from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DOMPurify from "dompurify";
-import { fetchJson, imageProxyUrl } from "../utils/api";
+import { getPublicGame, imageProxyUrl } from "../api/client";
 import { labelFor } from "../constants/categories";
 
 export default function GameDetails() {
@@ -18,7 +18,7 @@ export default function GameDetails() {
     setLoading(true);
     (async () => {
       try {
-        const data = await fetchJson(`/api/public/games/${id}`);
+        const data = await getPublicGame(id);
         if (alive) {
           setGame(data);
           setError(null);
