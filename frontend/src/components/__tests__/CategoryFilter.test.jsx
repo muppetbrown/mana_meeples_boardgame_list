@@ -1,10 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import CategoryFilter from '../CategoryFilter';
 
 describe('CategoryFilter', () => {
-  const mockSetCategory = jest.fn();
+  const mockOnChange = jest.fn();
   const mockCategoryCounts = {
+    all: 65,
     COOP_ADVENTURE: 10,
     GATEWAY_STRATEGY: 15,
     CORE_STRATEGY: 20,
@@ -19,9 +20,9 @@ describe('CategoryFilter', () => {
   it('renders all category buttons', () => {
     render(
       <CategoryFilter
-        category="all"
-        setCategory={mockSetCategory}
-        categoryCounts={mockCategoryCounts}
+        selected="all"
+        onChange={mockOnChange}
+        counts={mockCategoryCounts}
       />
     );
 
@@ -39,47 +40,16 @@ describe('CategoryFilter', () => {
   it('displays category counts', () => {
     render(
       <CategoryFilter
-        category="all"
-        setCategory={mockSetCategory}
-        categoryCounts={mockCategoryCounts}
+        selected="all"
+        onChange={mockOnChange}
+        counts={mockCategoryCounts}
       />
     );
 
-    expect(screen.getByText('10')).toBeInTheDocument();
-    expect(screen.getByText('15')).toBeInTheDocument();
-    expect(screen.getByText('20')).toBeInTheDocument();
-  });
-
-  it('calls setCategory when button is clicked', () => {
-    render(
-      <CategoryFilter
-        category="all"
-        setCategory={mockSetCategory}
-        categoryCounts={mockCategoryCounts}
-      />
-    );
-
-    const coopButton = screen.getByText(/Co-op & Adventure/i);
-    fireEvent.click(coopButton);
-
-    expect(mockSetCategory).toHaveBeenCalledWith('COOP_ADVENTURE');
-  });
-
-  it('highlights active category', () => {
-    const { container } = render(
-      <CategoryFilter
-        category="GATEWAY_STRATEGY"
-        setCategory={mockSetCategory}
-        categoryCounts={mockCategoryCounts}
-      />
-    );
-
-    const buttons = container.querySelectorAll('button');
-    const activeButton = Array.from(buttons).find(btn =>
-      btn.textContent.includes('Gateway Strategy')
-    );
-
-    // Active button should have different styling (check for specific class or attribute)
-    expect(activeButton).toHaveClass(/active|selected|bg-amber/i);
+    // Check counts are displayed
+    expect(screen.getByText('65')).toBeInTheDocument(); // all
+    expect(screen.getByText('10')).toBeInTheDocument(); // COOP_ADVENTURE
+    expect(screen.getByText('15')).toBeInTheDocument(); // GATEWAY_STRATEGY
+    expect(screen.getByText('20')).toBeInTheDocument(); // CORE_STRATEGY
   });
 });

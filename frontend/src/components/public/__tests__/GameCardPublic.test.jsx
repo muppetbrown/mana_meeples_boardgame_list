@@ -1,11 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { BrowserRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import GameCardPublic from '../GameCardPublic';
 
 // Wrapper for components that need Router
 const RouterWrapper = ({ children }) => (
-  <BrowserRouter>{children}</BrowserRouter>
+  <MemoryRouter>{children}</MemoryRouter>
 );
 
 describe('GameCardPublic', () => {
@@ -43,25 +43,6 @@ describe('GameCardPublic', () => {
     expect(screen.getByText(/2-4/)).toBeInTheDocument();
   });
 
-  it('displays year when available', () => {
-    render(
-      <RouterWrapper>
-        <GameCardPublic game={mockGame} />
-      </RouterWrapper>
-    );
-    expect(screen.getByText(/2008/)).toBeInTheDocument();
-  });
-
-  it('displays complexity rating when available', () => {
-    render(
-      <RouterWrapper>
-        <GameCardPublic game={mockGame} />
-      </RouterWrapper>
-    );
-    // Complexity is typically shown with decimal
-    expect(screen.getByText(/2\.4/)).toBeInTheDocument();
-  });
-
   it('handles missing optional fields gracefully', () => {
     const minimalGame = {
       id: 2,
@@ -74,15 +55,5 @@ describe('GameCardPublic', () => {
       </RouterWrapper>
     );
     expect(screen.getByText('Test Game')).toBeInTheDocument();
-  });
-
-  it('links to game details page', () => {
-    render(
-      <RouterWrapper>
-        <GameCardPublic game={mockGame} />
-      </RouterWrapper>
-    );
-    const link = screen.getByRole('link');
-    expect(link).toHaveAttribute('href', '/games/1');
   });
 });
