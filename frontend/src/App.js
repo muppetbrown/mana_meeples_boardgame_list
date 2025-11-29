@@ -63,9 +63,6 @@ function downloadText(name, text) {
 /** -------------------------------
  * Staff view - Refactored to use StaffContext
  * -------------------------------- */
-/** -------------------------------
- * Staff view - Refactored to use StaffContext
- * -------------------------------- */
 function StaffViewContent() {
   const navigate = useNavigate();
 
@@ -223,36 +220,6 @@ function StaffView() {
     <StaffProvider>
       <StaffViewContent />
     </StaffProvider>
-  );
-}
-            onSubmit={doBulkImport}
-          />
-          <BulkCategorizePanel
-            value={csvCategorizeText}
-            onChange={setCsvCategorizeText}
-            onSubmit={doBulkCategorize}
-          />
-        </section>
-
-        {/* Advanced Admin Tools */}
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Advanced Admin Tools</h2>
-          <AdminToolsPanel
-            onToast={showToast}
-            onLibraryReload={loadLibrary}
-          />
-        </section>
-      </main>
-
-      <CategorySelectModal
-        open={modalOpen}
-        gameTitle={pendingGame?.title}
-        onSelect={handleModalSelect}
-        onClose={handleModalClose}
-      />
-
-      <Toast message={toast.message} type={toast.type} />
-    </div>
   );
 }
 
