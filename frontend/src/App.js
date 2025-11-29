@@ -2,12 +2,6 @@
 import React, { useEffect, useMemo, useCallback, useState, lazy, Suspense } from "react";
 import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 
-// ---- Code Splitting with React.lazy ----
-// Load pages on-demand for better performance
-const PublicCatalogue = lazy(() => import("./pages/PublicCatalogue"));
-const GameDetails = lazy(() => import("./pages/GameDetails"));
-const AdminLogin = lazy(() => import("./pages/AdminLogin"));
-
 // ---- API ----
 import {
   getGames,
@@ -36,6 +30,12 @@ import { StaffProvider, useStaff } from "./context/StaffContext";
 import LibraryCard from "./components/staff/LibraryCard";
 import { BulkImportPanel, BulkCategorizePanel } from "./components/staff/BulkPanels";
 import { AdminToolsPanel } from "./components/staff/AdminToolsPanel";
+
+// ---- Code Splitting with React.lazy ----
+// Load pages on-demand for better performance
+const PublicCatalogue = lazy(() => import("./pages/PublicCatalogue"));
+const GameDetails = lazy(() => import("./pages/GameDetails"));
+const AdminLogin = lazy(() => import("./pages/AdminLogin"));
 
 // Count games by backend enum KEYS
 function computeCounts(list) {
