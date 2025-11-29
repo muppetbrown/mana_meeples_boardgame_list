@@ -4,6 +4,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import DOMPurify from "dompurify";
 import { getPublicGame, imageProxyUrl } from "../api/client";
 import { labelFor } from "../constants/categories";
+import { GameDetailsSkeleton } from "../components/common/SkeletonLoader";
 
 export default function GameDetails() {
   const { id } = useParams();
@@ -53,12 +54,7 @@ export default function GameDetails() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-emerald-50 to-teal-50">
         <div className="max-w-6xl mx-auto px-4 py-8">
-          <div className="text-center py-16" role="status" aria-live="polite">
-            <div className="inline-flex items-center px-6 py-3 rounded-full bg-white/80 text-slate-600">
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-emerald-500 border-t-transparent mr-3" aria-hidden="true"></div>
-              <span>Loading game details...</span>
-            </div>
-          </div>
+          <GameDetailsSkeleton />
         </div>
       </div>
     );
