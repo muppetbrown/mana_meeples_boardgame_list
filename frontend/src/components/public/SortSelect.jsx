@@ -48,25 +48,6 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
     return sort.endsWith('_desc') ? 'desc' : 'asc';
   }, [sort]);
 
-  const handleSortClick = (key) => {
-    const currentKey = getCurrentSortKey();
-    const currentDir = getCurrentDirection();
-    const option = sortOptions.find(opt => opt.key === key);
-    
-    if (key === currentKey) {
-      // Toggle direction for same option
-      const newDir = currentDir === 'asc' ? 'desc' : 'asc';
-      const newSort = `${key}_${newDir}`;
-      console.log(`Toggling sort direction: ${sort} → ${newSort}`);
-      onChange(newSort);
-    } else {
-      // New option - use its default direction
-      const newSort = `${key}_${option.defaultDir}`;
-      console.log(`Changing sort option: ${sort} → ${newSort}`);
-      onChange(newSort);
-    }
-  };
-
   // Debug current state
   React.useEffect(() => {
     console.log('Current sort state:', {
