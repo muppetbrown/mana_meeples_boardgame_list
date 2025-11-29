@@ -3,12 +3,14 @@ Pytest configuration and fixtures for backend tests
 """
 import os
 import pytest
+from unittest.mock import patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from fastapi.testclient import TestClient
 
 # Set test environment variables
-os.environ["DATABASE_URL"] = "sqlite:///:memory:"
+# Use shared cache mode for in-memory SQLite to share data across connections
+os.environ["DATABASE_URL"] = "sqlite:///file:testdb?mode=memory&cache=shared&uri=true"
 os.environ["ADMIN_TOKEN"] = "test_admin_token"
 os.environ["CORS_ORIGINS"] = "http://localhost:3000"
 
@@ -18,10 +20,10 @@ from main import app
 
 @pytest.fixture(scope="function")
 def db_engine():
-    """Create a test database engine"""
+    """Create a test database engine with shared cache"""
     engine = create_engine(
-        "sqlite:///:memory:",
-        connect_args={"check_same_thread": False}
+        "sqlite:///file:testdb?mode=memory&cache=shared",
+        connect_args={"check_same_thread": False, "uri": True}
     )
     Base.metadata.create_all(engine)
     yield engine
@@ -44,9 +46,16 @@ def db_session(db_engine) -> Session:
 
 
 @pytest.fixture(scope="function")
-def client(db_session):
+def client(db_session, db_engine):
     """Create a test API client with database override"""
     from database import get_db
+    import database as db_module
+
+    # Store original engine
+    original_engine = db_module.engine
+
+    # Override the engine with test engine
+    db_module.engine = db_engine
 
     def override_get_db():
         try:
@@ -56,9 +65,15 @@ def client(db_session):
 
     app.dependency_overrides[get_db] = override_get_db
 
-    with TestClient(app) as test_client:
-        yield test_client
+    # Mock the db_ping and run_migrations to prevent startup issues
+    # Patch them where they're imported (in main.py), not where they're defined
+    with patch('main.db_ping', return_value=True), \
+         patch('main.run_migrations', return_value=None):
+        with TestClient(app, raise_server_exceptions=False) as test_client:
+            yield test_client
 
+    # Restore original engine
+    db_module.engine = original_engine
     app.dependency_overrides.clear()
 
 

@@ -38,7 +38,9 @@ class TestAdminGamesEndpoints:
         response = client.get("/api/admin/games", headers=admin_headers)
         assert response.status_code == 200
         data = response.json()
-        assert len(data["items"]) == 4
+        # Admin endpoint returns a list directly, not paginated
+        assert isinstance(data, list)
+        assert len(data) == 4
 
     def test_create_game(self, client, admin_headers, sample_game_data):
         """Test creating a new game"""
