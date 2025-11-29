@@ -24,20 +24,33 @@ mana_meeples_boardgame_list/
 ├── 📄 CLAUDE.md                 # Project configuration and architecture
 ├── 📄 render.yaml               # Deployment configuration
 │
-├── 📁 api/                      # API routers (modular endpoints)
-│   ├── dependencies.py          # Shared dependencies & auth
-│   └── routers/                 # Organized by function
-│       ├── public.py            # Public game browsing
-│       ├── admin.py             # Admin CRUD & auth
-│       ├── bulk.py              # Bulk operations
-│       └── health.py            # Health & debug endpoints
-│
-├── 📁 middleware/               # Request/response middleware
-│   ├── logging.py               # Request logging
-│   └── performance.py           # Performance monitoring
-│
-├── 📁 utils/                    # Shared utilities
-│   └── helpers.py               # Helper functions
+├── 📁 backend/                  # Python FastAPI backend
+│   ├── main.py                  # FastAPI app entry point
+│   ├── config.py                # Configuration management
+│   ├── database.py              # Database connection & migrations
+│   ├── models.py                # SQLAlchemy models
+│   ├── schemas.py               # Pydantic schemas
+│   ├── exceptions.py            # Custom exceptions
+│   ├── bgg_service.py           # BoardGameGeek API integration
+│   ├── requirements.txt         # Python dependencies
+│   ├── runtime.txt              # Python version
+│   │
+│   ├── 📁 api/                  # API routers (modular endpoints)
+│   │   ├── dependencies.py      # Shared dependencies & auth
+│   │   └── routers/             # Organized by function
+│   │       ├── public.py        # Public game browsing
+│   │       ├── admin.py         # Admin CRUD & auth
+│   │       ├── bulk.py          # Bulk operations
+│   │       └── health.py        # Health & debug endpoints
+│   │
+│   ├── 📁 middleware/           # Request/response middleware
+│   │   ├── logging.py           # Request logging
+│   │   └── performance.py       # Performance monitoring
+│   │
+│   ├── 📁 utils/                # Shared utilities
+│   │   └── helpers.py           # Helper functions
+│   │
+│   └── 📁 services/             # Business logic services
 │
 ├── 📁 frontend/                 # React 18 frontend (deployed separately)
 │   ├── src/                     # React source code
@@ -54,17 +67,9 @@ mana_meeples_boardgame_list/
 │   ├── test_main.py
 │   └── test_db_connection.py
 │
-├── 📁 scripts/                  # Utility scripts
-│   ├── thumbs.py                # Thumbnail management
-│   └── game_cats.csv            # Category data
-│
-├── 📄 main.py                   # FastAPI app entry point
-├── 📄 config.py                 # Configuration management
-├── 📄 database.py               # Database connection & migrations
-├── 📄 models.py                 # SQLAlchemy models
-├── 📄 schemas.py                # Pydantic schemas
-├── 📄 exceptions.py             # Custom exceptions
-└── 📄 bgg_service.py            # BoardGameGeek API integration
+└── 📁 scripts/                  # Utility scripts
+    ├── thumbs.py                # Thumbnail management
+    └── game_cats.csv            # Category data
 ```
 
 ## 🚀 Quick Start
@@ -73,14 +78,14 @@ mana_meeples_boardgame_list/
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
 # Set environment variables
 cp .env.example .env
 # Edit .env with your configuration
 
 # Run development server
-python main.py
+cd backend && python main.py
 ```
 
 Access API docs at: `http://localhost:8000/docs`

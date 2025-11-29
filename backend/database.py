@@ -38,13 +38,21 @@ def run_migrations():
     """
     Run database migrations for schema updates.
     This handles adding new columns and updating existing data.
+
+    Note: Skipped for SQLite (test databases) as they don't support
+    PostgreSQL-specific information_schema queries.
     """
+    # Skip migrations for SQLite (used in tests)
+    if "sqlite" in DATABASE_URL.lower():
+        logger.info("SQLite detected - skipping migrations (test mode)")
+        return
+
     logger.info("Running database migrations...")
 
     with engine.connect() as conn:
         # Migration: Add date_added column if it doesn't exist
         try:
-            # Check if column exists
+            # Check if column exists (PostgreSQL-specific)
             result = conn.execute(text("""
                 SELECT column_name
                 FROM information_schema.columns

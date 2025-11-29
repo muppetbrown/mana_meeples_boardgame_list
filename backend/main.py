@@ -178,9 +178,63 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
 # ------------------------------------------------------------------------------
 
 app = FastAPI(
-    title="Mana & Meeples API",
+    title="Mana & Meeples Board Game Library API",
     version="2.0.0",
-    description="Board Game Library API with BGG integration"
+    description="""
+    Public board game catalogue and admin management API for Mana & Meeples café.
+
+    ## Features
+
+    * 🎲 **Public Game Browsing**: Search and filter 400+ board games
+    * 🔍 **Advanced Search**: Filter by category, designer, players, complexity
+    * 🇳🇿 **NZ Designer Spotlight**: Highlight New Zealand game designers
+    * 📊 **BoardGameGeek Integration**: Automatic metadata sync from BGG
+    * 🖼️ **Image Optimization**: Cached and optimized game images
+    * 🔐 **Admin Interface**: Secure game management and bulk operations
+
+    ## Public Endpoints
+
+    * `GET /api/public/games` - Browse games with filters and pagination
+    * `GET /api/public/games/{id}` - Get detailed game information
+    * `GET /api/public/category-counts` - Category statistics
+
+    ## Admin Endpoints
+
+    Require `X-Admin-Token` header for authentication.
+
+    * `POST /api/admin/login` - Create admin session
+    * `POST /api/admin/import/bgg` - Import game from BoardGameGeek
+    * `POST /api/admin/bulk-import-csv` - Bulk import games from CSV
+
+    ## Rate Limits
+
+    * Public endpoints: 100 requests/minute
+    * Admin endpoints: Limited by authentication
+    """,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_tags=[
+        {
+            "name": "public",
+            "description": "Public game browsing endpoints (no authentication required)"
+        },
+        {
+            "name": "admin",
+            "description": "Admin game management (requires X-Admin-Token header)"
+        },
+        {
+            "name": "bulk",
+            "description": "Bulk operations for managing multiple games"
+        },
+        {
+            "name": "health",
+            "description": "Health check and monitoring endpoints"
+        },
+        {
+            "name": "debug",
+            "description": "Debug and diagnostic endpoints"
+        }
+    ]
 )
 
 # ------------------------------------------------------------------------------

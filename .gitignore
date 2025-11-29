@@ -56,3 +56,7 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.backup
+
+# Test databases
+file:testdb
+testdb
