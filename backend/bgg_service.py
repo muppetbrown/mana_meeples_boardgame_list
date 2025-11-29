@@ -28,17 +28,19 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
             try:
                 logger.info(f"Fetching BGG data for game {bgg_id} (attempt {attempt + 1})")
                 response = await client.get(url, params=params)
-                
-                # Handle BGG's queue system
-                if response.status_code in (202, 500, 503):
+
+                # Handle BGG's queue system and rate limiting
+                # 401 is often used by BGG for rate limiting (not actual auth)
+                # 202 = request queued, 500/503 = temporary server issues
+                if response.status_code in (202, 401, 500, 503):
                     delay = (2 ** attempt) + (attempt * 0.5)  # Exponential backoff with jitter
                     logger.warning(f"BGG returned {response.status_code} for game {bgg_id}, retrying in {delay:.1f}s...")
                     await asyncio.sleep(delay)
                     continue
-                
+
                 if response.status_code == 400:
                     raise BGGServiceError(f"Invalid BGG ID: {bgg_id}")
-                
+
                 response.raise_for_status()
                 break
                 
@@ -65,7 +67,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
         if item is None:
             raise BGGServiceError(f"No game data found for BGG ID {bgg_id}")
         
-        return _extract_comprehensive_game_data(item)
+        return _extract_comprehensive_game_data(item, bgg_id)
         
     except ET.ParseError as e:
         logger.error(f"XML parse error for game {bgg_id}: {e}")
@@ -77,9 +79,10 @@ def _strip_namespace(root):
         if '}' in elem.tag:
             elem.tag = elem.tag.split('}', 1)[1]
 
-def _extract_comprehensive_game_data(item) -> Dict:
+def _extract_comprehensive_game_data(item, bgg_id: int) -> Dict:
     """Extract comprehensive game data from BGG XML response"""
     data = {}
+    data['bgg_id'] = bgg_id
     
     # Basic information
     name_elem = item.find("name[@type='primary']") or item.find("name")
