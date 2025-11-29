@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { imageProxyUrl } from "../../config/api";
 import { labelFor } from "../../constants/categories";
 
-export default function GameCardPublic({ game, lazy = false, onShare }) {
+function GameCardPublic({ game, lazy = false, onShare }) {
   const href = `/game/${game.id}`;
   const imgSrc = game.image_url ? imageProxyUrl(game.image_url) : null;
   const categoryLabel = labelFor(game.mana_meeple_category);
@@ -245,3 +245,15 @@ export default function GameCardPublic({ game, lazy = false, onShare }) {
     </article>
   );
 }
+
+// Memoize component to prevent unnecessary re-renders
+// Only re-render if game.id, game.title, or onShare change
+export default React.memo(GameCardPublic, (prevProps, nextProps) => {
+  return (
+    prevProps.game.id === nextProps.game.id &&
+    prevProps.game.title === nextProps.game.title &&
+    prevProps.game.image_url === nextProps.game.image_url &&
+    prevProps.onShare === nextProps.onShare &&
+    prevProps.lazy === nextProps.lazy
+  );
+});
