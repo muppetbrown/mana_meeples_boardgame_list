@@ -7,6 +7,7 @@ import GameCardPublic from "../components/public/GameCardPublic";
 import SortSelect from "../components/public/SortSelect";
 import SearchBox from "../components/public/SearchBox";
 import Pagination from "../components/public/Pagination";
+import { GameCardSkeleton } from "../components/common/SkeletonLoader";
 
 export default function PublicCatalogue() {
   // Use URL parameters to preserve state
@@ -221,16 +222,6 @@ useEffect(() => {
   }, [q, category, designer, nzDesigner, players, recentlyAdded]);
 
   // Skeleton loader component - smaller to prevent layout shift
-  const SkeletonCard = () => (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <div className="aspect-square bg-slate-200 animate-pulse"></div>
-      <div className="p-3 space-y-2">
-        <div className="h-4 bg-slate-200 rounded animate-pulse"></div>
-        <div className="h-3 bg-slate-200 rounded w-3/4 animate-pulse"></div>
-      </div>
-    </div>
-  );
-
   return (
     <>
       {/* Skip to main content link */}
@@ -880,7 +871,7 @@ useEffect(() => {
               {loading ? (
                 <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4 mb-6">
                   {Array.from({ length: 8 }, (_, i) => (
-                    <SkeletonCard key={i} />
+                    <GameCardSkeleton key={i} />
                   ))}
                 </div>
               ) : error ? (
