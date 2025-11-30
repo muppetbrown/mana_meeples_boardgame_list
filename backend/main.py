@@ -28,6 +28,35 @@ from config import HTTP_TIMEOUT, CORS_ORIGINS
 from middleware.logging import RequestLoggingMiddleware
 
 # ------------------------------------------------------------------------------
+# Sentry initialization
+# ------------------------------------------------------------------------------
+
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+# Initialize Sentry for error tracking and performance monitoring
+# Only initializes if SENTRY_DSN is configured
+if os.getenv('SENTRY_DSN'):
+    sentry_sdk.init(
+        dsn=os.getenv('SENTRY_DSN'),
+        environment=os.getenv('ENVIRONMENT', 'production'),
+
+        # Performance monitoring
+        integrations=[
+            FastApiIntegration(),
+            SqlalchemyIntegration(),
+        ],
+
+        # Set traces_sample_rate to 1.0 to capture 100% of transactions for performance monitoring.
+        # Adjust this value in production to reduce volume
+        traces_sample_rate=0.1 if os.getenv('ENVIRONMENT') == 'production' else 1.0,
+
+        # Filter out development errors
+        before_send=lambda event, hint: None if os.getenv('ENVIRONMENT') == 'development' else event,
+    )
+
+# ------------------------------------------------------------------------------
 # Logging setup
 # ------------------------------------------------------------------------------
 
