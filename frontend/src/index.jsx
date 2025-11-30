@@ -5,13 +5,13 @@ import "./index.css";
 import App from "./App";
 
 // Accessibility testing in development
-if (process.env.NODE_ENV !== 'production') {
+if (import.meta.env.DEV) {
   import('@axe-core/react').then(axe => {
     axe.default(React, ReactDOM, 1000);
   });
 }
 
-const base = process.env.PUBLIC_URL || "/";
+const base = import.meta.env.BASE_URL || "/";
 
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(

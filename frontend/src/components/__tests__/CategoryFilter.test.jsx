@@ -1,9 +1,10 @@
 import React from 'react';
+import { vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import CategoryFilter from '../CategoryFilter';
 
 describe('CategoryFilter', () => {
-  const mockOnChange = jest.fn();
+  const mockOnChange = vi.fn();
   const mockCategoryCounts = {
     all: 65,
     COOP_ADVENTURE: 10,
@@ -14,7 +15,7 @@ describe('CategoryFilter', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('renders all category buttons', () => {

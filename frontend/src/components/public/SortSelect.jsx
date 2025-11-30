@@ -129,7 +129,7 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
       </div>
 
       {/* Debug info - remove in production */}
-      {process.env.NODE_ENV === 'development' && (
+      {import.meta.env.DEV && (
         <div className="mt-2 p-2 bg-gray-100 rounded text-xs text-gray-600">
           <strong>Debug:</strong> sort="{sort}", key="{getCurrentSortKey()}", dir="{getCurrentDirection()}"
         </div>
