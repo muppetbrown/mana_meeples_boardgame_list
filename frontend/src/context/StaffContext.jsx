@@ -71,22 +71,16 @@ export function StaffProvider({ children }) {
   }, []);
 
   /**
-   * Validate admin token on mount
+   * Validate admin session on mount (cookie-based authentication)
    */
   useEffect(() => {
     const validateToken = async () => {
-      const t = localStorage.getItem('ADMIN_TOKEN');
-      if (!t) {
-        navigate('/staff/login');
-        return;
-      }
-
       try {
+        // Validate the session cookie (no localStorage needed for cookie-based auth)
         await validateAdminToken();
         setIsValidating(false);
       } catch (error) {
-        // Token is invalid, clear it and redirect to login
-        localStorage.removeItem('ADMIN_TOKEN');
+        // Session is invalid or expired, redirect to login
         navigate('/staff/login');
       }
     };
