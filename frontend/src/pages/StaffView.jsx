@@ -5,6 +5,9 @@ import { useNavigate } from "react-router-dom";
 // ---- Context ----
 import { StaffProvider, useStaff } from "../context/StaffContext";
 
+// ---- API ----
+import { adminLogout } from "../api/client";
+
 // ---- UI components ----
 import CategoryFilter from "../components/CategoryFilter";
 import CategorySelectModal from "../components/CategorySelectModal";
@@ -49,10 +52,17 @@ function StaffViewContent() {
     showToast,
   } = useStaff();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (window.confirm("Are you sure you want to logout?")) {
-      localStorage.removeItem("ADMIN_TOKEN");
-      navigate("/staff/login");
+      try {
+        // Call logout endpoint to clear session cookie
+        await adminLogout();
+      } catch (error) {
+        console.error("Logout error:", error);
+      } finally {
+        // Always navigate to login, even if logout API fails
+        navigate("/staff/login");
+      }
     }
   };
 
