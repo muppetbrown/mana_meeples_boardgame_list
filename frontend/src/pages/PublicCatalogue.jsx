@@ -242,7 +242,7 @@ useEffect(() => {
             <p className="text-base sm:text-xl text-slate-600 mb-2">
               Timaru's Board Game Community
             </p>
-            <p className="text-sm text-slate-500 mb-4">
+            <p className="text-sm text-slate-700 mb-4">
               Explore our game collection - Find out about our events at{" "}
               <a href="https://manaandmeeples.co.nz" className="text-emerald-600 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded">
                 manaandmeeples.co.nz
