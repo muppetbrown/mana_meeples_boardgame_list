@@ -81,12 +81,13 @@ async def admin_login(
     session_token = create_session(client_ip)
 
     # Set httpOnly secure cookie
+    # Note: SameSite=None is required for cross-origin requests (frontend on different domain)
     response.set_cookie(
         key="admin_session",
         value=session_token,
         httponly=True,  # Prevents JavaScript access (XSS protection)
-        secure=True,     # Only sent over HTTPS
-        samesite="lax",  # CSRF protection
+        secure=True,     # Only sent over HTTPS (required for SameSite=None)
+        samesite="none", # Allow cross-origin cookie (frontend/backend on different domains)
         max_age=SESSION_TIMEOUT_SECONDS,
         path="/"
     )
@@ -110,8 +111,8 @@ async def admin_logout(
     # Revoke session
     revoke_session(admin_session)
 
-    # Clear cookie
-    response.delete_cookie(key="admin_session", path="/")
+    # Clear cookie (must match settings used when cookie was set)
+    response.delete_cookie(key="admin_session", path="/", samesite="none", secure=True)
 
     logger.info("Admin logout")
     return {"success": True, "message": "Logged out successfully"}
