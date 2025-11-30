@@ -29,7 +29,7 @@ services:
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/build
     envVars:
-      - key: REACT_APP_API_BASE
+      - key: VITE_API_BASE
         value: https://mana-meeples-boardgame-list-opgf.onrender.com
     routes:
       - type: rewrite
