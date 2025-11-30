@@ -9,7 +9,7 @@
  * Priority order:
  * 1. Runtime window variable (for dynamic configuration)
  * 2. Meta tag in index.html (for static site with injected config)
- * 3. Build-time environment variable (REACT_APP_API_BASE)
+ * 3. Build-time environment variable (VITE_API_BASE)
  * 4. Development fallback (localhost)
  */
 function resolveApiBase() {
@@ -29,8 +29,8 @@ function resolveApiBase() {
   }
 
   // 3. Build-time environment variable
-  if (process.env.REACT_APP_API_BASE) {
-    return process.env.REACT_APP_API_BASE;
+  if (import.meta.env.VITE_API_BASE) {
+    return import.meta.env.VITE_API_BASE;
   }
 
   // 4. Development fallback
@@ -79,7 +79,7 @@ export function imageProxyUrl(url) {
 /**
  * Log the configured API base on load (helps with debugging)
  */
-if (process.env.NODE_ENV === 'development') {
+if (import.meta.env.DEV) {
   console.log(`[API Config] Using base: ${API_BASE}`);
 }
 
