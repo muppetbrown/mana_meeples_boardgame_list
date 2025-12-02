@@ -22,7 +22,11 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
     """
     url = "https://boardgamegeek.com/xmlapi2/thing"
     params = {"id": str(bgg_id), "stats": "1"}
-    
+
+    # Initialize variables outside of try blocks to ensure they're in scope for exception handlers
+    response = None
+    response_text = None
+
     async with httpx.AsyncClient(timeout=float(HTTP_TIMEOUT)) as client:
         for attempt in range(retries):
             try:
@@ -85,21 +89,21 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
                     raise BGGServiceError(f"BGG returned non-XML content for game {bgg_id}: response doesn't start with XML or '<'")
 
                 break
-                
+
             except httpx.TimeoutException:
                 logger.error(f"Timeout fetching BGG data for game {bgg_id}")
                 if attempt == retries - 1:
                     raise BGGServiceError(f"Timeout fetching game {bgg_id}")
                 delay = (2 ** attempt) + (attempt * 0.5)  # Exponential backoff with jitter
                 await asyncio.sleep(delay)
-                
+
             except httpx.HTTPError as e:
                 logger.error(f"HTTP error fetching BGG data for game {bgg_id}: {e}")
                 if attempt == retries - 1:
                     raise BGGServiceError(f"Failed to fetch game {bgg_id}: {e}")
                 delay = (2 ** attempt) + (attempt * 0.5)  # Exponential backoff with jitter
                 await asyncio.sleep(delay)
-    
+
     # Parse XML response with comprehensive error handling
     try:
         logger.info(f"Attempting to parse XML response for game {bgg_id}...")
@@ -128,27 +132,39 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
         return _extract_comprehensive_game_data(item, bgg_id)
 
     except ET.ParseError as e:
-        # Enhanced XML parsing error logging
+        # Enhanced XML parsing error logging - now all variables are in scope
         logger.error(f"=== XML PARSE ERROR DEBUG INFO ===")
         logger.error(f"Game ID: {bgg_id}")
         logger.error(f"Parse Error: {str(e)}")
-        logger.error(f"Response status code: {response.status_code}")
-        logger.error(f"Response headers: {dict(response.headers)}")
-        logger.error(f"Response length: {len(response.text)} chars")
-        logger.error(f"Response encoding: {response.encoding}")
-        logger.error(f"Raw response bytes length: {len(response.content)} bytes")
 
-        # Show response content in multiple ways
-        logger.error(f"Response text repr: {repr(response.text)}")
-        logger.error(f"Response bytes repr (first 500): {repr(response.content[:500])}")
+        # Only log response details if we have a response object
+        if response is not None:
+            logger.error(f"Response status code: {response.status_code}")
+            logger.error(f"Response headers: {dict(response.headers)}")
+            logger.error(f"Response length: {len(response.text)} chars")
+            logger.error(f"Response encoding: {response.encoding}")
+            logger.error(f"Raw response bytes length: {len(response.content)} bytes")
 
-        # Try to identify specific issues
-        if not response.text.strip():
-            logger.error("Response is empty or whitespace-only after .text conversion")
-        elif len(response.content) == 0:
-            logger.error("Response content (bytes) is empty")
-        elif response.text != response.content.decode(response.encoding or 'utf-8', errors='ignore'):
-            logger.error("Response text differs from decoded content - encoding issue?")
+            # Show response content in multiple ways
+            logger.error(f"Response text repr: {repr(response.text)}")
+            logger.error(f"Response bytes repr (first 500): {repr(response.content[:500])}")
+
+            # Try to identify specific issues
+            if not response.text.strip():
+                logger.error("Response is empty or whitespace-only after .text conversion")
+            elif len(response.content) == 0:
+                logger.error("Response content (bytes) is empty")
+            elif response.text != response.content.decode(response.encoding or 'utf-8', errors='ignore'):
+                logger.error("Response text differs from decoded content - encoding issue?")
+        else:
+            logger.error("No response object available for debugging")
+
+        # Log response_text if available
+        if response_text is not None:
+            logger.error(f"Processed response_text length: {len(response_text)} chars")
+            logger.error(f"Processed response_text repr: {repr(response_text[:500])}")
+        else:
+            logger.error("No processed response_text available")
 
         logger.error(f"=== END XML PARSE ERROR DEBUG INFO ===")
 
