@@ -31,7 +31,26 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
         for attempt in range(retries):
             try:
                 logger.info(f"Fetching BGG data for game {bgg_id} (attempt {attempt + 1})")
+
+                # Special debugging for problematic IDs
+                if bgg_id in [314421, 13]:  # 13 = Catan (known good ID)
+                    logger.info(f"=== SPECIAL DEBUG FOR BGG ID {bgg_id} ===")
+                    logger.info(f"Request URL: {url}")
+                    logger.info(f"Request params: {params}")
+
                 response = await client.get(url, params=params)
+
+                # Extra debugging for test IDs
+                if bgg_id in [314421, 13]:
+                    logger.info(f"Raw response status: {response.status_code}")
+                    logger.info(f"Raw response headers: {dict(response.headers)}")
+                    logger.info(f"Raw response encoding: {response.encoding}")
+                    logger.info(f"Raw response content length: {len(response.content)} bytes")
+                    logger.info(f"Raw response text length: {len(response.text)} chars")
+                    logger.info(f"Raw response content (first 500 bytes): {repr(response.content[:500])}")
+                    logger.info(f"Raw response text (first 500 chars): {repr(response.text[:500])}")
+                    logger.info(f"=== END SPECIAL DEBUG FOR BGG ID {bgg_id} ===")
+
 
                 # Handle BGG's queue system and rate limiting
                 # 401 is often used by BGG for rate limiting (not actual auth)
@@ -58,35 +77,56 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
                 logger.info(f"BGG response first 200 chars: {repr(response_text[:200])}")
                 logger.info(f"BGG response last 200 chars: {repr(response_text[-200:])}")
 
+                # Special debugging for test IDs during validation
+                if bgg_id in [314421, 13]:
+                    logger.info(f"=== BGG ID {bgg_id} VALIDATION DEBUG ===")
+                    logger.info(f"Original response.text length: {len(response.text)}")
+                    logger.info(f"Stripped response_text length: {len(response_text)}")
+                    logger.info(f"response.text == response_text.strip(): {response.text == response_text}")
+                    logger.info(f"response_text is falsy: {not response_text}")
+                    logger.info(f"response_text.strip() is falsy: {not response_text.strip()}")
+                    logger.info(f"len(response_text.strip()) < 20: {len(response_text.strip()) < 20}")
+                    logger.info(f"'xml' in content_type: {'xml' in content_type}")
+                    logger.info(f"response_text.startswith('<?xml'): {response_text.startswith('<?xml')}")
+                    logger.info(f"=== END BGG ID {bgg_id} VALIDATION DEBUG ===")
+
                 # Check for truly empty response
                 if not response_text:
                     logger.error(f"BGG returned truly empty response for game {bgg_id}")
-                    raise BGGServiceError(f"BGG returned empty response for game {bgg_id} - game may not exist")
+                    raise BGGServiceError(f"Game ID {bgg_id} does not exist on BoardGameGeek (empty response)")
 
                 # Check for whitespace-only response
                 if not response_text.strip():
                     logger.error(f"BGG returned whitespace-only response for game {bgg_id}")
-                    raise BGGServiceError(f"BGG returned whitespace-only response for game {bgg_id} - game may not exist")
+                    raise BGGServiceError(f"Game ID {bgg_id} does not exist on BoardGameGeek (whitespace-only response)")
 
                 # Check for extremely short responses (less than 20 chars is suspicious)
                 if len(response_text.strip()) < 20:
                     logger.error(f"BGG returned suspiciously short response for game {bgg_id}: {repr(response_text)}")
-                    raise BGGServiceError(f"BGG returned invalid short response for game {bgg_id}: '{response_text.strip()}'")
+                    # Check if it's a specific "Not Found" type response
+                    if response_text.strip().lower() in ['', 'not found', '404', 'error']:
+                        raise BGGServiceError(f"Game ID {bgg_id} does not exist on BoardGameGeek")
+                    else:
+                        raise BGGServiceError(f"Game ID {bgg_id} returned invalid response from BoardGameGeek: '{response_text.strip()}'")
 
                 # Validate we received XML content
                 if 'xml' not in content_type and not response_text.strip().startswith('<?xml'):
                     # BGG sometimes returns HTML error pages with 200 status
                     logger.error(f"BGG returned non-XML content for game {bgg_id}. Content-Type: {content_type}")
                     if '<html' in response_text.lower()[:100]:
-                        raise BGGServiceError(f"BGG returned HTML error page for game {bgg_id} - game may not exist")
+                        # Check for common "not found" patterns in HTML
+                        if any(pattern in response_text.lower() for pattern in ['not found', '404', 'does not exist']):
+                            raise BGGServiceError(f"Game ID {bgg_id} does not exist on BoardGameGeek")
+                        else:
+                            raise BGGServiceError(f"Game ID {bgg_id} returned an error page from BoardGameGeek")
                     else:
-                        raise BGGServiceError(f"BGG returned invalid content type for game {bgg_id}: {content_type}")
+                        raise BGGServiceError(f"Game ID {bgg_id} returned invalid content type from BoardGameGeek: {content_type}")
 
                 # Check if response looks like valid XML structure
                 stripped_response = response_text.strip()
                 if not stripped_response.startswith('<?xml') and not stripped_response.startswith('<'):
                     logger.error(f"BGG response doesn't look like XML for game {bgg_id}: {repr(stripped_response[:100])}")
-                    raise BGGServiceError(f"BGG returned non-XML content for game {bgg_id}: response doesn't start with XML or '<'")
+                    raise BGGServiceError(f"Game ID {bgg_id} returned non-XML content from BoardGameGeek")
 
                 break
 
@@ -143,7 +183,12 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
             # Log the actual response for debugging
             logger.error(f"No item found in BGG response for game {bgg_id}. Response root tag: {root.tag}")
             logger.error(f"Full response content: {response_text}")
-            raise BGGServiceError(f"No game data found for BGG ID {bgg_id}")
+
+            # Check if this is a "things" response with no items (empty response for non-existent game)
+            if root.tag == 'things' and len(list(root)) == 0:
+                raise BGGServiceError(f"Game ID {bgg_id} does not exist on BoardGameGeek")
+            else:
+                raise BGGServiceError(f"No game data found for BGG ID {bgg_id} - unexpected response format")
 
         logger.info(f"Successfully found item in BGG response for game {bgg_id}")
         return _extract_comprehensive_game_data(item, bgg_id)
