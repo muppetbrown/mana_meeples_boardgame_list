@@ -77,8 +77,12 @@ ${body}`;
 );
 
 /**
- * Helper to get admin token from localStorage
+ * Helper to get admin token from localStorage (legacy fallback)
  * @returns {Object} Headers object with admin token if available
+ *
+ * NOTE: This is kept for backward compatibility but the primary authentication
+ * method is now cookie-based via the admin_session cookie set by the login endpoint.
+ * Most admin operations should work without explicit headers.
  */
 function getAdminHeaders() {
   const token = localStorage.getItem("ADMIN_TOKEN");
@@ -129,8 +133,7 @@ export async function getPublicCategoryCounts() {
 export const getGames = async () => {
   try {
     const response = await api.get("/api/public/games", {
-      params: { page_size: 1000 },
-      headers: getAdminHeaders()
+      params: { page_size: 1000 }
     });
     return response.data.items || [];
   } catch (error) {
@@ -145,7 +148,7 @@ export const getGames = async () => {
  * @returns {Promise<Object>} Created game data
  */
 export const addGame = (payload) =>
-  api.post("/api/admin/games", payload, { headers: getAdminHeaders() }).then(r => r.data);
+  api.post("/api/admin/games", payload).then(r => r.data);
 
 /**
  * Update game by ID
@@ -155,7 +158,7 @@ export const addGame = (payload) =>
  */
 export async function updateGame(gameId, patch) {
   try {
-    const r = await api.post(`/api/admin/games/${gameId}/update`, patch, { headers: getAdminHeaders() });
+    const r = await api.post(`/api/admin/games/${gameId}/update`, patch);
     return r.data;
   } catch (error) {
     console.warn("Update game API returned error but operation might have succeeded:", error);
@@ -172,7 +175,7 @@ export async function updateGame(gameId, patch) {
  * @returns {Promise<Object>} Deletion confirmation
  */
 export async function deleteGame(gameId) {
-  const r = await api.delete(`/api/admin/games/${gameId}`, { headers: getAdminHeaders() });
+  const r = await api.delete(`/api/admin/games/${gameId}`);
   return r.data;
 }
 
@@ -186,7 +189,7 @@ export async function deleteGame(gameId) {
  * @returns {Promise<Object>} Import results
  */
 export const bulkImportCsv = (csv_data) =>
-  api.post("/api/admin/bulk-import-csv", { csv_data }, { headers: getAdminHeaders() }).then(r => r.data);
+  api.post("/api/admin/bulk-import-csv", { csv_data }).then(r => r.data);
 
 /**
  * Bulk categorize games from CSV
@@ -194,7 +197,7 @@ export const bulkImportCsv = (csv_data) =>
  * @returns {Promise<Object>} Categorization results
  */
 export const bulkCategorizeCsv = (csv_data) =>
-  api.post("/api/admin/bulk-categorize-csv", { csv_data }, { headers: getAdminHeaders() }).then(r => r.data);
+  api.post("/api/admin/bulk-categorize-csv", { csv_data }).then(r => r.data);
 
 /**
  * Bulk update NZ designer flags from CSV
@@ -202,7 +205,7 @@ export const bulkCategorizeCsv = (csv_data) =>
  * @returns {Promise<Object>} Update results
  */
 export async function bulkUpdateNZDesigners(csv_data) {
-  const r = await api.post("/api/admin/bulk-update-nz-designers", { csv_data }, { headers: getAdminHeaders() });
+  const r = await api.post("/api/admin/bulk-update-nz-designers", { csv_data });
   return r.data;
 }
 
@@ -211,7 +214,7 @@ export async function bulkUpdateNZDesigners(csv_data) {
  * @returns {Promise<Object>} Re-import initiation confirmation
  */
 export async function reimportAllGames() {
-  const r = await api.post("/api/admin/reimport-all-games", {}, { headers: getAdminHeaders() });
+  const r = await api.post("/api/admin/reimport-all-games", {});
   return r.data;
 }
 
@@ -243,7 +246,7 @@ export async function adminLogout() {
  * @returns {Promise<Object>} Validation response
  */
 export async function validateAdminToken() {
-  const r = await api.get("/api/admin/validate", { headers: getAdminHeaders() });
+  const r = await api.get("/api/admin/validate");
   return r.data;
 }
 
@@ -275,7 +278,7 @@ export async function getDebugDatabaseInfo(limit = 50) {
  * @returns {Promise<Object>} Performance stats
  */
 export async function getDebugPerformance() {
-  const r = await api.get("/api/debug/performance", { headers: getAdminHeaders() });
+  const r = await api.get("/api/debug/performance");
   return r.data;
 }
 
@@ -324,8 +327,7 @@ export const imageProxyUrl = proxyUrl;
 // Import game from BoardGameGeek by BGG ID
 export async function importFromBGG(bggId, force = false) {
   const r = await api.post("/api/admin/import/bgg", null, {
-    params: { bgg_id: bggId, force },
-    headers: getAdminHeaders()
+    params: { bgg_id: bggId, force }
   });
   return r.data;
 }
