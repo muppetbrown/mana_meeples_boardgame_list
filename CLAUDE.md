@@ -146,8 +146,8 @@ export const CATEGORY_LABELS = {
 ## Search & Display Priorities
 
 ### Current Search Implementation
-- **Search scope**: Title only (despite UI text mentioning "title, designers, or keyword")
-- **KNOWN ISSUE**: Search description text doesn't match actual functionality
+- **Search scope**: Title, designers, and description (comprehensive search across key fields)
+- **UI text**: Accurately shows "Search by title..." to manage user expectations
 - **Performance consideration**: JSON column searches (designers, mechanics) need careful optimization
 
 ### Display Field Priorities
@@ -337,7 +337,6 @@ src/
 - **CSV export**: Complete data export functionality with configurable limits
 
 ### Known Issues 🔧
-- **Search functionality mismatch**: UI claims "title, designers, or keyword" but only searches title
 - **Frontend category filtering**: Needs API integration (not client-side)
 - **React Router configuration**: cPanel subdirectory hosting setup
 - **URL rewriting setup**: Proper SPA routing configuration
@@ -346,7 +345,7 @@ src/
 
 ### Future Roadmap 🚀
 - **User accounts**: Wishlists and personal ratings system
-- **Enhanced search**: Include designers, mechanics, and keyword search
+- **Enhanced search**: Include mechanics search (currently covers title, designers, description)
 - **Admin roles**: Multiple admin user system beyond single token
 - **Performance optimization**: JSON field indexing and query optimization
 - **Advanced NZ content**: Designer profiles and local game showcase features

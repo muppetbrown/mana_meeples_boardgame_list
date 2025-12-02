@@ -7,7 +7,6 @@ import time
 import secrets
 from typing import Optional, Dict, Any
 from datetime import datetime
-from collections import defaultdict
 from fastapi import Header, Cookie, HTTPException, Request
 from config import (
     ADMIN_TOKEN,
@@ -19,12 +18,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Session storage for admin authentication
-# Format: {session_token: {"created_at": datetime, "ip": str}}
-admin_sessions: Dict[str, Dict[str, Any]] = {}
-
-# Rate limiting for admin authentication attempts
-admin_attempt_tracker = defaultdict(list)
+# Import shared session storage and rate limiting
+from shared.rate_limiting import admin_sessions, admin_attempt_tracker
 
 
 def get_client_ip(request: Request) -> str:

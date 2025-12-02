@@ -16,9 +16,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.types import ASGIApp, Receive, Scope, Send
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
+from shared.rate_limiting import (
+    get_limiter,
+    get_rate_limit_exception_handler,
+    get_rate_limit_exception,
+    admin_attempt_tracker,
+    admin_sessions
+)
 
 from database import SessionLocal, db_ping, run_migrations
 from models import Game
@@ -105,10 +109,7 @@ THUMBS_DIR = os.getenv("THUMBS_DIR", "/tmp/thumbs")
 # Single shared HTTP client
 httpx_client = httpx.AsyncClient(follow_redirects=True, timeout=HTTP_TIMEOUT)
 
-# Session storage for admin authentication
-# TODO: Move to redis or database for multi-instance deployments
-admin_sessions: Dict[str, Dict[str, Any]] = {}
-admin_attempt_tracker = defaultdict(list)
+# Session storage and rate limiting moved to shared/rate_limiting.py
 
 # ------------------------------------------------------------------------------
 # Background task functions
@@ -270,9 +271,9 @@ app = FastAPI(
 # Rate limiting
 # ------------------------------------------------------------------------------
 
-limiter = Limiter(key_func=get_remote_address)
+limiter = get_limiter()
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(get_rate_limit_exception(), get_rate_limit_exception_handler())
 
 # ------------------------------------------------------------------------------
 # Exception handlers
