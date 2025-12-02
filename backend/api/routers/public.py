@@ -16,8 +16,7 @@ from services import GameService, ImageService
 
 logger = logging.getLogger(__name__)
 
-# Import rate limiter from main
-# TODO: Move limiter to shared module
+# Import rate limiter from shared module
 from main import limiter
 
 # Create router with prefix and tags

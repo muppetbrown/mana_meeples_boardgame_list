@@ -31,9 +31,8 @@ from config import (
 
 logger = logging.getLogger(__name__)
 
-# Import shared state from main
-# TODO: Move to shared module
-from main import admin_attempt_tracker, admin_sessions
+# Import shared state
+from shared.rate_limiting import admin_attempt_tracker, admin_sessions
 
 # Create router with prefix and tags
 router = APIRouter(prefix="/api/admin", tags=["admin"])

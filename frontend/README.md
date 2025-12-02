@@ -180,7 +180,6 @@ See `package.json` for complete dependency list.
 
 ## 🐛 Known Issues
 
-- Search UI claims "title, designers, or keyword" but currently only searches title
 - Category filtering should use API integration (not client-side)
 
 See [Refactoring Plan](../docs/refactoring/REFACTORING_PLAN.md) for planned improvements.
