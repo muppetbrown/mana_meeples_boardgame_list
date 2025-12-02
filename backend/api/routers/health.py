@@ -16,6 +16,7 @@ from models import Game
 from api.dependencies import require_admin_auth
 from utils.helpers import parse_categories
 from middleware.performance import performance_monitor
+from bgg_service import fetch_bgg_thing, BGGServiceError
 
 logger = logging.getLogger(__name__)
 
@@ -141,3 +142,41 @@ async def get_performance_stats(
 ):
     """Get performance monitoring stats (admin only)"""
     return performance_monitor.get_stats()
+
+
+@debug_router.get("/bgg-test/{bgg_id}")
+async def debug_bgg_api_call(
+    bgg_id: int,
+    _: None = Depends(require_admin_auth)
+):
+    """Debug endpoint to test BGG API calls with detailed logging"""
+    logger.info(f"Starting BGG debug test for game ID {bgg_id}")
+
+    try:
+        game_data = await fetch_bgg_thing(bgg_id)
+        logger.info(f"Successfully fetched BGG data for game {bgg_id}")
+
+        return {
+            "status": "success",
+            "bgg_id": bgg_id,
+            "game_data": game_data,
+            "message": "BGG API call successful - check logs for detailed response info"
+        }
+
+    except BGGServiceError as e:
+        logger.error(f"BGG service error for game {bgg_id}: {str(e)}")
+        return {
+            "status": "bgg_error",
+            "bgg_id": bgg_id,
+            "error": str(e),
+            "message": "BGG service error occurred - check logs for detailed debugging info"
+        }
+
+    except Exception as e:
+        logger.error(f"Unexpected error during BGG debug test for game {bgg_id}: {str(e)}")
+        return {
+            "status": "error",
+            "bgg_id": bgg_id,
+            "error": str(e),
+            "message": "Unexpected error occurred - check logs for details"
+        }
