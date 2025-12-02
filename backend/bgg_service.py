@@ -42,6 +42,24 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
                     raise BGGServiceError(f"Invalid BGG ID: {bgg_id}")
 
                 response.raise_for_status()
+
+                # Validate response content
+                content_type = response.headers.get('content-type', '').lower()
+                response_text = response.text.strip()
+
+                # Check for empty response
+                if not response_text:
+                    raise BGGServiceError(f"BGG returned empty response for game {bgg_id} - game may not exist")
+
+                # Validate we received XML content
+                if 'xml' not in content_type and not response_text.startswith('<?xml'):
+                    # BGG sometimes returns HTML error pages with 200 status
+                    logger.error(f"BGG returned non-XML content for game {bgg_id}. Content-Type: {content_type}")
+                    if '<html' in response_text.lower()[:100]:
+                        raise BGGServiceError(f"BGG returned HTML error page for game {bgg_id} - game may not exist")
+                    else:
+                        raise BGGServiceError(f"BGG returned invalid content type for game {bgg_id}: {content_type}")
+
                 break
                 
             except httpx.TimeoutException:
@@ -62,16 +80,26 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
     try:
         root = ET.fromstring(response.text)
         _strip_namespace(root)
-        
+
+        # Check if BGG returned an error in XML format
+        error_elem = root.find(".//error")
+        if error_elem is not None:
+            error_message = error_elem.get('message', 'Unknown error')
+            raise BGGServiceError(f"BGG API error for game {bgg_id}: {error_message}")
+
         item = root.find("item")
         if item is None:
+            # Log the actual response for debugging
+            logger.error(f"No item found in BGG response for game {bgg_id}. Response root tag: {root.tag}")
             raise BGGServiceError(f"No game data found for BGG ID {bgg_id}")
-        
+
         return _extract_comprehensive_game_data(item, bgg_id)
-        
+
     except ET.ParseError as e:
-        logger.error(f"XML parse error for game {bgg_id}: {e}")
-        raise BGGServiceError(f"Failed to parse BGG response for game {bgg_id}")
+        # Log more details about the parsing error
+        logger.error(f"XML parse error for game {bgg_id}: {e}. Response length: {len(response.text)} chars")
+        logger.error(f"Response preview: {response.text[:500]}...")
+        raise BGGServiceError(f"Failed to parse BGG response for game {bgg_id}: {str(e)}")
 
 def _strip_namespace(root):
     """Remove XML namespaces from element tags"""
