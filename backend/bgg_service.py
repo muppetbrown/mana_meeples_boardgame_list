@@ -104,9 +104,26 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
                 delay = (2 ** attempt) + (attempt * 0.5)  # Exponential backoff with jitter
                 await asyncio.sleep(delay)
 
+            except BGGServiceError:
+                # BGGServiceError from validation checks should be re-raised immediately
+                # (don't retry for invalid game IDs, malformed responses, etc.)
+                raise
+
+            except Exception as e:
+                logger.error(f"Unexpected error fetching BGG data for game {bgg_id}: {e}")
+                if attempt == retries - 1:
+                    raise BGGServiceError(f"Unexpected error fetching game {bgg_id}: {e}")
+                delay = (2 ** attempt) + (attempt * 0.5)  # Exponential backoff with jitter
+                await asyncio.sleep(delay)
+
     # Parse XML response with comprehensive error handling
     try:
         logger.info(f"Attempting to parse XML response for game {bgg_id}...")
+
+        # Check if we have valid response_text before attempting to parse
+        if response_text is None:
+            logger.error(f"No response_text available for game {bgg_id} - all retry attempts failed")
+            raise BGGServiceError(f"Failed to fetch valid response for game {bgg_id} after {retries} attempts")
 
         # Try to parse the XML (use the validated response_text, not original response.text)
         root = ET.fromstring(response_text)
