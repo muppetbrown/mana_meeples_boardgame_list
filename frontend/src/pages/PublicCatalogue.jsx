@@ -42,6 +42,7 @@ export default function PublicCatalogue() {
   // Refs for scroll detection
   const lastScrollY = useRef(0);
   const headerRef = useRef(null);
+  const toolbarRef = useRef(null);
 
   // Debounce search input
   useEffect(() => {
@@ -279,32 +280,33 @@ export default function PublicCatalogue() {
         <main id="main-content">
           
           {/* Sticky Search/Filter Toolbar - Mobile */}
-          <div className={`md:hidden ${transitionClass} ${
-            isSticky ? 'fixed top-0 left-0 right-0 z-40 shadow-lg' : 'relative'
-          }`}>
-            <div className="bg-white/95 backdrop-blur-sm border-b border-slate-200">
+          <div ref={toolbarRef} className="md:hidden sticky top-0 z-40">
+            <div className="bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-md">
               
               {/* Collapsed Search Bar */}
               <div className="flex items-center gap-2 p-3">
+                <SortSelect
+                  sort={sort}
+                  onChange={updateSort}
+                  className="flex-1"
+                />
+
                 <button
                   onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-                  className="flex-1 flex items-center gap-3 min-h-[44px] px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-xl shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-all"
+                  className="flex items-center gap-2 min-h-[44px] px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-xl shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-all"
                   aria-expanded={isFilterExpanded}
                   aria-label={`${isFilterExpanded ? 'Collapse' : 'Expand'} search and filters`}
                 >
-                  <svg className="w-5 h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <span className="flex-1 text-left font-semibold text-white">
-                    {q ? `"${q.substring(0, 20)}${q.length > 20 ? '...' : ''}"` : "Tap to Search & Filter"}
+                  <span className="text-sm font-semibold text-white whitespace-nowrap">
+                    Filters
                   </span>
                   {activeFiltersCount > 0 && (
-                    <span className="bg-white text-emerald-700 text-xs font-bold px-2 py-1 rounded-full flex-shrink-0">
+                    <span className="bg-white text-emerald-700 text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                       {activeFiltersCount}
                     </span>
                   )}
                   <svg
-                    className={`w-5 h-5 text-white flex-shrink-0 ${transitionClass} ${isFilterExpanded ? 'rotate-180' : ''}`}
+                    className={`w-4 h-4 text-white ${transitionClass} ${isFilterExpanded ? 'rotate-180' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -312,12 +314,6 @@ export default function PublicCatalogue() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-
-                <SortSelect
-                  sort={sort}
-                  onChange={updateSort}
-                  className="w-32"
-                />
               </div>
 
               {/* Expanded Filter Panel */}
