@@ -41,8 +41,10 @@ export default function PublicCatalogue() {
 
   // Refs for scroll detection
   const lastScrollY = useRef(0);
+  const lastToggleY = useRef(0); // Track where we last toggled to prevent oscillation
   const headerRef = useRef(null);
   const toolbarRef = useRef(null);
+  const ticking = useRef(false);
 
   // Debounce search input
   useEffect(() => {
@@ -53,29 +55,47 @@ export default function PublicCatalogue() {
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const headerHeight = headerRef.current?.offsetHeight || 0;
+      if (!ticking.current) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
+          const scrollDelta = currentScrollY - lastScrollY.current;
+          const headerHeight = headerRef.current?.offsetHeight || 0;
+          const SCROLL_THRESHOLD = 15; // Minimum scroll distance before toggling
+          const TOGGLE_BUFFER = 50; // Prevent toggling again until we've scrolled this far
 
-      // Show/hide scroll to top button
-      setShowScrollTop(currentScrollY > 400);
+          // Show/hide scroll to top button
+          setShowScrollTop(currentScrollY > 400);
 
-      // Header hide/show on scroll direction
-      // Only start hiding once we've scrolled past the header
-      if (currentScrollY > headerHeight) {
-        if (currentScrollY > lastScrollY.current) {
-          // Scrolling down
-          setIsHeaderVisible(false);
-          setIsSticky(true);
-        } else {
-          // Scrolling up
-          setIsHeaderVisible(true);
-        }
-      } else {
-        setIsHeaderVisible(true);
-        setIsSticky(false);
+          // Header hide/show on scroll direction with threshold
+          if (currentScrollY > headerHeight + 20) {
+            // Only toggle if we've scrolled enough since last toggle
+            const distanceFromLastToggle = Math.abs(currentScrollY - lastToggleY.current);
+
+            if (distanceFromLastToggle > TOGGLE_BUFFER) {
+              if (scrollDelta > SCROLL_THRESHOLD) {
+                // Scrolling down significantly
+                setIsHeaderVisible(false);
+                setIsSticky(true);
+                lastToggleY.current = currentScrollY;
+              } else if (scrollDelta < -SCROLL_THRESHOLD) {
+                // Scrolling up significantly
+                setIsHeaderVisible(true);
+                lastToggleY.current = currentScrollY;
+              }
+            }
+          } else {
+            // Near top - always show header
+            setIsHeaderVisible(true);
+            setIsSticky(false);
+            lastToggleY.current = currentScrollY;
+          }
+
+          lastScrollY.current = currentScrollY;
+          ticking.current = false;
+        });
+
+        ticking.current = true;
       }
-
-      lastScrollY.current = currentScrollY;
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
