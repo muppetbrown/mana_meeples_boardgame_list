@@ -1,5 +1,5 @@
 from pydantic import BaseModel, validator
-from typing import Optional, Dict
+from typing import Dict, List, Optional
 
 
 class Range(BaseModel):
