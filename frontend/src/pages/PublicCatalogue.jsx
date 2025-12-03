@@ -281,7 +281,7 @@ export default function PublicCatalogue() {
             <h2 id="categories-heading" className="sr-only">
               Game Categories
             </h2>
-            <div className="flex gap-2 overflow-x-auto pb-3 px-2 -mx-2 snap-x scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto pb-3 snap-x scrollbar-hide">
               <button
                 onClick={() => updateCategory("all")}
                 className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
