@@ -55,52 +55,55 @@ export default function PublicCatalogue() {
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
     const handleScroll = () => {
-      if (!ticking.current) {
-        window.requestAnimationFrame(() => {
-          const currentScrollY = window.scrollY;
-          const scrollDelta = currentScrollY - lastScrollY.current;
-          const headerHeight = headerRef.current?.offsetHeight || 0;
-          const SCROLL_THRESHOLD = 15; // Minimum scroll distance before toggling
-          const TOGGLE_BUFFER = 50; // Prevent toggling again until we've scrolled this far
+      // Skip scroll handling during loading operations to prevent jumping
+      if (loadingMore || !ticking.current) {
+        if (!loadingMore && !ticking.current) {
+          window.requestAnimationFrame(() => {
+            const currentScrollY = window.scrollY;
+            const scrollDelta = currentScrollY - lastScrollY.current;
+            const headerHeight = headerRef.current?.offsetHeight || 0;
+            const SCROLL_THRESHOLD = 15; // Minimum scroll distance before toggling
+            const TOGGLE_BUFFER = 50; // Prevent toggling again until we've scrolled this far
 
-          // Show/hide scroll to top button
-          setShowScrollTop(currentScrollY > 400);
+            // Show/hide scroll to top button
+            setShowScrollTop(currentScrollY > 400);
 
-          // Header hide/show on scroll direction with threshold
-          if (currentScrollY > headerHeight + 20) {
-            // Only toggle if we've scrolled enough since last toggle
-            const distanceFromLastToggle = Math.abs(currentScrollY - lastToggleY.current);
+            // Header hide/show on scroll direction with threshold
+            if (currentScrollY > headerHeight + 20) {
+              // Only toggle if we've scrolled enough since last toggle
+              const distanceFromLastToggle = Math.abs(currentScrollY - lastToggleY.current);
 
-            if (distanceFromLastToggle > TOGGLE_BUFFER) {
-              if (scrollDelta > SCROLL_THRESHOLD) {
-                // Scrolling down significantly
-                setIsHeaderVisible(false);
-                setIsSticky(true);
-                lastToggleY.current = currentScrollY;
-              } else if (scrollDelta < -SCROLL_THRESHOLD) {
-                // Scrolling up significantly
-                setIsHeaderVisible(true);
-                lastToggleY.current = currentScrollY;
+              if (distanceFromLastToggle > TOGGLE_BUFFER) {
+                if (scrollDelta > SCROLL_THRESHOLD) {
+                  // Scrolling down significantly
+                  setIsHeaderVisible(false);
+                  setIsSticky(true);
+                  lastToggleY.current = currentScrollY;
+                } else if (scrollDelta < -SCROLL_THRESHOLD) {
+                  // Scrolling up significantly
+                  setIsHeaderVisible(true);
+                  lastToggleY.current = currentScrollY;
+                }
               }
+            } else {
+              // Near top - always show header
+              setIsHeaderVisible(true);
+              setIsSticky(false);
+              lastToggleY.current = currentScrollY;
             }
-          } else {
-            // Near top - always show header
-            setIsHeaderVisible(true);
-            setIsSticky(false);
-            lastToggleY.current = currentScrollY;
-          }
 
-          lastScrollY.current = currentScrollY;
-          ticking.current = false;
-        });
+            lastScrollY.current = currentScrollY;
+            ticking.current = false;
+          });
 
-        ticking.current = true;
+          ticking.current = true;
+        }
       }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [loadingMore]);
 
   // Update URL when filters change
   useEffect(() => {
@@ -171,9 +174,13 @@ export default function PublicCatalogue() {
   // Load more function - NEW
   const loadMore = async () => {
     if (loadingMore || allLoadedItems.length >= total) return;
-    
+
     setLoadingMore(true);
     const nextPage = page + 1;
+
+    // Preserve scroll position before loading
+    const scrollY = window.scrollY;
+    const scrollHeight = document.documentElement.scrollHeight;
 
     try {
       const params = { q: qDebounced, page: nextPage, page_size: pageSize, sort };
@@ -184,9 +191,17 @@ export default function PublicCatalogue() {
       if (recentlyAdded) params.recently_added = 30;
 
       const data = await getPublicGames(params);
-      
+
       setAllLoadedItems(prev => [...prev, ...(data.items || [])]);
       setPage(nextPage);
+
+      // Wait for DOM update and restore relative scroll position
+      requestAnimationFrame(() => {
+        const newScrollHeight = document.documentElement.scrollHeight;
+        const heightDiff = newScrollHeight - scrollHeight;
+        // Keep user at the same visual position
+        window.scrollTo(0, scrollY);
+      });
     } catch (e) {
       console.error("Failed to load more games:", e);
     } finally {
