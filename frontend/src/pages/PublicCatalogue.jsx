@@ -267,14 +267,49 @@ export default function PublicCatalogue() {
           </p>
           <p className="text-xs sm:text-sm text-slate-500 mb-3">
             Explore our game collection -{" "}
-            <a 
-              href="https://manaandmeeples.co.nz" 
+            <a
+              href="https://manaandmeeples.co.nz"
               className="text-emerald-600 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded"
             >
               manaandmeeples.co.nz
             </a>
           </p>
-          <div className="w-12 sm:w-20 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 mx-auto rounded-full" aria-hidden="true"></div>
+          <div className="w-12 sm:w-20 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 mx-auto rounded-full mb-4" aria-hidden="true"></div>
+
+          {/* Category Pills - part of header, hides with header on scroll */}
+          <section aria-labelledby="categories-heading" className="mt-4">
+            <h2 id="categories-heading" className="sr-only">
+              Game Categories
+            </h2>
+            <div className="flex gap-2 overflow-x-auto pb-3 px-2 -mx-2 snap-x scrollbar-hide">
+              <button
+                onClick={() => updateCategory("all")}
+                className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
+                  category === "all"
+                    ? "bg-emerald-500 text-white shadow-md focus:ring-emerald-300"
+                    : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
+                }`}
+                aria-pressed={category === "all"}
+              >
+                All ({counts?.all ?? "..."})
+              </button>
+
+              {CATEGORY_KEYS.map((key) => (
+                <button
+                  key={key}
+                  onClick={() => updateCategory(key)}
+                  className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
+                    category === key
+                      ? "bg-emerald-500 text-white shadow-md focus:ring-emerald-300"
+                      : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
+                  }`}
+                  aria-pressed={category === key}
+                >
+                  {CATEGORY_LABELS[key]} ({counts?.[key] ?? "..."})
+                </button>
+              ))}
+            </div>
+          </section>
         </header>
 
         <main id="main-content">
@@ -516,46 +551,6 @@ export default function PublicCatalogue() {
                   </button>
                 )}
               </div>
-            </div>
-          </section>
-
-          {/* Category Pills - Sticky with toolbar */}
-          <section 
-            className={`mb-6 ${transitionClass} ${
-              isSticky ? 'md:sticky md:top-0 md:z-30 md:bg-white/95 md:backdrop-blur-sm md:py-4 md:shadow-md' : ''
-            }`}
-            aria-labelledby="categories-heading"
-          >
-            <h2 id="categories-heading" className="sr-only">
-              Game Categories
-            </h2>
-            <div className="flex gap-2 overflow-x-auto pb-3 px-2 -mx-2 snap-x scrollbar-hide">
-              <button
-                onClick={() => updateCategory("all")}
-                className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
-                  category === "all"
-                    ? "bg-emerald-500 text-white shadow-md focus:ring-emerald-300"
-                    : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
-                }`}
-                aria-pressed={category === "all"}
-              >
-                All ({counts?.all ?? "..."})
-              </button>
-
-              {CATEGORY_KEYS.map((key) => (
-                <button
-                  key={key}
-                  onClick={() => updateCategory(key)}
-                  className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
-                    category === key
-                      ? "bg-emerald-500 text-white shadow-md focus:ring-emerald-300"
-                      : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
-                  }`}
-                  aria-pressed={category === key}
-                >
-                  {CATEGORY_LABELS[key]} ({counts?.[key] ?? "..."})
-                </button>
-              ))}
             </div>
           </section>
 
