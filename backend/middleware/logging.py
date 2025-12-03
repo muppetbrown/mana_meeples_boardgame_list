@@ -33,7 +33,10 @@ class RequestLoggingMiddleware:
         path = scope.get("path", "")
         method = scope.get("method", "")
 
-        logger.info(f"Request started: {method} {path}", extra={'request_id': request_id})
+        logger.info(
+            f"Request started: {method} {path}",
+            extra={"request_id": request_id},
+        )
 
         # Capture status code from response
         async def send_wrapper(message):
@@ -47,16 +50,20 @@ class RequestLoggingMiddleware:
         except Exception as e:
             duration = time.time() - start_time
             status_code = 500
-            performance_monitor.record_request(path, method, duration, status_code)
+            performance_monitor.record_request(
+                path, method, duration, status_code
+            )
             logger.error(
                 f"Request failed: {method} {path} - {str(e)} ({duration:.3f}s)",
-                extra={'request_id': request_id}
+                extra={"request_id": request_id},
             )
             raise
         else:
             duration = time.time() - start_time
-            performance_monitor.record_request(path, method, duration, status_code)
+            performance_monitor.record_request(
+                path, method, duration, status_code
+            )
             logger.info(
                 f"Request completed: {method} {path} ({duration:.3f}s)",
-                extra={'request_id': request_id}
+                extra={"request_id": request_id},
             )

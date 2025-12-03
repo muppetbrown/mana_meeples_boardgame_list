@@ -4,7 +4,7 @@ Game service layer - handles all business logic for game operations.
 Separates business logic from HTTP routing concerns.
 """
 import logging
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 
 from sqlalchemy import select, func, or_, and_, case
@@ -64,7 +64,7 @@ class GameService:
         recently_added_days: Optional[int] = None,
         sort: str = "title_asc",
         page: int = 1,
-        page_size: int = 24
+        page_size: int = 24,
     ) -> Tuple[List[Game], int]:
         """
         Get filtered games with pagination.
@@ -92,11 +92,11 @@ class GameService:
             search_conditions = [Game.title.ilike(search_term)]
 
             # Add designer search if the field exists
-            if hasattr(Game, 'designers'):
+            if hasattr(Game, "designers"):
                 search_conditions.append(Game.designers.ilike(search_term))
 
             # Add description search for keyword functionality
-            if hasattr(Game, 'description'):
+            if hasattr(Game, "description"):
                 search_conditions.append(Game.description.ilike(search_term))
 
             query = query.where(or_(*search_conditions))
@@ -104,7 +104,7 @@ class GameService:
         # Apply designer filter
         if designer and designer.strip():
             designer_filter = f"%{designer.strip()}%"
-            if hasattr(Game, 'designers'):
+            if hasattr(Game, "designers"):
                 query = query.where(Game.designers.ilike(designer_filter))
 
         # Apply NZ designer filter
@@ -115,15 +115,21 @@ class GameService:
         if players is not None:
             query = query.where(
                 and_(
-                    or_(Game.players_min.is_(None), Game.players_min <= players),
-                    or_(Game.players_max.is_(None), Game.players_max >= players)
+                    or_(
+                        Game.players_min.is_(None), Game.players_min <= players
+                    ),
+                    or_(
+                        Game.players_max.is_(None), Game.players_max >= players
+                    ),
                 )
             )
 
         # Apply recently added filter
         if recently_added_days is not None:
-            cutoff_date = datetime.utcnow() - timedelta(days=recently_added_days)
-            if hasattr(Game, 'date_added'):
+            cutoff_date = datetime.utcnow() - timedelta(
+                days=recently_added_days
+            )
+            if hasattr(Game, "date_added"):
                 query = query.where(Game.date_added >= cutoff_date)
 
         # Apply category filter
@@ -142,9 +148,13 @@ class GameService:
         ).scalar()
 
         # Apply pagination
-        games = self.db.execute(
-            query.offset((page - 1) * page_size).limit(page_size)
-        ).scalars().all()
+        games = (
+            self.db.execute(
+                query.offset((page - 1) * page_size).limit(page_size)
+            )
+            .scalars()
+            .all()
+        )
 
         return games, total
 
@@ -157,41 +167,51 @@ class GameService:
         elif sort == "year_asc":
             return query.order_by(Game.year.asc().nulls_last())
         elif sort == "date_added_desc":
-            if hasattr(Game, 'date_added'):
+            if hasattr(Game, "date_added"):
                 return query.order_by(Game.date_added.desc().nulls_last())
             return query.order_by(Game.title.asc())
         elif sort == "date_added_asc":
-            if hasattr(Game, 'date_added'):
+            if hasattr(Game, "date_added"):
                 return query.order_by(Game.date_added.asc().nulls_last())
             return query.order_by(Game.title.asc())
         elif sort == "rating_desc":
-            if hasattr(Game, 'average_rating'):
+            if hasattr(Game, "average_rating"):
                 return query.order_by(Game.average_rating.desc().nulls_last())
             return query.order_by(Game.title.asc())
         elif sort == "rating_asc":
-            if hasattr(Game, 'average_rating'):
+            if hasattr(Game, "average_rating"):
                 return query.order_by(Game.average_rating.asc().nulls_last())
             return query.order_by(Game.title.asc())
         elif sort == "time_asc":
             avg_time = case(
                 [
-                    (and_(Game.playtime_min.isnot(None), Game.playtime_max.isnot(None)),
-                     (Game.playtime_min + Game.playtime_max) / 2),
+                    (
+                        and_(
+                            Game.playtime_min.isnot(None),
+                            Game.playtime_max.isnot(None),
+                        ),
+                        (Game.playtime_min + Game.playtime_max) / 2,
+                    ),
                     (Game.playtime_min.isnot(None), Game.playtime_min),
                     (Game.playtime_max.isnot(None), Game.playtime_max),
                 ],
-                else_=999999
+                else_=999999,
             )
             return query.order_by(avg_time.asc())
         elif sort == "time_desc":
             avg_time = case(
                 [
-                    (and_(Game.playtime_min.isnot(None), Game.playtime_max.isnot(None)),
-                     (Game.playtime_min + Game.playtime_max) / 2),
+                    (
+                        and_(
+                            Game.playtime_min.isnot(None),
+                            Game.playtime_max.isnot(None),
+                        ),
+                        (Game.playtime_min + Game.playtime_max) / 2,
+                    ),
                     (Game.playtime_min.isnot(None), Game.playtime_min),
                     (Game.playtime_max.isnot(None), Game.playtime_max),
                 ],
-                else_=0
+                else_=0,
             )
             return query.order_by(avg_time.desc())
         else:  # Default to title_asc
@@ -210,7 +230,7 @@ class GameService:
         designer_filter = f"%{designer_name}%"
         query = select(Game)
 
-        if hasattr(Game, 'designers'):
+        if hasattr(Game, "designers"):
             query = query.where(Game.designers.ilike(designer_filter))
 
         return self.db.execute(query).scalars().all()
@@ -238,14 +258,18 @@ class GameService:
         # Create game with basic fields
         game = Game(
             title=game_data.get("title", ""),
-            categories=",".join(game_data.get("categories", [])) if isinstance(game_data.get("categories"), list) else game_data.get("categories", ""),
+            categories=(
+                ",".join(game_data.get("categories", []))
+                if isinstance(game_data.get("categories"), list)
+                else game_data.get("categories", "")
+            ),
             year=game_data.get("year"),
             players_min=game_data.get("players_min"),
             players_max=game_data.get("players_max"),
             playtime_min=game_data.get("playtime_min"),
             playtime_max=game_data.get("playtime_max"),
             bgg_id=bgg_id,
-            mana_meeple_category=game_data.get("mana_meeple_category")
+            mana_meeple_category=game_data.get("mana_meeple_category"),
         )
 
         # Add enhanced fields if they exist in the model
@@ -283,17 +307,24 @@ class GameService:
 
         # Update allowed fields
         updatable_fields = [
-            'title', 'year', 'description', 'mana_meeple_category',
-            'players_min', 'players_max', 'playtime_min', 'playtime_max',
-            'min_age', 'nz_designer'
+            "title",
+            "year",
+            "description",
+            "mana_meeple_category",
+            "players_min",
+            "players_max",
+            "playtime_min",
+            "playtime_max",
+            "min_age",
+            "nz_designer",
         ]
 
         for field in updatable_fields:
             if field in game_data:
                 # Check if field exists in model before setting
-                if field == 'description' and not hasattr(game, 'description'):
+                if field == "description" and not hasattr(game, "description"):
                     continue
-                if field == 'min_age' and not hasattr(game, 'min_age'):
+                if field == "min_age" and not hasattr(game, "min_age"):
                     continue
                 setattr(game, field, game_data[field])
 
@@ -327,7 +358,9 @@ class GameService:
         logger.info(f"Deleted game: {game_title} (ID: {game_id})")
         return game_title
 
-    def update_game_from_bgg_data(self, game: Game, bgg_data: Dict[str, Any]) -> None:
+    def update_game_from_bgg_data(
+        self, game: Game, bgg_data: Dict[str, Any]
+    ) -> None:
         """
         Update a Game model instance with BGG data.
         Consolidates logic used by both single import and bulk import.
@@ -352,7 +385,9 @@ class GameService:
         categories = parse_categories(game.categories)
         game.mana_meeple_category = categorize_game(categories)
 
-    def _update_game_enhanced_fields(self, game: Game, data: Dict[str, Any]) -> None:
+    def _update_game_enhanced_fields(
+        self, game: Game, data: Dict[str, Any]
+    ) -> None:
         """
         Update enhanced fields on a game if they exist in the model.
         Handles both game creation and BGG import data.
@@ -362,20 +397,20 @@ class GameService:
             data: Dictionary containing field data
         """
         enhanced_fields = {
-            'description': 'description',
-            'designers': 'designers',
-            'publishers': 'publishers',
-            'mechanics': 'mechanics',
-            'artists': 'artists',
-            'average_rating': 'average_rating',
-            'complexity': 'complexity',
-            'bgg_rank': 'bgg_rank',
-            'users_rated': 'users_rated',
-            'min_age': 'min_age',
-            'is_cooperative': 'is_cooperative',
-            'game_type': 'game_type',
-            'image': 'image',
-            'thumbnail_url': 'thumbnail',  # BGG uses 'thumbnail' key
+            "description": "description",
+            "designers": "designers",
+            "publishers": "publishers",
+            "mechanics": "mechanics",
+            "artists": "artists",
+            "average_rating": "average_rating",
+            "complexity": "complexity",
+            "bgg_rank": "bgg_rank",
+            "users_rated": "users_rated",
+            "min_age": "min_age",
+            "is_cooperative": "is_cooperative",
+            "game_type": "game_type",
+            "image": "image",
+            "thumbnail_url": "thumbnail",  # BGG uses 'thumbnail' key
         }
 
         for game_field, data_key in enhanced_fields.items():
@@ -383,14 +418,11 @@ class GameService:
                 setattr(game, game_field, data.get(data_key))
 
         # Handle thumbnail_url special case where data might have 'thumbnail_url' instead of 'thumbnail'
-        if hasattr(game, 'thumbnail_url') and 'thumbnail_url' in data:
-            game.thumbnail_url = data.get('thumbnail_url')
+        if hasattr(game, "thumbnail_url") and "thumbnail_url" in data:
+            game.thumbnail_url = data.get("thumbnail_url")
 
     def create_or_update_from_bgg(
-        self,
-        bgg_id: int,
-        bgg_data: Dict[str, Any],
-        force_update: bool = False
+        self, bgg_id: int, bgg_data: Dict[str, Any], force_update: bool = False
     ) -> Tuple[Game, bool]:
         """
         Create or update a game from BGG data.
@@ -419,7 +451,9 @@ class GameService:
             self.db.add(existing)
             self.db.commit()
             self.db.refresh(existing)
-            logger.info(f"Updated from BGG: {existing.title} (BGG ID: {bgg_id})")
+            logger.info(
+                f"Updated from BGG: {existing.title} (BGG ID: {bgg_id})"
+            )
             return existing, True
         else:
             # Create new game
@@ -435,7 +469,7 @@ class GameService:
                 playtime_min=bgg_data.get("playtime_min"),
                 playtime_max=bgg_data.get("playtime_max"),
                 bgg_id=bgg_id,
-                mana_meeple_category=categorize_game(categories)
+                mana_meeple_category=categorize_game(categories),
             )
 
             # Add enhanced fields

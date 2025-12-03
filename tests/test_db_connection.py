@@ -11,8 +11,9 @@ from sqlalchemy.pool import QueuePool
 # Set the DATABASE_URL to the PostgreSQL instance
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://tcg_admin:1FhON1ZvCR7bRry4L9UoonvorMD4BjAR@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles"
+    "postgresql://tcg_admin:1FhON1ZvCR7bRry4L9UoonvorMD4BjAR@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles",
 )
+
 
 def test_connection():
     """Test basic database connection."""
@@ -23,7 +24,9 @@ def test_connection():
     try:
         # Create engine with PostgreSQL pooling settings
         print(f"\n1. Creating database engine...")
-        print(f"   Database: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'unknown'}")
+        print(
+            f"   Database: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'unknown'}"
+        )
 
         engine = create_engine(
             DATABASE_URL,
@@ -33,7 +36,7 @@ def test_connection():
             pool_timeout=30,
             pool_recycle=3600,
             pool_pre_ping=True,
-            echo=False
+            echo=False,
         )
 
         print("   ✓ Engine created successfully")
@@ -51,21 +54,30 @@ def test_connection():
         inspector = inspect(engine)
         tables = inspector.get_table_names()
 
-        if 'boardgames' in tables:
+        if "boardgames" in tables:
             print(f"   ✓ 'boardgames' table exists")
 
             # Get column information
             print(f"\n4. Inspecting 'boardgames' table structure...")
-            columns = inspector.get_columns('boardgames')
+            columns = inspector.get_columns("boardgames")
             print(f"   Found {len(columns)} columns:")
 
-            key_columns = ['id', 'title', 'bgg_id', 'mana_meeple_category', 'nz_designer',
-                          'designers', 'mechanics', 'complexity', 'average_rating']
+            key_columns = [
+                "id",
+                "title",
+                "bgg_id",
+                "mana_meeple_category",
+                "nz_designer",
+                "designers",
+                "mechanics",
+                "complexity",
+                "average_rating",
+            ]
 
             for col in columns:
-                if col['name'] in key_columns:
-                    col_type = str(col['type'])
-                    nullable = "NULL" if col['nullable'] else "NOT NULL"
+                if col["name"] in key_columns:
+                    col_type = str(col["type"])
+                    nullable = "NULL" if col["nullable"] else "NOT NULL"
                     print(f"      - {col['name']:25} {col_type:20} {nullable}")
 
             # Count records
@@ -78,13 +90,17 @@ def test_connection():
                 # Sample a few records
                 if count > 0:
                     print(f"\n6. Sample records (first 3)...")
-                    result = conn.execute(text(
-                        "SELECT id, title, year, mana_meeple_category, nz_designer "
-                        "FROM boardgames ORDER BY id LIMIT 3;"
-                    ))
+                    result = conn.execute(
+                        text(
+                            "SELECT id, title, year, mana_meeple_category, nz_designer "
+                            "FROM boardgames ORDER BY id LIMIT 3;"
+                        )
+                    )
                     for row in result:
-                        print(f"      ID {row[0]}: {row[1]} ({row[2]}) - "
-                              f"Category: {row[3]}, NZ Designer: {row[4]}")
+                        print(
+                            f"      ID {row[0]}: {row[1]} ({row[2]}) - "
+                            f"Category: {row[3]}, NZ Designer: {row[4]}"
+                        )
         else:
             print(f"   ✗ ERROR: 'boardgames' table not found!")
             print(f"   Available tables: {', '.join(tables)}")
@@ -93,11 +109,13 @@ def test_connection():
         # Test JSON columns
         print(f"\n7. Testing JSON column support...")
         with engine.connect() as conn:
-            result = conn.execute(text(
-                "SELECT title, designers, mechanics "
-                "FROM boardgames "
-                "WHERE designers IS NOT NULL LIMIT 1;"
-            ))
+            result = conn.execute(
+                text(
+                    "SELECT title, designers, mechanics "
+                    "FROM boardgames "
+                    "WHERE designers IS NOT NULL LIMIT 1;"
+                )
+            )
             row = result.fetchone()
             if row:
                 print(f"   ✓ JSON columns working correctly")
@@ -118,8 +136,9 @@ def test_connection():
         print("  4. psycopg2-binary is installed: pip install psycopg2-binary")
         return False
     finally:
-        if 'engine' in locals():
+        if "engine" in locals():
             engine.dispose()
+
 
 if __name__ == "__main__":
     success = test_connection()
