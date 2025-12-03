@@ -288,25 +288,25 @@ export default function PublicCatalogue() {
               <div className="flex items-center gap-2 p-3">
                 <button
                   onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-                  className="flex-1 flex items-center gap-2 min-h-[44px] px-3 py-2 bg-white border-2 border-slate-300 rounded-xl hover:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-colors"
+                  className="flex-1 flex items-center gap-3 min-h-[44px] px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-xl shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-all"
                   aria-expanded={isFilterExpanded}
                   aria-label={`${isFilterExpanded ? 'Collapse' : 'Expand'} search and filters`}
                 >
-                  <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-white flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                  <span className="flex-1 text-left text-slate-600">
-                    {q || "Search games..."}
+                  <span className="flex-1 text-left font-semibold text-white">
+                    {q ? `"${q.substring(0, 20)}${q.length > 20 ? '...' : ''}"` : "Tap to Search & Filter"}
                   </span>
                   {activeFiltersCount > 0 && (
-                    <span className="bg-emerald-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    <span className="bg-white text-emerald-700 text-xs font-bold px-2 py-1 rounded-full flex-shrink-0">
                       {activeFiltersCount}
                     </span>
                   )}
-                  <svg 
-                    className={`w-4 h-4 text-slate-400 ${transitionClass} ${isFilterExpanded ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
+                  <svg
+                    className={`w-5 h-5 text-white flex-shrink-0 ${transitionClass} ${isFilterExpanded ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -606,7 +606,7 @@ export default function PublicCatalogue() {
 
           {!loading && !error && allLoadedItems.length > 0 && (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                 {allLoadedItems.map((game) => (
                   <GameCardPublic
                     key={game.id}
