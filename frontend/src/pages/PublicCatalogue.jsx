@@ -54,12 +54,14 @@ export default function PublicCatalogue() {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
+      const headerHeight = headerRef.current?.offsetHeight || 0;
+
       // Show/hide scroll to top button
       setShowScrollTop(currentScrollY > 400);
-      
+
       // Header hide/show on scroll direction
-      if (currentScrollY > 100) {
+      // Only start hiding once we've scrolled past the header
+      if (currentScrollY > headerHeight) {
         if (currentScrollY > lastScrollY.current) {
           // Scrolling down
           setIsHeaderVisible(false);
@@ -72,7 +74,7 @@ export default function PublicCatalogue() {
         setIsHeaderVisible(true);
         setIsSticky(false);
       }
-      
+
       lastScrollY.current = currentScrollY;
     };
 
@@ -252,12 +254,13 @@ export default function PublicCatalogue() {
       <div className="container mx-auto px-4 py-4 sm:py-8">
         
         {/* Header - with scroll-away behavior */}
-        <header 
+        <header
           ref={headerRef}
-          className={`mb-4 text-center ${transitionClass} ${
-            isHeaderVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
+          className={`text-center ${transitionClass} ${
+            isHeaderVisible
+              ? 'opacity-100 translate-y-0 mb-4'
+              : 'opacity-0 -translate-y-full pointer-events-none h-0 mb-0 overflow-hidden'
           }`}
-          style={{ height: isHeaderVisible ? 'auto' : '0', overflow: 'hidden' }}
         >
           <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-2">
             Mana & Meeples
@@ -313,9 +316,9 @@ export default function PublicCatalogue() {
         </header>
 
         <main id="main-content">
-          
+
           {/* Sticky Search/Filter Toolbar - Mobile */}
-          <div ref={toolbarRef} className="md:hidden sticky top-0 z-40">
+          <div ref={toolbarRef} className="md:hidden sticky top-0 z-40 mb-4">
             <div className="bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-md">
               
               {/* Collapsed Search Bar */}
