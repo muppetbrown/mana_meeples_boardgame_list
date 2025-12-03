@@ -21,7 +21,9 @@ THUMBS_DIR = os.getenv("THUMBS_DIR", "/tmp/thumbs")
 class ImageService:
     """Service for image-related operations"""
 
-    def __init__(self, db: Session, http_client: Optional[httpx.AsyncClient] = None):
+    def __init__(
+        self, db: Session, http_client: Optional[httpx.AsyncClient] = None
+    ):
         """
         Initialize image service.
 
@@ -31,8 +33,7 @@ class ImageService:
         """
         self.db = db
         self.http_client = http_client or httpx.AsyncClient(
-            follow_redirects=True,
-            timeout=HTTP_TIMEOUT
+            follow_redirects=True, timeout=HTTP_TIMEOUT
         )
         self._ensure_thumbs_dir()
 
@@ -41,9 +42,7 @@ class ImageService:
         os.makedirs(THUMBS_DIR, exist_ok=True)
 
     async def download_thumbnail(
-        self,
-        url: str,
-        filename_prefix: str
+        self, url: str, filename_prefix: str
     ) -> Optional[str]:
         """
         Download thumbnail from URL and save to local storage.
@@ -60,14 +59,14 @@ class ImageService:
             response.raise_for_status()
 
             # Generate filename
-            ext = url.split('.')[-1].split('?')[0]  # Handle query params
-            if ext not in ['jpg', 'jpeg', 'png', 'webp']:
-                ext = 'jpg'
+            ext = url.split(".")[-1].split("?")[0]  # Handle query params
+            if ext not in ["jpg", "jpeg", "png", "webp"]:
+                ext = "jpg"
             filename = f"{filename_prefix}.{ext}"
             filepath = os.path.join(THUMBS_DIR, filename)
 
             # Save file
-            with open(filepath, 'wb') as f:
+            with open(filepath, "wb") as f:
                 f.write(response.content)
 
             logger.info(f"Downloaded thumbnail: {filename}")
@@ -78,10 +77,7 @@ class ImageService:
             return None
 
     async def download_and_update_game_thumbnail(
-        self,
-        game_id: int,
-        thumbnail_url: str,
-        max_retries: int = 3
+        self, game_id: int, thumbnail_url: str, max_retries: int = 3
     ) -> bool:
         """
         Background task to download and update game thumbnail with retry logic.
@@ -103,21 +99,22 @@ class ImageService:
         for attempt in range(max_retries):
             try:
                 filename = await self.download_thumbnail(
-                    thumbnail_url,
-                    f"{game_id}-{game.title}"
+                    thumbnail_url, f"{game_id}-{game.title}"
                 )
 
                 if filename:
                     # Update game record
-                    if hasattr(game, 'thumbnail_file'):
+                    if hasattr(game, "thumbnail_file"):
                         game.thumbnail_file = filename
-                    if hasattr(game, 'thumbnail_url'):
+                    if hasattr(game, "thumbnail_url"):
                         game.thumbnail_url = f"/thumbs/{filename}"
 
                     self.db.add(game)
                     self.db.commit()
 
-                    logger.info(f"✓ Thumbnail updated for game {game_id}: {filename}")
+                    logger.info(
+                        f"✓ Thumbnail updated for game {game_id}: {filename}"
+                    )
                     return True
 
             except Exception as e:
@@ -125,15 +122,15 @@ class ImageService:
                     f"Attempt {attempt + 1}/{max_retries} failed for game {game_id}: {e}"
                 )
                 if attempt == max_retries - 1:
-                    logger.error(f"All retry attempts exhausted for game {game_id}")
+                    logger.error(
+                        f"All retry attempts exhausted for game {game_id}"
+                    )
                     return False
 
         return False
 
     async def proxy_image(
-        self,
-        url: str,
-        cache_max_age: int = 300
+        self, url: str, cache_max_age: int = 300
     ) -> tuple[bytes, str, str]:
         """
         Proxy an external image with caching headers.
@@ -151,16 +148,14 @@ class ImageService:
         response = await self.http_client.get(url)
         response.raise_for_status()
 
-        content_type = response.headers.get("content-type", "application/octet-stream")
+        content_type = response.headers.get(
+            "content-type", "application/octet-stream"
+        )
         cache_control = f"public, max-age={cache_max_age}"
 
         return response.content, content_type, cache_control
 
-    async def reimport_game_thumbnail(
-        self,
-        game_id: int,
-        bgg_id: int
-    ) -> bool:
+    async def reimport_game_thumbnail(self, game_id: int, bgg_id: int) -> bool:
         """
         Re-import game data and thumbnail from BGG.
         Used by bulk reimport operations.
@@ -195,9 +190,20 @@ class ImageService:
 
             # Update enhanced fields if they exist
             enhanced_fields = [
-                'description', 'designers', 'publishers', 'mechanics', 'artists',
-                'average_rating', 'complexity', 'bgg_rank', 'users_rated',
-                'min_age', 'is_cooperative', 'game_type', 'image', 'thumbnail_url'
+                "description",
+                "designers",
+                "publishers",
+                "mechanics",
+                "artists",
+                "average_rating",
+                "complexity",
+                "bgg_rank",
+                "users_rated",
+                "min_age",
+                "is_cooperative",
+                "game_type",
+                "image",
+                "thumbnail_url",
             ]
             for field in enhanced_fields:
                 if hasattr(game, field):
@@ -232,12 +238,14 @@ class ImageService:
 
         try:
             thumbs_path = Path(THUMBS_DIR)
-            for file_path in thumbs_path.glob('*'):
+            for file_path in thumbs_path.glob("*"):
                 if file_path.is_file():
                     if file_path.stat().st_mtime < cutoff_time:
                         file_path.unlink()
                         count += 1
-                        logger.debug(f"Removed old thumbnail: {file_path.name}")
+                        logger.debug(
+                            f"Removed old thumbnail: {file_path.name}"
+                        )
 
             logger.info(f"Cleaned up {count} old thumbnail files")
             return count

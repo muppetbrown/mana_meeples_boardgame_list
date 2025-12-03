@@ -4,22 +4,30 @@ Bulk operations API endpoints for admin tasks.
 Includes CSV-based import, categorization, and batch updates.
 """
 import logging
-from typing import Optional
 
-from fastapi import APIRouter, Depends, Request, HTTPException, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Depends,
+    HTTPException,
+    Request,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from api.dependencies import require_admin_auth
+from bgg_service import fetch_bgg_thing
 from database import get_db
 from models import Game
-from bgg_service import fetch_bgg_thing
-from api.dependencies import require_admin_auth
-from utils.helpers import parse_categories, categorize_game, CATEGORY_KEYS
+from utils.helpers import CATEGORY_KEYS, categorize_game, parse_categories
 
 logger = logging.getLogger(__name__)
 
 # Import background task from main - TODO: move to services
-from main import _download_and_update_thumbnail, _reimport_single_game
+from main import (  # noqa: E402
+    _download_and_update_thumbnail,
+    _reimport_single_game,
+)
 
 # Create router with prefix and tags
 router = APIRouter(prefix="/api/admin", tags=["bulk-operations"])
@@ -31,7 +39,7 @@ async def bulk_import_csv(
     background_tasks: BackgroundTasks,
     request: Request,
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
     """Bulk import games from CSV data (admin only)"""
     try:
@@ -39,9 +47,15 @@ async def bulk_import_csv(
         if not csv_text.strip():
             raise HTTPException(status_code=400, detail="No CSV data provided")
 
-        lines = [line.strip() for line in csv_text.strip().split('\n') if line.strip()]
+        lines = [
+            line.strip()
+            for line in csv_text.strip().split("\n")
+            if line.strip()
+        ]
         if not lines:
-            raise HTTPException(status_code=400, detail="No valid lines in CSV")
+            raise HTTPException(
+                status_code=400, detail="No valid lines in CSV"
+            )
 
         added = []
         skipped = []
@@ -50,7 +64,7 @@ async def bulk_import_csv(
         for line_num, line in enumerate(lines, 1):
             try:
                 # Expected format: bgg_id,title (title is optional)
-                parts = [p.strip() for p in line.split(',')]
+                parts = [p.strip() for p in line.split(",")]
                 if len(parts) < 1:
                     errors.append(f"Line {line_num}: No BGG ID provided")
                     continue
@@ -59,13 +73,20 @@ async def bulk_import_csv(
                 try:
                     bgg_id = int(parts[0])
                 except ValueError:
-                    errors.append(f"Line {line_num}: Invalid BGG ID '{parts[0]}'")
+                    errors.append(
+                        f"Line {line_num}: Invalid BGG ID '{parts[0]}'"
+                    )
                     continue
 
                 # Check if already exists
-                existing = db.execute(select(Game).where(Game.bgg_id == bgg_id)).scalar_one_or_none()
+                existing = db.execute(
+                    select(Game).where(Game.bgg_id == bgg_id)
+                ).scalar_one_or_none()
                 if existing:
-                    skipped.append(f"BGG ID {bgg_id}: Already exists as '{existing.title}'")
+                    skipped.append(
+                        f"BGG ID {bgg_id}: Already exists as "
+                        f"'{existing.title}'"
+                    )
                     continue
 
                 # Import from BGG
@@ -84,38 +105,40 @@ async def bulk_import_csv(
                         playtime_min=bgg_data.get("playtime_min"),
                         playtime_max=bgg_data.get("playtime_max"),
                         bgg_id=bgg_id,
-                        mana_meeple_category=categorize_game(categories)
+                        mana_meeple_category=categorize_game(categories),
                     )
 
                     # Add enhanced fields if they exist in the model
-                    if hasattr(game, 'description'):
+                    if hasattr(game, "description"):
                         game.description = bgg_data.get("description")
-                    if hasattr(game, 'designers'):
+                    if hasattr(game, "designers"):
                         game.designers = bgg_data.get("designers", [])
-                    if hasattr(game, 'publishers'):
+                    if hasattr(game, "publishers"):
                         game.publishers = bgg_data.get("publishers", [])
-                    if hasattr(game, 'mechanics'):
+                    if hasattr(game, "mechanics"):
                         game.mechanics = bgg_data.get("mechanics", [])
-                    if hasattr(game, 'artists'):
+                    if hasattr(game, "artists"):
                         game.artists = bgg_data.get("artists", [])
-                    if hasattr(game, 'average_rating'):
+                    if hasattr(game, "average_rating"):
                         game.average_rating = bgg_data.get("average_rating")
-                    if hasattr(game, 'complexity'):
+                    if hasattr(game, "complexity"):
                         game.complexity = bgg_data.get("complexity")
-                    if hasattr(game, 'bgg_rank'):
+                    if hasattr(game, "bgg_rank"):
                         game.bgg_rank = bgg_data.get("bgg_rank")
-                    if hasattr(game, 'users_rated'):
+                    if hasattr(game, "users_rated"):
                         game.users_rated = bgg_data.get("users_rated")
-                    if hasattr(game, 'min_age'):
+                    if hasattr(game, "min_age"):
                         game.min_age = bgg_data.get("min_age")
-                    if hasattr(game, 'is_cooperative'):
+                    if hasattr(game, "is_cooperative"):
                         game.is_cooperative = bgg_data.get("is_cooperative")
-                    if hasattr(game, 'game_type'):
+                    if hasattr(game, "game_type"):
                         game.game_type = bgg_data.get("game_type")
-                    if hasattr(game, 'image'):
-                        game.image = bgg_data.get("image")  # Store the full-size image URL
-                    if hasattr(game, 'thumbnail_url'):
-                        game.thumbnail_url = bgg_data.get("thumbnail")  # Store the thumbnail URL separately
+                    if hasattr(game, "image"):
+                        # Store the full-size image URL
+                        game.image = bgg_data.get("image")
+                    if hasattr(game, "thumbnail_url"):
+                        # Store the thumbnail URL separately
+                        game.thumbnail_url = bgg_data.get("thumbnail")
 
                     db.add(game)
                     db.commit()
@@ -124,13 +147,23 @@ async def bulk_import_csv(
                     added.append(f"BGG ID {bgg_id}: {game.title}")
 
                     # Download thumbnail in background
-                    thumbnail_url = bgg_data.get("image") or bgg_data.get("thumbnail")  # Prioritize image over thumbnail
+                    # Prioritize image over thumbnail
+                    thumbnail_url = bgg_data.get("image") or bgg_data.get(
+                        "thumbnail"
+                    )
                     if thumbnail_url and background_tasks:
-                        background_tasks.add_task(_download_and_update_thumbnail, game.id, thumbnail_url)
+                        background_tasks.add_task(
+                            _download_and_update_thumbnail,
+                            game.id,
+                            thumbnail_url,
+                        )
 
                 except Exception as e:
                     db.rollback()
-                    errors.append(f"Line {line_num}: Failed to import BGG ID {bgg_id} - {str(e)}")
+                    errors.append(
+                        f"Line {line_num}: Failed to import BGG ID "
+                        f"{bgg_id} - {str(e)}"
+                    )
 
             except Exception as e:
                 errors.append(f"Line {line_num}: {str(e)}")
@@ -139,12 +172,14 @@ async def bulk_import_csv(
             "message": f"Processed {len(lines)} lines",
             "added": added,
             "skipped": skipped,
-            "errors": errors
+            "errors": errors,
         }
 
     except Exception as e:
         logger.error(f"Bulk import failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Bulk import failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Bulk import failed: {str(e)}"
+        )
 
 
 @router.post("/bulk-categorize-csv")
@@ -152,7 +187,7 @@ async def bulk_categorize_csv(
     csv_data: dict,
     request: Request,
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
     """Bulk categorize existing games from CSV data (admin only)"""
     try:
@@ -160,9 +195,15 @@ async def bulk_categorize_csv(
         if not csv_text.strip():
             raise HTTPException(status_code=400, detail="No CSV data provided")
 
-        lines = [line.strip() for line in csv_text.strip().split('\n') if line.strip()]
+        lines = [
+            line.strip()
+            for line in csv_text.strip().split("\n")
+            if line.strip()
+        ]
         if not lines:
-            raise HTTPException(status_code=400, detail="No valid lines in CSV")
+            raise HTTPException(
+                status_code=400, detail="No valid lines in CSV"
+            )
 
         updated = []
         not_found = []
@@ -171,16 +212,21 @@ async def bulk_categorize_csv(
         for line_num, line in enumerate(lines, 1):
             try:
                 # Expected format: bgg_id,category[,title]
-                parts = [p.strip() for p in line.split(',')]
+                parts = [p.strip() for p in line.split(",")]
                 if len(parts) < 2:
-                    errors.append(f"Line {line_num}: Must have at least bgg_id,category")
+                    errors.append(
+                        f"Line {line_num}: Must have at least "
+                        f"bgg_id,category"
+                    )
                     continue
 
                 # Parse BGG ID
                 try:
                     bgg_id = int(parts[0])
                 except ValueError:
-                    errors.append(f"Line {line_num}: Invalid BGG ID '{parts[0]}'")
+                    errors.append(
+                        f"Line {line_num}: Invalid BGG ID '{parts[0]}'"
+                    )
                     continue
 
                 category = parts[1].strip()
@@ -191,9 +237,12 @@ async def bulk_categorize_csv(
                     category_key = category
                 else:
                     # Try to find by label (for backwards compatibility)
-                    # This assumes CATEGORY_LABELS is available from constants
+                    # This assumes CATEGORY_LABELS is available
                     try:
-                        from constants.categories import CATEGORY_LABELS
+                        from constants.categories import (  # noqa: E402
+                            CATEGORY_LABELS,
+                        )
+
                         for key, label in CATEGORY_LABELS.items():
                             if label.lower() == category.lower():
                                 category_key = key
@@ -202,11 +251,16 @@ async def bulk_categorize_csv(
                         pass
 
                 if not category_key:
-                    errors.append(f"Line {line_num}: Invalid category '{category}'. Use: {', '.join(CATEGORY_KEYS)}")
+                    errors.append(
+                        f"Line {line_num}: Invalid category '{category}'. "
+                        f"Use: {', '.join(CATEGORY_KEYS)}"
+                    )
                     continue
 
                 # Find and update game
-                game = db.execute(select(Game).where(Game.bgg_id == bgg_id)).scalar_one_or_none()
+                game = db.execute(
+                    select(Game).where(Game.bgg_id == bgg_id)
+                ).scalar_one_or_none()
                 if not game:
                     not_found.append(f"BGG ID {bgg_id}: Game not found")
                     continue
@@ -215,7 +269,10 @@ async def bulk_categorize_csv(
                 game.mana_meeple_category = category_key
                 db.add(game)
 
-                updated.append(f"BGG ID {bgg_id} ({game.title}): {old_category or 'None'} → {category_key}")
+                updated.append(
+                    f"BGG ID {bgg_id} ({game.title}): "
+                    f"{old_category or 'None'} → {category_key}"
+                )
 
             except Exception as e:
                 errors.append(f"Line {line_num}: {str(e)}")
@@ -226,13 +283,15 @@ async def bulk_categorize_csv(
             "message": f"Processed {len(lines)} lines",
             "updated": updated,
             "not_found": not_found,
-            "errors": errors
+            "errors": errors,
         }
 
     except Exception as e:
         db.rollback()
         logger.error(f"Bulk categorize failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Bulk categorize failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Bulk categorize failed: {str(e)}"
+        )
 
 
 @router.post("/reimport-all-games")
@@ -240,15 +299,21 @@ async def reimport_all_games(
     background_tasks: BackgroundTasks,
     request: Request,
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
     """Re-import all existing games to get enhanced BGG data"""
-    games = db.execute(select(Game).where(Game.bgg_id.isnot(None))).scalars().all()
+    games = (
+        db.execute(select(Game).where(Game.bgg_id.isnot(None))).scalars().all()
+    )
 
     for game in games:
         background_tasks.add_task(_reimport_single_game, game.id, game.bgg_id)
 
-    return {"message": f"Started re-importing {len(games)} games with enhanced data"}
+    return {
+        "message": (
+            f"Started re-importing {len(games)} games with enhanced data"
+        )
+    }
 
 
 @router.post("/bulk-update-nz-designers")
@@ -256,7 +321,7 @@ async def bulk_update_nz_designers(
     csv_data: dict,
     request: Request,
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
     """Bulk update NZ designer status from CSV (admin only)"""
     try:
@@ -264,30 +329,42 @@ async def bulk_update_nz_designers(
         if not csv_text.strip():
             raise HTTPException(status_code=400, detail="No CSV data provided")
 
-        lines = [line.strip() for line in csv_text.strip().split('\n') if line.strip()]
+        lines = [
+            line.strip()
+            for line in csv_text.strip().split("\n")
+            if line.strip()
+        ]
         updated = []
         not_found = []
         errors = []
 
         for line_num, line in enumerate(lines, 1):
             try:
-                # Expected format: bgg_id,true/false or game_title,true/false
-                parts = [p.strip() for p in line.split(',')]
+                # Expected format: bgg_id,true/false or
+                # game_title,true/false
+                parts = [p.strip() for p in line.split(",")]
                 if len(parts) != 2:
-                    errors.append(f"Line {line_num}: Must have format 'identifier,true/false'")
+                    errors.append(
+                        f"Line {line_num}: Must have format "
+                        f"'identifier,true/false'"
+                    )
                     continue
 
                 identifier = parts[0]
-                nz_status = parts[1].lower() in ['true', '1', 'yes', 'y']
+                nz_status = parts[1].lower() in ["true", "1", "yes", "y"]
 
                 # Try to find by BGG ID first, then by title
                 game = None
                 try:
                     bgg_id = int(identifier)
-                    game = db.execute(select(Game).where(Game.bgg_id == bgg_id)).scalar_one_or_none()
+                    game = db.execute(
+                        select(Game).where(Game.bgg_id == bgg_id)
+                    ).scalar_one_or_none()
                 except ValueError:
                     # Not a number, try by title
-                    game = db.execute(select(Game).where(Game.title.ilike(f"%{identifier}%"))).scalar_one_or_none()
+                    game = db.execute(
+                        select(Game).where(Game.title.ilike(f"%{identifier}%"))
+                    ).scalar_one_or_none()
 
                 if not game:
                     not_found.append(f"'{identifier}': Game not found")
@@ -308,10 +385,12 @@ async def bulk_update_nz_designers(
             "message": f"Processed {len(lines)} lines",
             "updated": updated,
             "not_found": not_found,
-            "errors": errors
+            "errors": errors,
         }
 
     except Exception as e:
         db.rollback()
         logger.error(f"Bulk NZ designer update failed: {e}")
-        raise HTTPException(status_code=500, detail=f"Bulk update failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Bulk update failed: {str(e)}"
+        )

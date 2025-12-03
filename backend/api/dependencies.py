@@ -3,23 +3,23 @@
 Shared dependencies for API endpoints including authentication,
 session management, and helper functions.
 """
-import time
+import logging
 import secrets
-from typing import Optional, Dict, Any
+import time
 from datetime import datetime
-from fastapi import Header, Cookie, HTTPException, Request
+from typing import Optional
+
+from fastapi import Cookie, Header, HTTPException, Request
+
 from config import (
     ADMIN_TOKEN,
     RATE_LIMIT_ATTEMPTS,
     RATE_LIMIT_WINDOW,
-    SESSION_TIMEOUT_SECONDS
+    SESSION_TIMEOUT_SECONDS,
 )
-import logging
+from shared.rate_limiting import admin_attempt_tracker, admin_sessions
 
 logger = logging.getLogger(__name__)
-
-# Import shared session storage and rate limiting
-from shared.rate_limiting import admin_sessions, admin_attempt_tracker
 
 
 def get_client_ip(request: Request) -> str:
@@ -35,7 +35,7 @@ def create_session(client_ip: str) -> str:
     session_token = secrets.token_urlsafe(32)
     admin_sessions[session_token] = {
         "created_at": datetime.utcnow(),
-        "ip": client_ip
+        "ip": client_ip,
     }
     logger.info(f"Created new admin session from {client_ip}")
     return session_token
@@ -62,8 +62,10 @@ def cleanup_expired_sessions():
     """Remove expired sessions from storage"""
     current_time = datetime.utcnow()
     expired_tokens = [
-        token for token, session in admin_sessions.items()
-        if (current_time - session["created_at"]).total_seconds() > SESSION_TIMEOUT_SECONDS
+        token
+        for token, session in admin_sessions.items()
+        if (current_time - session["created_at"]).total_seconds()
+        > SESSION_TIMEOUT_SECONDS
     ]
     for token in expired_tokens:
         del admin_sessions[token]
@@ -75,13 +77,13 @@ def revoke_session(session_token: Optional[str]):
     """Revoke/logout an admin session"""
     if session_token and session_token in admin_sessions:
         del admin_sessions[session_token]
-        logger.info(f"Revoked admin session")
+        logger.info("Revoked admin session")
 
 
 def require_admin_auth(
     request: Request,
     x_admin_token: Optional[str] = Header(None),
-    admin_session: Optional[str] = Cookie(None)
+    admin_session: Optional[str] = Cookie(None),
 ) -> None:
     """
     Dependency for admin endpoints.
@@ -105,7 +107,8 @@ def require_admin_auth(
     # Clean old attempts from tracker
     cutoff_time = current_time - RATE_LIMIT_WINDOW
     admin_attempt_tracker[client_ip] = [
-        attempt_time for attempt_time in admin_attempt_tracker[client_ip]
+        attempt_time
+        for attempt_time in admin_attempt_tracker[client_ip]
         if attempt_time > cutoff_time
     ]
 
@@ -114,7 +117,10 @@ def require_admin_auth(
         logger.warning(f"Rate limited admin token attempts from {client_ip}")
         raise HTTPException(
             status_code=429,
-            detail="Too many failed authentication attempts. Please try again later."
+            detail=(
+                "Too many failed authentication attempts. "
+                "Please try again later."
+            ),
         )
 
     # Validate token
