@@ -1,7 +1,7 @@
 // src/components/public/GameCardPublic.jsx - Enhanced with Collapsible Details
 import React from "react";
 import { Link } from "react-router-dom";
-import { imageProxyUrl } from "../../utils/api";
+import { imageProxyUrl } from "../../config/api";
 import { labelFor } from "../../constants/categories";
 
 export default function GameCardPublic({ 
