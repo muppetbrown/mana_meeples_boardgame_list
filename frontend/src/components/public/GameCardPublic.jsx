@@ -1,12 +1,12 @@
 // src/components/public/GameCardPublic.jsx - Enhanced with Collapsible Details
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { imageProxyUrl } from "../../config/api";
 import { labelFor } from "../../constants/categories";
 
-export default function GameCardPublic({ 
-  game, 
-  lazy = false, 
+export default function GameCardPublic({
+  game,
+  lazy = false,
   isExpanded = false,
   onToggleExpand,
   prefersReducedMotion = false
@@ -14,6 +14,27 @@ export default function GameCardPublic({
   const href = `/game/${game.id}`;
   const imgSrc = game.image_url ? imageProxyUrl(game.image_url) : null;
   const categoryLabel = labelFor(game.mana_meeple_category);
+  const cardRef = useRef(null);
+
+  // Auto-scroll to top of card on mobile when expanded
+  useEffect(() => {
+    if (isExpanded && cardRef.current) {
+      // Check if we're on a mobile device (screen width <= 768px)
+      const isMobile = window.innerWidth <= 768;
+
+      if (isMobile) {
+        // Small delay to allow expand animation to start
+        setTimeout(() => {
+          if (cardRef.current) {
+            cardRef.current.scrollIntoView({
+              behavior: prefersReducedMotion ? 'auto' : 'smooth',
+              block: 'start'
+            });
+          }
+        }, 100);
+      }
+    }
+  }, [isExpanded, prefersReducedMotion]);
 
   // Enhanced category colors with WCAG AAA contrast ratios
   const getCategoryStyle = (category) => {
@@ -57,7 +78,10 @@ export default function GameCardPublic({
   const transitionClass = prefersReducedMotion ? '' : 'transition-all duration-300';
 
   return (
-    <article className={`group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 ${isExpanded ? 'col-span-2 sm:col-span-1' : ''}`}>
+    <article
+      ref={cardRef}
+      className={`group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 ${isExpanded ? 'col-span-2 sm:col-span-1' : ''}`}
+    >
 
       {/* Image Section - Always Visible */}
       <Link
