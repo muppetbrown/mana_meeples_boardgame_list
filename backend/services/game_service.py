@@ -4,7 +4,7 @@ Game service layer - handles all business logic for game operations.
 Separates business logic from HTTP routing concerns.
 """
 import logging
-from typing import Optional, Tuple, Dict, Any
+from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 
 from sqlalchemy import select, func, or_, and_, case
