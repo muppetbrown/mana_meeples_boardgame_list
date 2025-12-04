@@ -28,7 +28,7 @@ export default function GameCardPublic({
           if (cardRef.current) {
             cardRef.current.scrollIntoView({
               behavior: prefersReducedMotion ? 'auto' : 'smooth',
-              block: 'start'
+              block: 'nearest'
             });
           }
         }, 100);
@@ -80,7 +80,7 @@ export default function GameCardPublic({
   return (
     <article
       ref={cardRef}
-      className={`group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 ${isExpanded ? 'col-span-2 sm:col-span-1' : ''}`}
+      className={`scroll-mt-24 group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 ${isExpanded ? 'col-span-2 sm:col-span-1' : ''}`}
     >
 
       {/* Image Section - Always Visible */}
