@@ -65,8 +65,13 @@ export default function PublicCatalogue() {
             const SCROLL_THRESHOLD = 15; // Minimum scroll distance before toggling
             const TOGGLE_BUFFER = 50; // Prevent toggling again until we've scrolled this far
 
-            // Show/hide scroll to top button
-            setShowScrollTop(currentScrollY > 400);
+            // Show/hide scroll to top button with hysteresis to prevent flicker
+            if (currentScrollY > 450) {
+              setShowScrollTop(true);
+            } else if (currentScrollY < 350) {
+              setShowScrollTop(false);
+            }
+            // Between 350-450px: maintain current state (no flicker)
 
             // Header hide/show on scroll direction with threshold
             if (currentScrollY > headerHeight + 20) {
