@@ -288,15 +288,16 @@ export default function PublicCatalogue() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-amber-50">
       <div className="container mx-auto px-4 py-4 sm:py-8">
         
-        {/* Header - with scroll-away behavior */}
-        <header
-          ref={headerRef}
-          className={`text-center ${transitionClass} ${
-            isHeaderVisible
-              ? 'opacity-100 translate-y-0 mb-4'
-              : 'opacity-0 -translate-y-full pointer-events-none h-0 mb-0 overflow-hidden'
-          }`}
-        >
+        {/* Header - with scroll-away behavior - wrapped to prevent layout shift */}
+        <div className="mb-4">
+          <header
+            ref={headerRef}
+            className={`text-center ${transitionClass} ${
+              isHeaderVisible
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 -translate-y-full pointer-events-none h-0 overflow-hidden'
+            }`}
+          >
           <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-2">
             Mana & Meeples
           </h1>
@@ -349,6 +350,7 @@ export default function PublicCatalogue() {
             </div>
           </section>
         </header>
+        </div>
 
         <main id="main-content">
 
