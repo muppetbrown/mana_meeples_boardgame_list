@@ -46,6 +46,18 @@ export default function PublicCatalogue() {
   const toolbarRef = useRef(null);
   const ticking = useRef(false);
 
+  // Initialize header visibility on mount based on scroll position
+  useEffect(() => {
+    const currentScrollY = window.scrollY;
+    const headerHeight = headerRef.current?.offsetHeight || 0;
+
+    // On initial load, show header if we're near the top
+    if (currentScrollY <= headerHeight + 20) {
+      setIsHeaderVisible(true);
+      setIsSticky(false);
+    }
+  }, []);
+
   // Debounce search input
   useEffect(() => {
     const id = setTimeout(() => setQDebounced(q), 150);
@@ -73,8 +85,14 @@ export default function PublicCatalogue() {
             }
             // Between 350-450px: maintain current state (no flicker)
 
+            // Always show header when at the very top of the page
+            if (currentScrollY < 50) {
+              setIsHeaderVisible(true);
+              setIsSticky(false);
+              lastToggleY.current = currentScrollY;
+            }
             // Header hide/show on scroll direction with threshold
-            if (currentScrollY > headerHeight + 20) {
+            else if (currentScrollY > headerHeight + 20) {
               // Only toggle if we've scrolled enough since last toggle
               const distanceFromLastToggle = Math.abs(currentScrollY - lastToggleY.current);
 
