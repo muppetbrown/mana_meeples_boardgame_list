@@ -1,5 +1,5 @@
 // src/pages/PublicCatalogue.jsx - Enhanced Mobile-First Version
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getPublicGames, getPublicCategoryCounts } from "../api/client";
 import { CATEGORY_KEYS, CATEGORY_LABELS } from "../constants/categories";
@@ -90,7 +90,7 @@ export default function PublicCatalogue() {
     return () => {
       observer.disconnect();
     };
-  }, [loadingMore, allLoadedItems.length, total]); // Re-setup when these change
+  }, [loadingMore, allLoadedItems.length, total, loadMore]); // Re-setup when these change
 
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
@@ -222,8 +222,8 @@ export default function PublicCatalogue() {
     return () => { cancelled = true; };
   }, [qDebounced, pageSize, category, designer, nzDesigner, players, recentlyAdded, sort]);
 
-  // Load more function - NEW
-  const loadMore = async () => {
+  // Load more function - Memoized to ensure Intersection Observer has latest filter values
+  const loadMore = useCallback(async () => {
     if (loadingMore || allLoadedItems.length >= total) return;
 
     setLoadingMore(true);
@@ -275,7 +275,7 @@ export default function PublicCatalogue() {
     } finally {
       setLoadingMore(false);
     }
-  };
+  }, [loadingMore, allLoadedItems.length, total, page, qDebounced, pageSize, sort, category, designer, nzDesigner, players, recentlyAdded]);
 
   // Helper functions
   const updateCategory = (newCategory) => {
