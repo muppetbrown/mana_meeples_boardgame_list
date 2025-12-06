@@ -45,6 +45,7 @@ export default function PublicCatalogue() {
   const headerRef = useRef(null);
   const toolbarRef = useRef(null);
   const ticking = useRef(false);
+  const loadMoreTriggerRef = useRef(null); // Sentinel element for infinite scroll
 
   // Initialize header visibility on mount based on scroll position
   useEffect(() => {
@@ -63,6 +64,33 @@ export default function PublicCatalogue() {
     const id = setTimeout(() => setQDebounced(q), 150);
     return () => clearTimeout(id);
   }, [q]);
+
+  // Infinite scroll: Intersection Observer for auto-loading more games
+  useEffect(() => {
+    const sentinel = loadMoreTriggerRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        // When sentinel becomes visible and we're not already loading
+        if (entry.isIntersecting && !loadingMore && allLoadedItems.length < total) {
+          loadMore();
+        }
+      },
+      {
+        root: null, // viewport
+        rootMargin: '200px', // Trigger 200px before reaching the sentinel
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [loadingMore, allLoadedItems.length, total]); // Re-setup when these change
 
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
@@ -672,32 +700,38 @@ export default function PublicCatalogue() {
                 ))}
               </div>
 
-              {/* Load More Button */}
+              {/* Infinite Scroll Trigger & Loading Indicator */}
               {allLoadedItems.length < total && (
-                <div className="mt-8 text-center">
-                  <button
-                    onClick={loadMore}
-                    disabled={loadingMore}
-                    className="min-h-[48px] px-8 py-3 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 focus:outline-none focus:ring-3 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {loadingMore ? (
-                      <span className="flex items-center gap-2">
-                        <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
-                        Loading more...
-                      </span>
-                    ) : (
-                      <span>Load More ({allLoadedItems.length} of {total})</span>
-                    )}
-                  </button>
+                <div
+                  ref={loadMoreTriggerRef}
+                  className="mt-8 py-8 text-center"
+                >
+                  {loadingMore ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-3 border-emerald-500 border-t-transparent"></div>
+                      <p className="text-sm text-slate-600">
+                        Loading more games...
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400">
+                      Scroll for more • {allLoadedItems.length} of {total}
+                    </p>
+                  )}
                 </div>
               )}
 
               {/* End of results message */}
               {allLoadedItems.length >= total && total > pageSize && (
-                <div className="mt-8 text-center">
-                  <p className="text-slate-600">
-                    You've viewed all {total} games!
-                  </p>
+                <div className="mt-8 py-4 text-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm font-medium">
+                      All {total} games loaded
+                    </span>
+                  </div>
                 </div>
               )}
             </>
