@@ -46,6 +46,7 @@ export default function PublicCatalogue() {
   const toolbarRef = useRef(null);
   const ticking = useRef(false);
   const loadMoreTriggerRef = useRef(null); // Sentinel element for infinite scroll
+  const isLoadingMoreRef = useRef(false); // Track loading state without triggering re-renders
 
   // Initialize header visibility on mount based on scroll position
   useEffect(() => {
@@ -74,7 +75,7 @@ export default function PublicCatalogue() {
       (entries) => {
         const [entry] = entries;
         // When sentinel becomes visible and we're not already loading
-        if (entry.isIntersecting && !loadingMore && allLoadedItems.length < total) {
+        if (entry.isIntersecting) {
           loadMore();
         }
       },
@@ -90,7 +91,7 @@ export default function PublicCatalogue() {
     return () => {
       observer.disconnect();
     };
-  }, [loadingMore, allLoadedItems.length, total, loadMore]); // Re-setup when these change
+  }, [loadMore]); // Re-setup when loadMore changes (filter changes)
 
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
@@ -224,8 +225,9 @@ export default function PublicCatalogue() {
 
   // Load more function - Memoized to ensure Intersection Observer has latest filter values
   const loadMore = useCallback(async () => {
-    if (loadingMore || allLoadedItems.length >= total) return;
+    if (isLoadingMoreRef.current || allLoadedItems.length >= total) return;
 
+    isLoadingMoreRef.current = true;
     setLoadingMore(true);
     const nextPage = page + 1;
 
@@ -273,9 +275,10 @@ export default function PublicCatalogue() {
     } catch (e) {
       console.error("Failed to load more games:", e);
     } finally {
+      isLoadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [loadingMore, allLoadedItems.length, total, page, qDebounced, pageSize, sort, category, designer, nzDesigner, players, recentlyAdded]);
+  }, [page, qDebounced, pageSize, sort, category, designer, nzDesigner, players, recentlyAdded, total, allLoadedItems.length]);
 
   // Helper functions
   const updateCategory = (newCategory) => {
