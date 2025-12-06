@@ -1,5 +1,5 @@
 // src/pages/PublicCatalogue.jsx - Enhanced Mobile-First Version
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getPublicGames, getPublicCategoryCounts } from "../api/client";
 import { CATEGORY_KEYS, CATEGORY_LABELS } from "../constants/categories";
@@ -90,7 +90,7 @@ export default function PublicCatalogue() {
     return () => {
       observer.disconnect();
     };
-  }, [loadingMore, allLoadedItems.length, total]); // Re-setup when these change
+  }, [loadingMore, allLoadedItems.length, total, loadMore]); // Re-setup when these change
 
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
@@ -222,16 +222,30 @@ export default function PublicCatalogue() {
     return () => { cancelled = true; };
   }, [qDebounced, pageSize, category, designer, nzDesigner, players, recentlyAdded, sort]);
 
-  // Load more function - NEW
-  const loadMore = async () => {
+  // Load more function - Memoized to ensure Intersection Observer has latest filter values
+  const loadMore = useCallback(async () => {
     if (loadingMore || allLoadedItems.length >= total) return;
 
     setLoadingMore(true);
     const nextPage = page + 1;
 
-    // Preserve scroll position before loading
-    const scrollY = window.scrollY;
-    const scrollHeight = document.documentElement.scrollHeight;
+    // Find an anchor element to maintain scroll position
+    // We'll use the last visible game card in the viewport
+    const viewportHeight = window.innerHeight;
+    const scrollTop = window.scrollY;
+    const cards = document.querySelectorAll('[data-game-card]');
+    let anchorCard = null;
+    let anchorOffset = 0;
+
+    // Find the last card that's currently visible in viewport
+    for (let i = cards.length - 1; i >= 0; i--) {
+      const rect = cards[i].getBoundingClientRect();
+      if (rect.top < viewportHeight && rect.bottom > 0) {
+        anchorCard = cards[i];
+        anchorOffset = rect.top; // Distance from top of viewport
+        break;
+      }
+    }
 
     try {
       const params = { q: qDebounced, page: nextPage, page_size: pageSize, sort };
@@ -246,19 +260,22 @@ export default function PublicCatalogue() {
       setAllLoadedItems(prev => [...prev, ...(data.items || [])]);
       setPage(nextPage);
 
-      // Wait for DOM update and restore relative scroll position
-      requestAnimationFrame(() => {
-        const newScrollHeight = document.documentElement.scrollHeight;
-        const heightDiff = newScrollHeight - scrollHeight;
-        // Keep user at the same visual position
-        window.scrollTo(0, scrollY);
-      });
+      // Restore scroll position relative to anchor element
+      if (anchorCard) {
+        requestAnimationFrame(() => {
+          const newRect = anchorCard.getBoundingClientRect();
+          const scrollAdjustment = newRect.top - anchorOffset;
+          if (Math.abs(scrollAdjustment) > 1) {
+            window.scrollBy(0, scrollAdjustment);
+          }
+        });
+      }
     } catch (e) {
       console.error("Failed to load more games:", e);
     } finally {
       setLoadingMore(false);
     }
-  };
+  }, [loadingMore, allLoadedItems.length, total, page, qDebounced, pageSize, sort, category, designer, nzDesigner, players, recentlyAdded]);
 
   // Helper functions
   const updateCategory = (newCategory) => {
