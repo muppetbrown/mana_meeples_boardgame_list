@@ -369,20 +369,31 @@ export default function PublicCatalogue() {
                 : 'opacity-0 -translate-y-full pointer-events-none h-0 overflow-hidden'
             }`}
           >
-          <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-2">
-            Mana & Meeples
-          </h1>
+          {/* Logo and Title Row */}
+          <div className="flex items-center justify-center gap-3 sm:gap-4 mb-2">
+            <a
+              href="https://www.manaandmeeples.co.nz"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded-lg transition-transform hover:scale-105"
+              aria-label="Visit Mana & Meeples homepage"
+            >
+              <img
+                src="/logo192.png"
+                alt="Mana & Meeples logo"
+                className="w-12 h-12 sm:w-16 sm:h-16"
+              />
+            </a>
+            <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent">
+              Mana & Meeples
+            </h1>
+          </div>
+
           <p className="text-sm sm:text-lg text-slate-600 mb-1">
             Timaru's Board Game Community
           </p>
           <p className="text-xs sm:text-sm text-slate-500 mb-3">
-            Explore our game collection -{" "}
-            <a
-              href="https://manaandmeeples.co.nz"
-              className="text-emerald-600 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded"
-            >
-              manaandmeeples.co.nz
-            </a>
+            Explore our game collection
           </p>
           <div className="w-12 sm:w-20 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 mx-auto rounded-full mb-4" aria-hidden="true"></div>
 
