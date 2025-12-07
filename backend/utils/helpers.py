@@ -1,12 +1,13 @@
 # utils/helpers.py
 """
-Shared helper functions for game processing, categorization, and response formatting.
+Shared helper functions for game processing, categorization,
+and response formatting.
 """
 import json
-import os
 import logging
-from typing import Optional, List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List, Optional
+
 from fastapi import Request
 from models import Game
 
@@ -25,54 +26,119 @@ CATEGORY_KEYS = [
 CATEGORY_MAPPING = {
     "COOP_ADVENTURE": {
         "keywords": [
-            "cooperative", "coop", "co-op", "adventure", "narrative", "campaign",
-            "story", "quest", "exploration", "dungeon", "rpg", "legacy"
+            "cooperative",
+            "coop",
+            "co-op",
+            "adventure",
+            "narrative",
+            "campaign",
+            "story",
+            "quest",
+            "exploration",
+            "dungeon",
+            "rpg",
+            "legacy",
         ],
         "exact_matches": [
-            "cooperative game", "adventure", "narrative choice", "campaign game",
-            "exploration", "storytelling"
-        ]
+            "cooperative game",
+            "adventure",
+            "narrative choice",
+            "campaign game",
+            "exploration",
+            "storytelling",
+        ],
     },
     "CORE_STRATEGY": {
         "keywords": [
-            "wargame", "war", "strategy", "civilization", "economic", "engine",
-            "building", "area control", "area majority", "influence", "deck building",
-            "bag building", "heavy", "complex"
+            "wargame",
+            "war",
+            "strategy",
+            "civilization",
+            "economic",
+            "engine",
+            "building",
+            "area control",
+            "area majority",
+            "influence",
+            "deck building",
+            "bag building",
+            "heavy",
+            "complex",
         ],
         "exact_matches": [
-            "wargame", "area majority / influence", "deck, bag, and pool building",
-            "engine building", "civilization", "area control", "economic"
-        ]
+            "wargame",
+            "area majority / influence",
+            "deck, bag, and pool building",
+            "engine building",
+            "civilization",
+            "area control",
+            "economic",
+        ],
     },
     "GATEWAY_STRATEGY": {
         "keywords": [
-            "abstract", "tile placement", "pattern", "family", "gateway",
-            "light strategy", "animals", "environmental", "nature"
+            "abstract",
+            "tile placement",
+            "pattern",
+            "family",
+            "gateway",
+            "light strategy",
+            "animals",
+            "environmental",
+            "nature",
         ],
         "exact_matches": [
-            "abstract strategy", "animals", "environmental", "family game",
-            "tile placement", "pattern building"
-        ]
+            "abstract strategy",
+            "animals",
+            "environmental",
+            "family game",
+            "tile placement",
+            "pattern building",
+        ],
     },
     "KIDS_FAMILIES": {
         "keywords": [
-            "children", "kids", "family", "educational", "learning", "memory",
-            "dexterity", "simple", "young"
+            "children",
+            "kids",
+            "family",
+            "educational",
+            "learning",
+            "memory",
+            "dexterity",
+            "simple",
+            "young",
         ],
         "exact_matches": [
-            "children's game", "educational", "memory", "dexterity", "family game"
-        ]
+            "children's game",
+            "educational",
+            "memory",
+            "dexterity",
+            "family game",
+        ],
     },
     "PARTY_ICEBREAKERS": {
         "keywords": [
-            "party", "social", "deduction", "humor", "funny", "word", "trivia",
-            "communication", "bluffing", "guessing", "ice breaker"
+            "party",
+            "social",
+            "deduction",
+            "humor",
+            "funny",
+            "word",
+            "trivia",
+            "communication",
+            "bluffing",
+            "guessing",
+            "ice breaker",
         ],
         "exact_matches": [
-            "party game", "humor", "social deduction", "word game", "bluffing",
-            "communication"
-        ]
-    }
+            "party game",
+            "humor",
+            "social deduction",
+            "word game",
+            "bluffing",
+            "communication",
+        ],
+    },
 }
 
 
@@ -165,21 +231,25 @@ def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
     categories = parse_categories(game.categories)
 
     # Parse JSON fields safely
-    designers = parse_json_field(getattr(game, 'designers', None))
-    publishers = parse_json_field(getattr(game, 'publishers', None))
-    mechanics = parse_json_field(getattr(game, 'mechanics', None))
-    artists = parse_json_field(getattr(game, 'artists', None))
+    designers = parse_json_field(getattr(game, "designers", None))
+    publishers = parse_json_field(getattr(game, "publishers", None))
+    mechanics = parse_json_field(getattr(game, "mechanics", None))
+    artists = parse_json_field(getattr(game, "artists", None))
 
     # Handle thumbnail URL - prioritize BGG URLs over local files (Render has ephemeral filesystem)
     thumbnail_url = None
-    if hasattr(game, 'image') and game.image:  # Use the larger BGG image first
+    if hasattr(game, "image") and game.image:  # Use the larger BGG image first
         thumbnail_url = game.image
-    elif hasattr(game, 'thumbnail_url') and game.thumbnail_url:  # Fall back to BGG thumbnail
+    elif (
+        hasattr(game, "thumbnail_url") and game.thumbnail_url
+    ):  # Fall back to BGG thumbnail
         thumbnail_url = game.thumbnail_url
-    elif hasattr(game, 'thumbnail_file') and game.thumbnail_file:
+    elif hasattr(game, "thumbnail_file") and game.thumbnail_file:
         # Only use local files if they're external URLs (not local paths starting with /thumbs/)
-        if not game.thumbnail_file.startswith('/thumbs/'):
-            thumbnail_url = make_absolute_url(request, f"/thumbs/{game.thumbnail_file}")
+        if not game.thumbnail_file.startswith("/thumbs/"):
+            thumbnail_url = make_absolute_url(
+                request, f"/thumbs/{game.thumbnail_file}"
+            )
 
     return {
         "id": game.id,
@@ -193,7 +263,8 @@ def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         "max_players": game.players_max,  # Alias for frontend
         "playtime_min": game.playtime_min,
         "playtime_max": game.playtime_max,
-        "playing_time": game.playtime_min or game.playtime_max,  # Alias for frontend
+        "playing_time": game.playtime_min
+        or game.playtime_max,  # Alias for frontend
         "thumbnail_url": thumbnail_url,
         "image_url": thumbnail_url,  # Alias for frontend
         "mana_meeple_category": getattr(game, "mana_meeple_category", None),
@@ -209,8 +280,16 @@ def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         "is_cooperative": getattr(game, "is_cooperative", None),
         "users_rated": getattr(game, "users_rated", None),
         "bgg_id": getattr(game, "bgg_id", None),
-        "created_at": game.created_at.isoformat() if hasattr(game, "created_at") and game.created_at else None,
-        "date_added": game.date_added.isoformat() if hasattr(game, "date_added") and game.date_added else None,
+        "created_at": (
+            game.created_at.isoformat()
+            if hasattr(game, "created_at") and game.created_at
+            else None
+        ),
+        "date_added": (
+            game.date_added.isoformat()
+            if hasattr(game, "date_added") and game.date_added
+            else None
+        ),
         "nz_designer": getattr(game, "nz_designer", False),
         "game_type": getattr(game, "game_type", None),
     }
@@ -227,7 +306,7 @@ def calculate_category_counts(games) -> Dict[str, int]:
     # Count games by category
     for game in games:
         # Handle both Game objects and tuples from select queries
-        if hasattr(game, 'mana_meeple_category'):
+        if hasattr(game, "mana_meeple_category"):
             category = game.mana_meeple_category
         else:
             # Assume it's a tuple (id, mana_meeple_category)
@@ -241,27 +320,28 @@ def calculate_category_counts(games) -> Dict[str, int]:
     return counts
 
 
-def success_response(data: Any = None, message: str = "Success") -> Dict[str, Any]:
+def success_response(
+    data: Any = None, message: str = "Success"
+) -> Dict[str, Any]:
     """Standardized success response format"""
     response = {
         "success": True,
         "message": message,
-        "timestamp": datetime.utcnow().isoformat() + 'Z'
+        "timestamp": datetime.utcnow().isoformat() + "Z",
     }
     if data is not None:
         response["data"] = data
     return response
 
 
-def error_response(message: str, error_code: str = "GENERAL_ERROR", details: Any = None) -> Dict[str, Any]:
+def error_response(
+    message: str, error_code: str = "GENERAL_ERROR", details: Any = None
+) -> Dict[str, Any]:
     """Standardized error response format"""
     response = {
         "success": False,
-        "error": {
-            "code": error_code,
-            "message": message
-        },
-        "timestamp": datetime.utcnow().isoformat() + 'Z'
+        "error": {"code": error_code, "message": message},
+        "timestamp": datetime.utcnow().isoformat() + "Z",
     }
     if details is not None:
         response["error"]["details"] = details

@@ -1,5 +1,5 @@
 // src/pages/PublicCatalogue.jsx - Enhanced Mobile-First Version
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getPublicGames, getPublicCategoryCounts } from "../api/client";
 import { CATEGORY_KEYS, CATEGORY_LABELS } from "../constants/categories";
@@ -41,8 +41,24 @@ export default function PublicCatalogue() {
 
   // Refs for scroll detection
   const lastScrollY = useRef(0);
+  const lastToggleY = useRef(0); // Track where we last toggled to prevent oscillation
   const headerRef = useRef(null);
   const toolbarRef = useRef(null);
+  const ticking = useRef(false);
+  const loadMoreTriggerRef = useRef(null); // Sentinel element for infinite scroll
+  const isLoadingMoreRef = useRef(false); // Track loading state without triggering re-renders
+
+  // Initialize header visibility on mount based on scroll position
+  useEffect(() => {
+    const currentScrollY = window.scrollY;
+    const headerHeight = headerRef.current?.offsetHeight || 0;
+
+    // On initial load, show header if we're near the top
+    if (currentScrollY <= headerHeight + 20) {
+      setIsHeaderVisible(true);
+      setIsSticky(false);
+    }
+  }, []);
 
   // Debounce search input
   useEffect(() => {
@@ -53,32 +69,66 @@ export default function PublicCatalogue() {
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      
-      // Show/hide scroll to top button
-      setShowScrollTop(currentScrollY > 400);
-      
-      // Header hide/show on scroll direction
-      if (currentScrollY > 100) {
-        if (currentScrollY > lastScrollY.current) {
-          // Scrolling down
-          setIsHeaderVisible(false);
-          setIsSticky(true);
-        } else {
-          // Scrolling up
-          setIsHeaderVisible(true);
+      // Skip scroll handling during loading operations to prevent jumping
+      if (loadingMore || !ticking.current) {
+        if (!loadingMore && !ticking.current) {
+          window.requestAnimationFrame(() => {
+            const currentScrollY = window.scrollY;
+            const scrollDelta = currentScrollY - lastScrollY.current;
+            const headerHeight = headerRef.current?.offsetHeight || 0;
+            const SCROLL_THRESHOLD = 15; // Minimum scroll distance before toggling
+            const TOGGLE_BUFFER = 50; // Prevent toggling again until we've scrolled this far
+
+            // Show/hide scroll to top button with hysteresis to prevent flicker
+            if (currentScrollY > 450) {
+              setShowScrollTop(true);
+            } else if (currentScrollY < 350) {
+              setShowScrollTop(false);
+            }
+            // Between 350-450px: maintain current state (no flicker)
+
+            // Always show header when at the very top of the page
+            if (currentScrollY < 50) {
+              setIsHeaderVisible(true);
+              setIsSticky(false);
+              lastToggleY.current = currentScrollY;
+            }
+            // Header hide/show on scroll direction with threshold
+            else if (currentScrollY > headerHeight + 20) {
+              // Only toggle if we've scrolled enough since last toggle
+              const distanceFromLastToggle = Math.abs(currentScrollY - lastToggleY.current);
+
+              if (distanceFromLastToggle > TOGGLE_BUFFER) {
+                if (scrollDelta > SCROLL_THRESHOLD) {
+                  // Scrolling down significantly
+                  setIsHeaderVisible(false);
+                  setIsSticky(true);
+                  lastToggleY.current = currentScrollY;
+                } else if (scrollDelta < -SCROLL_THRESHOLD) {
+                  // Scrolling up significantly
+                  setIsHeaderVisible(true);
+                  lastToggleY.current = currentScrollY;
+                }
+              }
+            } else {
+              // Near top - always show header
+              setIsHeaderVisible(true);
+              setIsSticky(false);
+              lastToggleY.current = currentScrollY;
+            }
+
+            lastScrollY.current = currentScrollY;
+            ticking.current = false;
+          });
+
+          ticking.current = true;
         }
-      } else {
-        setIsHeaderVisible(true);
-        setIsSticky(false);
       }
-      
-      lastScrollY.current = currentScrollY;
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [loadingMore]);
 
   // Update URL when filters change
   useEffect(() => {
@@ -146,12 +196,31 @@ export default function PublicCatalogue() {
     return () => { cancelled = true; };
   }, [qDebounced, pageSize, category, designer, nzDesigner, players, recentlyAdded, sort]);
 
-  // Load more function - NEW
-  const loadMore = async () => {
-    if (loadingMore || allLoadedItems.length >= total) return;
-    
+  // Load more function - Memoized to ensure Intersection Observer has latest filter values
+  const loadMore = useCallback(async () => {
+    if (isLoadingMoreRef.current || allLoadedItems.length >= total) return;
+
+    isLoadingMoreRef.current = true;
     setLoadingMore(true);
     const nextPage = page + 1;
+
+    // Find an anchor element to maintain scroll position
+    // We'll use the last visible game card in the viewport
+    const viewportHeight = window.innerHeight;
+    const scrollTop = window.scrollY;
+    const cards = document.querySelectorAll('[data-game-card]');
+    let anchorCard = null;
+    let anchorOffset = 0;
+
+    // Find the last card that's currently visible in viewport
+    for (let i = cards.length - 1; i >= 0; i--) {
+      const rect = cards[i].getBoundingClientRect();
+      if (rect.top < viewportHeight && rect.bottom > 0) {
+        anchorCard = cards[i];
+        anchorOffset = rect.top; // Distance from top of viewport
+        break;
+      }
+    }
 
     try {
       const params = { q: qDebounced, page: nextPage, page_size: pageSize, sort };
@@ -162,15 +231,54 @@ export default function PublicCatalogue() {
       if (recentlyAdded) params.recently_added = 30;
 
       const data = await getPublicGames(params);
-      
+
       setAllLoadedItems(prev => [...prev, ...(data.items || [])]);
       setPage(nextPage);
+
+      // Restore scroll position relative to anchor element
+      if (anchorCard) {
+        requestAnimationFrame(() => {
+          const newRect = anchorCard.getBoundingClientRect();
+          const scrollAdjustment = newRect.top - anchorOffset;
+          if (Math.abs(scrollAdjustment) > 1) {
+            window.scrollBy(0, scrollAdjustment);
+          }
+        });
+      }
     } catch (e) {
       console.error("Failed to load more games:", e);
     } finally {
+      isLoadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  };
+  }, [page, qDebounced, pageSize, sort, category, designer, nzDesigner, players, recentlyAdded, total, allLoadedItems.length]);
+
+  // Infinite scroll: Intersection Observer for auto-loading more games
+  useEffect(() => {
+    const sentinel = loadMoreTriggerRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        // When sentinel becomes visible and we're not already loading
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      },
+      {
+        root: null, // viewport
+        rootMargin: '200px', // Trigger 200px before reaching the sentinel
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [loadMore]); // Re-setup when loadMore changes (filter changes)
 
   // Helper functions
   const updateCategory = (newCategory) => {
@@ -251,36 +359,85 @@ export default function PublicCatalogue() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-amber-50">
       <div className="container mx-auto px-4 py-4 sm:py-8">
         
-        {/* Header - with scroll-away behavior */}
-        <header 
-          ref={headerRef}
-          className={`mb-4 text-center ${transitionClass} ${
-            isHeaderVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'
-          }`}
-          style={{ height: isHeaderVisible ? 'auto' : '0', overflow: 'hidden' }}
-        >
-          <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-2">
-            Mana & Meeples
-          </h1>
+        {/* Header - with scroll-away behavior - wrapped to prevent layout shift */}
+        <div className="mb-4">
+          <header
+            ref={headerRef}
+            className={`text-center ${transitionClass} ${
+              isHeaderVisible
+                ? 'opacity-100 translate-y-0'
+                : 'opacity-0 -translate-y-full pointer-events-none h-0 overflow-hidden'
+            }`}
+          >
+          {/* Logo and Title Row */}
+          <div className="flex items-center justify-center gap-3 sm:gap-4 mb-2">
+            <a
+              href="https://www.manaandmeeples.co.nz"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded-lg transition-transform hover:scale-105"
+              aria-label="Visit Mana & Meeples homepage"
+            >
+              <img
+                src="/logo192.png"
+                alt="Mana & Meeples logo"
+                className="w-12 h-12 sm:w-16 sm:h-16"
+              />
+            </a>
+            <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent">
+              Mana & Meeples
+            </h1>
+          </div>
+
           <p className="text-sm sm:text-lg text-slate-600 mb-1">
             Timaru's Board Game Community
           </p>
           <p className="text-xs sm:text-sm text-slate-500 mb-3">
-            Explore our game collection -{" "}
-            <a 
-              href="https://manaandmeeples.co.nz" 
-              className="text-emerald-600 hover:underline focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded"
-            >
-              manaandmeeples.co.nz
-            </a>
+            Explore our game collection
           </p>
-          <div className="w-12 sm:w-20 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 mx-auto rounded-full" aria-hidden="true"></div>
+          <div className="w-12 sm:w-20 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 mx-auto rounded-full mb-4" aria-hidden="true"></div>
+
+          {/* Category Pills - part of header, hides with header on scroll */}
+          <section aria-labelledby="categories-heading" className="mt-4">
+            <h2 id="categories-heading" className="sr-only">
+              Game Categories
+            </h2>
+            <div className="flex gap-2 overflow-x-auto pb-3 snap-x scrollbar-hide">
+              <button
+                onClick={() => updateCategory("all")}
+                className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
+                  category === "all"
+                    ? "bg-emerald-500 text-white shadow-md focus:ring-emerald-300"
+                    : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
+                }`}
+                aria-pressed={category === "all"}
+              >
+                All ({counts?.all ?? "..."})
+              </button>
+
+              {CATEGORY_KEYS.map((key) => (
+                <button
+                  key={key}
+                  onClick={() => updateCategory(key)}
+                  className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
+                    category === key
+                      ? "bg-emerald-500 text-white shadow-md focus:ring-emerald-300"
+                      : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
+                  }`}
+                  aria-pressed={category === key}
+                >
+                  {CATEGORY_LABELS[key]} ({counts?.[key] ?? "..."})
+                </button>
+              ))}
+            </div>
+          </section>
         </header>
+        </div>
 
         <main id="main-content">
-          
+
           {/* Sticky Search/Filter Toolbar - Mobile */}
-          <div ref={toolbarRef} className="md:hidden sticky top-0 z-40">
+          <div ref={toolbarRef} className="md:hidden sticky top-0 z-40 mb-4">
             <div className="bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-md">
               
               {/* Collapsed Search Bar */}
@@ -519,46 +676,6 @@ export default function PublicCatalogue() {
             </div>
           </section>
 
-          {/* Category Pills - Sticky with toolbar */}
-          <section 
-            className={`mb-6 ${transitionClass} ${
-              isSticky ? 'md:sticky md:top-0 md:z-30 md:bg-white/95 md:backdrop-blur-sm md:py-4 md:shadow-md' : ''
-            }`}
-            aria-labelledby="categories-heading"
-          >
-            <h2 id="categories-heading" className="sr-only">
-              Game Categories
-            </h2>
-            <div className="flex gap-2 overflow-x-auto pb-3 px-2 -mx-2 snap-x scrollbar-hide">
-              <button
-                onClick={() => updateCategory("all")}
-                className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
-                  category === "all"
-                    ? "bg-emerald-500 text-white shadow-md focus:ring-emerald-300"
-                    : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
-                }`}
-                aria-pressed={category === "all"}
-              >
-                All ({counts?.all ?? "..."})
-              </button>
-
-              {CATEGORY_KEYS.map((key) => (
-                <button
-                  key={key}
-                  onClick={() => updateCategory(key)}
-                  className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
-                    category === key
-                      ? "bg-emerald-500 text-white shadow-md focus:ring-emerald-300"
-                      : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
-                  }`}
-                  aria-pressed={category === key}
-                >
-                  {CATEGORY_LABELS[key]} ({counts?.[key] ?? "..."})
-                </button>
-              ))}
-            </div>
-          </section>
-
           {/* Results Summary */}
           {q && (
             <div className="mb-4 text-center text-slate-600">
@@ -614,32 +731,38 @@ export default function PublicCatalogue() {
                 ))}
               </div>
 
-              {/* Load More Button */}
+              {/* Infinite Scroll Trigger & Loading Indicator */}
               {allLoadedItems.length < total && (
-                <div className="mt-8 text-center">
-                  <button
-                    onClick={loadMore}
-                    disabled={loadingMore}
-                    className="min-h-[48px] px-8 py-3 bg-emerald-600 text-white font-medium rounded-xl hover:bg-emerald-700 focus:outline-none focus:ring-3 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {loadingMore ? (
-                      <span className="flex items-center gap-2">
-                        <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span>
-                        Loading more...
-                      </span>
-                    ) : (
-                      <span>Load More ({allLoadedItems.length} of {total})</span>
-                    )}
-                  </button>
+                <div
+                  ref={loadMoreTriggerRef}
+                  className="mt-8 py-8 text-center"
+                >
+                  {loadingMore ? (
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-3 border-emerald-500 border-t-transparent"></div>
+                      <p className="text-sm text-slate-600">
+                        Loading more games...
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400">
+                      Scroll for more • {allLoadedItems.length} of {total}
+                    </p>
+                  )}
                 </div>
               )}
 
               {/* End of results message */}
               {allLoadedItems.length >= total && total > pageSize && (
-                <div className="mt-8 text-center">
-                  <p className="text-slate-600">
-                    You've viewed all {total} games!
-                  </p>
+                <div className="mt-8 py-4 text-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-sm font-medium">
+                      All {total} games loaded
+                    </span>
+                  </div>
                 </div>
               )}
             </>

@@ -1,12 +1,12 @@
 // src/components/public/GameCardPublic.jsx - Enhanced with Collapsible Details
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { imageProxyUrl } from "../../config/api";
 import { labelFor } from "../../constants/categories";
 
-export default function GameCardPublic({ 
-  game, 
-  lazy = false, 
+export default function GameCardPublic({
+  game,
+  lazy = false,
   isExpanded = false,
   onToggleExpand,
   prefersReducedMotion = false
@@ -14,6 +14,27 @@ export default function GameCardPublic({
   const href = `/game/${game.id}`;
   const imgSrc = game.image_url ? imageProxyUrl(game.image_url) : null;
   const categoryLabel = labelFor(game.mana_meeple_category);
+  const cardRef = useRef(null);
+
+  // Auto-scroll to top of card on mobile when expanded
+  useEffect(() => {
+    if (isExpanded && cardRef.current) {
+      // Check if we're on a mobile device (screen width <= 768px)
+      const isMobile = window.innerWidth <= 768;
+
+      if (isMobile) {
+        // Small delay to allow expand animation to start
+        setTimeout(() => {
+          if (cardRef.current) {
+            cardRef.current.scrollIntoView({
+              behavior: prefersReducedMotion ? 'auto' : 'smooth',
+              block: 'nearest'
+            });
+          }
+        }, 100);
+      }
+    }
+  }, [isExpanded, prefersReducedMotion]);
 
   // Enhanced category colors with WCAG AAA contrast ratios
   const getCategoryStyle = (category) => {
@@ -57,7 +78,11 @@ export default function GameCardPublic({
   const transitionClass = prefersReducedMotion ? '' : 'transition-all duration-300';
 
   return (
-    <article className={`group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 ${isExpanded ? 'col-span-2 sm:col-span-1' : ''}`}>
+    <article
+      ref={cardRef}
+      data-game-card
+      className={`scroll-mt-24 group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 ${isExpanded ? 'col-span-2 sm:col-span-1' : ''}`}
+    >
 
       {/* Image Section - Always Visible */}
       <Link
@@ -147,45 +172,33 @@ export default function GameCardPublic({
 
           {/* Compact Stats - Always Visible */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
-            {/* Rating */}
-            {formatRating(game.average_rating) && (
-              <div className="flex items-center gap-1">
-                <svg className="w-4 h-4 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
-                <span className="font-semibold">{formatRating(game.average_rating)}</span>
-              </div>
-            )}
-
-            {/* Complexity */}
-            {formatComplexity(game.complexity) && (
-              <div className="flex items-center gap-1">
-                <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-                </svg>
-                <span className="font-semibold">{formatComplexity(game.complexity)}</span>
-              </div>
-            )}
-
-            {/* Players */}
+            {/* Players - Icon only */}
             {game.min_players && game.max_players && (
-              <div className="flex items-center gap-1">
-                <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+              <div className="flex items-center gap-1" aria-label={`${game.min_players === game.max_players ? game.min_players : `${game.min_players} to ${game.max_players}`} players`}>
+                <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                   <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
                 </svg>
                 <span className="font-semibold">
-                  {game.min_players === game.max_players 
-                    ? `${game.min_players}p` 
-                    : `${game.min_players}-${game.max_players}p`
+                  {game.min_players === game.max_players
+                    ? `${game.min_players}`
+                    : `${game.min_players}-${game.max_players}`
                   }
                 </span>
               </div>
             )}
+
+            {/* Time - Icon only */}
+            <div className="flex items-center gap-1" aria-label={`Play time: ${formatTime()}`}>
+              <svg className="w-4 h-4 text-slate-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+              <span className="font-semibold">{formatTime()}</span>
+            </div>
           </div>
         </div>
 
         {/* Expanded Details */}
-        <div 
+        <div
           className={`overflow-hidden ${transitionClass}`}
           style={{
             maxHeight: isExpanded ? '500px' : '0',
@@ -193,23 +206,48 @@ export default function GameCardPublic({
           }}
         >
           <div className="pt-3 border-t border-slate-200 space-y-2 text-sm">
-            
-            {/* Time */}
+
+            {/* Players - Full text */}
+            {game.min_players && game.max_players && (
+              <div className="flex items-center gap-2">
+                <span className="text-slate-700">
+                  <span className="font-semibold">Players:</span>{' '}
+                  {game.min_players === game.max_players
+                    ? `${game.min_players}`
+                    : `${game.min_players}-${game.max_players}`
+                  }
+                </span>
+              </div>
+            )}
+
+            {/* Time - Full text */}
             <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
               <span className="text-slate-700">
                 <span className="font-semibold">Play Time:</span> {formatTime()}
               </span>
             </div>
 
+            {/* Rating */}
+            {formatRating(game.average_rating) && (
+              <div className="flex items-center gap-2">
+                <span className="text-slate-700">
+                  <span className="font-semibold">BGG Rating:</span> {formatRating(game.average_rating)}/10
+                </span>
+              </div>
+            )}
+
+            {/* Complexity */}
+            {formatComplexity(game.complexity) && (
+              <div className="flex items-center gap-2">
+                <span className="text-slate-700">
+                  <span className="font-semibold">Complexity:</span> {formatComplexity(game.complexity)}/5
+                </span>
+              </div>
+            )}
+
             {/* Designers */}
             {game.designers && game.designers.length > 0 && (
               <div className="flex items-start gap-2">
-                <svg className="w-4 h-4 text-slate-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                </svg>
                 <span className="text-slate-700">
                   <span className="font-semibold">Designer{game.designers.length > 1 ? 's' : ''}:</span>{' '}
                   {game.designers.slice(0, 2).join(', ')}
@@ -221,9 +259,6 @@ export default function GameCardPublic({
             {/* Year */}
             {game.year && (
               <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-slate-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                </svg>
                 <span className="text-slate-700">
                   <span className="font-semibold">Published:</span> {game.year}
                 </span>

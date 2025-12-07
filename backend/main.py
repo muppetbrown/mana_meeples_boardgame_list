@@ -21,13 +21,19 @@ from shared.rate_limiting import (
     get_rate_limit_exception_handler,
     get_rate_limit_exception,
     admin_attempt_tracker,
-    admin_sessions
+    admin_sessions,
 )
 
 from database import SessionLocal, db_ping, run_migrations
 from models import Game
 from bgg_service import fetch_bgg_thing
-from exceptions import GameServiceError, GameNotFoundError, BGGServiceError, ValidationError, DatabaseError
+from exceptions import (
+    GameServiceError,
+    GameNotFoundError,
+    BGGServiceError,
+    ValidationError,
+    DatabaseError,
+)
 from config import HTTP_TIMEOUT, CORS_ORIGINS
 from middleware.logging import RequestLoggingMiddleware
 
@@ -41,43 +47,46 @@ from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
 
 # Initialize Sentry for error tracking and performance monitoring
 # Only initializes if SENTRY_DSN is configured
-if os.getenv('SENTRY_DSN'):
+if os.getenv("SENTRY_DSN"):
     sentry_sdk.init(
-        dsn=os.getenv('SENTRY_DSN'),
-        environment=os.getenv('ENVIRONMENT', 'production'),
-
+        dsn=os.getenv("SENTRY_DSN"),
+        environment=os.getenv("ENVIRONMENT", "production"),
         # Performance monitoring
         integrations=[
             FastApiIntegration(),
             SqlalchemyIntegration(),
         ],
-
         # Set traces_sample_rate to 1.0 to capture 100% of transactions for performance monitoring.
         # Adjust this value in production to reduce volume
-        traces_sample_rate=0.1 if os.getenv('ENVIRONMENT') == 'production' else 1.0,
-
+        traces_sample_rate=(
+            0.1 if os.getenv("ENVIRONMENT") == "production" else 1.0
+        ),
         # Filter out development errors
-        before_send=lambda event, hint: None if os.getenv('ENVIRONMENT') == 'development' else event,
+        before_send=lambda event, hint: (
+            None if os.getenv("ENVIRONMENT") == "development" else event
+        ),
     )
 
 # ------------------------------------------------------------------------------
 # Logging setup
 # ------------------------------------------------------------------------------
 
+
 class StructuredFormatter(logging.Formatter):
     """Enhanced logging with structured JSON format for production"""
+
     def format(self, record):
         log_entry = {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-            'level': record.levelname,
-            'message': record.getMessage(),
-            'module': record.module,
-            'function': record.funcName,
-            'line': record.lineno
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "level": record.levelname,
+            "message": record.getMessage(),
+            "module": record.module,
+            "function": record.funcName,
+            "line": record.lineno,
         }
 
         # Add extra fields if they exist
-        for field in ['user_id', 'request_id', 'bgg_id', 'game_id']:
+        for field in ["user_id", "request_id", "bgg_id", "game_id"]:
             if hasattr(record, field):
                 log_entry[field] = getattr(record, field)
 
@@ -87,12 +96,12 @@ class StructuredFormatter(logging.Formatter):
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler()]
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
 )
 
 # Use structured logging in production
-if os.getenv('ENVIRONMENT') == 'production':
+if os.getenv("ENVIRONMENT") == "production":
     handler = logging.StreamHandler()
     handler.setFormatter(StructuredFormatter())
     logging.getLogger().handlers = [handler]
@@ -116,6 +125,7 @@ httpx_client = httpx.AsyncClient(follow_redirects=True, timeout=HTTP_TIMEOUT)
 # TODO: Move to services/ module
 # ------------------------------------------------------------------------------
 
+
 async def _download_thumbnail(url: str, filename_prefix: str) -> str:
     """Download thumbnail from URL and save to local storage"""
     try:
@@ -123,14 +133,14 @@ async def _download_thumbnail(url: str, filename_prefix: str) -> str:
         response.raise_for_status()
 
         # Generate filename
-        ext = url.split('.')[-1].split('?')[0]  # Handle query params
-        if ext not in ['jpg', 'jpeg', 'png', 'webp']:
-            ext = 'jpg'
+        ext = url.split(".")[-1].split("?")[0]  # Handle query params
+        if ext not in ["jpg", "jpeg", "png", "webp"]:
+            ext = "jpg"
         filename = f"{filename_prefix}.{ext}"
         filepath = os.path.join(THUMBS_DIR, filename)
 
         # Save file
-        with open(filepath, 'wb') as f:
+        with open(filepath, "wb") as f:
             f.write(response.content)
 
         logger.info(f"Downloaded thumbnail: {filename}")
@@ -149,11 +159,13 @@ async def _download_and_update_thumbnail(game_id: int, thumbnail_url: str):
         if not game:
             return
 
-        filename = await _download_thumbnail(thumbnail_url, f"{game_id}-{game.title}")
+        filename = await _download_thumbnail(
+            thumbnail_url, f"{game_id}-{game.title}"
+        )
         if filename:
-            if hasattr(game, 'thumbnail_file'):
+            if hasattr(game, "thumbnail_file"):
                 game.thumbnail_file = filename
-            if hasattr(game, 'thumbnail_url'):
+            if hasattr(game, "thumbnail_url"):
                 game.thumbnail_url = f"/thumbs/{filename}"
             db.add(game)
             db.commit()
@@ -187,9 +199,22 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
         game.playtime_max = bgg_data.get("playtime_max", game.playtime_max)
 
         # Update enhanced fields if they exist in the model
-        for field in ['description', 'designers', 'publishers', 'mechanics', 'artists',
-                      'average_rating', 'complexity', 'bgg_rank', 'users_rated',
-                      'min_age', 'is_cooperative', 'game_type', 'image', 'thumbnail_url']:
+        for field in [
+            "description",
+            "designers",
+            "publishers",
+            "mechanics",
+            "artists",
+            "average_rating",
+            "complexity",
+            "bgg_rank",
+            "users_rated",
+            "min_age",
+            "is_cooperative",
+            "game_type",
+            "image",
+            "thumbnail_url",
+        ]:
             if hasattr(game, field):
                 setattr(game, field, bgg_data.get(field))
 
@@ -246,25 +271,22 @@ app = FastAPI(
     openapi_tags=[
         {
             "name": "public",
-            "description": "Public game browsing endpoints (no authentication required)"
+            "description": "Public game browsing endpoints (no authentication required)",
         },
         {
             "name": "admin",
-            "description": "Admin game management (requires X-Admin-Token header)"
+            "description": "Admin game management (requires X-Admin-Token header)",
         },
         {
             "name": "bulk",
-            "description": "Bulk operations for managing multiple games"
+            "description": "Bulk operations for managing multiple games",
         },
         {
             "name": "health",
-            "description": "Health check and monitoring endpoints"
+            "description": "Health check and monitoring endpoints",
         },
-        {
-            "name": "debug",
-            "description": "Debug and diagnostic endpoints"
-        }
-    ]
+        {"name": "debug", "description": "Debug and diagnostic endpoints"},
+    ],
 )
 
 # ------------------------------------------------------------------------------
@@ -273,11 +295,14 @@ app = FastAPI(
 
 limiter = get_limiter()
 app.state.limiter = limiter
-app.add_exception_handler(get_rate_limit_exception(), get_rate_limit_exception_handler())
+app.add_exception_handler(
+    get_rate_limit_exception(), get_rate_limit_exception_handler()
+)
 
 # ------------------------------------------------------------------------------
 # Exception handlers
 # ------------------------------------------------------------------------------
+
 
 @app.exception_handler(GameNotFoundError)
 async def game_not_found_handler(request: Request, exc: GameNotFoundError):
@@ -291,21 +316,27 @@ async def validation_error_handler(request: Request, exc: ValidationError):
 
 @app.exception_handler(BGGServiceError)
 async def bgg_service_error_handler(request: Request, exc: BGGServiceError):
-    return JSONResponse(status_code=503, content={"detail": f"BGG service error: {str(exc)}"})
+    return JSONResponse(
+        status_code=503, content={"detail": f"BGG service error: {str(exc)}"}
+    )
 
 
 @app.exception_handler(DatabaseError)
 async def database_error_handler(request: Request, exc: DatabaseError):
-    return JSONResponse(status_code=500, content={"detail": "Database operation failed"})
+    return JSONResponse(
+        status_code=500, content={"detail": "Database operation failed"}
+    )
 
 
 # ------------------------------------------------------------------------------
 # Middleware
 # ------------------------------------------------------------------------------
 
+
 # Cache headers for thumbnail images
 class CacheThumbsMiddleware:
     """Add cache headers to thumbnail responses"""
+
     def __init__(self, app: ASGIApp):
         self.app = app
 
@@ -315,8 +346,14 @@ class CacheThumbsMiddleware:
                 path = scope.get("path", "")
                 if path.startswith("/thumbs/"):
                     headers = message.setdefault("headers", [])
-                    headers.append((b"cache-control", b"public, max-age=31536000, immutable"))
+                    headers.append(
+                        (
+                            b"cache-control",
+                            b"public, max-age=31536000, immutable",
+                        )
+                    )
             await send(message)
+
         await self.app(scope, receive, send_wrapper)
 
 
@@ -334,7 +371,10 @@ cors_origins = CORS_ORIGINS or [
 
 # Always add localhost for development
 if "http://localhost:3000" not in cors_origins:
-    cors_origins = cors_origins + ["http://localhost:3000", "http://127.0.0.1:3000"]
+    cors_origins = cors_origins + [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+    ]
 
 logger.info(f"CORS origins configured: {cors_origins}")
 
@@ -373,6 +413,7 @@ app.include_router(debug_router)
 # Startup and shutdown events
 # ------------------------------------------------------------------------------
 
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and create thumbs directory"""
@@ -406,6 +447,7 @@ async def shutdown_event():
 # Root endpoint
 # ------------------------------------------------------------------------------
 
+
 @app.get("/")
 async def root():
     """Root endpoint - API information"""
@@ -413,7 +455,7 @@ async def root():
         "message": "Mana & Meeples API",
         "version": "2.0.0",
         "docs": "/docs",
-        "health": "/api/health"
+        "health": "/api/health",
     }
 
 
@@ -423,4 +465,5 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

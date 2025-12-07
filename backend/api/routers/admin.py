@@ -3,36 +3,44 @@
 Admin API endpoints for game management, authentication, and BGG import.
 Includes CRUD operations and session management.
 """
-import time
 import logging
-from typing import Optional, Dict, Any
+import time
+from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, Header, Cookie, Path, Query, Request, Response, HTTPException, BackgroundTasks
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Cookie,
+    Depends,
+    HTTPException,
+    Path,
+    Query,
+    Request,
+    Response,
+)
 from sqlalchemy.orm import Session
 
-from database import get_db
-from schemas import AdminLogin
-from exceptions import GameNotFoundError, ValidationError
-from bgg_service import fetch_bgg_thing
 from api.dependencies import (
-    require_admin_auth,
-    get_client_ip,
     create_session,
-    revoke_session
+    get_client_ip,
+    require_admin_auth,
+    revoke_session,
 )
-from utils.helpers import game_to_dict
-from services import GameService, ImageService
+from bgg_service import fetch_bgg_thing
 from config import (
     ADMIN_TOKEN,
     RATE_LIMIT_ATTEMPTS,
     RATE_LIMIT_WINDOW,
-    SESSION_TIMEOUT_SECONDS
+    SESSION_TIMEOUT_SECONDS,
 )
+from database import get_db
+from exceptions import GameNotFoundError, ValidationError
+from schemas import AdminLogin
+from services import GameService, ImageService
+from shared.rate_limiting import admin_attempt_tracker
+from utils.helpers import game_to_dict
 
 logger = logging.getLogger(__name__)
-
-# Import shared state
-from shared.rate_limiting import admin_attempt_tracker, admin_sessions
 
 # Create router with prefix and tags
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -42,11 +50,10 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 # Authentication endpoints
 # ------------------------------------------------------------------------------
 
+
 @router.post("/login")
 async def admin_login(
-    request: Request,
-    credentials: AdminLogin,
-    response: Response
+    request: Request, credentials: AdminLogin, response: Response
 ):
     """
     Admin login endpoint - validates token and creates secure session cookie.
@@ -58,7 +65,8 @@ async def admin_login(
     # Clean old attempts from tracker
     cutoff_time = current_time - RATE_LIMIT_WINDOW
     admin_attempt_tracker[client_ip] = [
-        attempt_time for attempt_time in admin_attempt_tracker[client_ip]
+        attempt_time
+        for attempt_time in admin_attempt_tracker[client_ip]
         if attempt_time > cutoff_time
     ]
 
@@ -67,7 +75,7 @@ async def admin_login(
         logger.warning(f"Rate limited admin login attempts from {client_ip}")
         raise HTTPException(
             status_code=429,
-            detail="Too many login attempts. Please try again later."
+            detail="Too many login attempts. Please try again later.",
         )
 
     # Validate admin token
@@ -80,29 +88,30 @@ async def admin_login(
     session_token = create_session(client_ip)
 
     # Set httpOnly secure cookie
-    # Note: SameSite=None is required for cross-origin requests (frontend on different domain)
+    # Note: SameSite=None is required for cross-origin requests
+    # (frontend on different domain)
     response.set_cookie(
         key="admin_session",
         value=session_token,
         httponly=True,  # Prevents JavaScript access (XSS protection)
-        secure=True,     # Only sent over HTTPS (required for SameSite=None)
-        samesite="none", # Allow cross-origin cookie (frontend/backend on different domains)
+        secure=True,  # Only sent over HTTPS (required for SameSite=None)
+        # Allow cross-origin cookie (frontend/backend on different domains)
+        samesite="none",
         max_age=SESSION_TIMEOUT_SECONDS,
-        path="/"
+        path="/",
     )
 
     logger.info(f"Successful admin login from {client_ip}")
     return {
         "success": True,
         "message": "Login successful",
-        "expires_in": SESSION_TIMEOUT_SECONDS
+        "expires_in": SESSION_TIMEOUT_SECONDS,
     }
 
 
 @router.post("/logout")
 async def admin_logout(
-    response: Response,
-    admin_session: Optional[str] = Cookie(None)
+    response: Response, admin_session: Optional[str] = Cookie(None)
 ):
     """
     Admin logout endpoint - revokes session and clears cookie.
@@ -111,7 +120,9 @@ async def admin_logout(
     revoke_session(admin_session)
 
     # Clear cookie (must match settings used when cookie was set)
-    response.delete_cookie(key="admin_session", path="/", samesite="none", secure=True)
+    response.delete_cookie(
+        key="admin_session", path="/", samesite="none", secure=True
+    )
 
     logger.info("Admin logout")
     return {"success": True, "message": "Logged out successfully"}
@@ -119,10 +130,12 @@ async def admin_logout(
 
 @router.get("/validate")
 async def validate_admin_token(
-    request: Request,
-    _: None = Depends(require_admin_auth)
+    request: Request, _: None = Depends(require_admin_auth)
 ):
-    """Validate admin authentication (checks both session cookie and header token)"""
+    """
+    Validate admin authentication (checks both session cookie and
+    header token)
+    """
     return {"valid": True, "message": "Authentication valid"}
 
 
@@ -130,13 +143,14 @@ async def validate_admin_token(
 # Game CRUD endpoints
 # ------------------------------------------------------------------------------
 
+
 @router.post("/games")
 async def create_game(
     game_data: Dict[str, Any],
     request: Request,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
     """Create a new game (admin only)"""
     # Import httpx_client from main
@@ -148,11 +162,18 @@ async def create_game(
         game = game_service.create_game(game_data)
 
         # Download thumbnail in background if provided
-        thumbnail_url = game_data.get("image") or game_data.get("thumbnail_url") or game_data.get("image_url")
+        thumbnail_url = (
+            game_data.get("image")
+            or game_data.get("thumbnail_url")
+            or game_data.get("image_url")
+        )
         if thumbnail_url:
+
             async def download_task():
                 image_service = ImageService(db, http_client=httpx_client)
-                await image_service.download_and_update_game_thumbnail(game.id, thumbnail_url)
+                await image_service.download_and_update_game_thumbnail(
+                    game.id, thumbnail_url
+                )
 
             background_tasks.add_task(download_task)
 
@@ -173,7 +194,7 @@ async def import_from_bgg(
     force: bool = Query(False, description="Force reimport if exists"),
     background_tasks: BackgroundTasks = None,
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
     """Import game from BoardGameGeek (admin only)"""
     # Import httpx_client from main
@@ -186,17 +207,18 @@ async def import_from_bgg(
         # Use service layer - consolidates all the duplication!
         game_service = GameService(db)
         game, was_cached = game_service.create_or_update_from_bgg(
-            bgg_id=bgg_id,
-            bgg_data=bgg_data,
-            force_update=force
+            bgg_id=bgg_id, bgg_data=bgg_data, force_update=force
         )
 
         # Download thumbnail in background
         thumbnail_url = bgg_data.get("image") or bgg_data.get("thumbnail")
         if thumbnail_url and background_tasks:
+
             async def download_task():
                 image_service = ImageService(db, http_client=httpx_client)
-                await image_service.download_and_update_game_thumbnail(game.id, thumbnail_url)
+                await image_service.download_and_update_game_thumbnail(
+                    game.id, thumbnail_url
+                )
 
             background_tasks.add_task(download_task)
 
@@ -207,14 +229,16 @@ async def import_from_bgg(
     except Exception as e:
         db.rollback()
         logger.error(f"Failed to import BGG game {bgg_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to import game: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to import game: {str(e)}"
+        )
 
 
 @router.get("/games")
 async def get_admin_games(
     request: Request,
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
     """Get all games for admin interface"""
     game_service = GameService(db)
@@ -227,7 +251,7 @@ async def get_admin_game(
     request: Request,
     game_id: int = Path(..., description="Game ID"),
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
     """Get single game for admin interface"""
     game_service = GameService(db)
@@ -244,7 +268,7 @@ async def update_admin_game(
     request: Request,
     game_id: int = Path(..., description="Game ID"),
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
     """Update game (admin only)"""
     try:
@@ -256,7 +280,9 @@ async def update_admin_game(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to update game {game_id}: {e}", extra={'game_id': game_id})
+        logger.error(
+            f"Failed to update game {game_id}: {e}", extra={"game_id": game_id}
+        )
         raise HTTPException(status_code=500, detail="Failed to update game")
 
 
@@ -266,20 +292,29 @@ async def update_admin_game_post(
     request: Request,
     game_id: int = Path(..., description="Game ID"),
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
-    """Update game via POST (admin only) - alternative to PUT for proxy compatibility"""
+    """
+    Update game via POST (admin only) - alternative to PUT for
+    proxy compatibility
+    """
     try:
         game_service = GameService(db)
         game = game_service.update_game(game_id, game_data)
-        logger.info(f"Updated game via POST: {game.title} (ID: {game.id})", extra={'game_id': game.id})
+        logger.info(
+            f"Updated game via POST: {game.title} (ID: {game.id})",
+            extra={"game_id": game.id},
+        )
         return game_to_dict(request, game)
 
     except GameNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to update game {game_id} via POST: {e}", extra={'game_id': game_id})
+        logger.error(
+            f"Failed to update game {game_id} via POST: {e}",
+            extra={"game_id": game_id},
+        )
         raise HTTPException(status_code=500, detail="Failed to update game")
 
 
@@ -288,7 +323,7 @@ async def delete_admin_game(
     request: Request,
     game_id: int = Path(..., description="Game ID"),
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
     """Delete game (admin only)"""
     try:
@@ -300,5 +335,7 @@ async def delete_admin_game(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to delete game {game_id}: {e}", extra={'game_id': game_id})
+        logger.error(
+            f"Failed to delete game {game_id}: {e}", extra={"game_id": game_id}
+        )
         raise HTTPException(status_code=500, detail="Failed to delete game")

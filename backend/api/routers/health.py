@@ -29,6 +29,7 @@ debug_router = APIRouter(prefix="/api/debug", tags=["debug"])
 # Health check endpoints (public)
 # ------------------------------------------------------------------------------
 
+
 @health_router.get("")
 async def health_check():
     """Basic health check"""
@@ -50,10 +51,10 @@ async def health_check_db(db: Session = Depends(get_db)):
 # Debug endpoints (admin only)
 # ------------------------------------------------------------------------------
 
+
 @debug_router.get("/categories")
 async def debug_categories(
-    db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    db: Session = Depends(get_db), _: None = Depends(require_admin_auth)
 ):
     """Debug endpoint to see all unique categories in the database"""
     # Only select the columns we need to avoid missing column errors
@@ -70,26 +71,48 @@ async def debug_categories(
     return {
         "total_games": len(games),
         "unique_categories": unique_categories,
-        "category_count": len(unique_categories)
+        "category_count": len(unique_categories),
     }
 
 
 @debug_router.get("/database-info")
 async def debug_database_info(
-    limit: Optional[int] = Query(None, description="Number of games to return (default: all)"),
+    limit: Optional[int] = Query(
+        None, description="Number of games to return (default: all)"
+    ),
     db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth)
+    _: None = Depends(require_admin_auth),
 ):
     """Debug endpoint to see database structure and sample data"""
     # Select all columns from your schema
     query = select(
-        Game.id, Game.title, Game.categories, Game.year,
-        Game.players_min, Game.players_max, Game.playtime_min, Game.playtime_max,
-        Game.thumbnail_url, Game.image, Game.created_at, Game.bgg_id,
-        Game.thumbnail_file, Game.mana_meeple_category, Game.description,
-        Game.designers, Game.publishers, Game.mechanics, Game.artists,
-        Game.average_rating, Game.complexity, Game.bgg_rank, Game.users_rated,
-        Game.min_age, Game.is_cooperative, Game.nz_designer, Game.game_type
+        Game.id,
+        Game.title,
+        Game.categories,
+        Game.year,
+        Game.players_min,
+        Game.players_max,
+        Game.playtime_min,
+        Game.playtime_max,
+        Game.thumbnail_url,
+        Game.image,
+        Game.created_at,
+        Game.bgg_id,
+        Game.thumbnail_file,
+        Game.mana_meeple_category,
+        Game.description,
+        Game.designers,
+        Game.publishers,
+        Game.mechanics,
+        Game.artists,
+        Game.average_rating,
+        Game.complexity,
+        Game.bgg_rank,
+        Game.users_rated,
+        Game.min_age,
+        Game.is_cooperative,
+        Game.nz_designer,
+        Game.game_type,
     )
 
     games = db.execute(query).all()
@@ -99,7 +122,9 @@ async def debug_database_info(
         games = games[:limit]
 
     return {
-        "total_games_in_db": db.execute(select(func.count()).select_from(Game)).scalar(),
+        "total_games_in_db": db.execute(
+            select(func.count()).select_from(Game)
+        ).scalar(),
         "games_returned": len(games),
         "sample_games": [
             {
@@ -129,25 +154,22 @@ async def debug_database_info(
                 "min_age": g[23],
                 "is_cooperative": g[24],
                 "nz_designer": g[25],
-                "game_type": g[26]
+                "game_type": g[26],
             }
             for g in games
-        ]
+        ],
     }
 
 
 @debug_router.get("/performance")
-async def get_performance_stats(
-    _: None = Depends(require_admin_auth)
-):
+async def get_performance_stats(_: None = Depends(require_admin_auth)):
     """Get performance monitoring stats (admin only)"""
     return performance_monitor.get_stats()
 
 
 @debug_router.get("/bgg-test/{bgg_id}")
 async def debug_bgg_api_call(
-    bgg_id: int,
-    _: None = Depends(require_admin_auth)
+    bgg_id: int, _: None = Depends(require_admin_auth)
 ):
     """Debug endpoint to test BGG API calls with detailed logging"""
     logger.info(f"Starting BGG debug test for game ID {bgg_id}")
@@ -160,7 +182,10 @@ async def debug_bgg_api_call(
             "status": "success",
             "bgg_id": bgg_id,
             "game_data": game_data,
-            "message": "BGG API call successful - check logs for detailed response info"
+            "message": (
+                "BGG API call successful - check logs for detailed "
+                "response info"
+            ),
         }
 
     except BGGServiceError as e:
@@ -169,14 +194,20 @@ async def debug_bgg_api_call(
             "status": "bgg_error",
             "bgg_id": bgg_id,
             "error": str(e),
-            "message": "BGG service error occurred - check logs for detailed debugging info"
+            "message": (
+                "BGG service error occurred - check logs for detailed "
+                "debugging info"
+            ),
         }
 
     except Exception as e:
-        logger.error(f"Unexpected error during BGG debug test for game {bgg_id}: {str(e)}")
+        logger.error(
+            f"Unexpected error during BGG debug test for game "
+            f"{bgg_id}: {str(e)}"
+        )
         return {
             "status": "error",
             "bgg_id": bgg_id,
             "error": str(e),
-            "message": "Unexpected error occurred - check logs for details"
+            "message": "Unexpected error occurred - check logs for details",
         }
