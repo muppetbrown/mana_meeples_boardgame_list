@@ -363,14 +363,14 @@ export default function PublicCatalogue() {
         <div className="mb-4">
           <header
             ref={headerRef}
-            className={`text-center ${transitionClass} ${
+            className={`${transitionClass} ${
               isHeaderVisible
                 ? 'opacity-100 translate-y-0'
                 : 'opacity-0 -translate-y-full pointer-events-none h-0 overflow-hidden'
             }`}
           >
-          {/* Logo and Title Row */}
-          <div className="flex items-center justify-center gap-3 sm:gap-4 mb-2">
+          {/* Logo and Text Side by Side */}
+          <div className="flex items-center gap-3 sm:gap-4 mb-4">
             <a
               href="https://www.manaandmeeples.co.nz"
               target="_blank"
@@ -384,18 +384,19 @@ export default function PublicCatalogue() {
                 className="w-12 h-12 sm:w-16 sm:h-16"
               />
             </a>
-            <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent">
-              Mana & Meeples
-            </h1>
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-1">
+                Mana & Meeples
+              </h1>
+              <p className="text-sm sm:text-lg text-slate-600 mb-0.5">
+                Timaru's Board Game Community
+              </p>
+              <p className="text-xs sm:text-sm text-slate-500">
+                Explore our game collection
+              </p>
+            </div>
           </div>
-
-          <p className="text-sm sm:text-lg text-slate-600 mb-1">
-            Timaru's Board Game Community
-          </p>
-          <p className="text-xs sm:text-sm text-slate-500 mb-3">
-            Explore our game collection
-          </p>
-          <div className="w-12 sm:w-20 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 mx-auto rounded-full mb-4" aria-hidden="true"></div>
+          <div className="w-12 sm:w-20 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 rounded-full mb-4" aria-hidden="true"></div>
 
           {/* Category Pills - part of header, hides with header on scroll */}
           <section aria-labelledby="categories-heading" className="mt-4">
