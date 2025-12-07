@@ -48,16 +48,12 @@ export default function PublicCatalogue() {
   const loadMoreTriggerRef = useRef(null); // Sentinel element for infinite scroll
   const isLoadingMoreRef = useRef(false); // Track loading state without triggering re-renders
 
-  // Initialize header visibility on mount based on scroll position
+  // Scroll to top on initial page load/refresh
   useEffect(() => {
-    const currentScrollY = window.scrollY;
-    const headerHeight = headerRef.current?.offsetHeight || 0;
-
-    // On initial load, show header if we're near the top
-    if (currentScrollY <= headerHeight + 20) {
-      setIsHeaderVisible(true);
-      setIsSticky(false);
-    }
+    // Force scroll to top on mount to prevent browser scroll restoration
+    window.scrollTo(0, 0);
+    setIsHeaderVisible(true);
+    setIsSticky(false);
   }, []);
 
   // Debounce search input
