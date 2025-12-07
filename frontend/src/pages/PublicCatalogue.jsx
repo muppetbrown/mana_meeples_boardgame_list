@@ -66,33 +66,6 @@ export default function PublicCatalogue() {
     return () => clearTimeout(id);
   }, [q]);
 
-  // Infinite scroll: Intersection Observer for auto-loading more games
-  useEffect(() => {
-    const sentinel = loadMoreTriggerRef.current;
-    if (!sentinel) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const [entry] = entries;
-        // When sentinel becomes visible and we're not already loading
-        if (entry.isIntersecting) {
-          loadMore();
-        }
-      },
-      {
-        root: null, // viewport
-        rootMargin: '200px', // Trigger 200px before reaching the sentinel
-        threshold: 0.1,
-      }
-    );
-
-    observer.observe(sentinel);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [loadMore]); // Re-setup when loadMore changes (filter changes)
-
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
     const handleScroll = () => {
@@ -279,6 +252,33 @@ export default function PublicCatalogue() {
       setLoadingMore(false);
     }
   }, [page, qDebounced, pageSize, sort, category, designer, nzDesigner, players, recentlyAdded, total, allLoadedItems.length]);
+
+  // Infinite scroll: Intersection Observer for auto-loading more games
+  useEffect(() => {
+    const sentinel = loadMoreTriggerRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const [entry] = entries;
+        // When sentinel becomes visible and we're not already loading
+        if (entry.isIntersecting) {
+          loadMore();
+        }
+      },
+      {
+        root: null, // viewport
+        rootMargin: '200px', // Trigger 200px before reaching the sentinel
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [loadMore]); // Re-setup when loadMore changes (filter changes)
 
   // Helper functions
   const updateCategory = (newCategory) => {
