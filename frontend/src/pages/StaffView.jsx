@@ -18,6 +18,7 @@ import Toast from "../components/common/Toast";
 import LibraryCard from "../components/staff/LibraryCard";
 import { BulkImportPanel, BulkCategorizePanel } from "../components/staff/BulkPanels";
 import { AdminToolsPanel } from "../components/staff/AdminToolsPanel";
+import { ManualGameEntryPanel } from "../components/staff/ManualGameEntryPanel";
 
 /**
  * Staff view content - uses StaffContext for all state management
@@ -94,6 +95,12 @@ function StaffViewContent() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-8">
+        {/* Manual Game Entry Panel */}
+        <ManualGameEntryPanel
+          onSuccess={() => window.location.reload()}
+          onToast={showToast}
+        />
+
         <section className="bg-white rounded-2xl p-6 shadow">
           <h2 className="text-xl font-semibold mb-3">Add Game by BGG ID</h2>
           <div className="flex flex-wrap gap-2 items-center">
