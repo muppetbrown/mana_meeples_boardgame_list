@@ -401,11 +401,13 @@ from api.routers.public import router as public_router
 from api.routers.admin import router as admin_router
 from api.routers.bulk import router as bulk_router
 from api.routers.health import health_router, debug_router
+from api.routers.buy_list import router as buy_list_router
 
 # Register all routers
 app.include_router(public_router)
 app.include_router(admin_router)
 app.include_router(bulk_router)
+app.include_router(buy_list_router)
 app.include_router(health_router)
 app.include_router(debug_router)
 

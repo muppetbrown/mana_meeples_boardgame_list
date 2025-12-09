@@ -63,3 +63,70 @@ class AdminLogin(BaseModel):
         if not v or len(v.strip()) < 10:
             raise ValueError("Token must be at least 10 characters")
         return v.strip()
+
+
+# ------------------------------------------------------------------------------
+# Buy List Schemas
+# ------------------------------------------------------------------------------
+
+
+class BuyListGameCreate(BaseModel):
+    """Schema for adding a game to the buy list"""
+
+    game_id: int
+    rank: Optional[int] = None
+    bgo_link: Optional[str] = None
+    lpg_rrp: Optional[float] = None
+    lpg_status: Optional[str] = None
+
+
+class BuyListGameUpdate(BaseModel):
+    """Schema for updating buy list game details"""
+
+    rank: Optional[int] = None
+    bgo_link: Optional[str] = None
+    lpg_rrp: Optional[float] = None
+    lpg_status: Optional[str] = None
+    on_buy_list: Optional[bool] = None
+
+
+class PriceSnapshotOut(BaseModel):
+    """Schema for price snapshot output"""
+
+    id: int
+    game_id: int
+    checked_at: str
+    low_price: Optional[float] = None
+    mean_price: Optional[float] = None
+    best_price: Optional[float] = None
+    best_store: Optional[str] = None
+    discount_pct: Optional[float] = None
+    delta: Optional[float] = None
+
+    class Config:
+        orm_mode = True
+
+
+class BuyListGameOut(BaseModel):
+    """Schema for buy list game output with game details and latest prices"""
+
+    id: int
+    game_id: int
+    rank: Optional[int] = None
+    bgo_link: Optional[str] = None
+    lpg_rrp: Optional[float] = None
+    lpg_status: Optional[str] = None
+    on_buy_list: bool
+    created_at: str
+    updated_at: str
+    # Game details
+    title: str
+    thumbnail_url: Optional[str] = None
+    bgg_id: Optional[int] = None
+    # Latest price data
+    latest_price: Optional[PriceSnapshotOut] = None
+    # Computed field
+    buy_filter: Optional[bool] = None
+
+    class Config:
+        orm_mode = True

@@ -57,9 +57,8 @@ def run_migrations():
     logger.info("Running database migrations...")
 
     with engine.connect() as conn:
-        # Migration: Add date_added column if it doesn't exist
         try:
-            # Check if column exists (PostgreSQL-specific)
+            # Migration 1: Add date_added column if it doesn't exist
             result = conn.execute(
                 text(
                     """
@@ -104,6 +103,201 @@ def run_migrations():
                 logger.info(
                     f"Set date_added to July 1, 2025 for {rows_updated} existing games"
                 )
+
+            # Migration 2: Create buy_list_games table
+            result = conn.execute(
+                text(
+                    """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema='public' AND table_name='buy_list_games'
+            """
+                )
+            )
+            table_exists = result.fetchone() is not None
+
+            if not table_exists:
+                logger.info("Creating buy_list_games table...")
+                conn.execute(
+                    text(
+                        """
+                    CREATE TABLE buy_list_games (
+                        id SERIAL PRIMARY KEY,
+                        game_id INTEGER NOT NULL UNIQUE REFERENCES boardgames(id) ON DELETE CASCADE,
+                        rank INTEGER,
+                        bgo_link TEXT,
+                        lpg_rrp NUMERIC(10, 2),
+                        lpg_status VARCHAR(50),
+                        on_buy_list BOOLEAN NOT NULL DEFAULT TRUE,
+                        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+                    )
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_buy_list_game_id ON buy_list_games(game_id)
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_buy_list_rank ON buy_list_games(on_buy_list, rank)
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_buy_list_status ON buy_list_games(lpg_status, on_buy_list)
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_buy_list_rank_only ON buy_list_games(rank)
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_buy_list_on_buy_list ON buy_list_games(on_buy_list)
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("buy_list_games table created successfully")
+
+            # Migration 3: Create price_snapshots table
+            result = conn.execute(
+                text(
+                    """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema='public' AND table_name='price_snapshots'
+            """
+                )
+            )
+            table_exists = result.fetchone() is not None
+
+            if not table_exists:
+                logger.info("Creating price_snapshots table...")
+                conn.execute(
+                    text(
+                        """
+                    CREATE TABLE price_snapshots (
+                        id SERIAL PRIMARY KEY,
+                        game_id INTEGER NOT NULL REFERENCES boardgames(id) ON DELETE CASCADE,
+                        checked_at TIMESTAMP NOT NULL,
+                        low_price NUMERIC(10, 2),
+                        mean_price NUMERIC(10, 2),
+                        best_price NUMERIC(10, 2),
+                        best_store TEXT,
+                        discount_pct NUMERIC(5, 2),
+                        delta NUMERIC(5, 2),
+                        source_file TEXT,
+                        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                    )
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_price_snapshot_game_id ON price_snapshots(game_id)
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_price_snapshot_checked_at ON price_snapshots(checked_at)
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_price_snapshot_game_date ON price_snapshots(game_id, checked_at)
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_price_snapshot_best ON price_snapshots(best_price, discount_pct)
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("price_snapshots table created successfully")
+
+            # Migration 4: Create price_offers table
+            result = conn.execute(
+                text(
+                    """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema='public' AND table_name='price_offers'
+            """
+                )
+            )
+            table_exists = result.fetchone() is not None
+
+            if not table_exists:
+                logger.info("Creating price_offers table...")
+                conn.execute(
+                    text(
+                        """
+                    CREATE TABLE price_offers (
+                        id SERIAL PRIMARY KEY,
+                        game_id INTEGER NOT NULL REFERENCES boardgames(id) ON DELETE CASCADE,
+                        checked_at TIMESTAMP NOT NULL,
+                        store TEXT,
+                        price_nzd NUMERIC(10, 2),
+                        availability TEXT,
+                        store_link TEXT,
+                        in_stock BOOLEAN,
+                        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+                    )
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_price_offer_game_id ON price_offers(game_id)
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_price_offer_checked_at ON price_offers(checked_at)
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_price_offer_game_date ON price_offers(game_id, checked_at)
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_price_offer_store ON price_offers(store, in_stock)
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("price_offers table created successfully")
 
         except Exception as e:
             logger.error(f"Migration error: {e}")
