@@ -26,6 +26,14 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
     url = "https://boardgamegeek.com/xmlapi2/thing"
     params = {"id": str(bgg_id), "stats": "1"}
 
+    # Add BGG API key to headers if available
+    headers = {}
+    if config.BGG_API_KEY:
+        headers["Authorization"] = f"Bearer {config.BGG_API_KEY}"
+        logger.info(f"Using BGG API key for authentication")
+    else:
+        logger.warning(f"No BGG API key configured - request may be rate limited")
+
     # Initialize variables outside of try blocks to ensure they're in scope for exception handlers
     response = None
     response_text = None
@@ -43,7 +51,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
                     logger.info(f"Request URL: {url}")
                     logger.info(f"Request params: {params}")
 
-                response = await client.get(url, params=params)
+                response = await client.get(url, params=params, headers=headers)
 
                 # Extra debugging for test IDs
                 if bgg_id in [314421, 13]:
