@@ -7,7 +7,7 @@ import {
   updateBuyListGame,
   removeFromBuyList,
   importPrices,
-  getAllGames,
+  getPublicGames,
 } from "../../../api/client";
 
 /**
@@ -117,7 +117,7 @@ export function BuyListTab() {
     if (!addGameSearch.trim()) return;
 
     try {
-      const data = await getAllGames({ q: addGameSearch, page_size: 10 });
+      const data = await getPublicGames({ q: addGameSearch, page_size: 10 });
       setSearchResults(data.items || []);
     } catch (err) {
       console.error("Failed to search games:", err);
