@@ -47,6 +47,14 @@ API_BASE = (
 HTTP_TIMEOUT = int(os.getenv("HTTP_TIMEOUT", "30"))
 HTTP_RETRIES = int(os.getenv("HTTP_RETRIES", "3"))
 
+# BoardGameGeek API configuration
+BGG_API_KEY = os.getenv("BGG_API_KEY", "")
+if not BGG_API_KEY:
+    print(
+        "WARNING: BGG_API_KEY not set - BGG API requests may be rate limited or fail",
+        file=sys.stderr,
+    )
+
 # Rate limiting configuration
 RATE_LIMIT_ATTEMPTS = int(os.getenv("RATE_LIMIT_ATTEMPTS", "5"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "300"))  # 5 minutes
