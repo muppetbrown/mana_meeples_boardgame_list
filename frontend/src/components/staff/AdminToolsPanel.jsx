@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { bulkUpdateNZDesigners, reimportAllGames, getDebugCategories, getDebugDatabaseInfo, getDebugPerformance, exportGamesCSV, getHealthCheck, getDbHealthCheck } from "../../api/client";
+import { bulkUpdateNZDesigners, reimportAllGames, fixDatabaseSequence, getDebugCategories, getDebugDatabaseInfo, getDebugPerformance, exportGamesCSV, getHealthCheck, getDbHealthCheck } from "../../api/client";
 
 export function AdminToolsPanel({ onToast, onLibraryReload }) {
   const [nzDesignersText, setNzDesignersText] = useState("");
@@ -70,6 +70,22 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
       setIsLoading(false);
     }
   }, [onToast, onLibraryReload]);
+
+  const handleFixSequence = useCallback(async () => {
+    if (!window.confirm("This will reset the database ID sequence. This is safe and fixes 'duplicate key' errors. Continue?")) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await fixDatabaseSequence();
+      onToast(`Sequence fixed! Next ID will be: ${result.next_id}`, "success");
+    } catch (error) {
+      onToast("Failed to fix sequence", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [onToast]);
 
   const handleDebugInfo = useCallback(async (type) => {
     setIsLoading(true);
@@ -161,6 +177,16 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
 
           <button
             className={`px-4 py-2 rounded-lg text-white ${
+              isLoading ? "bg-gray-400" : "bg-yellow-600 hover:bg-yellow-700"
+            }`}
+            onClick={handleFixSequence}
+            disabled={isLoading}
+          >
+            Fix Database Sequence
+          </button>
+
+          <button
+            className={`px-4 py-2 rounded-lg text-white ${
               isLoading ? "bg-gray-400" : "bg-teal-600 hover:bg-teal-700"
             }`}
             onClick={handleExportCSV}
@@ -170,7 +196,7 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
           </button>
         </div>
         <p className="text-sm text-gray-600 mt-2">
-          Re-import will fetch latest BGG data for all games. Export creates a CSV backup of all game data.
+          Re-import will fetch latest BGG data for all games. Fix Sequence resolves "duplicate key" errors when adding games. Export creates a CSV backup.
         </p>
       </div>
 

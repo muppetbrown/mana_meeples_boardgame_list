@@ -218,6 +218,16 @@ export async function reimportAllGames() {
   return r.data;
 }
 
+/**
+ * Fix PostgreSQL sequence for boardgames table
+ * Resolves "duplicate key value violates unique constraint" errors
+ * @returns {Promise<Object>} Sequence fix result with max_id and next_id
+ */
+export async function fixDatabaseSequence() {
+  const r = await api.post("/api/admin/fix-sequence", {});
+  return r.data;
+}
+
 // ============================================================================
 // ADMIN API METHODS - Authentication
 // ============================================================================

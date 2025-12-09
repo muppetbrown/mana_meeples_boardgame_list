@@ -18,6 +18,7 @@ from fastapi import (
     Request,
     Response,
 )
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from api.dependencies import (
@@ -339,3 +340,39 @@ async def delete_admin_game(
             f"Failed to delete game {game_id}: {e}", extra={"game_id": game_id}
         )
         raise HTTPException(status_code=500, detail="Failed to delete game")
+
+
+@router.post("/fix-sequence")
+async def fix_sequence(
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin_auth),
+):
+    """
+    Fix PostgreSQL sequence for boardgames table ID column.
+    This resolves 'duplicate key value violates unique constraint' errors
+    when importing new games.
+    """
+    try:
+        # Get the current maximum ID from the table
+        result = db.execute(text("SELECT MAX(id) FROM boardgames"))
+        max_id = result.scalar()
+
+        if max_id is None:
+            max_id = 0
+
+        # Reset the sequence to max_id + 1
+        db.execute(text(f"SELECT setval('boardgames_id_seq', {max_id + 1}, false)"))
+        db.commit()
+
+        logger.info(f"Successfully reset boardgames sequence to {max_id + 1}")
+        return {
+            "message": "Sequence fixed successfully",
+            "max_id": max_id,
+            "next_id": max_id + 1
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to fix sequence: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fix sequence: {str(e)}")
