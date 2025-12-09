@@ -114,8 +114,7 @@ function StaffViewContent() {
           <div className="flex items-center gap-4">
             <div className="text-sm text-gray-600 hidden md:block">
               <span className="font-semibold">{stats.total}</span> games ·{" "}
-              <span className="font-semibold">{stats.available}</span> available ·{" "}
-              <span className="font-semibold">{stats.avgRating}</span> avg rating
+              <span className="font-semibold">{stats.avgRating}</span> avg BGG rating
             </div>
             <button
               onClick={handleLogout}

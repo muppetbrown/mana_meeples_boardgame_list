@@ -122,13 +122,12 @@ export function StaffProvider({ children }) {
    */
   const stats = useMemo(() => {
     const total = library.length;
-    const available = library.filter((g) => g.available).length;
-    const rated = library.filter((g) => typeof g.rating === 'number');
+    const rated = library.filter((g) => typeof g.average_rating === 'number' && g.average_rating > 0);
     const avg =
       rated.length > 0
-        ? (rated.reduce((s, g) => s + g.rating, 0) / rated.length).toFixed(1)
+        ? (rated.reduce((s, g) => s + g.average_rating, 0) / rated.length).toFixed(1)
         : 'N/A';
-    return { total, available, avgRating: avg };
+    return { total, avgRating: avg };
   }, [library]);
 
   /**

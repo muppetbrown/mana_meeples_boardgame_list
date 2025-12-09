@@ -68,17 +68,13 @@ export function DashboardTab({ onTabChange }) {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid md:grid-cols-4 gap-4">
+      <div className="grid md:grid-cols-3 gap-4">
         <div className="bg-white rounded-lg p-5 shadow">
           <div className="text-sm text-gray-600 mb-1">Total Games</div>
           <div className="text-3xl font-bold text-purple-700">{stats.total}</div>
         </div>
         <div className="bg-white rounded-lg p-5 shadow">
-          <div className="text-sm text-gray-600 mb-1">Available</div>
-          <div className="text-3xl font-bold text-green-700">{stats.available}</div>
-        </div>
-        <div className="bg-white rounded-lg p-5 shadow">
-          <div className="text-sm text-gray-600 mb-1">Average Rating</div>
+          <div className="text-sm text-gray-600 mb-1">Average BGG Rating</div>
           <div className="text-3xl font-bold text-blue-700">{stats.avgRating}</div>
         </div>
         <div className="bg-white rounded-lg p-5 shadow">
