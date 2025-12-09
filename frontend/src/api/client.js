@@ -341,3 +341,69 @@ export async function importFromBGG(bggId, force = false) {
   });
   return r.data;
 }
+
+// ============================================================================
+// BUY LIST API METHODS
+// ============================================================================
+
+/**
+ * Get all games on the buy list with pricing data
+ * @param {Object} params - Query parameters (on_buy_list, lpg_status, buy_filter, sort_by, sort_desc)
+ * @returns {Promise<Object>} Response with total and items array
+ */
+export async function getBuyListGames(params = {}) {
+  const r = await api.get("/api/admin/buy-list/games", { params });
+  return r.data;
+}
+
+/**
+ * Add a game to the buy list
+ * @param {Object} data - Buy list game data (game_id, rank, bgo_link, lpg_rrp, lpg_status)
+ * @returns {Promise<Object>} Created buy list entry
+ */
+export async function addToBuyList(data) {
+  const r = await api.post("/api/admin/buy-list/games", data);
+  return r.data;
+}
+
+/**
+ * Update buy list game details
+ * @param {number} buyListId - Buy list entry ID
+ * @param {Object} data - Updated fields (rank, bgo_link, lpg_rrp, lpg_status, on_buy_list)
+ * @returns {Promise<Object>} Updated buy list entry
+ */
+export async function updateBuyListGame(buyListId, data) {
+  const r = await api.put(`/api/admin/buy-list/games/${buyListId}`, data);
+  return r.data;
+}
+
+/**
+ * Remove a game from the buy list
+ * @param {number} buyListId - Buy list entry ID
+ * @returns {Promise<Object>} Success message
+ */
+export async function removeFromBuyList(buyListId) {
+  const r = await api.delete(`/api/admin/buy-list/games/${buyListId}`);
+  return r.data;
+}
+
+/**
+ * Import price data from JSON file
+ * @param {string} sourceFile - Filename of JSON price data
+ * @returns {Promise<Object>} Import result with counts
+ */
+export async function importPrices(sourceFile) {
+  const r = await api.post("/api/admin/buy-list/import-prices", null, {
+    params: { source_file: sourceFile }
+  });
+  return r.data;
+}
+
+/**
+ * Get last price update timestamp
+ * @returns {Promise<Object>} Last update info (last_updated, source_file)
+ */
+export async function getLastPriceUpdate() {
+  const r = await api.get("/api/admin/buy-list/last-updated");
+  return r.data;
+}

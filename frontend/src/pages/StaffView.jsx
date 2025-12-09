@@ -20,6 +20,7 @@ import { AddGamesTab } from "../components/staff/tabs/AddGamesTab";
 import { ManageLibraryTab } from "../components/staff/tabs/ManageLibraryTab";
 import { CategoriesTab } from "../components/staff/tabs/CategoriesTab";
 import { AdvancedToolsTab } from "../components/staff/tabs/AdvancedToolsTab";
+import { BuyListTab } from "../components/staff/tabs/BuyListTab";
 
 /**
  * Staff view content - uses StaffContext for all state management
@@ -51,6 +52,7 @@ function StaffViewContent() {
     { id: "add-games", label: "Add Games", icon: "📥" },
     { id: "manage-library", label: "Manage Library", icon: "📚" },
     { id: "categories", label: "Categories", icon: "🏷️" },
+    { id: "buy-list", label: "Buy List", icon: "🛒" },
     { id: "advanced", label: "Advanced Tools", icon: "⚙️" },
   ];
 
@@ -98,6 +100,8 @@ function StaffViewContent() {
         return <ManageLibraryTab />;
       case "categories":
         return <CategoriesTab />;
+      case "buy-list":
+        return <BuyListTab />;
       case "advanced":
         return <AdvancedToolsTab />;
       default:

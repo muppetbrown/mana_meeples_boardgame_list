@@ -1,0 +1,110 @@
+name: Fetch Buy List Prices
+
+on:
+  # Run daily at 2 AM NZT (1 PM UTC previous day)
+  schedule:
+    - cron: '0 13 * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+  # Run on push to main (for testing)
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/scripts/fetch_buy_list_prices.py'
+      - 'backend/scripts/export_buy_list.py'
+      - '.github/workflows/fetch-buy-list-prices.yml'
+
+jobs:
+  fetch-prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # Safety timeout
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install playwright beautifulsoup4 lxml pandas python-dateutil psycopg2-binary sqlalchemy python-dotenv
+
+      - name: Install Playwright browsers
+        run: |
+          playwright install chromium
+          playwright install-deps chromium
+
+      - name: Create price_data directory
+        run: |
+          mkdir -p backend/price_data
+
+      - name: Export buy list from database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd backend
+          python scripts/export_buy_list.py
+
+      - name: Fetch prices from BoardGameOracle
+        env:
+          HEADLESS: 'true'
+          CI: 'true'
+          DELAY_MS: '1000'
+          PAGE_WAIT_MS: '1000'
+          QUICK_CHECK_MS: '3000'
+        run: |
+          cd backend
+          python scripts/fetch_buy_list_prices.py
+
+      - name: Check if prices were fetched
+        run: |
+          if [ -f backend/price_data/latest_prices.json ]; then
+            echo "✓ Price data generated successfully"
+            cat backend/price_data/latest_prices.json | head -50
+          else
+            echo "✗ Price data file not found"
+            exit 1
+          fi
+
+      - name: Commit and push price data
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add backend/price_data/latest_prices.json
+          git add backend/price_data/buy_list_export.csv
+
+          # Only commit if there are changes
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: Update buy list prices [skip ci]"
+            git push
+          fi
+
+      - name: Upload price data as artifact
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: price-data
+          path: backend/price_data/
+          retention-days: 7
+
+      - name: Report summary
+        if: always()
+        run: |
+          if [ -f backend/price_data/latest_prices.json ]; then
+            GAME_COUNT=$(jq '.games | length' backend/price_data/latest_prices.json)
+            CHECKED_AT=$(jq -r '.checked_at' backend/price_data/latest_prices.json)
+            echo "## Buy List Price Update Summary" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Games processed:** $GAME_COUNT" >> $GITHUB_STEP_SUMMARY
+            echo "- **Checked at:** $CHECKED_AT" >> $GITHUB_STEP_SUMMARY
+            echo "- **File:** backend/price_data/latest_prices.json" >> $GITHUB_STEP_SUMMARY
+          fi
