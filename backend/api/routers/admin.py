@@ -361,11 +361,12 @@ async def fix_sequence(
         if max_id is None:
             max_id = 0
 
-        # Reset the sequence to max_id + 1
-        db.execute(text(f"SELECT setval('boardgames_id_seq', {max_id + 1}, false)"))
+        # Reset the sequence to max_id (with is_called=true, so next value will be max_id + 1)
+        # Using 'true' (or default) means the sequence has been "called" and will increment on next use
+        db.execute(text(f"SELECT setval('boardgames_id_seq', {max_id}, true)"))
         db.commit()
 
-        logger.info(f"Successfully reset boardgames sequence to {max_id + 1}")
+        logger.info(f"Successfully reset boardgames sequence to {max_id} (next will be {max_id + 1})")
         return {
             "message": "Sequence fixed successfully",
             "max_id": max_id,
