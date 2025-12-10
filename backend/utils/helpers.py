@@ -292,6 +292,12 @@ def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         ),
         "nz_designer": getattr(game, "nz_designer", False),
         "game_type": getattr(game, "game_type", None),
+        # Expansion fields
+        "is_expansion": getattr(game, "is_expansion", False),
+        "base_game_id": getattr(game, "base_game_id", None),
+        "expansion_type": getattr(game, "expansion_type", None),
+        "modifies_players_min": getattr(game, "modifies_players_min", None),
+        "modifies_players_max": getattr(game, "modifies_players_max", None),
     }
 
 

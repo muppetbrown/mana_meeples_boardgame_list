@@ -361,7 +361,148 @@ def run_migrations():
                 logger.info("disc_mean_pct column added successfully")
 
         except Exception as e:
-            logger.error(f"Migration error: {e}")
+            logger.error(f"Migration error (date_added): {e}")
+            conn.rollback()
+            raise
+
+        # Migration 1.5: Add status column if it doesn't exist
+        try:
+            result = conn.execute(
+                text(
+                    """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name='boardgames' AND column_name='status'
+            """
+                )
+            )
+            column_exists = result.fetchone() is not None
+
+            if not column_exists:
+                logger.info("Adding status column to boardgames table...")
+                conn.execute(
+                    text(
+                        """
+                    ALTER TABLE boardgames
+                    ADD COLUMN status VARCHAR(20) DEFAULT 'OWNED'
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("status column added successfully")
+
+                # Create index on status
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_boardgames_status ON boardgames(status)
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("Created index on status column")
+
+        except Exception as e:
+            logger.error(f"Migration error (status): {e}")
+            conn.rollback()
+            raise
+
+        # Migration: Add expansion-related columns if they don't exist
+        try:
+            expansion_columns = [
+                ("is_expansion", "BOOLEAN DEFAULT FALSE NOT NULL"),
+                ("base_game_id", "INTEGER"),
+                ("expansion_type", "VARCHAR(50)"),
+                ("modifies_players_min", "INTEGER"),
+                ("modifies_players_max", "INTEGER"),
+            ]
+
+            for col_name, col_type in expansion_columns:
+                # Check if column exists
+                result = conn.execute(
+                    text(
+                        """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name='boardgames' AND column_name=:col_name
+                """
+                    ),
+                    {"col_name": col_name},
+                )
+                column_exists = result.fetchone() is not None
+
+                if not column_exists:
+                    logger.info(
+                        f"Adding {col_name} column to boardgames table..."
+                    )
+                    conn.execute(
+                        text(
+                            f"""
+                        ALTER TABLE boardgames
+                        ADD COLUMN {col_name} {col_type}
+                    """
+                        )
+                    )
+                    conn.commit()
+                    logger.info(f"{col_name} column added successfully")
+
+            # Add foreign key constraint if it doesn't exist
+            result = conn.execute(
+                text(
+                    """
+                SELECT constraint_name
+                FROM information_schema.table_constraints
+                WHERE table_name='boardgames' AND constraint_name='fk_base_game'
+            """
+                )
+            )
+            fk_exists = result.fetchone() is not None
+
+            if not fk_exists:
+                logger.info(
+                    "Adding foreign key constraint for base_game_id..."
+                )
+                conn.execute(
+                    text(
+                        """
+                    ALTER TABLE boardgames
+                    ADD CONSTRAINT fk_base_game
+                    FOREIGN KEY (base_game_id) REFERENCES boardgames(id)
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("Foreign key constraint added successfully")
+
+            # Add index for expansion lookups if it doesn't exist
+            result = conn.execute(
+                text(
+                    """
+                SELECT indexname
+                FROM pg_indexes
+                WHERE tablename='boardgames' AND indexname='idx_expansion_lookup'
+            """
+                )
+            )
+            index_exists = result.fetchone() is not None
+
+            if not index_exists:
+                logger.info(
+                    "Adding index for expansion lookups..."
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_expansion_lookup
+                    ON boardgames(is_expansion, base_game_id)
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("Expansion lookup index added successfully")
+
+        except Exception as e:
+            logger.error(f"Migration error (expansion fields): {e}")
             conn.rollback()
             raise
 
