@@ -580,6 +580,26 @@ def _extract_comprehensive_game_data(item, bgg_id: int) -> Dict:
             except (ValueError, TypeError):
                 pass
 
+        # Set default expansion_type
+        # Check if title suggests it's standalone (common keywords)
+        standalone_keywords = [
+            "standalone",
+            "stand alone",
+            "stand-alone",
+            "can be played alone",
+            "playable without",
+        ]
+        is_standalone = any(keyword in title_lower for keyword in standalone_keywords)
+
+        if is_standalone:
+            data["expansion_type"] = "both"
+            logger.info(
+                f"Auto-detected standalone expansion for {data['title']}"
+            )
+        else:
+            # Default to requires_base for most expansions
+            data["expansion_type"] = "requires_base"
+
     # Statistics (ratings, complexity, etc.)
     statistics = item.find("statistics")
     if statistics is not None:

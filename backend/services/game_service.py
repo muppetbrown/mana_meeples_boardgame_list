@@ -111,16 +111,45 @@ class GameService:
         if nz_designer is not None:
             query = query.where(Game.nz_designer == nz_designer)
 
-        # Apply player count filter
+        # Apply player count filter (including games with expansions that support the player count)
         if players is not None:
+            from sqlalchemy import alias
+
+            # Create alias for expansion subquery
+            Expansion = alias(Game.__table__, name="expansion")
+
+            # Subquery to find games with expansions that extend player count
+            expansion_subquery = (
+                select(Expansion.c.base_game_id)
+                .where(Expansion.c.base_game_id.isnot(None))
+                .where(
+                    or_(
+                        Expansion.c.modifies_players_min.is_(None),
+                        Expansion.c.modifies_players_min <= players,
+                    )
+                )
+                .where(
+                    or_(
+                        Expansion.c.modifies_players_max.is_(None),
+                        Expansion.c.modifies_players_max >= players,
+                    )
+                )
+            )
+
+            # Game matches if base player count OR has expansion that supports it
             query = query.where(
-                and_(
-                    or_(
-                        Game.players_min.is_(None), Game.players_min <= players
+                or_(
+                    # Base game player count
+                    and_(
+                        or_(
+                            Game.players_min.is_(None), Game.players_min <= players
+                        ),
+                        or_(
+                            Game.players_max.is_(None), Game.players_max >= players
+                        ),
                     ),
-                    or_(
-                        Game.players_max.is_(None), Game.players_max >= players
-                    ),
+                    # Has expansion that extends player count to requested amount
+                    Game.id.in_(expansion_subquery),
                 )
             )
 
