@@ -385,6 +385,35 @@ class GameService:
         categories = parse_categories(game.categories)
         game.mana_meeple_category = categorize_game(categories)
 
+    def _auto_link_expansion(self, game: Game, bgg_data: Dict[str, Any]) -> None:
+        """
+        Auto-link expansion to base game if the base game exists in database.
+
+        Args:
+            game: Game object to link
+            bgg_data: BGG data containing base_game_bgg_id if available
+        """
+        # Only process if this is an expansion
+        if not bgg_data.get("is_expansion", False):
+            return
+
+        base_game_bgg_id = bgg_data.get("base_game_bgg_id")
+        if not base_game_bgg_id:
+            logger.info(f"Expansion {game.title} has no base game BGG ID in data")
+            return
+
+        # Try to find base game in database
+        base_game = self.get_game_by_bgg_id(base_game_bgg_id)
+        if base_game:
+            game.base_game_id = base_game.id
+            logger.info(
+                f"Auto-linked expansion '{game.title}' to base game '{base_game.title}'"
+            )
+        else:
+            logger.info(
+                f"Base game BGG ID {base_game_bgg_id} not found in database for expansion '{game.title}'"
+            )
+
     def _update_game_enhanced_fields(
         self, game: Game, data: Dict[str, Any]
     ) -> None:
@@ -411,6 +440,11 @@ class GameService:
             "game_type": "game_type",
             "image": "image",
             "thumbnail_url": "thumbnail",  # BGG uses 'thumbnail' key
+            # Expansion fields
+            "is_expansion": "is_expansion",
+            "expansion_type": "expansion_type",
+            "modifies_players_min": "modifies_players_min",
+            "modifies_players_max": "modifies_players_max",
         }
 
         for game_field, data_key in enhanced_fields.items():
@@ -448,6 +482,10 @@ class GameService:
         if existing:
             # Update existing game
             self.update_game_from_bgg_data(existing, bgg_data)
+
+            # Auto-link to base game if this is an expansion
+            self._auto_link_expansion(existing, bgg_data)
+
             self.db.add(existing)
             self.db.commit()
             self.db.refresh(existing)
@@ -474,6 +512,9 @@ class GameService:
 
             # Add enhanced fields
             self._update_game_enhanced_fields(game, bgg_data)
+
+            # Auto-link to base game if this is an expansion
+            self._auto_link_expansion(game, bgg_data)
 
             self.db.add(game)
             self.db.commit()
