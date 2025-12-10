@@ -13,12 +13,34 @@ export default function LibraryCard({ game, onEditCategory, onDelete }) {
           fallbackClass="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center text-gray-500 text-sm border-2 border-gray-200"
         />
         <div className="flex-1">
-          <div className="font-semibold">{game.title}</div>
+          <div className="flex items-center gap-2">
+            <div className="font-semibold">{game.title}</div>
+            {/* Expansion badges */}
+            {game.is_expansion && (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${
+                game.expansion_type === 'both' || game.expansion_type === 'standalone'
+                  ? 'bg-indigo-100 text-indigo-800'
+                  : 'bg-purple-100 text-purple-800'
+              }`}>
+                {game.expansion_type === 'both' || game.expansion_type === 'standalone'
+                  ? 'STANDALONE'
+                  : 'EXPANSION'}
+              </span>
+            )}
+          </div>
           <div className="text-sm text-gray-600">
             {game.min_players ?? "?"}–{game.max_players ?? "?"} · {game.playing_time ?? "?"} mins
+            {game.is_expansion && game.modifies_players_max && (
+              <span className="text-purple-600 ml-1 font-medium">
+                (extends to {game.modifies_players_min ?? game.min_players}-{game.modifies_players_max})
+              </span>
+            )}
           </div>
           <div className="mt-1 text-xs text-gray-500">
             {game.mana_meeple_category ? labelFor(game.mana_meeple_category) : "Uncategorized"}
+            {game.is_expansion && game.base_game_id && (
+              <span className="ml-2 text-purple-600">• Expansion</span>
+            )}
           </div>
 
           <div className="mt-3 flex gap-2">

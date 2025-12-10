@@ -86,6 +86,15 @@ class GameService:
         # Build base query
         query = select(Game)
 
+        # Exclude require-base expansions from public view
+        # Only show base games and standalone expansions (expansion_type = 'both' or 'standalone')
+        query = query.where(
+            or_(
+                Game.is_expansion == False,  # Base games
+                Game.expansion_type.in_(["both", "standalone"]),  # Standalone expansions
+            )
+        )
+
         # Apply search filter - search across title, designers, and description
         if search and search.strip():
             search_term = f"%{search.strip()}%"

@@ -85,14 +85,16 @@ export default function GameCardPublic({
 
     if (!baseMin || !baseMax) return null;
 
-    const baseRange = baseMin === baseMax ? `${baseMin}` : `${baseMin}-${baseMax}`;
-
+    // If expansion extends player count, show expanded range with asterisk
     if (hasExpansion && expMax > baseMax) {
-      const expRange = expMin === expMax ? `${expMax}` : `${expMin}-${expMax}`;
-      return { base: baseRange, expanded: expRange, hasExpansion: true };
+      const displayMin = expMin || baseMin;
+      const displayMax = expMax;
+      const range = displayMin === displayMax ? `${displayMax}` : `${displayMin}-${displayMax}`;
+      return `${range}*`;
     }
 
-    return { base: baseRange, expanded: null, hasExpansion: false };
+    // Otherwise just show base range
+    return baseMin === baseMax ? `${baseMin}` : `${baseMin}-${baseMax}`;
   };
 
   const transitionClass = prefersReducedMotion ? '' : 'transition-all duration-300';
@@ -222,19 +224,12 @@ export default function GameCardPublic({
               return (
                 <div
                   className="flex items-center gap-1"
-                  aria-label={`${playerCount.base} players${playerCount.hasExpansion ? `, up to ${playerCount.expanded} with expansions` : ''}`}
+                  aria-label={`${playerCount} players`}
                 >
                   <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                     <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
                   </svg>
-                  <span className="font-semibold">
-                    {playerCount.base}
-                    {playerCount.hasExpansion && (
-                      <span className="text-purple-600 ml-1" title="With expansions">
-                        → {playerCount.expanded}*
-                      </span>
-                    )}
-                  </span>
+                  <span className="font-semibold">{playerCount}</span>
                 </div>
               );
             })()}
@@ -267,13 +262,7 @@ export default function GameCardPublic({
               return (
                 <div className="flex items-center gap-2">
                   <span className="text-slate-700">
-                    <span className="font-semibold">Players:</span>{' '}
-                    {playerCount.base}
-                    {playerCount.hasExpansion && (
-                      <span className="text-purple-600 ml-1 font-semibold" title="With expansions">
-                        → {playerCount.expanded}*
-                      </span>
-                    )}
+                    <span className="font-semibold">Players:</span> {playerCount}
                   </span>
                 </div>
               );
