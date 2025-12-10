@@ -15,6 +15,10 @@ on:
       - 'backend/scripts/export_buy_list.py'
       - '.github/workflows/fetch-buy-list-prices.yml'
 
+# Grant write permissions to the workflow
+permissions:
+  contents: write
+
 jobs:
   fetch-prices:
     runs-on: ubuntu-latest
@@ -81,6 +85,8 @@ jobs:
           fi
 
       - name: Commit and push price data
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
@@ -92,7 +98,8 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: Update buy list prices [skip ci]"
-            git push
+            # Use GITHUB_TOKEN for authentication
+            git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
           fi
 
       - name: Upload price data as artifact
