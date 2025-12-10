@@ -454,14 +454,19 @@ async def bulk_import_buy_list_csv(
 
         # Read CSV file
         contents = await file.read()
-        text_content = contents.decode("utf-8")
+        # Use utf-8-sig to handle BOM (Byte Order Mark) from Excel/Windows
+        text_content = contents.decode("utf-8-sig")
         csv_reader = csv.DictReader(io.StringIO(text_content))
+
+        # Strip whitespace from fieldnames and normalize them
+        if csv_reader.fieldnames:
+            csv_reader.fieldnames = [field.strip() for field in csv_reader.fieldnames]
 
         # Validate required column
         if "bgg_id" not in csv_reader.fieldnames:
             raise HTTPException(
                 status_code=400,
-                detail="CSV must contain 'bgg_id' column"
+                detail=f"CSV must contain 'bgg_id' column. Found columns: {csv_reader.fieldnames}"
             )
 
         added_count = 0
