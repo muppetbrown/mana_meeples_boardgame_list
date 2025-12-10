@@ -1,5 +1,5 @@
 {
-  "checked_at": "2025-12-10T03:31:51+00:00",
+  "checked_at": "2025-12-10T04:34:39+00:00",
   "games": [
     {
       "bgg_id": 167791,
@@ -100,6 +100,320 @@
           "price_nzd": 179.99,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f7cb7651af69ea4b822fa3&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FDJXkZt9Z_z%2Fterraforming-mars",
+          "in_stock": true
+        }
+      ]
+    },
+    {
+      "bgg_id": 342942,
+      "name": "Ark Nova",
+      "low_price": 98.0,
+      "mean_price": 152.02,
+      "best_price": 98.0,
+      "best_store": "EB Games NZ",
+      "discount_pct": 35.54,
+      "delta": 0.0,
+      "offers": [
+        {
+          "store": "EB Games NZ",
+          "price_nzd": 98.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f67be051af69ea4bc7ec08&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        },
+        {
+          "store": "Gameology",
+          "price_nzd": 120.41,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=657c86e53c6fb100086b4bc9&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        },
+        {
+          "store": "The Board Gamer NZ",
+          "price_nzd": 134.99,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=692457e406b28fef30c17eed&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        },
+        {
+          "store": "Pop Stop",
+          "price_nzd": 144.99,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=63c69ceeace5560008a7a972&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        },
+        {
+          "store": "Escape Board-Em with Solve It & Escape",
+          "price_nzd": 149.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6685a1b4bbc51ebbe6dadc36&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        },
+        {
+          "store": "Gaming DNA",
+          "price_nzd": 155.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=676ea8813cdf8a95a01cecea&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        },
+        {
+          "store": "HobbyMaster",
+          "price_nzd": 155.0,
+          "availability": "Out of stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6332f66706932e0009216ece&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": false
+        },
+        {
+          "store": "Card Merchant",
+          "price_nzd": 159.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68d149548696fb6fb192ace0&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        },
+        {
+          "store": "Whitcoulls",
+          "price_nzd": 159.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=686fc78fea0e5f3dae6caeaf&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        },
+        {
+          "store": "Ironhorse Hobbies",
+          "price_nzd": 163.95,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=668050edcfb474be02479c89&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        },
+        {
+          "store": "Gamersphere",
+          "price_nzd": 164.99,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68a71907879e6732b26b31e6&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        },
+        {
+          "store": "The Nile NZ",
+          "price_nzd": 192.82,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6882303bf477d4b6aca77128&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        },
+        {
+          "store": "NZGameShop",
+          "price_nzd": 203.49,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=663b7890aea564000869358d&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyKEg3oOK67%2Fark-nova",
+          "in_stock": true
+        }
+      ]
+    },
+    {
+      "bgg_id": 397598,
+      "name": "Dune: Imperium – Uprising",
+      "low_price": 108.63,
+      "mean_price": 129.59,
+      "best_price": 108.94,
+      "best_store": "Gameology",
+      "discount_pct": 15.93,
+      "delta": -0.24,
+      "offers": [
+        {
+          "store": "Gameology",
+          "price_nzd": 108.94,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=64f203d96ce39300081f587b&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FNfBhb2GnXh%2Fdune-imperium-uprising",
+          "in_stock": true
+        },
+        {
+          "store": "Pop Stop",
+          "price_nzd": 109.99,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68b1a5d699cb97aded2f8779&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FNfBhb2GnXh%2Fdune-imperium-uprising",
+          "in_stock": true
+        },
+        {
+          "store": "Escape Board-Em with Solve It & Escape",
+          "price_nzd": 115.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=663b78ddd7614000088ef43e&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FNfBhb2GnXh%2Fdune-imperium-uprising",
+          "in_stock": true
+        },
+        {
+          "store": "Ironhorse Hobbies",
+          "price_nzd": 134.95,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=657d9fb17095e50008b39ba2&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FNfBhb2GnXh%2Fdune-imperium-uprising",
+          "in_stock": true
+        },
+        {
+          "store": "HobbyMaster",
+          "price_nzd": 135.0,
+          "availability": "Out of stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=657aff5da565340009f1a77c&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FNfBhb2GnXh%2Fdune-imperium-uprising",
+          "in_stock": false
+        },
+        {
+          "store": "The Nile NZ",
+          "price_nzd": 141.98,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=684c228cb2553149ee19612c&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FNfBhb2GnXh%2Fdune-imperium-uprising",
+          "in_stock": true
+        },
+        {
+          "store": "NZGameShop",
+          "price_nzd": 166.99,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=66cf2d0dc602beefa2e47836&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FNfBhb2GnXh%2Fdune-imperium-uprising",
+          "in_stock": true
+        }
+      ]
+    },
+    {
+      "bgg_id": 224517,
+      "name": "Brass: Birmingham",
+      "low_price": 110.0,
+      "mean_price": 167.55,
+      "best_price": 137.99,
+      "best_store": "The Board Gamer NZ",
+      "discount_pct": 17.64,
+      "delta": -16.71,
+      "offers": [
+        {
+          "store": "The Board Gamer NZ",
+          "price_nzd": 137.99,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6925ccad06b28fef30d883f9&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": true
+        },
+        {
+          "store": "Gameology",
+          "price_nzd": 143.36,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=64e00f959b7fa300087e046a&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": true
+        },
+        {
+          "store": "Amazon AU",
+          "price_nzd": 148.72,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=693437ab06b28fef3014a901&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": true
+        },
+        {
+          "store": "Escape Board-Em with Solve It & Escape",
+          "price_nzd": 159.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=643aa210feeff30008d844ef&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": true
+        },
+        {
+          "store": "Cerberus Games",
+          "price_nzd": 159.99,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=691c6e3606b28fef306e730f&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": true
+        },
+        {
+          "store": "Ironhorse Hobbies",
+          "price_nzd": 177.95,
+          "availability": "Out of stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6568653e99105b000893d189&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": false
+        },
+        {
+          "store": "HobbyMaster",
+          "price_nzd": 180.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=5f2013e054f8e7000856a04f&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": true
+        },
+        {
+          "store": "Scorpio Books",
+          "price_nzd": 180.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6553bb653d712d00089edcb9&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": true
+        },
+        {
+          "store": "The Nile NZ",
+          "price_nzd": 187.53,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=684c2298b2553149ee198643&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": true
+        },
+        {
+          "store": "NZGameShop",
+          "price_nzd": 193.49,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=663b7c39aea5640008694bd3&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": true
+        },
+        {
+          "store": "Bea DnD Games",
+          "price_nzd": 195.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6893545d6d95a7750ea9ae7d&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": true
+        }
+      ]
+    },
+    {
+      "bgg_id": 380607,
+      "name": "Great Western Trail: New Zealand",
+      "low_price": 101.25,
+      "mean_price": 137.75,
+      "best_price": 120.41,
+      "best_store": "Gameology",
+      "discount_pct": 12.59,
+      "delta": -13.91,
+      "offers": [
+        {
+          "store": "Gameology",
+          "price_nzd": 120.41,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=644d6bac25895d0008ae9ee2&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FpDrG0cjAJY%2Fgreat-western-trail-new-zealand",
+          "in_stock": true
+        },
+        {
+          "store": "Card Merchant",
+          "price_nzd": 135.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=65be39caabe3f300088e1478&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FpDrG0cjAJY%2Fgreat-western-trail-new-zealand",
+          "in_stock": true
+        },
+        {
+          "store": "Escape Board-Em with Solve It & Escape",
+          "price_nzd": 139.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=64d4e3eafdce980008ee9832&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FpDrG0cjAJY%2Fgreat-western-trail-new-zealand",
+          "in_stock": true
+        },
+        {
+          "store": "Ironhorse Hobbies",
+          "price_nzd": 148.95,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6752f6e93cdf8a95a0614109&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FpDrG0cjAJY%2Fgreat-western-trail-new-zealand",
+          "in_stock": true
+        },
+        {
+          "store": "Pop Stop",
+          "price_nzd": 149.99,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=676ab4923cdf8a95a0dff438&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FpDrG0cjAJY%2Fgreat-western-trail-new-zealand",
+          "in_stock": true
+        },
+        {
+          "store": "Gaming DNA",
+          "price_nzd": 150.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=66b0d313940361a307e4053a&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FpDrG0cjAJY%2Fgreat-western-trail-new-zealand",
+          "in_stock": true
+        },
+        {
+          "store": "Game Centre",
+          "price_nzd": 155.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6902114870e30a8ac404011d&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FpDrG0cjAJY%2Fgreat-western-trail-new-zealand",
           "in_stock": true
         }
       ]
