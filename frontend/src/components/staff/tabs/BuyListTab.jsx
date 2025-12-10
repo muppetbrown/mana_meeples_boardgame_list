@@ -41,7 +41,18 @@ export function BuyListTab() {
     try {
       setLoading(true);
       setError(null);
-      const data = await getBuyListGames(filters);
+
+      // Build clean query params, excluding empty values
+      const params = {};
+      if (filters.lpg_status) params.lpg_status = filters.lpg_status;
+      if (filters.buy_filter !== "") {
+        // Convert string to boolean
+        params.buy_filter = filters.buy_filter === "true";
+      }
+      params.sort_by = filters.sort_by;
+      params.sort_desc = filters.sort_desc;
+
+      const data = await getBuyListGames(params);
       setBuyList(data.items || []);
     } catch (err) {
       console.error("Failed to load buy list:", err);
