@@ -3,6 +3,8 @@
 Buy List API endpoints for managing games to purchase and tracking prices.
 Admin-only endpoints for managing buy list, LPG status, and price data.
 """
+import csv
+import io
 import json
 import logging
 import os
@@ -11,7 +13,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session, joinedload
 
@@ -145,7 +147,7 @@ async def list_buy_list_games(
     buy_filter: Optional[bool] = Query(
         None, description="Filter by computed buy_filter value"
     ),
-    sort_by: str = Query("rank", description="Sort field: rank, title, updated_at"),
+    sort_by: str = Query("rank", description="Sort field: rank, title, updated_at, discount"),
     sort_desc: bool = Query(False, description="Sort in descending order"),
 ):
     """
@@ -180,6 +182,11 @@ async def list_buy_list_games(
             query = query.order_by(
                 desc(BuyListGame.updated_at) if sort_desc else BuyListGame.updated_at
             )
+        elif sort_by == "discount":
+            # For discount sorting, we need to handle it after fetching
+            # because we need the latest price snapshot per game
+            # So we'll get all entries and sort in Python
+            pass
         else:
             # Default to rank
             query = query.order_by(BuyListGame.rank.nullslast())
@@ -228,6 +235,17 @@ async def list_buy_list_games(
                     results.append(result)
             else:
                 results.append(result)
+
+        # Sort by discount if requested (needs to be done after building results)
+        if sort_by == "discount":
+            results.sort(
+                key=lambda x: (
+                    x["latest_price"]["discount_pct"]
+                    if x["latest_price"] and x["latest_price"]["discount_pct"] is not None
+                    else -1
+                ),
+                reverse=sort_desc
+            )
 
         return {"total": len(results), "items": results}
 
@@ -411,6 +429,180 @@ async def remove_from_buy_list(buy_list_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=500, detail="Failed to remove game from buy list"
         )
+
+
+@router.post("/bulk-import-csv", dependencies=[Depends(require_admin_auth)])
+async def bulk_import_buy_list_csv(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """
+    Bulk import games to buy list from CSV file.
+
+    Expected CSV columns: bgg_id, rank, bgo_link, lpg_rrp, lpg_status
+    - bgg_id: Required - BoardGameGeek ID
+    - rank: Optional - Numeric rank/priority
+    - bgo_link: Optional - BoardGameOracle link
+    - lpg_rrp: Optional - Lets Play Games RRP price
+    - lpg_status: Optional - LPG stock status (AVAILABLE, BACK_ORDER, NOT_FOUND, etc.)
+
+    Games not in database will be auto-imported from BoardGameGeek.
+    """
+    try:
+        # Import BGG service for auto-import
+        from bgg_service import fetch_bgg_thing
+
+        # Read CSV file
+        contents = await file.read()
+        text_content = contents.decode("utf-8")
+        csv_reader = csv.DictReader(io.StringIO(text_content))
+
+        # Validate required column
+        if "bgg_id" not in csv_reader.fieldnames:
+            raise HTTPException(
+                status_code=400,
+                detail="CSV must contain 'bgg_id' column"
+            )
+
+        added_count = 0
+        updated_count = 0
+        skipped_count = 0
+        error_count = 0
+        errors = []
+
+        for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 to account for header
+            try:
+                # Get BGG ID
+                bgg_id_str = row.get("bgg_id", "").strip()
+                if not bgg_id_str:
+                    skipped_count += 1
+                    continue
+
+                try:
+                    bgg_id = int(bgg_id_str)
+                except ValueError:
+                    errors.append(f"Row {row_num}: Invalid BGG ID '{bgg_id_str}'")
+                    error_count += 1
+                    continue
+
+                # Parse optional fields
+                rank = None
+                if row.get("rank", "").strip():
+                    try:
+                        rank = int(row["rank"])
+                    except ValueError:
+                        errors.append(f"Row {row_num}: Invalid rank '{row['rank']}'")
+
+                lpg_rrp = None
+                if row.get("lpg_rrp", "").strip():
+                    try:
+                        lpg_rrp = float(row["lpg_rrp"])
+                    except ValueError:
+                        errors.append(f"Row {row_num}: Invalid lpg_rrp '{row['lpg_rrp']}'")
+
+                bgo_link = row.get("bgo_link", "").strip() or None
+                lpg_status = row.get("lpg_status", "").strip() or None
+
+                # Check if game exists in database
+                game = db.query(Game).filter(Game.bgg_id == bgg_id).first()
+
+                if not game:
+                    # Auto-import from BGG
+                    logger.info(f"Row {row_num}: Importing BGG ID {bgg_id} from BoardGameGeek...")
+                    try:
+                        bgg_data = await fetch_bgg_thing(bgg_id)
+                    except Exception as e:
+                        errors.append(f"Row {row_num}: Failed to import BGG ID {bgg_id}: {str(e)}")
+                        error_count += 1
+                        continue
+
+                    game = Game(
+                        title=bgg_data.get("title", "Unknown"),
+                        categories=", ".join(bgg_data.get("categories", [])),
+                        year=bgg_data.get("year"),
+                        players_min=bgg_data.get("players_min"),
+                        players_max=bgg_data.get("players_max"),
+                        playtime_min=bgg_data.get("playtime_min"),
+                        playtime_max=bgg_data.get("playtime_max"),
+                        thumbnail_url=bgg_data.get("thumbnail"),
+                        image=bgg_data.get("image"),
+                        bgg_id=bgg_id,
+                        description=bgg_data.get("description"),
+                        designers=bgg_data.get("designers"),
+                        publishers=bgg_data.get("publishers"),
+                        mechanics=bgg_data.get("mechanics"),
+                        artists=bgg_data.get("artists"),
+                        average_rating=bgg_data.get("average_rating"),
+                        complexity=bgg_data.get("complexity"),
+                        bgg_rank=bgg_data.get("bgg_rank"),
+                        users_rated=bgg_data.get("users_rated"),
+                        min_age=bgg_data.get("min_age"),
+                        is_cooperative=bgg_data.get("is_cooperative"),
+                        status="BUY_LIST",
+                    )
+                    db.add(game)
+                    db.flush()
+                else:
+                    # Update status if needed
+                    if game.status != "BUY_LIST":
+                        game.status = "BUY_LIST"
+
+                # Check if already on buy list
+                existing = db.query(BuyListGame).filter(BuyListGame.game_id == game.id).first()
+
+                if existing:
+                    # Update existing entry
+                    if rank is not None:
+                        existing.rank = rank
+                    if bgo_link:
+                        existing.bgo_link = bgo_link
+                    if lpg_rrp is not None:
+                        existing.lpg_rrp = lpg_rrp
+                    if lpg_status:
+                        existing.lpg_status = lpg_status
+                    existing.updated_at = datetime.utcnow()
+                    updated_count += 1
+                else:
+                    # Create new buy list entry
+                    buy_list_entry = BuyListGame(
+                        game_id=game.id,
+                        rank=rank,
+                        bgo_link=bgo_link,
+                        lpg_rrp=lpg_rrp,
+                        lpg_status=lpg_status,
+                        on_buy_list=True,
+                    )
+                    db.add(buy_list_entry)
+                    added_count += 1
+
+            except Exception as e:
+                errors.append(f"Row {row_num}: {str(e)}")
+                error_count += 1
+                continue
+
+        # Commit all changes
+        db.commit()
+
+        logger.info(
+            f"Bulk import completed: {added_count} added, {updated_count} updated, "
+            f"{skipped_count} skipped, {error_count} errors"
+        )
+
+        return {
+            "message": "Bulk import completed",
+            "added": added_count,
+            "updated": updated_count,
+            "skipped": skipped_count,
+            "errors": error_count,
+            "error_details": errors if errors else None
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in bulk CSV import: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to import CSV: {str(e)}")
 
 
 # ------------------------------------------------------------------------------
