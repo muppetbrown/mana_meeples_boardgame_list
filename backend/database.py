@@ -104,6 +104,42 @@ def run_migrations():
                     f"Set date_added to July 1, 2025 for {rows_updated} existing games"
                 )
 
+            # Migration 1.5: Add status column if it doesn't exist
+            result = conn.execute(
+                text(
+                    """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name='boardgames' AND column_name='status'
+            """
+                )
+            )
+            column_exists = result.fetchone() is not None
+
+            if not column_exists:
+                logger.info("Adding status column to boardgames table...")
+                conn.execute(
+                    text(
+                        """
+                    ALTER TABLE boardgames
+                    ADD COLUMN status VARCHAR(20) DEFAULT 'OWNED'
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("status column added successfully")
+
+                # Create index on status
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_boardgames_status ON boardgames(status)
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("Created index on status column")
+
             # Migration 2: Create buy_list_games table
             result = conn.execute(
                 text(

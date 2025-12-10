@@ -51,6 +51,8 @@ class Game(Base):
     is_cooperative = Column(Boolean, nullable=True)
     nz_designer = Column(Boolean, nullable=True, default=False, index=True)
     game_type = Column(String(255), nullable=True, index=True)
+    # Ownership status: OWNED (in physical collection), BUY_LIST (want to buy), WISHLIST (maybe buy)
+    status = Column(String(20), nullable=True, default="OWNED", index=True)
 
     # Performance indexes for common queries
     __table_args__ = (
