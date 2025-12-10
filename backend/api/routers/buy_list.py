@@ -116,6 +116,9 @@ def build_buy_list_response(
             "discount_pct": (
                 float(latest_price.discount_pct) if latest_price.discount_pct else None
             ),
+            "disc_mean_pct": (
+                float(latest_price.disc_mean_pct) if latest_price.disc_mean_pct else None
+            ),
             "delta": float(latest_price.delta) if latest_price.delta else None,
         }
 
@@ -685,6 +688,7 @@ async def import_prices_from_json(
                     best_price=game_data.get("best_price"),
                     best_store=game_data.get("best_store"),
                     discount_pct=game_data.get("discount_pct"),
+                    disc_mean_pct=game_data.get("disc_mean_pct"),
                     delta=game_data.get("delta"),
                     source_file=source_file,
                 )

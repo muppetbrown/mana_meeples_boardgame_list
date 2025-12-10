@@ -620,6 +620,7 @@ async def run():
                         "best_price": rnd(best_in_stock, 2),
                         "best_store": best_store,
                         "discount_pct": rnd(disc_pct, 2),
+                        "disc_mean_pct": rnd(site_disc_mean_pct, 2),
                         "delta": rnd(delta, 2),
                         "offers": offers,
                     }
