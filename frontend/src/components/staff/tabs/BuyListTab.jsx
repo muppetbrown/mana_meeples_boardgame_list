@@ -383,27 +383,16 @@ export function BuyListTab() {
                 <tr>
                   <th className="px-4 py-3 text-left font-semibold">Rank</th>
                   <th className="px-4 py-3 text-left font-semibold">Game</th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    LPG Status
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    LPG RRP
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    Best Price
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    Store
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    Discount
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    Filter
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">LPG Status</th>
+                  <th className="px-4 py-3 text-left font-semibold">LPG RRP</th>
+                  <th className="px-4 py-3 text-left font-semibold">Low $</th>
+                  <th className="px-4 py-3 text-left font-semibold">Mean $</th>
+                  <th className="px-4 py-3 text-left font-semibold">Best $</th>
+                  <th className="px-4 py-3 text-left font-semibold">Store</th>
+                  <th className="px-4 py-3 text-left font-semibold">Discount %</th>
+                  <th className="px-4 py-3 text-left font-semibold">Delta</th>
+                  <th className="px-4 py-3 text-left font-semibold">Filter</th>
+                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -421,7 +410,7 @@ export function BuyListTab() {
                             className="w-20 px-2 py-1 border rounded"
                           />
                         </td>
-                        <td className="px-4 py-3" colSpan="7">
+                        <td className="px-4 py-3" colSpan="10">
                           <div className="space-y-2">
                             <div className="font-medium">{item.title}</div>
                             <div className="grid grid-cols-2 gap-2">
@@ -537,6 +526,16 @@ export function BuyListTab() {
                         <td className="px-4 py-3 text-gray-700">
                           {formatPrice(item.lpg_rrp)}
                         </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {item.latest_price?.low_price
+                            ? formatPrice(item.latest_price.low_price)
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {item.latest_price?.mean_price
+                            ? formatPrice(item.latest_price.mean_price)
+                            : "-"}
+                        </td>
                         <td className="px-4 py-3 text-gray-700 font-medium">
                           {item.latest_price?.best_price
                             ? formatPrice(item.latest_price.best_price)
@@ -548,7 +547,16 @@ export function BuyListTab() {
                         <td className="px-4 py-3">
                           {item.latest_price?.discount_pct ? (
                             <span className="text-green-700 font-medium">
-                              {item.latest_price.discount_pct.toFixed(0)}%
+                              {item.latest_price.discount_pct.toFixed(1)}%
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {item.latest_price?.delta !== null && item.latest_price?.delta !== undefined ? (
+                            <span className={item.latest_price.delta > 0 ? "text-green-700 font-medium" : "text-red-700 font-medium"}>
+                              {item.latest_price.delta > 0 ? "+" : ""}{item.latest_price.delta.toFixed(1)}
                             </span>
                           ) : (
                             "-"

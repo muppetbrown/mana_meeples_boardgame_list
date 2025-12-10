@@ -122,8 +122,9 @@ class PriceSnapshot(Base):
     mean_price = Column(Numeric(10, 2), nullable=True)  # Mean price across offers
     best_price = Column(Numeric(10, 2), nullable=True)  # Best in-stock price
     best_store = Column(Text, nullable=True)  # Store with best price
-    discount_pct = Column(Numeric(5, 2), nullable=True)  # Discount percentage vs mean
-    delta = Column(Numeric(5, 2), nullable=True)  # Delta vs site disc-mean
+    discount_pct = Column(Numeric(5, 2), nullable=True)  # Calculated discount: (mean - best) / mean * 100
+    disc_mean_pct = Column(Numeric(5, 2), nullable=True)  # BGO's disc-mean percentage from their API/page
+    delta = Column(Numeric(5, 2), nullable=True)  # Delta: discount_pct - disc_mean_pct
     source_file = Column(Text, nullable=True)  # Which JSON/CSV file this came from
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

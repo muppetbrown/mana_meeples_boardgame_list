@@ -335,6 +335,31 @@ def run_migrations():
                 conn.commit()
                 logger.info("price_offers table created successfully")
 
+            # Migration 5: Add disc_mean_pct column to price_snapshots
+            result = conn.execute(
+                text(
+                    """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name='price_snapshots' AND column_name='disc_mean_pct'
+            """
+                )
+            )
+            column_exists = result.fetchone() is not None
+
+            if not column_exists:
+                logger.info("Adding disc_mean_pct column to price_snapshots table...")
+                conn.execute(
+                    text(
+                        """
+                    ALTER TABLE price_snapshots
+                    ADD COLUMN disc_mean_pct NUMERIC(5, 2)
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("disc_mean_pct column added successfully")
+
         except Exception as e:
             logger.error(f"Migration error: {e}")
             conn.rollback()
