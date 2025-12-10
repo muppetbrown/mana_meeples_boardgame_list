@@ -139,10 +139,14 @@ export function StaffProvider({ children }) {
    * Derived state - filtered library
    */
   const filteredLibrary = useMemo(() => {
-    if (selectedCategory === 'all') return library;
+    // First filter to only show OWNED games (exclude BUY_LIST and WISHLIST)
+    const ownedGames = library.filter((g) => !g.status || g.status === 'OWNED');
+
+    // Then filter by category
+    if (selectedCategory === 'all') return ownedGames;
     if (selectedCategory === 'uncategorized')
-      return library.filter((g) => !g.mana_meeple_category);
-    return library.filter((g) => g.mana_meeple_category === selectedCategory);
+      return ownedGames.filter((g) => !g.mana_meeple_category);
+    return ownedGames.filter((g) => g.mana_meeple_category === selectedCategory);
   }, [library, selectedCategory]);
 
   /**
