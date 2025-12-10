@@ -1,5 +1,5 @@
 {
-  "checked_at": "2025-12-10T06:29:56+00:00",
+  "checked_at": "2025-12-10T13:13:58+00:00",
   "games": [
     {
       "bgg_id": 167791,
@@ -1047,14 +1047,14 @@
       "name": "L.L.A.M.A.",
       "low_price": 15.49,
       "mean_price": 23.05,
-      "best_price": 15.53,
+      "best_price": 15.55,
       "best_store": "Amazon AU",
-      "discount_pct": 32.63,
-      "delta": -0.18,
+      "discount_pct": 32.54,
+      "delta": -0.27,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 15.53,
+          "price_nzd": 15.55,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=692ee4f5ea3b561f8d156157&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FoTEHQNhsaG%2Flama",
           "in_stock": true
