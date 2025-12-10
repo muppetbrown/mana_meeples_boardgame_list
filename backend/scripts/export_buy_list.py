@@ -43,6 +43,16 @@ def export_buy_list():
 
         if not results:
             print("No games found in buy list with BGO links")
+
+            # Create empty CSV file so the workflow doesn't fail
+            output_dir = Path(__file__).parent.parent / "price_data"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output_file = output_dir / "buy_list_export.csv"
+
+            # Write empty CSV with headers
+            df_empty = pd.DataFrame(columns=['game_id', 'bgo_link', 'rank', 'name', 'bgg_id'])
+            df_empty.to_csv(output_file, index=False)
+            print(f"✓ Created empty CSV at {output_file}")
             return
 
         # Convert to DataFrame
