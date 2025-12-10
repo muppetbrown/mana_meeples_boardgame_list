@@ -89,7 +89,8 @@ def read_games_from_csv(csv_file):
             })
 
         if not rows:
-            raise ValueError("No valid games found in CSV file.")
+            print("No valid games found in CSV file - buy list is empty")
+            return []
 
         print(f"Successfully parsed {len(rows)} games from CSV")
         return rows
@@ -483,6 +484,19 @@ async def run():
     try:
         games = read_games_from_csv(CSV_FILE)
         print(f"Found {len(games)} games in CSV file")
+
+        # If no games, create empty output and exit gracefully
+        if not games:
+            print("No games to scrape - creating empty output")
+            output = {
+                "checked_at": datetime.now(tzlocal()).isoformat(timespec="seconds"),
+                "games": [],
+            }
+            with open(OUT_JSON, "w", encoding="utf-8") as f:
+                json.dump(output, f, indent=2, ensure_ascii=False)
+            print(f"✓ Wrote empty price data to {OUT_JSON}")
+            return
+
     except FileNotFoundError as e:
         print(f"Error: {e}")
         print(f"Make sure to export buy list to: {CSV_FILE}")

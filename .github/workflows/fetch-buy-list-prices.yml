@@ -45,6 +45,13 @@ jobs:
         run: |
           mkdir -p backend/price_data
 
+      - name: Run database migrations
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          cd backend
+          python scripts/run_migrations.py
+
       - name: Export buy list from database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
