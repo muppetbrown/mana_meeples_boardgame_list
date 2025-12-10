@@ -322,8 +322,9 @@ async def add_to_buy_list(
         db.commit()
         db.refresh(buy_list_entry)
 
-        # Load game relationship
-        db.refresh(buy_list_entry, ["game"])
+        # Accessing the game relationship will trigger lazy loading
+        # No need to explicitly refresh it
+        _ = buy_list_entry.game  # Access to ensure it's loaded
 
         logger.info(f"Added game '{game.title}' (BGG ID {data.bgg_id}) to buy list")
 
@@ -364,8 +365,8 @@ async def update_buy_list_game(
         db.commit()
         db.refresh(buy_list_entry)
 
-        # Load game relationship
-        db.refresh(buy_list_entry, ["game"])
+        # Access game relationship to ensure it's loaded
+        _ = buy_list_entry.game
 
         # Get latest price
         latest_price = (
