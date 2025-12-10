@@ -1,6 +1,6 @@
 // src/pages/StaffView.jsx
-import React from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 // ---- Context ----
 import { StaffProvider, useStaff } from "../context/StaffContext";
@@ -9,49 +9,66 @@ import { StaffProvider, useStaff } from "../context/StaffContext";
 import { adminLogout } from "../api/client";
 
 // ---- UI components ----
-import CategoryFilter from "../components/CategoryFilter";
 import CategorySelectModal from "../components/CategorySelectModal";
 import { FullPageLoader } from "../components/common/LoadingSpinner";
 import Toast from "../components/common/Toast";
 
 // ---- Staff components ----
-import LibraryCard from "../components/staff/LibraryCard";
-import { BulkImportPanel, BulkCategorizePanel } from "../components/staff/BulkPanels";
-import { AdminToolsPanel } from "../components/staff/AdminToolsPanel";
-import { ManualGameEntryPanel } from "../components/staff/ManualGameEntryPanel";
+import { TabNavigation } from "../components/staff/TabNavigation";
+import { DashboardTab } from "../components/staff/tabs/DashboardTab";
+import { AddGamesTab } from "../components/staff/tabs/AddGamesTab";
+import { ManageLibraryTab } from "../components/staff/tabs/ManageLibraryTab";
+import { CategoriesTab } from "../components/staff/tabs/CategoriesTab";
+import { AdvancedToolsTab } from "../components/staff/tabs/AdvancedToolsTab";
+import { BuyListTab } from "../components/staff/tabs/BuyListTab";
 
 /**
  * Staff view content - uses StaffContext for all state management
+ * Now with tabbed navigation for better organization
  */
 function StaffViewContent() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Use context instead of local state - eliminates 200+ lines of code!
+  // Use context instead of local state
   const {
     isValidating,
-    selectedCategory,
-    setSelectedCategory,
-    csvImportText,
-    setCsvImportText,
-    csvCategorizeText,
-    setCsvCategorizeText,
-    bggIdInput,
-    setBggIdInput,
     toast,
     modalOpen,
     pendingGame,
     stats,
-    counts,
-    filteredLibrary,
-    handleAddGame,
-    openEditCategory,
     handleModalSelect,
     handleModalClose,
-    doBulkImport,
-    doBulkCategorize,
-    deleteGameData,
-    showToast,
   } = useStaff();
+
+  // Tab state with URL persistence
+  const [activeTab, setActiveTab] = useState(() => {
+    return searchParams.get("tab") || "dashboard";
+  });
+
+  // Tab configuration
+  const tabs = [
+    { id: "dashboard", label: "Dashboard", icon: "📊" },
+    { id: "add-games", label: "Add Games", icon: "📥" },
+    { id: "manage-library", label: "Manage Library", icon: "📚" },
+    { id: "categories", label: "Categories", icon: "🏷️" },
+    { id: "buy-list", label: "Buy List", icon: "🛒" },
+    { id: "advanced", label: "Advanced Tools", icon: "⚙️" },
+  ];
+
+  // Update URL when tab changes
+  const handleTabChange = (tabId) => {
+    setActiveTab(tabId);
+    setSearchParams({ tab: tabId });
+  };
+
+  // Sync with URL on mount and when URL changes
+  useEffect(() => {
+    const urlTab = searchParams.get("tab");
+    if (urlTab && tabs.find((t) => t.id === urlTab)) {
+      setActiveTab(urlTab);
+    }
+  }, [searchParams]);
 
   const handleLogout = async () => {
     if (window.confirm("Are you sure you want to logout?")) {
@@ -72,20 +89,40 @@ function StaffViewContent() {
     return <FullPageLoader text="Validating credentials..." />;
   }
 
+  // Render active tab content
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return <DashboardTab onTabChange={handleTabChange} />;
+      case "add-games":
+        return <AddGamesTab />;
+      case "manage-library":
+        return <ManageLibraryTab />;
+      case "categories":
+        return <CategoriesTab />;
+      case "buy-list":
+        return <BuyListTab />;
+      case "advanced":
+        return <AdvancedToolsTab />;
+      default:
+        return <DashboardTab onTabChange={handleTabChange} />;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
       {/* Header */}
       <header className="bg-white shadow-sm sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Mana & Meeples — Library (Staff)</h1>
+          <h1 className="text-2xl font-bold">Mana & Meeples — Admin Panel</h1>
           <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-600">
-              Games: <b>{stats.total}</b> · Available: <b>{stats.available}</b> · Avg rating:{" "}
-              <b>{stats.avgRating}</b>
+            <div className="text-sm text-gray-600 hidden md:block">
+              <span className="font-semibold">{stats.total}</span> games ·{" "}
+              <span className="font-semibold">{stats.avgRating}</span> avg BGG rating
             </div>
             <button
               onClick={handleLogout}
-              className="px-3 py-1.5 text-sm rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+              className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
               title="Logout"
             >
               Logout
@@ -94,87 +131,15 @@ function StaffViewContent() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 space-y-8">
-        {/* Manual Game Entry Panel */}
-        <ManualGameEntryPanel
-          onSuccess={() => window.location.reload()}
-          onToast={showToast}
-        />
+      {/* Tab Navigation */}
+      <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} tabs={tabs} />
 
-        <section className="bg-white rounded-2xl p-6 shadow">
-          <h2 className="text-xl font-semibold mb-3">Add Game by BGG ID</h2>
-          <div className="flex flex-wrap gap-2 items-center">
-            <input
-              className="flex-1 min-w-[240px] border rounded-lg px-3 py-2"
-              placeholder="Enter BoardGameGeek ID (e.g., 30549 for Pandemic)"
-              value={bggIdInput}
-              onChange={(e) => setBggIdInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAddGame()}
-            />
-            <button
-              className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700"
-              onClick={handleAddGame}
-            >
-              Add Game
-            </button>
-          </div>
-          <p className="text-sm text-gray-600 mt-2">
-            Find BGG IDs at boardgamegeek.com - they're in the URL (e.g., /boardgame/30549/pandemic)
-          </p>
-        </section>
-
-        <section className="bg-white rounded-2xl p-6 shadow">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold">Your Library</h2>
-          </div>
-
-          <CategoryFilter selected={selectedCategory} counts={counts} onChange={setSelectedCategory} />
-
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredLibrary.map((game) => (
-              <LibraryCard
-                key={game.id}
-                game={game}
-                onEditCategory={(g) => openEditCategory(g)}
-                onDelete={async (g) => {
-                  if (!window.confirm(`Delete "${g.title}"?`)) return;
-                  try {
-                    await deleteGameData(g.id);
-                  } catch {
-                    showToast("Delete failed", "error");
-                  }
-                }}
-              />
-            ))}
-            {filteredLibrary.length === 0 && (
-              <div className="text-gray-500">No games in this view.</div>
-            )}
-          </div>
-        </section>
-
-        <section className="grid md:grid-cols-2 gap-6">
-          <BulkImportPanel
-            value={csvImportText}
-            onChange={setCsvImportText}
-            onSubmit={doBulkImport}
-          />
-          <BulkCategorizePanel
-            value={csvCategorizeText}
-            onChange={setCsvCategorizeText}
-            onSubmit={doBulkCategorize}
-          />
-        </section>
-
-        {/* Advanced Admin Tools */}
-        <section>
-          <h2 className="text-xl font-semibold mb-4">Advanced Admin Tools</h2>
-          <AdminToolsPanel
-            onToast={showToast}
-            onLibraryReload={() => {}}
-          />
-        </section>
+      {/* Tab Content */}
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {renderTabContent()}
       </main>
 
+      {/* Global Modals */}
       <CategorySelectModal
         open={modalOpen}
         gameTitle={pendingGame?.title}
@@ -182,6 +147,7 @@ function StaffViewContent() {
         onClose={handleModalClose}
       />
 
+      {/* Global Toast Notifications */}
       <Toast message={toast.message} type={toast.type} />
     </div>
   );

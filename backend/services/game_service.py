@@ -83,8 +83,8 @@ class GameService:
         Returns:
             Tuple of (list of Game objects, total count)
         """
-        # Build base query
-        query = select(Game)
+        # Build base query - only show OWNED games for public view
+        query = select(Game).where(Game.status == "OWNED")
 
         # Apply search filter - search across title, designers, and description
         if search and search.strip():
@@ -228,7 +228,7 @@ class GameService:
             List of Game objects
         """
         designer_filter = f"%{designer_name}%"
-        query = select(Game)
+        query = select(Game).where(Game.status == "OWNED")
 
         if hasattr(Game, "designers"):
             query = query.where(Game.designers.ilike(designer_filter))
@@ -532,9 +532,9 @@ class GameService:
         """
         from utils.helpers import calculate_category_counts
 
-        # Only select the columns we need
+        # Only select the columns we need - filter to OWNED games only
         games = self.db.execute(
-            select(Game.id, Game.mana_meeple_category)
+            select(Game.id, Game.mana_meeple_category).where(Game.status == "OWNED")
         ).all()
 
         return calculate_category_counts(games)

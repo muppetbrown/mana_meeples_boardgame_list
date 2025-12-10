@@ -97,7 +97,7 @@ async def get_public_game(
     """Get details for a specific game"""
     service = GameService(db)
     game = service.get_game_by_id(game_id)
-    if not game:
+    if not game or game.status != "OWNED":
         raise GameNotFoundError("Game not found")
 
     # Build detailed response with expansions and base game info
