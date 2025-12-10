@@ -407,3 +407,19 @@ export async function getLastPriceUpdate() {
   const r = await api.get("/api/admin/buy-list/last-updated");
   return r.data;
 }
+
+/**
+ * Bulk import buy list games from CSV file
+ * @param {File} file - CSV file with columns: bgg_id (required), rank, bgo_link, lpg_rrp, lpg_status
+ * @returns {Promise<Object>} Import result with added, updated, skipped, errors counts
+ */
+export async function bulkImportBuyListCSV(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const r = await api.post("/api/admin/buy-list/bulk-import-csv", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+  return r.data;
+}
