@@ -9,6 +9,7 @@ from sqlalchemy import (
     Float,
     Boolean,
     Index,
+    Numeric,
     ForeignKey,
 )
 from sqlalchemy.ext.declarative import declarative_base
@@ -50,6 +51,8 @@ class Game(Base):
     is_cooperative = Column(Boolean, nullable=True)
     nz_designer = Column(Boolean, nullable=True, default=False, index=True)
     game_type = Column(String(255), nullable=True, index=True)
+    # Ownership status: OWNED (in physical collection), BUY_LIST (want to buy), WISHLIST (maybe buy)
+    status = Column(String(20), nullable=True, default="OWNED", index=True)
 
     # Expansion relationship fields
     is_expansion = Column(Boolean, default=False, nullable=False, index=True)
