@@ -8,6 +8,7 @@ import {
   removeFromBuyList,
   importPrices,
   bulkImportBuyListCSV,
+  imageProxyUrl,
 } from "../../../api/client";
 
 /**
@@ -381,6 +382,7 @@ export function BuyListTab() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
                 <tr>
+                  <th className="px-4 py-3 text-left font-semibold">Image</th>
                   <th className="px-4 py-3 text-left font-semibold">Rank</th>
                   <th className="px-4 py-3 text-left font-semibold">Game</th>
                   <th className="px-4 py-3 text-left font-semibold">LPG Status</th>
@@ -400,6 +402,23 @@ export function BuyListTab() {
                   <tr key={item.id} className="hover:bg-gray-50">
                     {editingId === item.id ? (
                       <>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
+                            {item.thumbnail_url || item.image ? (
+                              <img
+                                src={imageProxyUrl(item.image || item.thumbnail_url)}
+                                alt={item.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.parentElement.innerHTML = '<span class="text-xs text-gray-400">No img</span>';
+                                }}
+                              />
+                            ) : (
+                              <span className="text-xs text-gray-400">No img</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
                           <input
                             type="number"
@@ -494,6 +513,23 @@ export function BuyListTab() {
                       </>
                     ) : (
                       <>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
+                            {item.thumbnail_url || item.image ? (
+                              <img
+                                src={imageProxyUrl(item.image || item.thumbnail_url)}
+                                alt={item.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.parentElement.innerHTML = '<span class="text-xs text-gray-400">No img</span>';
+                                }}
+                              />
+                            ) : (
+                              <span className="text-xs text-gray-400">No img</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-gray-700">
                           {item.rank || "-"}
                         </td>
