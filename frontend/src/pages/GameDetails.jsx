@@ -155,13 +155,10 @@ export default function GameDetails() {
                       <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-emerald-800">Players: </span>
                       <span className="font-bold text-emerald-900 ml-1">
-                        {game.min_players ?? "?"}-{game.max_players ?? "?"}
-                        {game.has_player_expansion && game.players_max_with_expansions > game.max_players && (
-                          <span className="text-purple-700 ml-1" title="With expansions">
-                            → {game.players_min_with_expansions ?? game.min_players}-
-                            {game.players_max_with_expansions}*
-                          </span>
-                        )}
+                        {game.has_player_expansion && game.players_max_with_expansions > game.max_players
+                          ? `${game.players_min_with_expansions ?? game.min_players}-${game.players_max_with_expansions}*`
+                          : `${game.min_players ?? "?"}-${game.max_players ?? "?"}`
+                        }
                       </span>
                     </div>
                     
