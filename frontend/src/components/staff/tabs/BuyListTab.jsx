@@ -7,7 +7,6 @@ import {
   updateBuyListGame,
   removeFromBuyList,
   importPrices,
-  getPublicGames,
 } from "../../../api/client";
 
 /**
@@ -26,8 +25,13 @@ export function BuyListTab() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addGameSearch, setAddGameSearch] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
+  const [addBggId, setAddBggId] = useState("");
+  const [addFormData, setAddFormData] = useState({
+    rank: "",
+    bgo_link: "",
+    lpg_rrp: "",
+    lpg_status: "",
+  });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -124,26 +128,38 @@ export function BuyListTab() {
     }
   };
 
-  const handleSearchGames = async () => {
-    if (!addGameSearch.trim()) return;
-
-    try {
-      const data = await getPublicGames({ q: addGameSearch, page_size: 10 });
-      setSearchResults(data.items || []);
-    } catch (err) {
-      console.error("Failed to search games:", err);
-      setError("Failed to search games");
+  const handleAddGameByBggId = async () => {
+    if (!addBggId.trim()) {
+      setError("Please enter a BGG ID");
+      return;
     }
-  };
 
-  const handleAddGame = async (gameId) => {
+    const bggIdNum = parseInt(addBggId);
+    if (isNaN(bggIdNum) || bggIdNum <= 0) {
+      setError("BGG ID must be a positive number");
+      return;
+    }
+
     try {
       setError(null);
-      await addToBuyList({ game_id: gameId });
-      setSuccess("Added to buy list");
+      const payload = {
+        bgg_id: bggIdNum,
+        rank: addFormData.rank ? parseInt(addFormData.rank) : null,
+        bgo_link: addFormData.bgo_link || null,
+        lpg_rrp: addFormData.lpg_rrp ? parseFloat(addFormData.lpg_rrp) : null,
+        lpg_status: addFormData.lpg_status || null,
+      };
+
+      await addToBuyList(payload);
+      setSuccess("Added to buy list (imported from BGG if needed)");
       setShowAddModal(false);
-      setAddGameSearch("");
-      setSearchResults([]);
+      setAddBggId("");
+      setAddFormData({
+        rank: "",
+        bgo_link: "",
+        lpg_rrp: "",
+        lpg_status: "",
+      });
       await loadBuyList();
     } catch (err) {
       console.error("Failed to add to buy list:", err);
@@ -523,59 +539,116 @@ export function BuyListTab() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-auto">
             <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Add Game to Buy List</h3>
+              <h3 className="text-lg font-semibold mb-4">Add Game to Buy List by BGG ID</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Enter a BoardGameGeek ID. If the game isn't in your library, it will be automatically imported.
+              </p>
 
-              <div className="flex gap-2 mb-4">
-                <input
-                  type="text"
-                  value={addGameSearch}
-                  onChange={(e) => setAddGameSearch(e.target.value)}
-                  onKeyPress={(e) => e.key === "Enter" && handleSearchGames()}
-                  placeholder="Search games..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg"
-                />
-                <button
-                  onClick={handleSearchGames}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                >
-                  Search
-                </button>
+              <div className="space-y-4">
+                {/* BGG ID Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    BGG ID <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    value={addBggId}
+                    onChange={(e) => setAddBggId(e.target.value)}
+                    placeholder="e.g., 174430 (Gloomhaven)"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    min="1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Find BGG ID at <a href="https://boardgamegeek.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">boardgamegeek.com</a>
+                  </p>
+                </div>
+
+                {/* Rank */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority Rank (optional)
+                  </label>
+                  <input
+                    type="number"
+                    value={addFormData.rank}
+                    onChange={(e) => setAddFormData({ ...addFormData, rank: e.target.value })}
+                    placeholder="1 = highest priority"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    min="1"
+                  />
+                </div>
+
+                {/* BoardGameOracle Link */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    BoardGameOracle Link (optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={addFormData.bgo_link}
+                    onChange={(e) => setAddFormData({ ...addFormData, bgo_link: e.target.value })}
+                    placeholder="https://boardgameoracle.com/en-NZ/price/..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+
+                {/* LPG Status */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    LPG Status (optional)
+                  </label>
+                  <select
+                    value={addFormData.lpg_status}
+                    onChange={(e) => setAddFormData({ ...addFormData, lpg_status: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="">Select status...</option>
+                    <option value="AVAILABLE">Available</option>
+                    <option value="BACK_ORDER">Back Order</option>
+                    <option value="NOT_FOUND">Not Found</option>
+                    <option value="BACK_ORDER_OOS">Back Order OOS</option>
+                  </select>
+                </div>
+
+                {/* LPG RRP */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    LPG RRP (optional)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={addFormData.lpg_rrp}
+                    onChange={(e) => setAddFormData({ ...addFormData, lpg_rrp: e.target.value })}
+                    placeholder="0.00"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    min="0"
+                  />
+                </div>
               </div>
 
-              {searchResults.length > 0 && (
-                <div className="space-y-2 mb-4">
-                  {searchResults.map((game) => (
-                    <div
-                      key={game.id}
-                      className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:bg-gray-50"
-                    >
-                      <div>
-                        <div className="font-medium">{game.title}</div>
-                        <div className="text-sm text-gray-600">
-                          {game.year} • BGG ID: {game.bgg_id}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleAddGame(game.id)}
-                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2">
+              <div className="flex justify-end gap-2 mt-6">
                 <button
                   onClick={() => {
                     setShowAddModal(false);
-                    setAddGameSearch("");
-                    setSearchResults([]);
+                    setAddBggId("");
+                    setAddFormData({
+                      rank: "",
+                      bgo_link: "",
+                      lpg_rrp: "",
+                      lpg_status: "",
+                    });
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
-                  Close
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddGameByBggId}
+                  disabled={!addBggId.trim()}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add to Buy List
                 </button>
               </div>
             </div>

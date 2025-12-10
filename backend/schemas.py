@@ -71,13 +71,19 @@ class AdminLogin(BaseModel):
 
 
 class BuyListGameCreate(BaseModel):
-    """Schema for adding a game to the buy list"""
+    """Schema for adding a game to the buy list by BGG ID"""
 
-    game_id: int
+    bgg_id: int
     rank: Optional[int] = None
     bgo_link: Optional[str] = None
     lpg_rrp: Optional[float] = None
     lpg_status: Optional[str] = None
+
+    @validator("bgg_id")
+    def validate_bgg_id(cls, v):
+        if v <= 0 or v > 999999:
+            raise ValueError("BGG ID must be between 1 and 999999")
+        return v
 
 
 class BuyListGameUpdate(BaseModel):

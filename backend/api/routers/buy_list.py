@@ -240,16 +240,68 @@ async def list_buy_list_games(
 async def add_to_buy_list(
     data: BuyListGameCreate, db: Session = Depends(get_db)
 ):
-    """Add a game to the buy list"""
+    """
+    Add a game to the buy list by BGG ID.
+    If the game doesn't exist in the database, it will be imported from BoardGameGeek first.
+    """
     try:
-        # Check if game exists
-        game = db.query(Game).filter(Game.id == data.game_id).first()
+        # Import BGG service for auto-import
+        from bgg_service import fetch_bgg_thing
+
+        # Check if game with this BGG ID already exists
+        game = db.query(Game).filter(Game.bgg_id == data.bgg_id).first()
+
         if not game:
-            raise HTTPException(status_code=404, detail="Game not found")
+            # Game doesn't exist - import from BGG
+            logger.info(f"Game with BGG ID {data.bgg_id} not found, importing from BGG...")
+
+            try:
+                bgg_data = await fetch_bgg_thing(data.bgg_id)
+            except Exception as e:
+                logger.error(f"Failed to fetch from BGG: {e}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to import game from BGG ID {data.bgg_id}: {str(e)}"
+                )
+
+            # Create new game entry with BUY_LIST status
+            game = Game(
+                title=bgg_data.get("title", "Unknown"),
+                categories=", ".join(bgg_data.get("categories", [])),
+                year=bgg_data.get("year"),
+                players_min=bgg_data.get("players_min"),
+                players_max=bgg_data.get("players_max"),
+                playtime_min=bgg_data.get("playtime_min"),
+                playtime_max=bgg_data.get("playtime_max"),
+                thumbnail_url=bgg_data.get("thumbnail"),
+                image=bgg_data.get("image"),
+                bgg_id=data.bgg_id,
+                description=bgg_data.get("description"),
+                designers=bgg_data.get("designers"),
+                publishers=bgg_data.get("publishers"),
+                mechanics=bgg_data.get("mechanics"),
+                artists=bgg_data.get("artists"),
+                average_rating=bgg_data.get("average_rating"),
+                complexity=bgg_data.get("complexity"),
+                bgg_rank=bgg_data.get("bgg_rank"),
+                users_rated=bgg_data.get("users_rated"),
+                min_age=bgg_data.get("min_age"),
+                is_cooperative=bgg_data.get("is_cooperative"),
+                status="BUY_LIST",  # Mark as buy list item
+            )
+            db.add(game)
+            db.flush()  # Get the game ID
+            logger.info(f"Imported game '{game.title}' from BGG ID {data.bgg_id}")
+
+        else:
+            # Game exists - update status to BUY_LIST if it's not already
+            if game.status != "BUY_LIST":
+                game.status = "BUY_LIST"
+                logger.info(f"Updated game '{game.title}' status to BUY_LIST")
 
         # Check if already on buy list
         existing = (
-            db.query(BuyListGame).filter(BuyListGame.game_id == data.game_id).first()
+            db.query(BuyListGame).filter(BuyListGame.game_id == game.id).first()
         )
         if existing:
             raise HTTPException(
@@ -258,7 +310,7 @@ async def add_to_buy_list(
 
         # Create buy list entry
         buy_list_entry = BuyListGame(
-            game_id=data.game_id,
+            game_id=game.id,
             rank=data.rank,
             bgo_link=data.bgo_link,
             lpg_rrp=data.lpg_rrp,
@@ -273,7 +325,7 @@ async def add_to_buy_list(
         # Load game relationship
         db.refresh(buy_list_entry, ["game"])
 
-        logger.info(f"Added game {data.game_id} to buy list")
+        logger.info(f"Added game '{game.title}' (BGG ID {data.bgg_id}) to buy list")
 
         return build_buy_list_response(buy_list_entry)
 
@@ -282,7 +334,7 @@ async def add_to_buy_list(
     except Exception as e:
         logger.error(f"Error adding game to buy list: {e}")
         db.rollback()
-        raise HTTPException(status_code=500, detail="Failed to add game to buy list")
+        raise HTTPException(status_code=500, detail=f"Failed to add game to buy list: {str(e)}")
 
 
 @router.put("/games/{buy_list_id}", dependencies=[Depends(require_admin_auth)])
