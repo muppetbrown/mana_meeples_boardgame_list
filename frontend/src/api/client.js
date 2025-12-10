@@ -132,10 +132,8 @@ export async function getPublicCategoryCounts() {
  */
 export const getGames = async () => {
   try {
-    const response = await api.get("/api/public/games", {
-      params: { page_size: 1000 }
-    });
-    return response.data.items || [];
+    const response = await api.get("/api/admin/games");
+    return response.data || [];
   } catch (error) {
     console.error("Failed to load games:", error);
     return [];
