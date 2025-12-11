@@ -357,6 +357,12 @@ class GameService:
             "playtime_max",
             "min_age",
             "nz_designer",
+            # Expansion fields
+            "is_expansion",
+            "expansion_type",
+            "base_game_id",
+            "modifies_players_min",
+            "modifies_players_max",
         ]
 
         for field in updatable_fields:
