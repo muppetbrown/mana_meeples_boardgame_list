@@ -3,22 +3,9 @@ import GameImage from "../GameImage";
 import { labelFor } from "../../constants/categories";
 
 export default function LibraryCard({ game, onEditCategory, onDelete }) {
-  // Check if this looks like an expansion based on title or fields
-  const isExpansion = game.is_expansion ||
-    game.title?.toLowerCase().includes('expansion') ||
-    game.title?.toLowerCase().includes('extension');
-
+  // Check if this is an expansion
+  const isExpansion = game.is_expansion;
   const expansionType = game.expansion_type || 'requires_base';
-
-  // Debug: Log the game data to console
-  console.log('LibraryCard game data:', {
-    title: game.title,
-    is_expansion: game.is_expansion,
-    expansion_type: game.expansion_type,
-    base_game_id: game.base_game_id,
-    isExpansion: isExpansion,
-    allKeys: Object.keys(game)
-  });
 
   return (
     <div className="group bg-white border rounded-xl p-4 hover:shadow-md transition">
@@ -30,14 +17,6 @@ export default function LibraryCard({ game, onEditCategory, onDelete }) {
           fallbackClass="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center text-gray-500 text-sm border-2 border-gray-200"
         />
         <div className="flex-1">
-          {/* VISIBLE DEBUG INFO */}
-          <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs font-mono">
-            <div>is_expansion: {JSON.stringify(game.is_expansion)}</div>
-            <div>expansion_type: {JSON.stringify(game.expansion_type)}</div>
-            <div>base_game_id: {JSON.stringify(game.base_game_id)}</div>
-            <div>isExpansion calc: {JSON.stringify(isExpansion)}</div>
-          </div>
-
           <div className="flex items-center gap-2 flex-wrap">
             <div className="font-semibold">{game.title}</div>
             {/* Expansion badges */}
@@ -50,12 +29,6 @@ export default function LibraryCard({ game, onEditCategory, onDelete }) {
                 {expansionType === 'both' || expansionType === 'standalone'
                   ? 'STANDALONE'
                   : 'EXPANSION'}
-              </span>
-            )}
-            {/* Show raw is_expansion status for debugging */}
-            {game.is_expansion !== undefined && (
-              <span className="text-xs text-gray-400">
-                [is_expansion: {String(game.is_expansion)}]
               </span>
             )}
           </div>

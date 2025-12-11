@@ -51,8 +51,10 @@ class GameService:
         ).scalar_one_or_none()
 
     def get_all_games(self) -> List[Game]:
-        """Get all games (for admin view)"""
-        return self.db.execute(select(Game)).scalars().all()
+        """Get all games for admin view - only OWNED games, excluding buy list and wishlist"""
+        return self.db.execute(
+            select(Game).where(Game.status == "OWNED")
+        ).scalars().all()
 
     def get_filtered_games(
         self,
