@@ -100,6 +100,9 @@ export function ManageLibraryTab() {
                     Name
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     BGG ID
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -137,6 +140,32 @@ export function ManageLibraryTab() {
                       <div className="text-sm font-medium text-gray-900">{game.title}</div>
                       {game.year && (
                         <div className="text-xs text-gray-500">{game.year}</div>
+                      )}
+                    </td>
+
+                    {/* Type - Expansion Badge */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {game.is_expansion ? (
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                            game.expansion_type === 'both' || game.expansion_type === 'standalone'
+                              ? 'bg-indigo-100 text-indigo-800'
+                              : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {game.expansion_type === 'both' || game.expansion_type === 'standalone'
+                              ? 'STANDALONE'
+                              : 'EXPANSION'}
+                          </span>
+                          {game.modifies_players_max && (
+                            <span className="text-xs text-purple-600">
+                              +{game.modifies_players_min ?? game.min_players}-{game.modifies_players_max}p
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
+                          Base Game
+                        </span>
                       )}
                     </td>
 
