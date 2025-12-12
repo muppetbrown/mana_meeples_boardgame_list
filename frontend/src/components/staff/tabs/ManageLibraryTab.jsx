@@ -4,6 +4,7 @@ import { useStaff } from "../../../context/StaffContext";
 import CategoryFilter from "../../CategoryFilter";
 import { CATEGORY_LABELS } from "../../../constants/categories";
 import { imageProxyUrl } from "../../../api/client";
+import ExpansionEditModal from "../ExpansionEditModal";
 
 /**
  * Manage Library tab - Browse, edit, and delete games in compact table view
@@ -14,12 +15,16 @@ export function ManageLibraryTab() {
     setSelectedCategory,
     counts,
     filteredLibrary,
+    library,
     openEditCategory,
     deleteGameData,
+    updateGameData,
     showToast,
   } = useStaff();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [expansionModalOpen, setExpansionModalOpen] = useState(false);
+  const [editingExpansion, setEditingExpansion] = useState(null);
 
   // Filter by search query
   const searchFilteredLibrary = useMemo(() => {
@@ -40,6 +45,29 @@ export function ManageLibraryTab() {
     } catch {
       showToast("Delete failed", "error");
     }
+  };
+
+  const handleEditExpansion = (game) => {
+    setEditingExpansion(game);
+    setExpansionModalOpen(true);
+  };
+
+  const handleSaveExpansion = async (expansionData) => {
+    if (!editingExpansion) return;
+
+    try {
+      await updateGameData(editingExpansion.id, expansionData);
+      showToast("Expansion details updated successfully", "success");
+      setExpansionModalOpen(false);
+      setEditingExpansion(null);
+    } catch (error) {
+      showToast("Failed to update expansion details", "error");
+    }
+  };
+
+  const handleCloseExpansionModal = () => {
+    setExpansionModalOpen(false);
+    setEditingExpansion(null);
   };
 
   return (
@@ -100,6 +128,9 @@ export function ManageLibraryTab() {
                     Name
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     BGG ID
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -140,6 +171,32 @@ export function ManageLibraryTab() {
                       )}
                     </td>
 
+                    {/* Type - Expansion Badge */}
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {game.is_expansion ? (
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
+                            game.expansion_type === 'both' || game.expansion_type === 'standalone'
+                              ? 'bg-indigo-100 text-indigo-800'
+                              : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {game.expansion_type === 'both' || game.expansion_type === 'standalone'
+                              ? 'STANDALONE'
+                              : 'EXPANSION'}
+                          </span>
+                          {game.modifies_players_max && (
+                            <span className="text-xs text-purple-600">
+                              +{game.modifies_players_min ?? game.min_players}-{game.modifies_players_max}p
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
+                          Base Game
+                        </span>
+                      )}
+                    </td>
+
                     {/* BGG ID */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       {game.bgg_id ? (
@@ -173,6 +230,13 @@ export function ManageLibraryTab() {
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          onClick={() => handleEditExpansion(game)}
+                          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
+                          title="Edit expansion details"
+                        >
+                          Edit Exp
+                        </button>
+                        <button
                           onClick={() => openEditCategory(game)}
                           className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
                         >
@@ -193,6 +257,16 @@ export function ManageLibraryTab() {
           </div>
         )}
       </div>
+
+      {/* Expansion Edit Modal */}
+      {expansionModalOpen && (
+        <ExpansionEditModal
+          game={editingExpansion}
+          library={library}
+          onSave={handleSaveExpansion}
+          onClose={handleCloseExpansionModal}
+        />
+      )}
     </div>
   );
 }

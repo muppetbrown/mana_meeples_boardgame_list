@@ -65,7 +65,7 @@ export default function GameCardPublic({
   const formatTime = () => {
     const min = game.playtime_min || game.playing_time;
     const max = game.playtime_max;
-    
+
     if (min && max && min !== max) {
       return `${min}-${max} min`;
     } else if (min || max) {
@@ -73,6 +73,28 @@ export default function GameCardPublic({
     } else {
       return "Time varies";
     }
+  };
+
+  // Format player count with expansion notation
+  const formatPlayerCount = () => {
+    const baseMin = game.min_players;
+    const baseMax = game.max_players;
+    const expMin = game.players_min_with_expansions;
+    const expMax = game.players_max_with_expansions;
+    const hasExpansion = game.has_player_expansion;
+
+    if (!baseMin || !baseMax) return null;
+
+    // If expansion extends player count, show expanded range with asterisk
+    if (hasExpansion && expMax > baseMax) {
+      const displayMin = expMin || baseMin;
+      const displayMax = expMax;
+      const range = displayMin === displayMax ? `${displayMax}` : `${displayMin}-${displayMax}`;
+      return `${range}*`;
+    }
+
+    // Otherwise just show base range
+    return baseMin === baseMax ? `${baseMin}` : `${baseMin}-${baseMax}`;
   };
 
   const transitionClass = prefersReducedMotion ? '' : 'transition-all duration-300';
@@ -117,11 +139,33 @@ export default function GameCardPublic({
           {/* Category Badge */}
           {categoryLabel && (
             <div className="absolute top-2 right-2">
-              <span 
+              <span
                 className={`px-2 py-1 rounded-lg text-xs font-bold shadow-lg border-2 backdrop-blur-sm ${getCategoryStyle(game.mana_meeple_category)}`}
                 aria-label={`Category: ${categoryLabel}`}
               >
                 {categoryLabel}
+              </span>
+            </div>
+          )}
+
+          {/* Expansion Badge */}
+          {game.is_expansion && (
+            <div className="absolute top-2 left-2">
+              <span
+                className={`px-2 py-1 rounded-lg text-xs font-bold shadow-lg border-2 backdrop-blur-sm ${
+                  game.expansion_type === 'both' || game.expansion_type === 'standalone'
+                    ? 'bg-indigo-700 text-white border-indigo-800'
+                    : 'bg-purple-700 text-white border-purple-800'
+                }`}
+                aria-label={
+                  game.expansion_type === 'both' || game.expansion_type === 'standalone'
+                    ? 'Standalone Expansion'
+                    : 'Expansion'
+                }
+              >
+                {game.expansion_type === 'both' || game.expansion_type === 'standalone'
+                  ? 'STANDALONE'
+                  : 'EXPANSION'}
               </span>
             </div>
           )}
@@ -173,19 +217,22 @@ export default function GameCardPublic({
           {/* Compact Stats - Always Visible */}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-600">
             {/* Players - Icon only */}
-            {game.min_players && game.max_players && (
-              <div className="flex items-center gap-1" aria-label={`${game.min_players === game.max_players ? game.min_players : `${game.min_players} to ${game.max_players}`} players`}>
-                <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
-                </svg>
-                <span className="font-semibold">
-                  {game.min_players === game.max_players
-                    ? `${game.min_players}`
-                    : `${game.min_players}-${game.max_players}`
-                  }
-                </span>
-              </div>
-            )}
+            {(() => {
+              const playerCount = formatPlayerCount();
+              if (!playerCount) return null;
+
+              return (
+                <div
+                  className="flex items-center gap-1"
+                  aria-label={`${playerCount} players`}
+                >
+                  <svg className="w-4 h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
+                  </svg>
+                  <span className="font-semibold">{playerCount}</span>
+                </div>
+              );
+            })()}
 
             {/* Time - Icon only */}
             <div className="flex items-center gap-1" aria-label={`Play time: ${formatTime()}`}>
@@ -208,17 +255,18 @@ export default function GameCardPublic({
           <div className="pt-3 border-t border-slate-200 space-y-2 text-sm">
 
             {/* Players - Full text */}
-            {game.min_players && game.max_players && (
-              <div className="flex items-center gap-2">
-                <span className="text-slate-700">
-                  <span className="font-semibold">Players:</span>{' '}
-                  {game.min_players === game.max_players
-                    ? `${game.min_players}`
-                    : `${game.min_players}-${game.max_players}`
-                  }
-                </span>
-              </div>
-            )}
+            {(() => {
+              const playerCount = formatPlayerCount();
+              if (!playerCount) return null;
+
+              return (
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-700">
+                    <span className="font-semibold">Players:</span> {playerCount}
+                  </span>
+                </div>
+              );
+            })()}
 
             {/* Time - Full text */}
             <div className="flex items-center gap-2">

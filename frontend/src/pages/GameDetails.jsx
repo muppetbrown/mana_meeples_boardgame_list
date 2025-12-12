@@ -1,10 +1,11 @@
 // src/pages/GameDetails.jsx
 import React from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import DOMPurify from "dompurify";
 import { getPublicGame, imageProxyUrl } from "../api/client";
 import { labelFor } from "../constants/categories";
 import { GameDetailsSkeleton } from "../components/common/SkeletonLoader";
+import ExpansionMiniCard from "../components/public/ExpansionMiniCard";
 
 export default function GameDetails() {
   const { id } = useParams();
@@ -154,7 +155,10 @@ export default function GameDetails() {
                       <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-emerald-800">Players: </span>
                       <span className="font-bold text-emerald-900 ml-1">
-                        {game.min_players ?? "?"}-{game.max_players ?? "?"}
+                        {game.has_player_expansion && game.players_max_with_expansions > game.max_players
+                          ? `${game.players_min_with_expansions ?? game.min_players}-${game.players_max_with_expansions}*`
+                          : `${game.min_players ?? "?"}-${game.max_players ?? "?"}`
+                        }
                       </span>
                     </div>
                     
@@ -239,6 +243,54 @@ export default function GameDetails() {
                             })
                           }}
                         />
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Base Game Info (if this is an expansion) */}
+                  {game.is_expansion && game.base_game && (
+                    <section>
+                      <div className="p-4 bg-purple-50 border-l-4 border-purple-600 rounded-lg">
+                        <p className="text-sm text-slate-600 mb-2">
+                          This is an expansion for:
+                        </p>
+                        <Link
+                          to={`/game/${game.base_game.id}`}
+                          className="inline-flex items-center text-lg font-semibold text-purple-600 hover:text-purple-800 transition-colors group"
+                        >
+                          {game.base_game.title}
+                          <svg
+                            className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 5l7 7-7 7"
+                            />
+                          </svg>
+                        </Link>
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Available Expansions */}
+                  {game.expansions && game.expansions.length > 0 && (
+                    <section>
+                      <h2 className="font-bold text-slate-800 mb-4">
+                        Available Expansions ({game.expansions.length})
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {game.expansions.map((expansion) => (
+                          <ExpansionMiniCard
+                            key={expansion.id}
+                            expansion={expansion}
+                          />
+                        ))}
                       </div>
                     </section>
                   )}

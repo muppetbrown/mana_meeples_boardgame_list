@@ -384,6 +384,10 @@ def _extract_comprehensive_game_data(item, bgg_id: int) -> Dict:
     data = {}
     data["bgg_id"] = bgg_id
 
+    # Check if this item is an expansion
+    item_type = item.get("type", "boardgame")
+    data["is_expansion"] = item_type == "boardgameexpansion"
+
     # Basic information
     name_elem = item.find("name[@type='primary']") or item.find("name")
     data["title"] = (
@@ -526,6 +530,75 @@ def _extract_comprehensive_game_data(item, bgg_id: int) -> Dict:
         if artist:
             artists.append(artist)
     data["artists"] = artists
+
+    # Expansion relationships
+    # Find base game link (if this IS an expansion)
+    base_game_link = item.find("link[@type='boardgameexpansion'][@inbound='true']")
+    if base_game_link is not None:
+        try:
+            data["base_game_bgg_id"] = int(base_game_link.get("id"))
+            data["base_game_name"] = base_game_link.get("value", "")
+        except (ValueError, TypeError):
+            data["base_game_bgg_id"] = None
+            data["base_game_name"] = None
+    else:
+        data["base_game_bgg_id"] = None
+        data["base_game_name"] = None
+
+    # Find expansion links (if this is a base game with expansions)
+    expansion_links = []
+    for link in item.findall("link[@type='boardgameexpansion']"):
+        # Skip inbound links (those are base games, not expansions)
+        if link.get("inbound") != "true":
+            try:
+                expansion_links.append(
+                    {
+                        "bgg_id": int(link.get("id")),
+                        "name": link.get("value", ""),
+                    }
+                )
+            except (ValueError, TypeError):
+                continue
+    data["expansion_bgg_ids"] = expansion_links
+
+    # Auto-detect player count modifications for expansions
+    # Look for patterns like "5-6 Player" or "5-6 Extension" in title
+    if data["is_expansion"]:
+        title_lower = data["title"].lower()
+        # Common patterns for player expansion titles
+        import re
+
+        player_expansion_pattern = r"(\d+)[-–](\d+)\s*(player|extension)"
+        match = re.search(player_expansion_pattern, title_lower)
+        if match:
+            try:
+                data["modifies_players_min"] = int(match.group(1))
+                data["modifies_players_max"] = int(match.group(2))
+                logger.info(
+                    f"Auto-detected player modification for {data['title']}: {data['modifies_players_min']}-{data['modifies_players_max']}"
+                )
+            except (ValueError, TypeError):
+                pass
+
+        # Set default expansion_type
+        # Check if title suggests it's standalone (common keywords)
+        standalone_keywords = [
+            "standalone",
+            "stand alone",
+            "stand-alone",
+            "can be played alone",
+            "playable without",
+        ]
+        is_standalone = any(keyword in title_lower for keyword in standalone_keywords)
+
+        if is_standalone:
+            data["expansion_type"] = "both"
+            logger.info(
+                f"Auto-detected standalone expansion for {data['title']}"
+            )
+        else:
+            # Default to requires_base for most expansions
+            data["expansion_type"] = "requires_base"
 
     # Statistics (ratings, complexity, etc.)
     statistics = item.find("statistics")

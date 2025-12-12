@@ -76,8 +76,29 @@ async def get_public_games(
         page_size=page_size,
     )
 
-    # Convert to response format
-    items = [game_to_dict(request, game) for game in games]
+    # Convert to response format and add expansion player count info
+    items = []
+    for game in games:
+        game_dict = game_to_dict(request, game)
+
+        # Calculate player count with expansions for filtering
+        if hasattr(game, "expansions") and game.expansions:
+            max_with_exp = game.players_max or 0
+            min_with_exp = game.players_min or 0
+            has_player_expansion = False
+
+            for exp in game.expansions:
+                if exp.modifies_players_max and exp.modifies_players_max > max_with_exp:
+                    max_with_exp = exp.modifies_players_max
+                    has_player_expansion = True
+                if exp.modifies_players_min and exp.modifies_players_min < min_with_exp:
+                    min_with_exp = exp.modifies_players_min
+
+            game_dict["players_max_with_expansions"] = max_with_exp
+            game_dict["players_min_with_expansions"] = min_with_exp
+            game_dict["has_player_expansion"] = has_player_expansion
+
+        items.append(game_dict)
 
     return {
         "total": total,
@@ -97,10 +118,45 @@ async def get_public_game(
     """Get details for a specific game"""
     service = GameService(db)
     game = service.get_game_by_id(game_id)
-    if not game:
+    if not game or game.status != "OWNED":
         raise GameNotFoundError("Game not found")
 
-    return game_to_dict(request, game)
+    # Build detailed response with expansions and base game info
+    game_dict = game_to_dict(request, game)
+
+    # Add expansions if this is a base game
+    if hasattr(game, "expansions") and game.expansions:
+        game_dict["expansions"] = [
+            game_to_dict(request, exp) for exp in game.expansions
+        ]
+
+        # Calculate player count with expansions
+        max_with_exp = game.players_max or 0
+        min_with_exp = game.players_min or 0
+        has_player_expansion = False
+
+        for exp in game.expansions:
+            if exp.modifies_players_max and exp.modifies_players_max > max_with_exp:
+                max_with_exp = exp.modifies_players_max
+                has_player_expansion = True
+            if exp.modifies_players_min and exp.modifies_players_min < min_with_exp:
+                min_with_exp = exp.modifies_players_min
+
+        game_dict["players_max_with_expansions"] = max_with_exp
+        game_dict["players_min_with_expansions"] = min_with_exp
+        game_dict["has_player_expansion"] = has_player_expansion
+    else:
+        game_dict["expansions"] = []
+
+    # Add base game info if this is an expansion
+    if game.base_game_id and hasattr(game, "base_game") and game.base_game:
+        game_dict["base_game"] = {
+            "id": game.base_game.id,
+            "title": game.base_game.title,
+            "thumbnail_url": game.base_game.image or game.base_game.thumbnail_url,
+        }
+
+    return game_dict
 
 
 @router.get("/category-counts")

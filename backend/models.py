@@ -13,7 +13,7 @@ from sqlalchemy import (
     ForeignKey,
 )
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 
 Base = declarative_base()
 
@@ -54,6 +54,26 @@ class Game(Base):
     # Ownership status: OWNED (in physical collection), BUY_LIST (want to buy), WISHLIST (maybe buy)
     status = Column(String(20), nullable=True, default="OWNED", index=True)
 
+    # Expansion relationship fields
+    is_expansion = Column(Boolean, default=False, nullable=False, index=True)
+    base_game_id = Column(
+        Integer, ForeignKey("boardgames.id"), nullable=True, index=True
+    )
+    expansion_type = Column(
+        String(50), nullable=True
+    )  # 'requires_base', 'standalone', 'both'
+
+    # Player count modifications (for expansions that change player counts)
+    modifies_players_min = Column(Integer, nullable=True)
+    modifies_players_max = Column(Integer, nullable=True)
+
+    # Relationships
+    expansions = relationship(
+        "Game",
+        backref=backref("base_game", remote_side=[id]),
+        foreign_keys=[base_game_id],
+    )
+
     # Performance indexes for common queries
     __table_args__ = (
         Index("idx_year_category", "year", "mana_meeple_category"),
@@ -66,6 +86,7 @@ class Game(Base):
         ),
         Index("idx_rating_rank", "average_rating", "bgg_rank"),
         Index("idx_created_category", "created_at", "mana_meeple_category"),
+        Index("idx_expansion_lookup", "is_expansion", "base_game_id"),
     )
 
     # Relationships
@@ -122,8 +143,9 @@ class PriceSnapshot(Base):
     mean_price = Column(Numeric(10, 2), nullable=True)  # Mean price across offers
     best_price = Column(Numeric(10, 2), nullable=True)  # Best in-stock price
     best_store = Column(Text, nullable=True)  # Store with best price
-    discount_pct = Column(Numeric(5, 2), nullable=True)  # Discount percentage vs mean
-    delta = Column(Numeric(5, 2), nullable=True)  # Delta vs site disc-mean
+    discount_pct = Column(Numeric(5, 2), nullable=True)  # Calculated discount: (mean - best) / mean * 100
+    disc_mean_pct = Column(Numeric(5, 2), nullable=True)  # BGO's disc-mean percentage from their API/page
+    delta = Column(Numeric(5, 2), nullable=True)  # Delta: discount_pct - disc_mean_pct
     source_file = Column(Text, nullable=True)  # Which JSON/CSV file this came from
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 

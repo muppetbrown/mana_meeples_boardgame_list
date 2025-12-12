@@ -1,5 +1,5 @@
 // src/components/staff/tabs/BuyListTab.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   getBuyListGames,
   getLastPriceUpdate,
@@ -7,6 +7,8 @@ import {
   updateBuyListGame,
   removeFromBuyList,
   importPrices,
+  bulkImportBuyListCSV,
+  imageProxyUrl,
 } from "../../../api/client";
 
 /**
@@ -25,6 +27,7 @@ export function BuyListTab() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [addBggId, setAddBggId] = useState("");
   const [addFormData, setAddFormData] = useState({
     rank: "",
@@ -34,6 +37,7 @@ export function BuyListTab() {
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const fileInputRef = useRef(null);
 
   // Load buy list and last update on mount
   useEffect(() => {
@@ -167,6 +171,45 @@ export function BuyListTab() {
     }
   };
 
+  const handleBulkImportCSV = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setError(null);
+      setSuccess(null);
+      const result = await bulkImportBuyListCSV(file);
+
+      let message = `Bulk import completed: ${result.added} added, ${result.updated} updated`;
+      if (result.skipped > 0) {
+        message += `, ${result.skipped} skipped`;
+      }
+      if (result.errors > 0) {
+        message += `, ${result.errors} errors`;
+        if (result.error_details?.length > 0) {
+          console.error("Import errors:", result.error_details);
+          message += ` (see console for details)`;
+        }
+      }
+
+      setSuccess(message);
+      setShowBulkImportModal(false);
+      await loadBuyList();
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (err) {
+      console.error("Failed to import CSV:", err);
+      setError(err.response?.data?.detail || "Failed to import CSV");
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   const formatPrice = (price) => {
     return price ? `$${parseFloat(price).toFixed(2)}` : "-";
   };
@@ -220,6 +263,12 @@ export function BuyListTab() {
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
             >
               + Add Game
+            </button>
+            <button
+              onClick={() => setShowBulkImportModal(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              📥 Bulk Import CSV
             </button>
             <button
               onClick={handleImportPrices}
@@ -292,6 +341,7 @@ export function BuyListTab() {
               <option value="rank">Rank</option>
               <option value="title">Title</option>
               <option value="updated_at">Last Updated</option>
+              <option value="discount">Discount %</option>
             </select>
           </div>
           <div className="flex items-end">
@@ -332,29 +382,19 @@ export function BuyListTab() {
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b">
                 <tr>
+                  <th className="px-4 py-3 text-left font-semibold">Image</th>
                   <th className="px-4 py-3 text-left font-semibold">Rank</th>
                   <th className="px-4 py-3 text-left font-semibold">Game</th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    LPG Status
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    LPG RRP
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    Best Price
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    Store
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    Discount
-                  </th>
-                  <th className="px-4 py-3 text-left font-semibold">
-                    Filter
-                  </th>
-                  <th className="px-4 py-3 text-right font-semibold">
-                    Actions
-                  </th>
+                  <th className="px-4 py-3 text-left font-semibold">LPG Status</th>
+                  <th className="px-4 py-3 text-left font-semibold">LPG RRP</th>
+                  <th className="px-4 py-3 text-left font-semibold">Low $</th>
+                  <th className="px-4 py-3 text-left font-semibold">Mean $</th>
+                  <th className="px-4 py-3 text-left font-semibold">Best $</th>
+                  <th className="px-4 py-3 text-left font-semibold">Store</th>
+                  <th className="px-4 py-3 text-left font-semibold">Discount %</th>
+                  <th className="px-4 py-3 text-left font-semibold">Delta</th>
+                  <th className="px-4 py-3 text-left font-semibold">Filter</th>
+                  <th className="px-4 py-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -362,6 +402,23 @@ export function BuyListTab() {
                   <tr key={item.id} className="hover:bg-gray-50">
                     {editingId === item.id ? (
                       <>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
+                            {item.thumbnail_url || item.image ? (
+                              <img
+                                src={imageProxyUrl(item.image || item.thumbnail_url)}
+                                alt={item.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.parentElement.innerHTML = '<span class="text-xs text-gray-400">No img</span>';
+                                }}
+                              />
+                            ) : (
+                              <span className="text-xs text-gray-400">No img</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
                           <input
                             type="number"
@@ -372,7 +429,7 @@ export function BuyListTab() {
                             className="w-20 px-2 py-1 border rounded"
                           />
                         </td>
-                        <td className="px-4 py-3" colSpan="7">
+                        <td className="px-4 py-3" colSpan="10">
                           <div className="space-y-2">
                             <div className="font-medium">{item.title}</div>
                             <div className="grid grid-cols-2 gap-2">
@@ -456,6 +513,23 @@ export function BuyListTab() {
                       </>
                     ) : (
                       <>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
+                            {item.thumbnail_url || item.image ? (
+                              <img
+                                src={imageProxyUrl(item.image || item.thumbnail_url)}
+                                alt={item.title}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.parentElement.innerHTML = '<span class="text-xs text-gray-400">No img</span>';
+                                }}
+                              />
+                            ) : (
+                              <span className="text-xs text-gray-400">No img</span>
+                            )}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-gray-700">
                           {item.rank || "-"}
                         </td>
@@ -488,6 +562,16 @@ export function BuyListTab() {
                         <td className="px-4 py-3 text-gray-700">
                           {formatPrice(item.lpg_rrp)}
                         </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {item.latest_price?.low_price
+                            ? formatPrice(item.latest_price.low_price)
+                            : "-"}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {item.latest_price?.mean_price
+                            ? formatPrice(item.latest_price.mean_price)
+                            : "-"}
+                        </td>
                         <td className="px-4 py-3 text-gray-700 font-medium">
                           {item.latest_price?.best_price
                             ? formatPrice(item.latest_price.best_price)
@@ -499,7 +583,16 @@ export function BuyListTab() {
                         <td className="px-4 py-3">
                           {item.latest_price?.discount_pct ? (
                             <span className="text-green-700 font-medium">
-                              {item.latest_price.discount_pct.toFixed(0)}%
+                              {item.latest_price.discount_pct.toFixed(1)}%
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {item.latest_price?.delta !== null && item.latest_price?.delta !== undefined ? (
+                            <span className={item.latest_price.delta > 0 ? "text-green-700 font-medium" : "text-red-700 font-medium"}>
+                              {item.latest_price.delta > 0 ? "+" : ""}{item.latest_price.delta.toFixed(1)}
                             </span>
                           ) : (
                             "-"
@@ -649,6 +742,71 @@ export function BuyListTab() {
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Add to Buy List
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Import CSV Modal */}
+      {showBulkImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Bulk Import Buy List from CSV</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Upload a CSV file with the following columns to add multiple games to your buy list:
+              </p>
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+                <h4 className="font-semibold text-sm mb-2">CSV Format:</h4>
+                <ul className="text-xs text-gray-700 space-y-1 list-disc list-inside">
+                  <li><strong>bgg_id</strong> (required) - BoardGameGeek ID</li>
+                  <li><strong>rank</strong> (optional) - Priority rank (numeric)</li>
+                  <li><strong>bgo_link</strong> (optional) - BoardGameOracle URL</li>
+                  <li><strong>lpg_rrp</strong> (optional) - Lets Play Games RRP price</li>
+                  <li><strong>lpg_status</strong> (optional) - AVAILABLE, BACK_ORDER, NOT_FOUND, or BACK_ORDER_OOS</li>
+                </ul>
+                <div className="mt-3 text-xs text-gray-600">
+                  <strong>Example CSV:</strong>
+                  <pre className="bg-white p-2 rounded border mt-1 overflow-x-auto">
+bgg_id,rank,bgo_link,lpg_rrp,lpg_status
+174430,1,https://boardgameoracle.com/...,199.99,AVAILABLE
+167791,2,,149.99,NOT_FOUND</pre>
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select CSV File
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv"
+                  onChange={handleBulkImportCSV}
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-lg file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-indigo-50 file:text-indigo-700
+                    hover:file:bg-indigo-100
+                    cursor-pointer"
+                />
+              </div>
+
+              <p className="text-xs text-gray-500 mb-4">
+                <strong>Note:</strong> Games not in your database will be automatically imported from BoardGameGeek.
+                Existing buy list entries will be updated with new values from the CSV.
+              </p>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowBulkImportModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Close
                 </button>
               </div>
             </div>

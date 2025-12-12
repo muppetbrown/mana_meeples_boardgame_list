@@ -51,8 +51,10 @@ class GameService:
         ).scalar_one_or_none()
 
     def get_all_games(self) -> List[Game]:
-        """Get all games (for admin view)"""
-        return self.db.execute(select(Game)).scalars().all()
+        """Get all games for admin view - only OWNED games, excluding buy list and wishlist"""
+        return self.db.execute(
+            select(Game).where(Game.status == "OWNED")
+        ).scalars().all()
 
     def get_filtered_games(
         self,
@@ -83,8 +85,17 @@ class GameService:
         Returns:
             Tuple of (list of Game objects, total count)
         """
-        # Build base query
-        query = select(Game)
+        # Build base query - only show OWNED games for public view
+        query = select(Game).where(Game.status == "OWNED")
+
+        # Exclude require-base expansions from public view
+        # Only show base games and standalone expansions (expansion_type = 'both' or 'standalone')
+        query = query.where(
+            or_(
+                Game.is_expansion == False,  # Base games
+                Game.expansion_type.in_(["both", "standalone"]),  # Standalone expansions
+            )
+        )
 
         # Apply search filter - search across title, designers, and description
         if search and search.strip():
@@ -111,16 +122,45 @@ class GameService:
         if nz_designer is not None:
             query = query.where(Game.nz_designer == nz_designer)
 
-        # Apply player count filter
+        # Apply player count filter (including games with expansions that support the player count)
         if players is not None:
+            from sqlalchemy import alias
+
+            # Create alias for expansion subquery
+            Expansion = alias(Game.__table__, name="expansion")
+
+            # Subquery to find games with expansions that extend player count
+            expansion_subquery = (
+                select(Expansion.c.base_game_id)
+                .where(Expansion.c.base_game_id.isnot(None))
+                .where(
+                    or_(
+                        Expansion.c.modifies_players_min.is_(None),
+                        Expansion.c.modifies_players_min <= players,
+                    )
+                )
+                .where(
+                    or_(
+                        Expansion.c.modifies_players_max.is_(None),
+                        Expansion.c.modifies_players_max >= players,
+                    )
+                )
+            )
+
+            # Game matches if base player count OR has expansion that supports it
             query = query.where(
-                and_(
-                    or_(
-                        Game.players_min.is_(None), Game.players_min <= players
+                or_(
+                    # Base game player count
+                    and_(
+                        or_(
+                            Game.players_min.is_(None), Game.players_min <= players
+                        ),
+                        or_(
+                            Game.players_max.is_(None), Game.players_max >= players
+                        ),
                     ),
-                    or_(
-                        Game.players_max.is_(None), Game.players_max >= players
-                    ),
+                    # Has expansion that extends player count to requested amount
+                    Game.id.in_(expansion_subquery),
                 )
             )
 
@@ -228,7 +268,7 @@ class GameService:
             List of Game objects
         """
         designer_filter = f"%{designer_name}%"
-        query = select(Game)
+        query = select(Game).where(Game.status == "OWNED")
 
         if hasattr(Game, "designers"):
             query = query.where(Game.designers.ilike(designer_filter))
@@ -317,6 +357,12 @@ class GameService:
             "playtime_max",
             "min_age",
             "nz_designer",
+            # Expansion fields
+            "is_expansion",
+            "expansion_type",
+            "base_game_id",
+            "modifies_players_min",
+            "modifies_players_max",
         ]
 
         for field in updatable_fields:
@@ -385,6 +431,35 @@ class GameService:
         categories = parse_categories(game.categories)
         game.mana_meeple_category = categorize_game(categories)
 
+    def _auto_link_expansion(self, game: Game, bgg_data: Dict[str, Any]) -> None:
+        """
+        Auto-link expansion to base game if the base game exists in database.
+
+        Args:
+            game: Game object to link
+            bgg_data: BGG data containing base_game_bgg_id if available
+        """
+        # Only process if this is an expansion
+        if not bgg_data.get("is_expansion", False):
+            return
+
+        base_game_bgg_id = bgg_data.get("base_game_bgg_id")
+        if not base_game_bgg_id:
+            logger.info(f"Expansion {game.title} has no base game BGG ID in data")
+            return
+
+        # Try to find base game in database
+        base_game = self.get_game_by_bgg_id(base_game_bgg_id)
+        if base_game:
+            game.base_game_id = base_game.id
+            logger.info(
+                f"Auto-linked expansion '{game.title}' to base game '{base_game.title}'"
+            )
+        else:
+            logger.info(
+                f"Base game BGG ID {base_game_bgg_id} not found in database for expansion '{game.title}'"
+            )
+
     def _update_game_enhanced_fields(
         self, game: Game, data: Dict[str, Any]
     ) -> None:
@@ -411,6 +486,11 @@ class GameService:
             "game_type": "game_type",
             "image": "image",
             "thumbnail_url": "thumbnail",  # BGG uses 'thumbnail' key
+            # Expansion fields
+            "is_expansion": "is_expansion",
+            "expansion_type": "expansion_type",
+            "modifies_players_min": "modifies_players_min",
+            "modifies_players_max": "modifies_players_max",
         }
 
         for game_field, data_key in enhanced_fields.items():
@@ -448,6 +528,10 @@ class GameService:
         if existing:
             # Update existing game
             self.update_game_from_bgg_data(existing, bgg_data)
+
+            # Auto-link to base game if this is an expansion
+            self._auto_link_expansion(existing, bgg_data)
+
             self.db.add(existing)
             self.db.commit()
             self.db.refresh(existing)
@@ -475,6 +559,9 @@ class GameService:
             # Add enhanced fields
             self._update_game_enhanced_fields(game, bgg_data)
 
+            # Auto-link to base game if this is an expansion
+            self._auto_link_expansion(game, bgg_data)
+
             self.db.add(game)
             self.db.commit()
             self.db.refresh(game)
@@ -491,9 +578,9 @@ class GameService:
         """
         from utils.helpers import calculate_category_counts
 
-        # Only select the columns we need
+        # Only select the columns we need - filter to OWNED games only
         games = self.db.execute(
-            select(Game.id, Game.mana_meeple_category)
+            select(Game.id, Game.mana_meeple_category).where(Game.status == "OWNED")
         ).all()
 
         return calculate_category_counts(games)
