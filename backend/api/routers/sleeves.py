@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from backend.database import get_db
-from backend.models import Game, Sleeve
-from backend.api.routers.admin import get_current_admin
 from pydantic import BaseModel
+
+from database import get_db
+from models import Game, Sleeve
+from api.dependencies import require_admin_auth
 
 router = APIRouter(prefix="/api/admin/sleeves", tags=["admin-sleeves"])
 
@@ -19,7 +20,7 @@ class SleeveShoppingListItem(BaseModel):
     variations_grouped: int
     game_names: List[str]
 
-@router.post("/shopping-list", dependencies=[Depends(get_current_admin)])
+@router.post("/shopping-list", dependencies=[Depends(require_admin_auth)])
 def generate_sleeve_shopping_list(
     request: SleeveShoppingListRequest,
     db: Session = Depends(get_db)
@@ -71,7 +72,7 @@ def generate_sleeve_shopping_list(
     
     return shopping_list
 
-@router.get("/game/{game_id}", dependencies=[Depends(get_current_admin)])
+@router.get("/game/{game_id}", dependencies=[Depends(require_admin_auth)])
 def get_game_sleeves(game_id: int, db: Session = Depends(get_db)):
     """Get all sleeve requirements for a specific game"""
     sleeves = db.query(Sleeve).filter(Sleeve.game_id == game_id).all()
