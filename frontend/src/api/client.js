@@ -421,3 +421,27 @@ export async function bulkImportBuyListCSV(file) {
   });
   return r.data;
 }
+
+// ============================================================================
+// SLEEVE MANAGEMENT API METHODS
+// ============================================================================
+
+/**
+ * Generate sleeve shopping list for selected games
+ * @param {Array<number>} gameIds - Array of game IDs
+ * @returns {Promise<Array>} Shopping list items
+ */
+export async function generateSleeveShoppingList(gameIds) {
+  const r = await api.post("/api/admin/sleeves/shopping-list", { game_ids: gameIds });
+  return r.data;
+}
+
+/**
+ * Get sleeve data for a specific game
+ * @param {number} gameId - Game ID
+ * @returns {Promise<Array>} Array of sleeve objects
+ */
+export async function getGameSleeves(gameId) {
+  const r = await api.get(`/api/admin/sleeves/game/${gameId}`);
+  return r.data;
+}

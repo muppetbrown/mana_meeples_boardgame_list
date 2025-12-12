@@ -532,6 +532,9 @@ class GameService:
             # Auto-link to base game if this is an expansion
             self._auto_link_expansion(existing, bgg_data)
 
+            # Update sleeve data
+            self._save_sleeve_data(existing, bgg_data)
+
             self.db.add(existing)
             self.db.commit()
             self.db.refresh(existing)
@@ -566,6 +569,10 @@ class GameService:
             self.db.commit()
             self.db.refresh(game)
 
+            # Save sleeve data after game is committed (needs game.id)
+            self._save_sleeve_data(game, bgg_data)
+            self.db.commit()
+
             logger.info(f"Imported from BGG: {game.title} (BGG ID: {bgg_id})")
             return game, False
 
@@ -584,3 +591,43 @@ class GameService:
         ).all()
 
         return calculate_category_counts(games)
+
+    def _save_sleeve_data(self, game: Game, bgg_data: Dict[str, Any]) -> None:
+        """
+        Save sleeve data for a game from BGG data.
+
+        Args:
+            game: Game object to save sleeve data for
+            bgg_data: BGG data containing sleeve_data field
+        """
+        from models import Sleeve
+
+        # Get sleeve data from BGG response
+        sleeve_data = bgg_data.get('sleeve_data')
+        if not sleeve_data:
+            logger.info(f"No sleeve data in BGG response for {game.title}")
+            return
+
+        # Update has_sleeves status
+        game.has_sleeves = sleeve_data.get('status', 'not_found')
+
+        # Delete existing sleeve records for this game
+        self.db.query(Sleeve).filter(Sleeve.game_id == game.id).delete()
+
+        # Save new sleeve records if found
+        if sleeve_data.get('status') == 'found' and sleeve_data.get('card_types'):
+            notes = sleeve_data.get('notes')
+            for card_type in sleeve_data['card_types']:
+                sleeve = Sleeve(
+                    game_id=game.id,
+                    card_name=card_type.get('name'),
+                    width_mm=card_type['width_mm'],
+                    height_mm=card_type['height_mm'],
+                    quantity=card_type.get('quantity', 0),
+                    notes=notes
+                )
+                self.db.add(sleeve)
+
+            logger.info(f"Saved {len(sleeve_data['card_types'])} sleeve types for {game.title}")
+        else:
+            logger.info(f"No sleeve data found for {game.title}")

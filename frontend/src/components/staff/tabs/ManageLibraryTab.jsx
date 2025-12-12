@@ -3,8 +3,9 @@ import React, { useState, useMemo } from "react";
 import { useStaff } from "../../../context/StaffContext";
 import CategoryFilter from "../../CategoryFilter";
 import { CATEGORY_LABELS } from "../../../constants/categories";
-import { imageProxyUrl } from "../../../api/client";
+import { imageProxyUrl, generateSleeveShoppingList } from "../../../api/client";
 import ExpansionEditModal from "../ExpansionEditModal";
+import SleeveShoppingListModal from "../SleeveShoppingListModal";
 
 /**
  * Manage Library tab - Browse, edit, and delete games in compact table view
@@ -25,6 +26,11 @@ export function ManageLibraryTab() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expansionModalOpen, setExpansionModalOpen] = useState(false);
   const [editingExpansion, setEditingExpansion] = useState(null);
+
+  // Game selection state
+  const [selectedGames, setSelectedGames] = useState(new Set());
+  const [showSleeveShoppingList, setShowSleeveShoppingList] = useState(false);
+  const [sleeveShoppingList, setSleeveShoppingList] = useState(null);
 
   // Filter by search query
   const searchFilteredLibrary = useMemo(() => {
@@ -70,6 +76,41 @@ export function ManageLibraryTab() {
     setEditingExpansion(null);
   };
 
+  // Game selection handlers
+  const toggleGameSelection = (gameId) => {
+    const newSelected = new Set(selectedGames);
+    if (newSelected.has(gameId)) {
+      newSelected.delete(gameId);
+    } else {
+      newSelected.add(gameId);
+    }
+    setSelectedGames(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedGames.size === searchFilteredLibrary.length) {
+      setSelectedGames(new Set());
+    } else {
+      setSelectedGames(new Set(searchFilteredLibrary.map(g => g.id)));
+    }
+  };
+
+  const handleGenerateSleeveList = async () => {
+    if (selectedGames.size === 0) {
+      showToast('Please select at least one game', 'error');
+      return;
+    }
+
+    try {
+      const data = await generateSleeveShoppingList(Array.from(selectedGames));
+      setSleeveShoppingList(data);
+      setShowSleeveShoppingList(true);
+    } catch (err) {
+      console.error('Failed to generate shopping list:', err);
+      showToast('Failed to generate sleeve shopping list', 'error');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header with Stats */}
@@ -101,6 +142,41 @@ export function ManageLibraryTab() {
         />
       </div>
 
+      {/* Selection Actions Bar */}
+      {searchFilteredLibrary.length > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedGames.size === searchFilteredLibrary.length && searchFilteredLibrary.length > 0}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+                />
+                <span className="font-medium text-sm">
+                  {selectedGames.size === searchFilteredLibrary.length ? 'Deselect All' : 'Select All'}
+                </span>
+              </label>
+              <span className="text-sm text-gray-600">
+                {selectedGames.size} game(s) selected
+              </span>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleGenerateSleeveList}
+                disabled={selectedGames.size === 0}
+                className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                📋 Generate Sleeve Shopping List
+              </button>
+              {/* Future action buttons can go here */}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Library Table */}
       <div className="bg-white rounded-2xl shadow overflow-hidden">
         {searchFilteredLibrary.length === 0 ? (
@@ -121,6 +197,9 @@ export function ManageLibraryTab() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    Select
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Thumbnail
                   </th>
@@ -144,6 +223,16 @@ export function ManageLibraryTab() {
               <tbody className="divide-y divide-gray-200">
                 {searchFilteredLibrary.map((game) => (
                   <tr key={game.id} className="hover:bg-gray-50 transition-colors">
+                    {/* Select Checkbox */}
+                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                      <input
+                        type="checkbox"
+                        checked={selectedGames.has(game.id)}
+                        onChange={() => toggleGameSelection(game.id)}
+                        className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
+                      />
+                    </td>
+
                     {/* Thumbnail */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
@@ -265,6 +354,17 @@ export function ManageLibraryTab() {
           library={library}
           onSave={handleSaveExpansion}
           onClose={handleCloseExpansionModal}
+        />
+      )}
+
+      {/* Sleeve Shopping List Modal */}
+      {showSleeveShoppingList && sleeveShoppingList && (
+        <SleeveShoppingListModal
+          shoppingList={sleeveShoppingList}
+          onClose={() => {
+            setShowSleeveShoppingList(false);
+            setSleeveShoppingList(null);
+          }}
         />
       )}
     </div>
