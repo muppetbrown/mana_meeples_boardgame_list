@@ -1,0 +1,72 @@
+[
+  {
+    "bgg_id": 173346,
+    "card_types": [
+      {
+        "name": "Age Cards",
+        "dimensions": "44\u2009x\u200968",
+        "width_mm": 44,
+        "height_mm": 68,
+        "quantity": 73
+      },
+      {
+        "name": "Wonder Cards",
+        "dimensions": "65\u2009x\u2009100",
+        "width_mm": 65,
+        "height_mm": 100,
+        "quantity": 13
+      }
+    ],
+    "total_cards": 86,
+    "notes": "Card Note: 65x100 \u2013 Including one reference card."
+  },
+  {
+    "bgg_id": 68448,
+    "card_types": [
+      {
+        "name": null,
+        "dimensions": "65\u2009x\u2009100",
+        "width_mm": 65,
+        "height_mm": 100,
+        "quantity": 157
+      },
+      {
+        "name": "Wonder Boards",
+        "dimensions": "110\u2009x\u2009250",
+        "width_mm": 110,
+        "height_mm": 250,
+        "quantity": 7
+      }
+    ],
+    "total_cards": 164,
+    "notes": "Card Note: 110x250 \u2013 These are thick cardboard, but the listed sleeves are designed to fit them."
+  },
+  {
+    "bgg_id": 174430,
+    "card_types": [
+      {
+        "name": "Attack Modifier, Battle Goal, Item, Monster Action, Personal Quest, Random Item Design, and Random Side Scenario cards",
+        "dimensions": "44\u2009x\u200968",
+        "width_mm": 44,
+        "height_mm": 68,
+        "quantity": 975
+      },
+      {
+        "name": "Character Ability and Event cards",
+        "dimensions": "63.5\u2009x\u200989",
+        "width_mm": null,
+        "height_mm": null,
+        "quantity": 727
+      },
+      {
+        "name": "Monster Statistic cards",
+        "dimensions": "102\u2009x\u2009102",
+        "width_mm": 102,
+        "height_mm": 102,
+        "quantity": 47
+      }
+    ],
+    "total_cards": 1749,
+    "notes": null
+  }
+]
