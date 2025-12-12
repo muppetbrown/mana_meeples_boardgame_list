@@ -54,6 +54,9 @@ class Game(Base):
     # Ownership status: OWNED (in physical collection), BUY_LIST (want to buy), WISHLIST (maybe buy)
     status = Column(String(20), nullable=True, default="OWNED", index=True)
 
+    # Sleeve information
+    has_sleeves = Column(String(20), nullable=True)  # 'found', 'not_found', 'error', 'manual', or NULL (not checked)
+
     # Expansion relationship fields
     is_expansion = Column(Boolean, default=False, nullable=False, index=True)
     base_game_id = Column(
@@ -98,6 +101,9 @@ class Game(Base):
     )
     price_offers = relationship(
         "PriceOffer", back_populates="game", cascade="all, delete-orphan"
+    )
+    sleeves = relationship(
+        "Sleeve", back_populates="game", cascade="all, delete-orphan"
     )
 
 
@@ -183,3 +189,31 @@ class PriceOffer(Base):
         Index("idx_price_offer_game_date", "game_id", "checked_at"),
         Index("idx_price_offer_store", "store", "in_stock"),
     )
+
+
+class Sleeve(Base):
+    """
+    Stores sleeve/card protector requirements for games.
+    Multiple records per game for different card types/sizes.
+    """
+
+    __tablename__ = "sleeves"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    game_id = Column(Integer, ForeignKey("boardgames.id", ondelete="CASCADE"), nullable=False, index=True)
+    card_name = Column(String(200), nullable=True)  # e.g., "Age Cards", "Player Cards"
+    width_mm = Column(Integer, nullable=False)
+    height_mm = Column(Integer, nullable=False)
+    quantity = Column(Integer, nullable=False)
+    notes = Column(Text, nullable=True)  # Special notes about this card type
+
+    # Relationship
+    game = relationship("Game", back_populates="sleeves")
+
+    __table_args__ = (
+        Index("idx_sleeve_game", "game_id"),
+        Index("idx_sleeve_size", "width_mm", "height_mm"),
+    )
+
+    def __repr__(self):
+        return f"<Sleeve {self.width_mm}x{self.height_mm} qty={self.quantity} for game_id={self.game_id}>"
