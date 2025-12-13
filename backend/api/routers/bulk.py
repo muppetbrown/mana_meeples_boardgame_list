@@ -17,8 +17,8 @@ from sqlalchemy.orm import Session
 
 from api.dependencies import require_admin_auth
 from bgg_service import fetch_bgg_thing
-from database import get_db
-from models import Game
+from database import get_db, SessionLocal
+from models import Game, Sleeve
 from utils.helpers import CATEGORY_KEYS, categorize_game, parse_categories
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,57 @@ from main import (  # noqa: E402
 
 # Create router with prefix and tags
 router = APIRouter(prefix="/api/admin", tags=["bulk-operations"])
+
+
+async def _fetch_sleeve_data_task(game_id: int, bgg_id: int, game_title: str):
+    """Background task to fetch sleeve data for a single game"""
+    from services.sleeve_scraper import scrape_sleeve_data
+
+    try:
+        db = SessionLocal()
+        game = db.get(Game, game_id)
+        if not game:
+            logger.warning(f"Game {game_id} not found for sleeve fetch")
+            return
+
+        # Fetch sleeve data from BGG
+        logger.info(f"Fetching sleeve data for '{game_title}' (BGG ID: {bgg_id})")
+        sleeve_data = scrape_sleeve_data(bgg_id, game_title)
+
+        if not sleeve_data:
+            logger.warning(f"No sleeve data returned for {game_title}")
+            return
+
+        # Update has_sleeves status
+        game.has_sleeves = sleeve_data.get('status', 'not_found')
+
+        # Delete existing sleeve records
+        db.query(Sleeve).filter(Sleeve.game_id == game.id).delete()
+
+        # Save new sleeve records if found
+        if sleeve_data.get('status') == 'found' and sleeve_data.get('card_types'):
+            notes = sleeve_data.get('notes')
+            for card_type in sleeve_data['card_types']:
+                sleeve = Sleeve(
+                    game_id=game.id,
+                    card_name=card_type.get('name'),
+                    width_mm=card_type['width_mm'],
+                    height_mm=card_type['height_mm'],
+                    quantity=card_type.get('quantity', 0),
+                    notes=notes
+                )
+                db.add(sleeve)
+
+            db.commit()
+            logger.info(f"Saved {len(sleeve_data['card_types'])} sleeve types for {game_title}")
+        else:
+            db.commit()
+            logger.info(f"No sleeve data found for {game_title} (status: {sleeve_data.get('status')})")
+
+    except Exception as e:
+        logger.error(f"Failed to fetch sleeve data for game {game_id}: {e}")
+    finally:
+        db.close()
 
 
 @router.post("/bulk-import-csv")
@@ -313,6 +364,37 @@ async def reimport_all_games(
         "message": (
             f"Started re-importing {len(games)} games with enhanced data"
         )
+    }
+
+
+@router.post("/fetch-all-sleeve-data")
+async def fetch_all_sleeve_data(
+    background_tasks: BackgroundTasks,
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin_auth),
+):
+    """
+    Fetch sleeve data for all games with BGG IDs (sleeve data only, no full re-import)
+
+    This is more efficient than reimport-all-games if you only need sleeve data,
+    as it only scrapes the BGG sleeve page rather than fetching all game data.
+    """
+    games = (
+        db.execute(select(Game).where(Game.bgg_id.isnot(None))).scalars().all()
+    )
+
+    for game in games:
+        background_tasks.add_task(
+            _fetch_sleeve_data_task,
+            game.id,
+            game.bgg_id,
+            game.title
+        )
+
+    return {
+        "message": f"Started fetching sleeve data for {len(games)} games",
+        "note": "This will use Selenium to scrape BGG sleeve pages. Check logs for progress."
     }
 
 
