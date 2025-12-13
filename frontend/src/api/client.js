@@ -217,6 +217,15 @@ export async function reimportAllGames() {
 }
 
 /**
+ * Fetch sleeve data for all games (sleeve data only, no full re-import)
+ * @returns {Promise<Object>} Sleeve fetch initiation confirmation
+ */
+export async function fetchAllSleeveData() {
+  const r = await api.post("/api/admin/fetch-all-sleeve-data", {});
+  return r.data;
+}
+
+/**
  * Fix PostgreSQL sequence for boardgames table
  * Resolves "duplicate key value violates unique constraint" errors
  * @returns {Promise<Object>} Sequence fix result with max_id and next_id

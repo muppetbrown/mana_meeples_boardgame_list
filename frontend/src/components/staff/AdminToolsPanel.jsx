@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { bulkUpdateNZDesigners, reimportAllGames, fixDatabaseSequence, getDebugCategories, getDebugDatabaseInfo, getDebugPerformance, exportGamesCSV, getHealthCheck, getDbHealthCheck } from "../../api/client";
+import { bulkUpdateNZDesigners, reimportAllGames, fetchAllSleeveData, fixDatabaseSequence, getDebugCategories, getDebugDatabaseInfo, getDebugPerformance, exportGamesCSV, getHealthCheck, getDbHealthCheck } from "../../api/client";
 
 export function AdminToolsPanel({ onToast, onLibraryReload }) {
   const [nzDesignersText, setNzDesignersText] = useState("");
@@ -66,6 +66,25 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
       if (onLibraryReload) await onLibraryReload();
     } catch (error) {
       onToast("Re-import failed", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [onToast, onLibraryReload]);
+
+  const handleFetchSleeveData = useCallback(async () => {
+    if (!window.confirm("This will fetch sleeve data for ALL games using web scraping and may take several minutes. Continue?")) {
+      return;
+    }
+
+    setIsLoading(true);
+    onToast("Fetching sleeve data for all games... This may take several minutes", "info", 5000);
+
+    try {
+      const result = await fetchAllSleeveData();
+      onToast(`Sleeve data fetch started! Processing ${result.total_games || 0} games in background`, "success");
+      if (onLibraryReload) await onLibraryReload();
+    } catch (error) {
+      onToast("Failed to start sleeve data fetch", "error");
     } finally {
       setIsLoading(false);
     }
@@ -177,6 +196,16 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
 
           <button
             className={`px-4 py-2 rounded-lg text-white ${
+              isLoading ? "bg-gray-400" : "bg-purple-600 hover:bg-purple-700"
+            }`}
+            onClick={handleFetchSleeveData}
+            disabled={isLoading}
+          >
+            Fetch Sleeve Data
+          </button>
+
+          <button
+            className={`px-4 py-2 rounded-lg text-white ${
               isLoading ? "bg-gray-400" : "bg-yellow-600 hover:bg-yellow-700"
             }`}
             onClick={handleFixSequence}
@@ -196,7 +225,7 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
           </button>
         </div>
         <p className="text-sm text-gray-600 mt-2">
-          Re-import will fetch latest BGG data for all games. Fix Sequence resolves "duplicate key" errors when adding games. Export creates a CSV backup.
+          Re-import will fetch latest BGG data for all games. Fetch Sleeve Data will scrape sleeve information only. Fix Sequence resolves "duplicate key" errors when adding games. Export creates a CSV backup.
         </p>
       </div>
 
