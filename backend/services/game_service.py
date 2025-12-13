@@ -183,9 +183,11 @@ class GameService:
         query = self._apply_sorting(query, sort)
 
         # Get total count before pagination
-        total = self.db.execute(
-            select(func.count()).select_from(query.subquery())
-        ).scalar()
+        # Use a simpler count query that only selects the ID to avoid GROUP BY issues
+        count_query = query.with_only_columns(func.count(Game.id))
+        # Remove ORDER BY for count query (not needed and can cause issues)
+        count_query = count_query.order_by(None)
+        total = self.db.execute(count_query).scalar()
 
         # Apply pagination
         games = (
