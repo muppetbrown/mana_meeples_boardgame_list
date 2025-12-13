@@ -369,36 +369,66 @@ async def reimport_all_games(
 
 @router.post("/fetch-all-sleeve-data")
 async def fetch_all_sleeve_data(
-    background_tasks: BackgroundTasks,
     request: Request,
     db: Session = Depends(get_db),
     _: None = Depends(require_admin_auth),
 ):
     """
-    Fetch sleeve data for all games with BGG IDs (sleeve data only, no full re-import)
+    Trigger GitHub Action to fetch sleeve data for all games
 
-    This is more efficient than reimport-all-games if you only need sleeve data,
-    as it only scrapes the BGG sleeve page rather than fetching all game data.
+    This triggers the GitHub workflow 'fetch_sleeves.yml' which runs the scraper
+    with Chrome installed in the GitHub Actions environment.
     """
+    import os
+    import httpx
+
+    github_token = os.getenv("GITHUB_TOKEN")
+    if not github_token:
+        raise HTTPException(
+            status_code=500,
+            detail="GITHUB_TOKEN not configured. Cannot trigger GitHub Action."
+        )
+
+    # Get total games for response
     games = list(
         db.execute(select(Game).where(Game.bgg_id.isnot(None))).scalars().all()
     )
-
     total_games = len(games)
 
-    for game in games:
-        background_tasks.add_task(
-            _fetch_sleeve_data_task,
-            game.id,
-            game.bgg_id,
-            game.title
-        )
+    # Trigger GitHub workflow
+    github_api_url = "https://api.github.com/repos/muppetbrown/mana_meeples_boardgame_list/actions/workflows/fetch_sleeves.yml/dispatches"
 
-    return {
-        "message": f"Started fetching sleeve data for {total_games} games",
-        "total_games": total_games,
-        "note": "This will use Selenium to scrape BGG sleeve pages. Check logs for progress."
+    headers = {
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github.v3+json"
     }
+
+    payload = {
+        "ref": "main"  # or "master" depending on your default branch
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(github_api_url, json=payload, headers=headers)
+
+        if response.status_code == 204:
+            return {
+                "message": f"Triggered GitHub Action to fetch sleeve data for {total_games} games",
+                "total_games": total_games,
+                "note": "Check GitHub Actions tab for progress. Results will be committed when complete."
+            }
+        else:
+            logger.error(f"GitHub API error: {response.status_code} - {response.text}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to trigger GitHub Action: {response.status_code}"
+            )
+    except Exception as e:
+        logger.error(f"Failed to trigger GitHub Action: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to trigger GitHub Action: {str(e)}"
+        )
 
 
 @router.post("/bulk-update-nz-designers")
