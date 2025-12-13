@@ -394,6 +394,7 @@ async def fetch_all_sleeve_data(
 
     return {
         "message": f"Started fetching sleeve data for {len(games)} games",
+        "total_games": len(games),
         "note": "This will use Selenium to scrape BGG sleeve pages. Check logs for progress."
     }
 
