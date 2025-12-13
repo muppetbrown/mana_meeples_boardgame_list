@@ -809,7 +809,7 @@ def _extract_comprehensive_game_data(item, bgg_id: int) -> Dict:
 
     # Fetch sleeve data using Selenium scraper
     try:
-        from backend.services.sleeve_scraper import scrape_sleeve_data
+        from services.sleeve_scraper import scrape_sleeve_data
 
         logger.info(f"Fetching sleeve data for '{data['title']}' (BGG ID: {bgg_id})")
         sleeve_result = scrape_sleeve_data(bgg_id, data['title'])
