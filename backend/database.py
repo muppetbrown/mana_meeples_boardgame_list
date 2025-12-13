@@ -129,6 +129,20 @@ def run_migrations():
                 conn.commit()
                 logger.info("status column added successfully")
 
+                # Update existing rows to have OWNED status
+                logger.info("Updating existing rows to OWNED status...")
+                conn.execute(
+                    text(
+                        """
+                    UPDATE boardgames
+                    SET status = 'OWNED'
+                    WHERE status IS NULL
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("Updated existing rows with OWNED status")
+
                 # Create index on status
                 conn.execute(
                     text(
@@ -139,6 +153,33 @@ def run_migrations():
                 )
                 conn.commit()
                 logger.info("Created index on status column")
+
+            # Migration 1.6: Ensure all existing games have OWNED status (fix for existing deployments)
+            logger.info("Checking for games with NULL status...")
+            result = conn.execute(
+                text(
+                    """
+                SELECT COUNT(*) FROM boardgames WHERE status IS NULL
+            """
+                )
+            )
+            null_count = result.scalar()
+
+            if null_count > 0:
+                logger.info(f"Found {null_count} games with NULL status, updating to OWNED...")
+                conn.execute(
+                    text(
+                        """
+                    UPDATE boardgames
+                    SET status = 'OWNED'
+                    WHERE status IS NULL
+                """
+                    )
+                )
+                conn.commit()
+                logger.info(f"Updated {null_count} games to OWNED status")
+            else:
+                logger.info("All games have status values set")
 
             # Migration 2: Create buy_list_games table
             result = conn.execute(
@@ -390,6 +431,20 @@ def run_migrations():
                 )
                 conn.commit()
                 logger.info("status column added successfully")
+
+                # Update existing rows to have OWNED status
+                logger.info("Updating existing rows to OWNED status...")
+                conn.execute(
+                    text(
+                        """
+                    UPDATE boardgames
+                    SET status = 'OWNED'
+                    WHERE status IS NULL
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("Updated existing rows with OWNED status")
 
                 # Create index on status
                 conn.execute(
