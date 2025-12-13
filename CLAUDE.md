@@ -14,8 +14,8 @@
 
 ### Frontend (React)
 - **Platform**: Render.com static site hosting
-- **Framework**: React 18 with React Router
-- **Build Tool**: Create React App
+- **Framework**: React 19 with React Router
+- **Build Tool**: Vite 7 (migrated from Create React App)
 - **Deployment**: Automatic deployment from Git via Render
 - **Public URL**: `https://library.manaandmeeples.co.nz` (CNAME → `mana-meeples-library-web.onrender.com`)
 
@@ -177,11 +177,16 @@ PYTHON_VERSION=3.11.9
 Use the `render.yaml` blueprint for infrastructure-as-code deployment with secure secret management.
 
 ### Frontend API Configuration
-API base resolution in `utils/api.js` with automatic environment detection:
-1. **Build-time env**: `process.env.REACT_APP_API_BASE` (set in render.yaml)
-2. **Dev fallback**: `http://127.0.0.1:8000` for local development
+API base resolution in `config/api.js` with multiple fallback strategies:
+1. **Runtime window variable**: `window.__API_BASE__` for dynamic configuration
+2. **Meta tag**: `<meta name="api-base">` in index.html (hardcoded production URL)
+3. **Build-time env**: `import.meta.env.VITE_API_BASE` (set in render.yaml)
+4. **Production domain detection**: Auto-detects production domains and uses hardcoded API URL
+5. **Dev fallback**: `http://127.0.0.1:8000` for local development
 
-**Production setup**: The frontend is deployed as a separate static site on Render with `REACT_APP_API_BASE` pointing to the backend API service.
+**Production setup**: The frontend is deployed as a separate static site on Render with `VITE_API_BASE` environment variable pointing to the backend API service.
+
+**Important**: Environment variables in Vite must be prefixed with `VITE_` to be exposed to the client code. The build process replaces `import.meta.env.VITE_*` with the actual values at build time.
 
 ### Image Optimization Strategy
 Advanced BGG image quality enhancement in `imageProxyUrl()`:
@@ -229,17 +234,17 @@ pool_pre_ping=True   # Test connections before use
 - **User-friendly error messages** without technical jargon
 - **Accessibility-compliant design** with proper ARIA attributes and focus management
 
-### Image Management System  
+### Image Management System
 **GameImage.jsx**: Sophisticated image component featuring:
 - **Progressive loading** with opacity transitions and loading placeholders
 - **Automatic fallback** to styled "No Image" placeholder on errors
 - **Loading states** with skeleton animation using Tailwind's `animate-pulse`
 - **Lazy loading** support with configurable loading strategy
-- **BGG image optimization** integration with `imageProxyUrl()` from utils/api.js
+- **BGG image optimization** integration with `imageProxyUrl()` from config/api.js
 
 ### API Architecture
-**utils/api.js**: Core API utilities handling:
-- **Multi-environment configuration** with 4-tier fallback system
+**config/api.js**: Core API configuration utilities handling:
+- **Multi-environment configuration** with 5-tier fallback system
 - **BGG image quality enhancement** with automatic resolution upgrading
 - **JSON validation** with comprehensive error handling
 - **Proxy integration** for all external image requests

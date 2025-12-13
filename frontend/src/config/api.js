@@ -10,7 +10,8 @@
  * 1. Runtime window variable (for dynamic configuration)
  * 2. Meta tag in index.html (for static site with injected config)
  * 3. Build-time environment variable (VITE_API_BASE)
- * 4. Development fallback (localhost)
+ * 4. Production fallback (if window.location suggests production)
+ * 5. Development fallback (localhost)
  */
 function resolveApiBase() {
   // 1. Runtime window variable
@@ -28,12 +29,24 @@ function resolveApiBase() {
     return metaTag.content;
   }
 
-  // 3. Build-time environment variable
-  if (import.meta.env.VITE_API_BASE) {
-    return import.meta.env.VITE_API_BASE;
+  // 3. Build-time environment variable (check for both undefined and empty string)
+  const viteApiBase = import.meta.env.VITE_API_BASE;
+  if (viteApiBase && viteApiBase.trim() !== "") {
+    console.log('[API Config] Using VITE_API_BASE:', viteApiBase);
+    return viteApiBase;
   }
 
-  // 4. Development fallback
+  // 4. Production fallback - if running on Render's domain
+  if (typeof window !== "undefined" &&
+      (window.location.hostname.includes('onrender.com') ||
+       window.location.hostname.includes('manaandmeeples.co.nz'))) {
+    const productionUrl = "https://mana-meeples-boardgame-list-opgf.onrender.com";
+    console.warn('[API Config] VITE_API_BASE not set, using production fallback:', productionUrl);
+    return productionUrl;
+  }
+
+  // 5. Development fallback
+  console.log('[API Config] Using development fallback: http://127.0.0.1:8000');
   return "http://127.0.0.1:8000";
 }
 
