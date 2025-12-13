@@ -186,7 +186,7 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
             logger.warning(f"Game {game_id} not found for reimport")
             return
 
-        # Fetch enhanced data from BGG
+        # Fetch enhanced data from BGG (including sleeve data)
         bgg_data = await fetch_bgg_thing(bgg_id)
 
         # Update game with enhanced data
@@ -220,6 +220,34 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
 
         db.add(game)
         db.commit()
+
+        # Save sleeve data if available
+        from models import Sleeve
+        sleeve_data = bgg_data.get('sleeve_data')
+        if sleeve_data:
+            # Update has_sleeves status
+            game.has_sleeves = sleeve_data.get('status', 'not_found')
+
+            # Delete existing sleeve records for this game
+            db.query(Sleeve).filter(Sleeve.game_id == game.id).delete()
+
+            # Save new sleeve records if found
+            if sleeve_data.get('status') == 'found' and sleeve_data.get('card_types'):
+                notes = sleeve_data.get('notes')
+                for card_type in sleeve_data['card_types']:
+                    sleeve = Sleeve(
+                        game_id=game.id,
+                        card_name=card_type.get('name'),
+                        width_mm=card_type['width_mm'],
+                        height_mm=card_type['height_mm'],
+                        quantity=card_type.get('quantity', 0),
+                        notes=notes
+                    )
+                    db.add(sleeve)
+
+                db.commit()
+                logger.info(f"Saved {len(sleeve_data['card_types'])} sleeve types for {game.title}")
+
         logger.info(f"Re-imported game {game_id}: {game.title}")
 
     except Exception as e:
