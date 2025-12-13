@@ -181,6 +181,85 @@ def run_migrations():
             else:
                 logger.info("All games have status values set")
 
+            # Migration 1.7: Add has_sleeves column if it doesn't exist
+            result = conn.execute(
+                text(
+                    """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name='boardgames' AND column_name='has_sleeves'
+            """
+                )
+            )
+            column_exists = result.fetchone() is not None
+
+            if not column_exists:
+                logger.info("Adding has_sleeves column to boardgames table...")
+                conn.execute(
+                    text(
+                        """
+                    ALTER TABLE boardgames
+                    ADD COLUMN has_sleeves VARCHAR(20)
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("has_sleeves column added successfully")
+            else:
+                logger.info("has_sleeves column already exists")
+
+            # Migration 1.8: Create sleeves table if it doesn't exist
+            result = conn.execute(
+                text(
+                    """
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema='public' AND table_name='sleeves'
+            """
+                )
+            )
+            table_exists = result.fetchone() is not None
+
+            if not table_exists:
+                logger.info("Creating sleeves table...")
+                conn.execute(
+                    text(
+                        """
+                    CREATE TABLE sleeves (
+                        id SERIAL PRIMARY KEY,
+                        game_id INTEGER NOT NULL REFERENCES boardgames(id) ON DELETE CASCADE,
+                        card_name VARCHAR(200),
+                        width_mm INTEGER NOT NULL,
+                        height_mm INTEGER NOT NULL,
+                        quantity INTEGER NOT NULL,
+                        notes TEXT
+                    )
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("sleeves table created successfully")
+
+                # Create indexes
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_sleeve_game ON sleeves(game_id)
+                """
+                    )
+                )
+                conn.execute(
+                    text(
+                        """
+                    CREATE INDEX idx_sleeve_size ON sleeves(width_mm, height_mm)
+                """
+                    )
+                )
+                conn.commit()
+                logger.info("Created indexes on sleeves table")
+            else:
+                logger.info("sleeves table already exists")
+
             # Migration 2: Create buy_list_games table
             result = conn.execute(
                 text(
