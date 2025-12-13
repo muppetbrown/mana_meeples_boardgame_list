@@ -380,9 +380,11 @@ async def fetch_all_sleeve_data(
     This is more efficient than reimport-all-games if you only need sleeve data,
     as it only scrapes the BGG sleeve page rather than fetching all game data.
     """
-    games = (
+    games = list(
         db.execute(select(Game).where(Game.bgg_id.isnot(None))).scalars().all()
     )
+
+    total_games = len(games)
 
     for game in games:
         background_tasks.add_task(
@@ -393,8 +395,8 @@ async def fetch_all_sleeve_data(
         )
 
     return {
-        "message": f"Started fetching sleeve data for {len(games)} games",
-        "total_games": len(games),
+        "message": f"Started fetching sleeve data for {total_games} games",
+        "total_games": total_games,
         "note": "This will use Selenium to scrape BGG sleeve pages. Check logs for progress."
     }
 
