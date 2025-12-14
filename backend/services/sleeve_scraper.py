@@ -17,12 +17,12 @@ def create_game_slug(title: str) -> str:
 def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Dict]:
     """
     Scrape sleeve data from BGG's sleeve page
-    
+
     Args:
         bgg_id: BoardGameGeek game ID
         game_title: Game title for URL slug
         driver: Optional Selenium WebDriver instance
-        
+
     Returns:
         Dict with sleeve data or None if not found
         {
@@ -31,19 +31,27 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
             'notes': '...'
         }
     """
+    import logging
+    logger = logging.getLogger(__name__)
+
     slug = create_game_slug(game_title)
     url = f"https://boardgamegeek.com/boardgame/{bgg_id}/{slug}/sleeves"
-    
+
     close_driver = False
     if driver is None:
-        chrome_options = Options()
-        chrome_options.add_argument('--headless')
-        chrome_options.add_argument('--no-sandbox')
-        chrome_options.add_argument('--disable-dev-shm-usage')
-        chrome_options.add_argument('--disable-gpu')
-        driver = webdriver.Chrome(options=chrome_options)
-        close_driver = True
-    
+        try:
+            chrome_options = Options()
+            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--no-sandbox')
+            chrome_options.add_argument('--disable-dev-shm-usage')
+            chrome_options.add_argument('--disable-gpu')
+            driver = webdriver.Chrome(options=chrome_options)
+            close_driver = True
+        except Exception as e:
+            logger.error(f"Failed to create Chrome WebDriver: {e}")
+            logger.error("Chrome/ChromeDriver may not be installed. Sleeve scraping requires Chrome browser and ChromeDriver.")
+            return {'status': 'error', 'card_types': [], 'notes': 'Chrome not available for scraping'}
+
     try:
         driver.get(url)
         wait = WebDriverWait(driver, 10)
