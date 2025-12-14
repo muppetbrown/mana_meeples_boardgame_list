@@ -82,13 +82,13 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
                 dimensions_btn = card.find_element(By.CLASS_NAME, "sleeve-visualizer__card-dimensions")
                 dimensions = dimensions_btn.text.strip()
                 
-                quantity = None
+                quantity = 0  # Default to 0 instead of None
                 try:
                     quantity_elem = card.find_element(By.CLASS_NAME, "sleeve-visualizer__card-quantity")
                     qty_text = quantity_elem.text.strip()
                     quantity = int(qty_text.upper().replace('QTY', '').strip())
                 except (NoSuchElementException, ValueError):
-                    pass
+                    logger.debug(f"Could not parse quantity for card, defaulting to 0")
                 
                 card_name = None
                 try:
@@ -102,7 +102,8 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
                     width, height = dimensions.split('x')
                     width = int(float(width.strip()))
                     height = int(float(height.strip()))
-                except:
+                except Exception as e:
+                    logger.warning(f"Could not parse dimensions '{dimensions}': {e}")
                     continue
                 
                 card_types.append({
@@ -132,7 +133,7 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
         }
         
     except Exception as e:
-        print(f"Error scraping sleeves for {game_title}: {e}")
+        logger.error(f"Error scraping sleeves for {game_title}: {e}", exc_info=True)
         return {'status': 'error', 'card_types': [], 'notes': None}
     
     finally:
