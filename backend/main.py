@@ -36,6 +36,7 @@ from exceptions import (
 )
 from config import HTTP_TIMEOUT, CORS_ORIGINS
 from middleware.logging import RequestLoggingMiddleware
+from middleware.security import SecurityHeadersMiddleware
 
 # ------------------------------------------------------------------------------
 # Sentry initialization
@@ -390,6 +391,7 @@ class CacheThumbsMiddleware:
 # Add middleware in reverse order (last added = first executed)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(CacheThumbsMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS configuration
 cors_origins = CORS_ORIGINS or [
