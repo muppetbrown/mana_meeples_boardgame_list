@@ -36,7 +36,7 @@ from config import (
 )
 from database import get_db
 from exceptions import GameNotFoundError, ValidationError
-from schemas import AdminLogin
+import schemas
 from services import GameService, ImageService
 from shared.rate_limiting import admin_attempt_tracker
 from utils.helpers import game_to_dict
@@ -54,7 +54,7 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 @router.post("/login")
 async def admin_login(
-    request: Request, credentials: AdminLogin, response: Response
+    request: Request, credentials: schemas.AdminLogin, response: Response
 ):
     """
     Admin login endpoint - validates token and creates secure session cookie.
@@ -345,35 +345,59 @@ async def delete_admin_game(
 @router.post("/fix-sequence")
 async def fix_sequence(
     request: Request,
+    body: schemas.FixSequenceRequest = schemas.FixSequenceRequest(),
     db: Session = Depends(get_db),
     _: None = Depends(require_admin_auth),
 ):
     """
-    Fix PostgreSQL sequence for boardgames table ID column.
+    Fix PostgreSQL sequence for table ID column.
     This resolves 'duplicate key value violates unique constraint' errors
-    when importing new games.
+    when importing new records.
+
+    Security: Input validation ensures only whitelisted tables can be accessed.
     """
     try:
+        table_name = body.table_name
+
         # Get the current maximum ID from the table
-        result = db.execute(text("SELECT MAX(id) FROM boardgames"))
+        # Note: table_name is validated by Pydantic schema (whitelist + alphanumeric check)
+        result = db.execute(text(f"SELECT MAX(id) FROM {table_name}"))
         max_id = result.scalar()
 
         if max_id is None:
             max_id = 0
 
+        # Determine sequence name (PostgreSQL naming convention)
+        sequence_name = f"{table_name}_id_seq"
+
         # Reset the sequence to max_id (with is_called=true, so next value will be max_id + 1)
         # Using 'true' (or default) means the sequence has been "called" and will increment on next use
-        db.execute(text(f"SELECT setval('boardgames_id_seq', {max_id}, true)"))
+        # Use parameter binding to prevent SQL injection on max_id
+        db.execute(
+            text(f"SELECT setval('{sequence_name}', :max_id, true)"),
+            {"max_id": max_id}
+        )
         db.commit()
 
-        logger.info(f"Successfully reset boardgames sequence to {max_id} (next will be {max_id + 1})")
+        logger.info(
+            f"Successfully reset {table_name} sequence to {max_id} (next will be {max_id + 1})",
+            extra={"table_name": table_name, "max_id": max_id}
+        )
         return {
             "message": "Sequence fixed successfully",
+            "table_name": table_name,
             "max_id": max_id,
             "next_id": max_id + 1
         }
 
+    except ValueError as e:
+        # Validation error from Pydantic
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to fix sequence: {e}")
+        logger.error(
+            f"Failed to fix sequence for {body.table_name}: {e}",
+            extra={"table_name": body.table_name},
+            exc_info=True
+        )
         raise HTTPException(status_code=500, detail=f"Failed to fix sequence: {str(e)}")

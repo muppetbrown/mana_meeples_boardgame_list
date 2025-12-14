@@ -65,6 +65,29 @@ class AdminLogin(BaseModel):
         return v.strip()
 
 
+class FixSequenceRequest(BaseModel):
+    """Schema for fix-sequence endpoint validation"""
+
+    table_name: str = "boardgames"
+
+    @validator("table_name")
+    def validate_table_name(cls, v):
+        # Whitelist allowed tables to prevent SQL injection
+        allowed_tables = {
+            "boardgames",
+            "buy_list_games",
+            "price_snapshots",
+            "price_offers",
+            "sleeves"
+        }
+        if v not in allowed_tables:
+            raise ValueError(f"Invalid table name. Allowed: {', '.join(allowed_tables)}")
+        # Additional safety: ensure only alphanumeric and underscore
+        if not v.replace("_", "").isalnum():
+            raise ValueError("Table name contains invalid characters")
+        return v
+
+
 # ------------------------------------------------------------------------------
 # Buy List Schemas
 # ------------------------------------------------------------------------------
