@@ -17,8 +17,8 @@ from sqlalchemy.orm import Session
 
 from api.dependencies import require_admin_auth
 from bgg_service import fetch_bgg_thing
-from database import get_db
-from models import Game
+from database import get_db, SessionLocal
+from models import Game, Sleeve
 from utils.helpers import CATEGORY_KEYS, categorize_game, parse_categories
 
 logger = logging.getLogger(__name__)
@@ -31,6 +31,59 @@ from main import (  # noqa: E402
 
 # Create router with prefix and tags
 router = APIRouter(prefix="/api/admin", tags=["bulk-operations"])
+
+
+async def _fetch_sleeve_data_task(game_id: int, bgg_id: int, game_title: str):
+    """Background task to fetch sleeve data for a single game"""
+    from services.sleeve_scraper import scrape_sleeve_data
+
+    try:
+        db = SessionLocal()
+        game = db.get(Game, game_id)
+        if not game:
+            logger.warning(f"Game {game_id} not found for sleeve fetch")
+            return
+
+        # Fetch sleeve data from BGG
+        logger.info(f"Fetching sleeve data for '{game_title}' (BGG ID: {bgg_id})")
+        sleeve_data = scrape_sleeve_data(bgg_id, game_title)
+
+        if not sleeve_data:
+            logger.warning(f"No sleeve data returned for {game_title}")
+            return
+
+        # Update has_sleeves status
+        game.has_sleeves = sleeve_data.get('status', 'not_found')
+
+        # Delete existing sleeve records
+        db.query(Sleeve).filter(Sleeve.game_id == game.id).delete()
+
+        # Save new sleeve records if found
+        if sleeve_data.get('status') == 'found' and sleeve_data.get('card_types'):
+            notes = sleeve_data.get('notes')
+            for card_type in sleeve_data['card_types']:
+                # Ensure quantity is never None (fallback to 0)
+                quantity = card_type.get('quantity') or 0
+                sleeve = Sleeve(
+                    game_id=game.id,
+                    card_name=card_type.get('name'),
+                    width_mm=card_type['width_mm'],
+                    height_mm=card_type['height_mm'],
+                    quantity=quantity,
+                    notes=notes
+                )
+                db.add(sleeve)
+
+            db.commit()
+            logger.info(f"Saved {len(sleeve_data['card_types'])} sleeve types for {game_title}")
+        else:
+            db.commit()
+            logger.info(f"No sleeve data found for {game_title} (status: {sleeve_data.get('status')})")
+
+    except Exception as e:
+        logger.error(f"Failed to fetch sleeve data for game {game_id}: {e}")
+    finally:
+        db.close()
 
 
 @router.post("/bulk-import-csv")
@@ -314,6 +367,70 @@ async def reimport_all_games(
             f"Started re-importing {len(games)} games with enhanced data"
         )
     }
+
+
+@router.post("/fetch-all-sleeve-data")
+async def fetch_all_sleeve_data(
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin_auth),
+):
+    """
+    Trigger GitHub Action to fetch sleeve data for all games
+
+    This triggers the GitHub workflow 'fetch_sleeves.yml' which runs the scraper
+    with Chrome installed in the GitHub Actions environment.
+    """
+    import os
+    import httpx
+
+    github_token = os.getenv("GITHUB_TOKEN")
+    if not github_token:
+        raise HTTPException(
+            status_code=500,
+            detail="GITHUB_TOKEN not configured. Cannot trigger GitHub Action."
+        )
+
+    # Get total games for response
+    games = list(
+        db.execute(select(Game).where(Game.bgg_id.isnot(None))).scalars().all()
+    )
+    total_games = len(games)
+
+    # Trigger GitHub workflow
+    github_api_url = "https://api.github.com/repos/muppetbrown/mana_meeples_boardgame_list/actions/workflows/fetch_sleeves.yml/dispatches"
+
+    headers = {
+        "Authorization": f"token {github_token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+
+    payload = {
+        "ref": "main"  # or "master" depending on your default branch
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(github_api_url, json=payload, headers=headers)
+
+        if response.status_code == 204:
+            return {
+                "message": f"Triggered GitHub Action to fetch sleeve data for {total_games} games",
+                "total_games": total_games,
+                "note": "Check GitHub Actions tab for progress. Results will be committed when complete."
+            }
+        else:
+            logger.error(f"GitHub API error: {response.status_code} - {response.text}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to trigger GitHub Action: {response.status_code}"
+            )
+    except Exception as e:
+        logger.error(f"Failed to trigger GitHub Action: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to trigger GitHub Action: {str(e)}"
+        )
 
 
 @router.post("/bulk-update-nz-designers")

@@ -6,6 +6,7 @@ on:
 jobs:
   fetch-sleeves:
     runs-on: ubuntu-latest
+    timeout-minutes: 120  # Allow 2 hours for completion
     
     steps:
       - uses: actions/checkout@v3
@@ -17,25 +18,19 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install -r requirements.txt
-          pip install selenium
-      
+          pip install -r backend/requirements.txt
+
       - name: Install Chrome and ChromeDriver
         run: |
           sudo apt-get update
           sudo apt-get install -y chromium-browser chromium-chromedriver
-          sudo ln -s /usr/lib/chromium-browser/chromedriver /usr/local/bin/chromedriver
-      
+          # Verify installation
+          which chromedriver || echo "ChromeDriver not found in PATH"
+          chromedriver --version || true
+
       - name: Run sleeve fetch script
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           python scripts/fetch_all_sleeves.py
-      
-      - name: Commit results
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add -A
-          git diff --staged --quiet || git commit -m "Update sleeve data [automated]"
-          git push
