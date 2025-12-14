@@ -485,62 +485,6 @@ def run_migrations():
             conn.rollback()
             raise
 
-        # Migration 1.5: Add status column if it doesn't exist
-        try:
-            result = conn.execute(
-                text(
-                    """
-                SELECT column_name
-                FROM information_schema.columns
-                WHERE table_name='boardgames' AND column_name='status'
-            """
-                )
-            )
-            column_exists = result.fetchone() is not None
-
-            if not column_exists:
-                logger.info("Adding status column to boardgames table...")
-                conn.execute(
-                    text(
-                        """
-                    ALTER TABLE boardgames
-                    ADD COLUMN status VARCHAR(20) DEFAULT 'OWNED'
-                """
-                    )
-                )
-                conn.commit()
-                logger.info("status column added successfully")
-
-                # Update existing rows to have OWNED status
-                logger.info("Updating existing rows to OWNED status...")
-                conn.execute(
-                    text(
-                        """
-                    UPDATE boardgames
-                    SET status = 'OWNED'
-                    WHERE status IS NULL
-                """
-                    )
-                )
-                conn.commit()
-                logger.info("Updated existing rows with OWNED status")
-
-                # Create index on status
-                conn.execute(
-                    text(
-                        """
-                    CREATE INDEX idx_boardgames_status ON boardgames(status)
-                """
-                    )
-                )
-                conn.commit()
-                logger.info("Created index on status column")
-
-        except Exception as e:
-            logger.error(f"Migration error (status): {e}")
-            conn.rollback()
-            raise
-
         # Migration: Add expansion-related columns if they don't exist
         try:
             expansion_columns = [
