@@ -76,6 +76,8 @@ def build_buy_list_response(
     buy_list_entry: BuyListGame, latest_price: Optional[PriceSnapshot] = None
 ) -> Dict[str, Any]:
     """Build buy list response with computed buy_filter field"""
+    from datetime import timezone
+
     # Convert to dict
     result = {
         "id": buy_list_entry.id,
@@ -85,8 +87,8 @@ def build_buy_list_response(
         "lpg_rrp": float(buy_list_entry.lpg_rrp) if buy_list_entry.lpg_rrp else None,
         "lpg_status": buy_list_entry.lpg_status,
         "on_buy_list": buy_list_entry.on_buy_list,
-        "created_at": buy_list_entry.created_at.isoformat(),
-        "updated_at": buy_list_entry.updated_at.isoformat(),
+        "created_at": buy_list_entry.created_at.replace(tzinfo=timezone.utc).isoformat(),
+        "updated_at": buy_list_entry.updated_at.replace(tzinfo=timezone.utc).isoformat(),
         # Game details
         "title": buy_list_entry.game.title if buy_list_entry.game else None,
         "thumbnail_url": (
@@ -102,7 +104,7 @@ def build_buy_list_response(
         result["latest_price"] = {
             "id": latest_price.id,
             "game_id": latest_price.game_id,
-            "checked_at": latest_price.checked_at.isoformat(),
+            "checked_at": latest_price.checked_at.replace(tzinfo=timezone.utc).isoformat(),
             "low_price": (
                 float(latest_price.low_price) if latest_price.low_price else None
             ),
@@ -747,8 +749,13 @@ async def get_last_price_update(db: Session = Depends(get_db)):
         if not latest_snapshot:
             return {"last_updated": None, "source_file": None}
 
+        # Ensure timestamp is treated as UTC and includes timezone in ISO string
+        # Database stores naive datetime but it's actually UTC
+        from datetime import timezone
+        timestamp_utc = latest_snapshot.checked_at.replace(tzinfo=timezone.utc)
+
         return {
-            "last_updated": latest_snapshot.checked_at.isoformat(),
+            "last_updated": timestamp_utc.isoformat(),
             "source_file": latest_snapshot.source_file,
         }
 
