@@ -194,29 +194,16 @@ export default function PublicCatalogue() {
 
   // Load more function - Memoized to ensure Intersection Observer has latest filter values
   const loadMore = useCallback(async () => {
+    // Prevent duplicate loads with multiple safety checks
     if (isLoadingMoreRef.current || allLoadedItems.length >= total) return;
 
     isLoadingMoreRef.current = true;
     setLoadingMore(true);
     const nextPage = page + 1;
 
-    // Find an anchor element to maintain scroll position
-    // We'll use the last visible game card in the viewport
-    const viewportHeight = window.innerHeight;
-    const scrollTop = window.scrollY;
-    const cards = document.querySelectorAll('[data-game-card]');
-    let anchorCard = null;
-    let anchorOffset = 0;
-
-    // Find the last card that's currently visible in viewport
-    for (let i = cards.length - 1; i >= 0; i--) {
-      const rect = cards[i].getBoundingClientRect();
-      if (rect.top < viewportHeight && rect.bottom > 0) {
-        anchorCard = cards[i];
-        anchorOffset = rect.top; // Distance from top of viewport
-        break;
-      }
-    }
+    // Save current scroll position before loading new content
+    const scrollBeforeLoad = window.scrollY;
+    const documentHeightBefore = document.documentElement.scrollHeight;
 
     try {
       const params = { q: qDebounced, page: nextPage, page_size: pageSize, sort };
@@ -228,19 +215,40 @@ export default function PublicCatalogue() {
 
       const data = await getPublicGames(params);
 
-      setAllLoadedItems(prev => [...prev, ...(data.items || [])]);
-      setPage(nextPage);
+      // Prevent adding duplicate items by checking IDs
+      if (data.items && data.items.length > 0) {
+        setAllLoadedItems(prev => {
+          const existingIds = new Set(prev.map(item => item.id));
+          const newItems = data.items.filter(item => !existingIds.has(item.id));
 
-      // Restore scroll position relative to anchor element
-      if (anchorCard) {
-        requestAnimationFrame(() => {
-          const newRect = anchorCard.getBoundingClientRect();
-          const scrollAdjustment = newRect.top - anchorOffset;
-          if (Math.abs(scrollAdjustment) > 1) {
-            window.scrollBy(0, scrollAdjustment);
+          // Log if duplicates were prevented (helps with debugging)
+          const duplicateCount = data.items.length - newItems.length;
+          if (duplicateCount > 0) {
+            console.warn(`Prevented ${duplicateCount} duplicate game(s) from being added to the list`);
           }
+
+          // Only update if we have new items
+          if (newItems.length > 0) {
+            return [...prev, ...newItems];
+          }
+          return prev;
         });
+        setPage(nextPage);
       }
+
+      // Restore scroll position after content loads to prevent jumping
+      // Wait for the DOM to update with new content
+      requestAnimationFrame(() => {
+        const documentHeightAfter = document.documentElement.scrollHeight;
+        const heightDifference = documentHeightAfter - documentHeightBefore;
+
+        // If content was added above the viewport (shouldn't happen with append),
+        // or if the scroll position changed unexpectedly, restore it
+        const currentScroll = window.scrollY;
+        if (Math.abs(currentScroll - scrollBeforeLoad) > 10) {
+          window.scrollTo(0, scrollBeforeLoad);
+        }
+      });
     } catch (e) {
       console.error("Failed to load more games:", e);
     } finally {
@@ -254,11 +262,19 @@ export default function PublicCatalogue() {
     const sentinel = loadMoreTriggerRef.current;
     if (!sentinel) return;
 
+    // Use a ref to track when the observer last triggered to prevent rapid-fire calls
+    let lastTriggerTime = 0;
+    const MIN_TRIGGER_INTERVAL = 500; // Minimum 500ms between triggers
+
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
+        const now = Date.now();
+
         // When sentinel becomes visible and we're not already loading
-        if (entry.isIntersecting) {
+        // AND we haven't triggered too recently
+        if (entry.isIntersecting && (now - lastTriggerTime) > MIN_TRIGGER_INTERVAL) {
+          lastTriggerTime = now;
           loadMore();
         }
       },
