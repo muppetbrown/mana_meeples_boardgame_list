@@ -240,6 +240,9 @@ async def image_proxy(
 
         return Response(content=content, headers=headers)
 
+    except HTTPException:
+        # Re-raise HTTPExceptions (like validation errors) without modification
+        raise
     except Exception as e:
         logger.error(f"Image proxy error for {url}: {e}")
         raise HTTPException(
