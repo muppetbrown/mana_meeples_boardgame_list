@@ -78,7 +78,7 @@ def main():
                 # Continue with next game instead of crashing
 
             # Rate limiting - be nice to BGG
-            time.sleep(2)  # 2 seconds between requests
+            time.sleep(1)  # 1 second between requests (faster processing)
         
         print("\n" + "=" * 80)
         print("COMPLETE")
