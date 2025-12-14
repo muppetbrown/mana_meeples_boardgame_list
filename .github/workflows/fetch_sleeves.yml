@@ -28,7 +28,6 @@ jobs:
       - name: Run sleeve fetch script
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        working-directory: backend
         run: |
           python scripts/fetch_all_sleeves.py
       
