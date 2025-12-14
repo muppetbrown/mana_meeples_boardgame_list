@@ -39,33 +39,44 @@ def main():
         for i, game in enumerate(games, 1):
             print(f"[{i}/{total}] {game.title} (BGG ID: {game.bgg_id})")
 
-            # Delete existing sleeve data for this game
-            db.query(Sleeve).filter(Sleeve.game_id == game.id).delete()
+            try:
+                # Delete existing sleeve data for this game
+                db.query(Sleeve).filter(Sleeve.game_id == game.id).delete()
 
-            # Scrape new data
-            result = scrape_sleeve_data(game.bgg_id, game.title, driver)
-            
-            if result['status'] == 'found' and result['card_types']:
-                # Save sleeve data
-                for card_type in result['card_types']:
-                    sleeve = Sleeve(
-                        game_id=game.id,
-                        card_name=card_type.get('name'),
-                        width_mm=card_type['width_mm'],
-                        height_mm=card_type['height_mm'],
-                        quantity=card_type['quantity'],
-                        notes=result.get('notes')
-                    )
-                    db.add(sleeve)
-                
-                game.has_sleeves = 'found'
-                print(f"  ✓ Found {len(result['card_types'])} sleeve type(s)")
-            else:
-                game.has_sleeves = result['status']
-                print(f"  ✗ {result['status']}")
-            
-            db.commit()
-            
+                # Scrape new data
+                result = scrape_sleeve_data(game.bgg_id, game.title, driver)
+
+                if result and result.get('status') == 'found' and result.get('card_types'):
+                    # Save sleeve data
+                    for card_type in result['card_types']:
+                        sleeve = Sleeve(
+                            game_id=game.id,
+                            card_name=card_type.get('name'),
+                            width_mm=card_type['width_mm'],
+                            height_mm=card_type['height_mm'],
+                            quantity=card_type['quantity'],
+                            notes=result.get('notes')
+                        )
+                        db.add(sleeve)
+
+                    game.has_sleeves = 'found'
+                    print(f"  ✓ Found {len(result['card_types'])} sleeve type(s)")
+                elif result:
+                    game.has_sleeves = result.get('status', 'error')
+                    print(f"  ✗ {result.get('status', 'unknown')}")
+                else:
+                    game.has_sleeves = 'error'
+                    print(f"  ✗ error: scraper returned None")
+
+                db.commit()
+
+            except Exception as e:
+                print(f"  ✗ ERROR: {str(e)}")
+                game.has_sleeves = 'error'
+                db.rollback()  # Rollback failed transaction
+                db.commit()    # Commit the error status
+                # Continue with next game instead of crashing
+
             # Rate limiting - be nice to BGG
             time.sleep(2)  # 2 seconds between requests
         

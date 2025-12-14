@@ -53,16 +53,20 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
             return {'status': 'error', 'card_types': [], 'notes': 'Chrome not available for scraping'}
 
     try:
+        # Set page load timeout to prevent hanging
+        driver.set_page_load_timeout(30)  # 30 second timeout for page load
+
         driver.get(url)
-        wait = WebDriverWait(driver, 10)
-        
+        wait = WebDriverWait(driver, 15)  # Increased from 10 to 15 seconds
+
         try:
             wait.until(
                 EC.presence_of_element_located((By.CLASS_NAME, "sleeve-visualizer__card-list"))
             )
         except TimeoutException:
+            logger.debug(f"Timeout waiting for sleeve data on {url}")
             return {'status': 'not_found', 'card_types': [], 'notes': None}
-        
+
         time.sleep(1)  # Let Angular finish rendering
         
         cards = driver.find_elements(By.CSS_SELECTOR, "li.sleeve-visualizer__card")
