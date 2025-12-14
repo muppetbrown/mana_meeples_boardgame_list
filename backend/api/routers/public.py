@@ -188,20 +188,41 @@ async def get_games_by_designer(
 
 
 @router.get("/image-proxy")
-@limiter.limit("200/minute")  # Higher limit for image loading
+@limiter.limit("60/minute")  # Prevent DDoS while allowing normal browsing
 async def image_proxy(
     request: Request,
     url: str = Query(..., description="Image URL to proxy"),
     db: Session = Depends(get_db),
 ):
-    """Proxy external images with caching headers"""
+    """
+    Proxy external images with caching headers.
+
+    Rate limit: 60 requests/minute to prevent abuse.
+    Security: Only proxies images from trusted sources (BGG, local storage).
+    """
     # Import httpx_client from main
     from main import httpx_client  # noqa: E402
 
     try:
-        # Determine cache max age based on URL
+        # Validate URL - only allow trusted sources
         from config import API_BASE  # noqa: E402
 
+        trusted_domains = [
+            'cf.geekdo-images.com',  # BGG CDN
+            'cf.geekdo-static.com',  # BGG static
+            API_BASE,  # Our own API base
+        ]
+
+        # Check if URL is from a trusted domain
+        is_trusted = any(domain in url for domain in trusted_domains)
+        if not is_trusted:
+            logger.warning(f"Attempted to proxy untrusted URL: {url}")
+            raise HTTPException(
+                status_code=400,
+                detail="Image proxy only supports BoardGameGeek images"
+            )
+
+        # Determine cache max age based on URL
         cache_max_age = (
             31536000 if url.startswith(API_BASE + "/thumbs/") else 300
         )
