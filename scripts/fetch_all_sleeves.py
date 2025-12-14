@@ -6,12 +6,18 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+print("DEBUG: Starting imports...")
 from backend.database import SessionLocal
+print("DEBUG: Imported SessionLocal")
 from backend.models import Game, Sleeve
+print("DEBUG: Imported models")
 from backend.services.sleeve_scraper import scrape_sleeve_data
+print("DEBUG: Imported scraper")
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+print("DEBUG: Imported Selenium")
 import time
+print("DEBUG: All imports complete")
 
 def main():
     print("=" * 80)
