@@ -19,6 +19,30 @@ print("DEBUG: Imported Selenium")
 import time
 print("DEBUG: All imports complete")
 
+import signal
+
+class TimeoutException(Exception):
+    pass
+
+def timeout_handler(signum, frame):
+    raise TimeoutException("Operation timed out")
+
+def scrape_with_timeout(bgg_id, game_title, driver, timeout_seconds=45):
+    """Scrape with hard timeout to prevent hanging"""
+    signal.signal(signal.SIGALRM, timeout_handler)
+    signal.alarm(timeout_seconds)
+    try:
+        result = scrape_sleeve_data(bgg_id, game_title, driver)
+        signal.alarm(0)  # Cancel alarm
+        return result
+    except TimeoutException:
+        signal.alarm(0)
+        print(f"  ⏱ Timeout after {timeout_seconds}s")
+        return {'status': 'timeout', 'card_types': [], 'notes': None}
+    except Exception as e:
+        signal.alarm(0)
+        raise e
+
 def main():
     print("=" * 80)
     print("BULK SLEEVE DATA FETCH")
@@ -49,8 +73,8 @@ def main():
                 # Delete existing sleeve data for this game
                 db.query(Sleeve).filter(Sleeve.game_id == game.id).delete()
 
-                # Scrape new data
-                result = scrape_sleeve_data(game.bgg_id, game.title, driver)
+                # Scrape new data with hard timeout
+                result = scrape_with_timeout(game.bgg_id, game.title, driver, timeout_seconds=45)
 
                 if result and result.get('status') == 'found' and result.get('card_types'):
                     # Save sleeve data
