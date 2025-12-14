@@ -23,6 +23,8 @@ def main():
     chrome_options.add_argument('--headless')
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
+    # Point to chromium binary (GitHub Actions installs chromium-browser, not chrome)
+    chrome_options.binary_location = '/usr/bin/chromium-browser'
     driver = webdriver.Chrome(options=chrome_options)
     
     db = SessionLocal()
