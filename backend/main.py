@@ -235,12 +235,14 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
             if sleeve_data.get('status') == 'found' and sleeve_data.get('card_types'):
                 notes = sleeve_data.get('notes')
                 for card_type in sleeve_data['card_types']:
+                    # Ensure quantity is never None (fallback to 0)
+                    quantity = card_type.get('quantity') or 0
                     sleeve = Sleeve(
                         game_id=game.id,
                         card_name=card_type.get('name'),
                         width_mm=card_type['width_mm'],
                         height_mm=card_type['height_mm'],
-                        quantity=card_type.get('quantity', 0),
+                        quantity=quantity,
                         notes=notes
                     )
                     db.add(sleeve)

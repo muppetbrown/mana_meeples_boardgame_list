@@ -53,11 +53,12 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
             return {'status': 'error', 'card_types': [], 'notes': 'Chrome not available for scraping'}
 
     try:
-        # Set page load timeout to prevent hanging
-        driver.set_page_load_timeout(30)  # 30 second timeout for page load
+        # Set aggressive timeouts to prevent hanging
+        driver.set_page_load_timeout(20)  # 20 second timeout for page load
+        driver.set_script_timeout(10)     # 10 second timeout for scripts
 
         driver.get(url)
-        wait = WebDriverWait(driver, 15)  # Increased from 10 to 15 seconds
+        wait = WebDriverWait(driver, 10)  # 10 seconds max wait for elements
 
         try:
             wait.until(
@@ -67,7 +68,7 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
             logger.debug(f"Timeout waiting for sleeve data on {url}")
             return {'status': 'not_found', 'card_types': [], 'notes': None}
 
-        time.sleep(1)  # Let Angular finish rendering
+        time.sleep(0.5)  # Brief pause to let Angular finish rendering
         
         cards = driver.find_elements(By.CSS_SELECTOR, "li.sleeve-visualizer__card")
         
@@ -81,13 +82,13 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
                 dimensions_btn = card.find_element(By.CLASS_NAME, "sleeve-visualizer__card-dimensions")
                 dimensions = dimensions_btn.text.strip()
                 
-                quantity = None
+                quantity = 0  # Default to 0 instead of None
                 try:
                     quantity_elem = card.find_element(By.CLASS_NAME, "sleeve-visualizer__card-quantity")
                     qty_text = quantity_elem.text.strip()
                     quantity = int(qty_text.upper().replace('QTY', '').strip())
                 except (NoSuchElementException, ValueError):
-                    pass
+                    logger.debug(f"Could not parse quantity for card, defaulting to 0")
                 
                 card_name = None
                 try:
@@ -101,7 +102,8 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
                     width, height = dimensions.split('x')
                     width = int(float(width.strip()))
                     height = int(float(height.strip()))
-                except:
+                except Exception as e:
+                    logger.warning(f"Could not parse dimensions '{dimensions}': {e}")
                     continue
                 
                 card_types.append({
@@ -131,7 +133,7 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
         }
         
     except Exception as e:
-        print(f"Error scraping sleeves for {game_title}: {e}")
+        logger.error(f"Error scraping sleeves for {game_title}: {e}", exc_info=True)
         return {'status': 'error', 'card_types': [], 'notes': None}
     
     finally:
