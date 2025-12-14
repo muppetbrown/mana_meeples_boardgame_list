@@ -240,3 +240,117 @@ class TestImageServiceInit:
             # Should have called makedirs with exist_ok=True
             mock_makedirs.assert_called_once()
             assert mock_makedirs.call_args[1]["exist_ok"] is True
+
+
+class TestImageFormats:
+    """Test handling of different image formats"""
+
+    @pytest.mark.asyncio
+    async def test_proxy_image_png_format(self, db_session):
+        """Test proxying PNG images"""
+        mock_response = Mock()
+        mock_response.content = b"PNG data"
+        mock_response.headers = {"content-type": "image/png"}
+        mock_response.raise_for_status = Mock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        service = ImageService(db_session, http_client=mock_client)
+        content, content_type, _ = await service.proxy_image("https://example.com/img.png")
+
+        assert content_type == "image/png"
+
+    @pytest.mark.asyncio
+    async def test_proxy_image_gif_format(self, db_session):
+        """Test proxying GIF images"""
+        mock_response = Mock()
+        mock_response.content = b"GIF data"
+        mock_response.headers = {"content-type": "image/gif"}
+        mock_response.raise_for_status = Mock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        service = ImageService(db_session, http_client=mock_client)
+        content, content_type, _ = await service.proxy_image("https://example.com/img.gif")
+
+        assert content_type == "image/gif"
+
+    @pytest.mark.asyncio
+    async def test_proxy_image_webp_format(self, db_session):
+        """Test proxying WebP images"""
+        mock_response = Mock()
+        mock_response.content = b"WebP data"
+        mock_response.headers = {"content-type": "image/webp"}
+        mock_response.raise_for_status = Mock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        service = ImageService(db_session, http_client=mock_client)
+        content, content_type, _ = await service.proxy_image("https://example.com/img.webp")
+
+        assert content_type == "image/webp"
+
+
+class TestImageEdgeCases:
+    """Test edge cases and error scenarios"""
+
+    @pytest.mark.asyncio
+    async def test_download_thumbnail_with_invalid_url(self, db_session):
+        """Test thumbnail download with malformed URL"""
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=httpx.InvalidURL("Malformed URL"))
+
+        service = ImageService(db_session, http_client=mock_client)
+        result = await service.download_thumbnail("not-a-url", "game")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_download_thumbnail_timeout(self, db_session):
+        """Test thumbnail download timeout"""
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=httpx.TimeoutException("Request timeout"))
+
+        service = ImageService(db_session, http_client=mock_client)
+        result = await service.download_thumbnail("https://slow-server.com/img.jpg", "game")
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_proxy_image_empty_response(self, db_session):
+        """Test proxying image with empty response"""
+        mock_response = Mock()
+        mock_response.content = b""
+        mock_response.headers = {"content-type": "image/jpeg"}
+        mock_response.raise_for_status = Mock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        service = ImageService(db_session, http_client=mock_client)
+        content, content_type, _ = await service.proxy_image("https://example.com/empty.jpg")
+
+        assert content == b""
+        assert content_type == "image/jpeg"
+
+    @pytest.mark.asyncio
+    async def test_proxy_image_custom_cache_max_age(self, db_session):
+        """Test proxy with custom cache max age"""
+        mock_response = Mock()
+        mock_response.content = b"data"
+        mock_response.headers = {"content-type": "image/jpeg"}
+        mock_response.raise_for_status = Mock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        service = ImageService(db_session, http_client=mock_client)
+        _, _, cache_control = await service.proxy_image(
+            "https://example.com/img.jpg",
+            cache_max_age=86400
+        )
+
+        assert "max-age=86400" in cache_control
