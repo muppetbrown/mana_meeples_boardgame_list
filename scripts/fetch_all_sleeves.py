@@ -28,18 +28,18 @@ def main():
     db = SessionLocal()
     
     try:
-        # Get all games
-        games = db.query(Game).all()
+        # Get all games with BGG IDs (can't scrape without BGG ID)
+        games = db.query(Game).filter(Game.bgg_id.isnot(None)).all()
         total = len(games)
-        
-        print(f"\nFound {total} games to process\n")
-        
+
+        print(f"\nFound {total} games with BGG IDs to process\n")
+
         for i, game in enumerate(games, 1):
-            print(f"[{i}/{total}] {game.title} (ID: {game.id})")
-            
+            print(f"[{i}/{total}] {game.title} (BGG ID: {game.bgg_id})")
+
             # Delete existing sleeve data for this game
             db.query(Sleeve).filter(Sleeve.game_id == game.id).delete()
-            
+
             # Scrape new data
             result = scrape_sleeve_data(game.bgg_id, game.title, driver)
             

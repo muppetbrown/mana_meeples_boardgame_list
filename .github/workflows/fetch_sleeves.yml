@@ -23,7 +23,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y chromium-browser chromium-chromedriver
-          sudo ln -s /usr/lib/chromium-browser/chromedriver /usr/local/bin/chromedriver
+          # Verify installation
+          which chromedriver || echo "ChromeDriver not found in PATH"
+          chromedriver --version || true
 
       - name: Run sleeve fetch script
         env:
@@ -31,11 +33,3 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           python scripts/fetch_all_sleeves.py
-      
-      - name: Commit results
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add -A
-          git diff --staged --quiet || git commit -m "Update sleeve data [automated]"
-          git push
