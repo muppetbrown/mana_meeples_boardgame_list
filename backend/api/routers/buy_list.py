@@ -149,8 +149,8 @@ async def list_buy_list_games(
     db: Session = Depends(get_db),
     on_buy_list: Optional[bool] = Query(None, description="Filter by on_buy_list status"),
     lpg_status: Optional[str] = Query(None, description="Filter by LPG status"),
-    buy_filter: Optional[bool] = Query(
-        None, description="Filter by computed buy_filter value"
+    buy_filter: Optional[str] = Query(
+        None, description="Filter by computed buy_filter value: 'true', 'false', or 'no_price'"
     ),
     sort_by: str = Query("rank", description="Sort field: rank, title, updated_at, discount"),
     sort_desc: bool = Query(False, description="Sort in descending order"),
@@ -158,6 +158,11 @@ async def list_buy_list_games(
     """
     Get all games on the buy list with their latest pricing data.
     Supports filtering and sorting.
+
+    buy_filter options:
+    - 'true' or 'buy_now': Show games recommended to buy now
+    - 'false' or 'not_recommended': Show games not recommended to buy
+    - 'no_price': Show games with no price data and not Available/Back Order status
     """
     try:
         # Base query with eager loading
@@ -236,8 +241,21 @@ async def list_buy_list_games(
 
             # Apply buy_filter filter if requested
             if buy_filter is not None:
-                if result["buy_filter"] == buy_filter:
-                    results.append(result)
+                # Handle string values: "true", "false", "no_price"
+                if buy_filter == "no_price":
+                    # Show games with no price data AND not Available/Back Order
+                    has_no_price = result["latest_price"] is None
+                    not_avail_or_bo = entry.lpg_status not in ["AVAILABLE", "BACK_ORDER"]
+                    if has_no_price and not_avail_or_bo:
+                        results.append(result)
+                elif buy_filter in ["true", "buy_now"]:
+                    # Show games recommended to buy (buy_filter == True)
+                    if result["buy_filter"] is True:
+                        results.append(result)
+                elif buy_filter in ["false", "not_recommended"]:
+                    # Show games not recommended (buy_filter == False)
+                    if result["buy_filter"] is False:
+                        results.append(result)
             else:
                 results.append(result)
 
