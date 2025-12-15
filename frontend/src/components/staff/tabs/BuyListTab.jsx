@@ -54,8 +54,8 @@ export function BuyListTab() {
       const params = {};
       if (filters.lpg_status) params.lpg_status = filters.lpg_status;
       if (filters.buy_filter !== "") {
-        // Convert string to boolean
-        params.buy_filter = filters.buy_filter === "true";
+        // Pass buy_filter value directly as string (supports "true", "false", "no_price")
+        params.buy_filter = filters.buy_filter;
       }
       params.sort_by = filters.sort_by;
       params.sort_desc = filters.sort_desc;
@@ -325,6 +325,7 @@ export function BuyListTab() {
               <option value="">All</option>
               <option value="true">Buy Now</option>
               <option value="false">Not Recommended</option>
+              <option value="no_price">No Price Data</option>
             </select>
           </div>
           <div>
