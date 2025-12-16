@@ -56,6 +56,7 @@ class Game(Base):
 
     # Sleeve information
     has_sleeves = Column(String(20), nullable=True)  # 'found', 'not_found', 'error', 'manual', or NULL (not checked)
+    is_sleeved = Column(Boolean, nullable=True, default=False)  # Whether the physical game is already sleeved
 
     # Expansion relationship fields
     is_expansion = Column(Boolean, default=False, nullable=False, index=True)

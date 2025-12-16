@@ -4,7 +4,7 @@ import { useStaff } from "../../../context/StaffContext";
 import CategoryFilter from "../../CategoryFilter";
 import { CATEGORY_LABELS } from "../../../constants/categories";
 import { imageProxyUrl, generateSleeveShoppingList } from "../../../api/client";
-import ExpansionEditModal from "../ExpansionEditModal";
+import GameEditModal from "../GameEditModal";
 import SleeveShoppingListModal from "../SleeveShoppingListModal";
 
 /**
@@ -24,8 +24,8 @@ export function ManageLibraryTab() {
   } = useStaff();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [expansionModalOpen, setExpansionModalOpen] = useState(false);
-  const [editingExpansion, setEditingExpansion] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingGame, setEditingGame] = useState(null);
 
   // Game selection state
   const [selectedGames, setSelectedGames] = useState(new Set());
@@ -53,27 +53,27 @@ export function ManageLibraryTab() {
     }
   };
 
-  const handleEditExpansion = (game) => {
-    setEditingExpansion(game);
-    setExpansionModalOpen(true);
+  const handleEditGame = (game) => {
+    setEditingGame(game);
+    setEditModalOpen(true);
   };
 
-  const handleSaveExpansion = async (expansionData) => {
-    if (!editingExpansion) return;
+  const handleSaveGame = async (gameData) => {
+    if (!editingGame) return;
 
     try {
-      await updateGameData(editingExpansion.id, expansionData);
-      showToast("Expansion details updated successfully", "success");
-      setExpansionModalOpen(false);
-      setEditingExpansion(null);
+      await updateGameData(editingGame.id, gameData);
+      showToast("Game details updated successfully", "success");
+      setEditModalOpen(false);
+      setEditingGame(null);
     } catch (error) {
-      showToast("Failed to update expansion details", "error");
+      showToast("Failed to update game details", "error");
     }
   };
 
-  const handleCloseExpansionModal = () => {
-    setExpansionModalOpen(false);
-    setEditingExpansion(null);
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    setEditingGame(null);
   };
 
   // Game selection handlers
@@ -319,17 +319,11 @@ export function ManageLibraryTab() {
                     <td className="px-4 py-3 whitespace-nowrap text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => handleEditExpansion(game)}
-                          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 transition-colors"
-                          title="Edit expansion details"
-                        >
-                          Edit Exp
-                        </button>
-                        <button
-                          onClick={() => openEditCategory(game)}
+                          onClick={() => handleEditGame(game)}
                           className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
+                          title="Edit game details"
                         >
-                          Edit Category
+                          Edit Game
                         </button>
                         <button
                           onClick={() => handleDelete(game)}
@@ -347,13 +341,13 @@ export function ManageLibraryTab() {
         )}
       </div>
 
-      {/* Expansion Edit Modal */}
-      {expansionModalOpen && (
-        <ExpansionEditModal
-          game={editingExpansion}
+      {/* Game Edit Modal */}
+      {editModalOpen && (
+        <GameEditModal
+          game={editingGame}
           library={library}
-          onSave={handleSaveExpansion}
-          onClose={handleCloseExpansionModal}
+          onSave={handleSaveGame}
+          onClose={handleCloseEditModal}
         />
       )}
 
