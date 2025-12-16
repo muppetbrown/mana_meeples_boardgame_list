@@ -9,6 +9,7 @@ import {
   importPrices,
   bulkImportBuyListCSV,
   imageProxyUrl,
+  updateGame,
 } from "../../../api/client";
 
 /**
@@ -129,6 +130,31 @@ export function BuyListTab() {
     } catch (err) {
       console.error("Failed to remove:", err);
       setError("Failed to remove");
+    }
+  };
+
+  const handleMoveToOwned = async (item) => {
+    if (!window.confirm(`Move "${item.title}" to owned collection?`)) return;
+
+    try {
+      setError(null);
+
+      // Update the game status to OWNED and set date_added
+      await updateGame(item.game_id, {
+        status: "OWNED",
+        date_added: new Date().toISOString(),
+      });
+
+      // Update the buy list entry to mark as not on buy list
+      await updateBuyListGame(item.id, {
+        on_buy_list: false,
+      });
+
+      setSuccess(`"${item.title}" moved to owned collection!`);
+      await loadBuyList();
+    } catch (err) {
+      console.error("Failed to move to owned:", err);
+      setError("Failed to move game to owned collection");
     }
   };
 
@@ -604,6 +630,13 @@ export function BuyListTab() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1 justify-end">
+                            <button
+                              onClick={() => handleMoveToOwned(item)}
+                              className="px-2 py-1 text-green-600 hover:bg-green-50 rounded text-xs font-medium"
+                              title="Move to owned collection"
+                            >
+                              → Owned
+                            </button>
                             <button
                               onClick={() => handleEdit(item)}
                               className="px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-xs"
