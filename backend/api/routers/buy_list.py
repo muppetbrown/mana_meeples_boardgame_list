@@ -244,7 +244,13 @@ async def list_buy_list_games(
                 # Handle string values: "true", "false", "no_price"
                 if buy_filter == "no_price":
                     # Show games with no BGO price data AND status is NOT_FOUND or BACK_ORDER_OOS
-                    has_no_price = result["latest_price"] is None
+                    # No price data means either:
+                    # 1. No price snapshot record at all (latest_price is None)
+                    # 2. Price snapshot exists but has no actual prices (best_price is None)
+                    has_no_price = (
+                        result["latest_price"] is None or
+                        result["latest_price"]["best_price"] is None
+                    )
                     is_not_found_or_oos = entry.lpg_status in ["NOT_FOUND", "BACK_ORDER_OOS"]
                     if has_no_price and is_not_found_or_oos:
                         results.append(result)
