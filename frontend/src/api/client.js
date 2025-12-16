@@ -8,13 +8,34 @@ import { API_BASE, imageProxyUrl as proxyUrl } from "../config/api";
 
 /**
  * Axios instance configured for API communication
- * - Includes credentials for cookie-based authentication
+ * - Includes credentials for cookie-based authentication (legacy)
+ * - Automatically adds JWT token to Authorization header
  * - Has error interceptor for debugging and error handling
  */
 export const api = axios.create({
   baseURL: API_BASE,
-  withCredentials: true, // Enable cookie-based authentication
+  withCredentials: true, // Enable cookie-based authentication (legacy support)
 });
+
+/**
+ * Request interceptor to add JWT token to all requests
+ */
+api.interceptors.request.use(
+  (config) => {
+    // Get JWT token from localStorage
+    const token = localStorage.getItem("JWT_TOKEN");
+
+    // Add Authorization header if token exists
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 /**
  * Debug overlay for development error visualization
@@ -242,10 +263,16 @@ export async function fixDatabaseSequence() {
 /**
  * Admin login with token
  * @param {string} token - Admin token
- * @returns {Promise<Object>} Login response
+ * @returns {Promise<Object>} Login response with JWT
  */
 export async function adminLogin(token) {
   const r = await api.post("/api/admin/login", { token });
+
+  // Store JWT token in localStorage
+  if (r.data.token) {
+    localStorage.setItem("JWT_TOKEN", r.data.token);
+  }
+
   return r.data;
 }
 
@@ -255,6 +282,10 @@ export async function adminLogin(token) {
  */
 export async function adminLogout() {
   const r = await api.post("/api/admin/logout");
+
+  // Clear JWT token from localStorage
+  localStorage.removeItem("JWT_TOKEN");
+
   return r.data;
 }
 

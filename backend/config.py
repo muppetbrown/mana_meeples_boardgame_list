@@ -81,3 +81,7 @@ if not SESSION_SECRET:
 
 # Session timeout (1 hour by default)
 SESSION_TIMEOUT_SECONDS = int(os.getenv("SESSION_TIMEOUT_SECONDS", "3600"))
+
+# JWT configuration
+# JWT tokens are valid for 7 days by default
+JWT_EXPIRATION_DAYS = int(os.getenv("JWT_EXPIRATION_DAYS", "7"))

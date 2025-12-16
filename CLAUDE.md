@@ -123,7 +123,15 @@ export const CATEGORY_LABELS = {
 - `GET /api/public/games/by-designer/{designer_name}` - Games by specific designer
 - `GET /api/public/image-proxy` - Proxy external images with caching
 
-### Admin Endpoints (X-Admin-Token Header Required)
+### Admin Endpoints (JWT Authentication Required)
+**Authentication**: Admin endpoints require JWT token in `Authorization: Bearer <token>` header. Login via `/api/admin/login` to receive JWT token.
+
+**Auth Endpoints**:
+- `POST /api/admin/login` - Login with admin token, returns JWT
+- `POST /api/admin/logout` - Logout (client-side token removal)
+- `GET /api/admin/validate` - Validate current JWT token
+
+**Game Management**:
 - `POST /api/admin/games` - Create new game manually
 - `POST /api/admin/import/bgg?bgg_id={id}&force={bool}` - Import from BoardGameGeek
 - `GET /api/admin/games` - List all games (admin view)
@@ -167,6 +175,8 @@ export const CATEGORY_LABELS = {
 ### Backend Environment Variables (Render)
 ```
 ADMIN_TOKEN=<secure-token-set-in-render-dashboard>
+SESSION_SECRET=<secure-secret-for-jwt-signing>
+JWT_EXPIRATION_DAYS=7
 CORS_ORIGINS=https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz,https://library.manaandmeeples.co.nz,https://mana-meeples-library-web.onrender.com
 DATABASE_URL=postgresql://tcg_admin:<password>@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles
 PUBLIC_BASE_URL=https://mana-meeples-boardgame-list.onrender.com
@@ -175,6 +185,8 @@ PYTHON_VERSION=3.11.9
 
 **Important**: Sensitive credentials should be set securely in Render dashboard, not hardcoded in code.
 Use the `render.yaml` blueprint for infrastructure-as-code deployment with secure secret management.
+
+**JWT Authentication**: The system uses JWT (JSON Web Tokens) for admin authentication, which are stateless and persist across server restarts. The `SESSION_SECRET` is used to sign JWTs. Generate a secure secret with: `python -c "import secrets; print(secrets.token_hex(32))"`
 
 ### Frontend API Configuration
 API base resolution in `config/api.js` with multiple fallback strategies:

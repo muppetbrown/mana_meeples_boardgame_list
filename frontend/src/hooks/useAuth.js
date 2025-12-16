@@ -62,7 +62,9 @@ export function useAuth() {
     try {
       await apiAdminLogout();
       setIsAuthenticated(false);
-      // Clear any stored tokens
+      // Clear JWT token (done in apiAdminLogout, but double-check)
+      localStorage.removeItem("JWT_TOKEN");
+      // Also clear legacy token if it exists
       localStorage.removeItem("ADMIN_TOKEN");
       return true;
     } catch (err) {
