@@ -584,6 +584,39 @@ def run_migrations():
             conn.rollback()
             raise
 
+        # Migration: Add is_sleeved column if it doesn't exist
+        try:
+            result = conn.execute(
+                text(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name='boardgames' AND column_name='is_sleeved'
+                """
+                )
+            )
+            column_exists = result.fetchone() is not None
+
+            if not column_exists:
+                logger.info("Adding is_sleeved column to boardgames table...")
+                conn.execute(
+                    text(
+                        """
+                        ALTER TABLE boardgames
+                        ADD COLUMN is_sleeved BOOLEAN DEFAULT FALSE
+                    """
+                    )
+                )
+                conn.commit()
+                logger.info("is_sleeved column added successfully")
+            else:
+                logger.info("is_sleeved column already exists")
+
+        except Exception as e:
+            logger.error(f"Migration error (is_sleeved field): {e}")
+            conn.rollback()
+            raise
+
     logger.info("Database migrations completed")
 
 
