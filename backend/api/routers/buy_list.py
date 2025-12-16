@@ -162,7 +162,7 @@ async def list_buy_list_games(
     buy_filter options:
     - 'true' or 'buy_now': Show games recommended to buy now
     - 'false' or 'not_recommended': Show games not recommended to buy
-    - 'no_price': Show games with no price data and not Available/Back Order status
+    - 'no_price': Show games with no BGO price data AND LPG status is NOT_FOUND or BACK_ORDER_OOS
     """
     try:
         # Base query with eager loading
@@ -243,10 +243,10 @@ async def list_buy_list_games(
             if buy_filter is not None:
                 # Handle string values: "true", "false", "no_price"
                 if buy_filter == "no_price":
-                    # Show games with no price data AND not Available/Back Order
+                    # Show games with no BGO price data AND status is NOT_FOUND or BACK_ORDER_OOS
                     has_no_price = result["latest_price"] is None
-                    not_avail_or_bo = entry.lpg_status not in ["AVAILABLE", "BACK_ORDER"]
-                    if has_no_price and not_avail_or_bo:
+                    is_not_found_or_oos = entry.lpg_status in ["NOT_FOUND", "BACK_ORDER_OOS"]
+                    if has_no_price and is_not_found_or_oos:
                         results.append(result)
                 elif buy_filter in ["true", "buy_now"]:
                     # Show games recommended to buy (buy_filter == True)
