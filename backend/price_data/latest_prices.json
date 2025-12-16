@@ -1,20 +1,20 @@
 {
-  "checked_at": "2025-12-15T13:14:50+00:00",
+  "checked_at": "2025-12-16T13:14:02+00:00",
   "games": [
     {
       "bgg_id": 167791,
       "name": "Terraforming Mars",
       "low_price": 124.9,
-      "mean_price": 152.24,
-      "best_price": 119.8,
+      "mean_price": 152.23,
+      "best_price": 119.77,
       "best_store": "Amazon AU",
-      "discount_pct": 21.31,
+      "discount_pct": 21.32,
       "disc_mean_pct": null,
-      "delta": 3.35,
+      "delta": 3.37,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 119.8,
+          "price_nzd": 119.77,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=68d6983f238dc91472fbc207&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FDJXkZt9Z_z%2Fterraforming-mars",
           "in_stock": true
@@ -35,7 +35,7 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 132.94,
+          "price_nzd": 132.9,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=644d54b525895d0008ae9744&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FDJXkZt9Z_z%2Fterraforming-mars",
           "in_stock": true
@@ -101,17 +101,17 @@
     {
       "bgg_id": 397598,
       "name": "Dune: Imperium – Uprising",
-      "low_price": 108.94,
-      "mean_price": 129.64,
-      "best_price": 108.86,
+      "low_price": 109.05,
+      "mean_price": 129.66,
+      "best_price": 108.83,
       "best_store": "Gameology",
-      "discount_pct": 16.03,
+      "discount_pct": 16.06,
       "disc_mean_pct": null,
-      "delta": 0.06,
+      "delta": 0.17,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 108.86,
+          "price_nzd": 108.83,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=64f203d96ce39300081f587b&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FNfBhb2GnXh%2Fdune-imperium-uprising",
           "in_stock": true
@@ -164,7 +164,7 @@
       "bgg_id": 224517,
       "name": "Brass: Birmingham",
       "low_price": 137.99,
-      "mean_price": 168.53,
+      "mean_price": 168.52,
       "best_price": 137.99,
       "best_store": "The Board Gamer NZ",
       "discount_pct": 18.12,
@@ -180,14 +180,14 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 143.26,
+          "price_nzd": 143.22,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=64e00f959b7fa300087e046a&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
           "in_stock": true
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 148.62,
+          "price_nzd": 148.58,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=693437ab06b28fef3014a901&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
           "in_stock": true
@@ -253,17 +253,17 @@
     {
       "bgg_id": 162886,
       "name": "Spirit Island",
-      "low_price": 143.57,
-      "mean_price": 183.81,
+      "low_price": 179.0,
+      "mean_price": 188.84,
       "best_price": 179.0,
       "best_store": "Escape Board-Em with Solve It & Escape",
-      "discount_pct": 2.62,
+      "discount_pct": 5.21,
       "disc_mean_pct": null,
-      "delta": -19.28,
+      "delta": 0.0,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 143.26,
+          "price_nzd": 143.22,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=644d750d1188080008c16e3e&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FdqzBAt2yEb%2Fspirit-island",
           "in_stock": false
@@ -329,24 +329,24 @@
     {
       "bgg_id": 124361,
       "name": "Concordia",
-      "low_price": 110.73,
-      "mean_price": 130.06,
-      "best_price": 104.88,
+      "low_price": 110.95,
+      "mean_price": 130.17,
+      "best_price": 104.85,
       "best_store": "Amazon AU",
-      "discount_pct": 19.36,
+      "discount_pct": 19.45,
       "disc_mean_pct": null,
-      "delta": 4.5,
+      "delta": 4.69,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 103.13,
+          "price_nzd": 103.1,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=647764a8b582c00008b458ee&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FlWFkM-ljpv%2Fconcordia",
           "in_stock": false
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 104.88,
+          "price_nzd": 104.85,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=68f0f779068ace38b61be869&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FlWFkM-ljpv%2Fconcordia",
           "in_stock": true
@@ -370,17 +370,17 @@
     {
       "bgg_id": 380607,
       "name": "Great Western Trail: New Zealand",
-      "low_price": 120.41,
-      "mean_price": 142.62,
-      "best_price": 120.33,
+      "low_price": 120.53,
+      "mean_price": 142.64,
+      "best_price": 120.29,
       "best_store": "Gameology",
-      "discount_pct": 15.63,
+      "discount_pct": 15.67,
       "disc_mean_pct": null,
-      "delta": 0.06,
+      "delta": 0.17,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 120.33,
+          "price_nzd": 120.29,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=644d6bac25895d0008ae9ee2&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FpDrG0cjAJY%2Fgreat-western-trail-new-zealand",
           "in_stock": true
@@ -434,15 +434,15 @@
       "name": "Quacks",
       "low_price": 80.25,
       "mean_price": 95.16,
-      "best_price": 80.2,
+      "best_price": 80.18,
       "best_store": "Gameology",
-      "discount_pct": 15.72,
+      "discount_pct": 15.74,
       "disc_mean_pct": null,
-      "delta": 0.06,
+      "delta": 0.08,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 80.2,
+          "price_nzd": 80.18,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c6bdc7bfba000898768e&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FbD0EsHvlcZ%2Fquacks",
           "in_stock": true
@@ -481,6 +481,13 @@
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=611a7323dd566800079dd432&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FbD0EsHvlcZ%2Fquacks",
           "in_stock": false
+        },
+        {
+          "store": "Game Centre",
+          "price_nzd": 119.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6940352eea3b561f8d46dd3f&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FbD0EsHvlcZ%2Fquacks",
+          "in_stock": true
         }
       ]
     },
@@ -488,23 +495,23 @@
       "bgg_id": 199792,
       "name": "Everdell",
       "low_price": 114.1,
-      "mean_price": 137.17,
-      "best_price": 106.68,
+      "mean_price": 137.14,
+      "best_price": 106.65,
       "best_store": "Amazon AU",
       "discount_pct": 22.23,
       "disc_mean_pct": null,
-      "delta": 5.41,
+      "delta": 5.43,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 106.68,
+          "price_nzd": 106.65,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6930406606b28fef30dd2f57&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FvhcYsCqPMP%2Feverdell",
           "in_stock": true
         },
         {
           "store": "Gameology",
-          "price_nzd": 114.02,
+          "price_nzd": 113.99,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c6c5cf435e0008749533&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FvhcYsCqPMP%2Feverdell",
           "in_stock": true
@@ -521,6 +528,13 @@
           "price_nzd": 119.99,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=651eb498448b0200088cc5a8&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FvhcYsCqPMP%2Feverdell",
+          "in_stock": true
+        },
+        {
+          "store": "Vagabond",
+          "price_nzd": 129.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=694035faea3b561f8d4e4a7b&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FvhcYsCqPMP%2Feverdell",
           "in_stock": true
         },
         {
@@ -598,17 +612,17 @@
     {
       "bgg_id": 201808,
       "name": "Clank!: A Deck-Building Adventure",
-      "low_price": 105.65,
-      "mean_price": 122.81,
-      "best_price": 105.42,
+      "low_price": 105.49,
+      "mean_price": 122.79,
+      "best_price": 105.39,
       "best_store": "Gameology",
-      "discount_pct": 14.16,
+      "discount_pct": 14.17,
       "disc_mean_pct": null,
-      "delta": 0.19,
+      "delta": 0.08,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 105.42,
+          "price_nzd": 105.39,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c6e293887500092e5e5c&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F455SQydqa0%2Fclank-a-deck-building-adventure",
           "in_stock": true
@@ -622,7 +636,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 110.21,
+          "price_nzd": 110.18,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6929a95aea3b561f8dd3552e&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F455SQydqa0%2Fclank-a-deck-building-adventure",
           "in_stock": true
@@ -682,16 +696,16 @@
       "bgg_id": 217372,
       "name": "The Quest for El Dorado",
       "low_price": 79.11,
-      "mean_price": 87.31,
-      "best_price": 79.05,
+      "mean_price": 87.29,
+      "best_price": 79.03,
       "best_store": "Gameology",
-      "discount_pct": 9.46,
+      "discount_pct": 9.47,
       "disc_mean_pct": null,
-      "delta": 0.06,
+      "delta": 0.09,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 79.05,
+          "price_nzd": 79.03,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c67093887500092e587e&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FZZsrjOqQFe%2Fthe-quest-for-el-dorado",
           "in_stock": true
@@ -722,17 +736,17 @@
     {
       "bgg_id": 164928,
       "name": "Orléans",
-      "low_price": 68.88,
-      "mean_price": 106.26,
-      "best_price": 68.73,
+      "low_price": 68.78,
+      "mean_price": 106.24,
+      "best_price": 68.71,
       "best_store": "Gameology",
-      "discount_pct": 35.32,
+      "discount_pct": 35.33,
       "disc_mean_pct": null,
-      "delta": 0.14,
+      "delta": 0.07,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 68.73,
+          "price_nzd": 68.71,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=644d6990450aec00086bcdd8&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F01S6no2BbD%2Forleans",
           "in_stock": true
@@ -770,13 +784,13 @@
     {
       "bgg_id": 237182,
       "name": "Root",
-      "low_price": 87.56,
+      "low_price": 87.65,
       "mean_price": 110.55,
       "best_price": 87.2,
       "best_store": "EB Games NZ",
       "discount_pct": 21.12,
       "disc_mean_pct": null,
-      "delta": 0.33,
+      "delta": 0.41,
       "offers": [
         {
           "store": "EB Games NZ",
@@ -787,14 +801,14 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 91.66,
+          "price_nzd": 91.64,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=644d73a6e5f9e30008ddbfd8&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fkpase6kheF%2Froot",
           "in_stock": true
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 92.27,
+          "price_nzd": 92.43,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f7c5ee51af69ea4b762952&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fkpase6kheF%2Froot",
           "in_stock": true
@@ -884,7 +898,7 @@
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 146.7,
+          "price_nzd": 146.65,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6692a24ebbc51ebbe6ef74d8&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FRAWR9o2JFh%2Fgaia-project",
           "in_stock": false
@@ -925,7 +939,7 @@
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 84.78,
+          "price_nzd": 84.76,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c69ccf435e000874939a&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FG9zv2hrtCk%2Fparks",
           "in_stock": false
@@ -980,7 +994,7 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 52.68,
+          "price_nzd": 52.67,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=66900c10bbc51ebbe6634e19&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FYuI5r9aUyL%2Ftelestrations",
           "in_stock": false
@@ -1035,7 +1049,7 @@
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 42.36,
+          "price_nzd": 42.35,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c69b93887500092e5ab6&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F1fceNlC8dC%2Fdraftosaurus",
           "in_stock": false
@@ -1045,6 +1059,13 @@
           "price_nzd": 46.0,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=64d23d66922b2900086c969d&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F1fceNlC8dC%2Fdraftosaurus",
+          "in_stock": true
+        },
+        {
+          "store": "Game Centre",
+          "price_nzd": 49.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6940351aea3b561f8d460f10&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F1fceNlC8dC%2Fdraftosaurus",
           "in_stock": true
         },
         {
@@ -1080,13 +1101,13 @@
     {
       "bgg_id": 160477,
       "name": "Onitama",
-      "low_price": 66.17,
-      "mean_price": 72.94,
+      "low_price": 69.0,
+      "mean_price": 74.64,
       "best_price": 69.0,
       "best_store": "Escape Board-Em with Solve It & Escape",
-      "discount_pct": 5.4,
+      "discount_pct": 7.56,
       "disc_mean_pct": null,
-      "delta": -3.88,
+      "delta": 0.0,
       "offers": [
         {
           "store": "HobbyMaster",
@@ -1111,14 +1132,14 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 73.32,
+          "price_nzd": 73.3,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c71593887500092e6175&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fi0kG0sEypk%2Fonitama",
           "in_stock": true
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 76.65,
+          "price_nzd": 76.63,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6929a840ea3b561f8dd23ec3&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fi0kG0sEypk%2Fonitama",
           "in_stock": true
@@ -1142,13 +1163,13 @@
     {
       "bgg_id": 317985,
       "name": "Beyond the Sun",
-      "low_price": 106.91,
+      "low_price": 106.86,
       "mean_price": 152.1,
       "best_price": 106.67,
       "best_store": "Amazon AU",
       "discount_pct": 29.87,
       "disc_mean_pct": null,
-      "delta": 0.16,
+      "delta": 0.13,
       "offers": [
         {
           "store": "Amazon AU",
@@ -1211,17 +1232,17 @@
     {
       "bgg_id": 247763,
       "name": "Underwater Cities",
-      "low_price": 125.76,
-      "mean_price": 131.87,
-      "best_price": 125.48,
+      "low_price": 125.57,
+      "mean_price": 131.8,
+      "best_price": 125.45,
       "best_store": "Gameology",
-      "discount_pct": 4.84,
+      "discount_pct": 4.82,
       "disc_mean_pct": null,
-      "delta": 0.21,
+      "delta": 0.09,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 125.48,
+          "price_nzd": 125.45,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c720c7bfba0008987adb&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FOWShg7nOJv%2Funderwater-cities",
           "in_stock": true
@@ -1300,24 +1321,24 @@
     {
       "bgg_id": 251247,
       "name": "Barrage",
-      "low_price": 174.59,
-      "mean_price": 205.93,
-      "best_price": 174.21,
+      "low_price": 174.33,
+      "mean_price": 205.92,
+      "best_price": 174.16,
       "best_store": "Gameology",
-      "discount_pct": 15.4,
+      "discount_pct": 15.42,
       "disc_mean_pct": null,
-      "delta": 0.18,
+      "delta": 0.08,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 174.21,
+          "price_nzd": 174.16,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=689625f06d95a7750eb6460b&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fh_e-3bcNat%2Fbarrage",
           "in_stock": true
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 184.42,
+          "price_nzd": 184.37,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=691f1b5606b28fef30e3b232&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fh_e-3bcNat%2Fbarrage",
           "in_stock": true
@@ -1357,19 +1378,12 @@
       "name": "Carnegie",
       "low_price": 144.0,
       "mean_price": 149.5,
-      "best_price": 100.08,
-      "best_store": "Amazon AU",
-      "discount_pct": 33.05,
+      "best_price": 144.0,
+      "best_store": "Escape Board-Em with Solve It & Escape",
+      "discount_pct": 3.68,
       "disc_mean_pct": null,
-      "delta": 29.38,
+      "delta": 0.0,
       "offers": [
-        {
-          "store": "Amazon AU",
-          "price_nzd": 100.08,
-          "availability": "Backorder",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6931921406b28fef309de9b1&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FY9c_xQFjBO%2Fcarnegie",
-          "in_stock": true
-        },
         {
           "store": "Escape Board-Em with Solve It & Escape",
           "price_nzd": 144.0,
@@ -1389,17 +1403,17 @@
     {
       "bgg_id": 187645,
       "name": "Star Wars: Rebellion",
-      "low_price": 174.59,
-      "mean_price": 212.99,
-      "best_price": 206.31,
+      "low_price": 174.33,
+      "mean_price": 212.93,
+      "best_price": 206.26,
       "best_store": "Gameology",
-      "discount_pct": 3.14,
+      "discount_pct": 3.13,
       "disc_mean_pct": null,
-      "delta": -14.89,
+      "delta": -14.99,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 206.31,
+          "price_nzd": 206.26,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=64aedf2a2a20ac0008336a24&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F1ZNrBrjfLr%2Fstar-wars-rebellion",
           "in_stock": true
@@ -1431,10 +1445,10 @@
       "bgg_id": 255984,
       "name": "Sleeping Gods",
       "low_price": 169.0,
-      "mean_price": 195.25,
+      "mean_price": 195.21,
       "best_price": 169.0,
       "best_store": "Escape Board-Em with Solve It & Escape",
-      "discount_pct": 13.45,
+      "discount_pct": 13.43,
       "disc_mean_pct": null,
       "delta": 0.0,
       "offers": [
@@ -1454,7 +1468,7 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 177.65,
+          "price_nzd": 177.6,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=64aedee14ee34e0008301a91&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FKOLN99FBId%2Fsleeping-gods",
           "in_stock": true
@@ -1506,15 +1520,15 @@
       "name": "Crokinole",
       "low_price": 183.51,
       "mean_price": 183.51,
-      "best_price": 183.38,
+      "best_price": 183.33,
       "best_store": "Gameology",
-      "discount_pct": 0.07,
+      "discount_pct": 0.1,
       "disc_mean_pct": null,
-      "delta": 0.07,
+      "delta": 0.1,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 183.38,
+          "price_nzd": 183.33,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c687c7bfba00089873ac&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fx-sVOMQdBT%2Fcrokinole",
           "in_stock": true
@@ -1524,17 +1538,17 @@
     {
       "bgg_id": 448188,
       "name": "Junk Art Revolution",
-      "low_price": 94.02,
-      "mean_price": 94.02,
-      "best_price": 93.96,
+      "low_price": 94.12,
+      "mean_price": 94.12,
+      "best_price": 93.93,
       "best_store": "Gameology",
-      "discount_pct": 0.07,
+      "discount_pct": 0.2,
       "disc_mean_pct": null,
-      "delta": 0.07,
+      "delta": 0.2,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 93.96,
+          "price_nzd": 93.93,
           "availability": "Preorder",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=68a89b2c879e6732b2e7dff8&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FbpybuLeJ_t%2Fjunk-art-revolution",
           "in_stock": true
@@ -1544,13 +1558,13 @@
     {
       "bgg_id": 218333,
       "name": "Rhino Hero: Super Battle",
-      "low_price": 56.24,
-      "mean_price": 85.08,
+      "low_price": 69.99,
+      "mean_price": 94.7,
       "best_price": 69.99,
       "best_store": "The Board Gamer NZ",
-      "discount_pct": 17.74,
+      "discount_pct": 26.09,
       "disc_mean_pct": null,
-      "delta": -16.16,
+      "delta": 0.0,
       "offers": [
         {
           "store": "The Board Gamer NZ",
@@ -1561,14 +1575,14 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 71.91,
+          "price_nzd": 71.89,
           "availability": "Backorder",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=693979e606b28fef30fff08a&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FHPN4pqFc3R%2Frhino-hero-super-battle",
           "in_stock": true
         },
         {
           "store": "Gameology",
-          "price_nzd": 74.47,
+          "price_nzd": 74.44,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c705dfd0a00008929078&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FHPN4pqFc3R%2Frhino-hero-super-battle",
           "in_stock": false
@@ -1592,7 +1606,7 @@
     {
       "bgg_id": 183251,
       "name": "Karuba",
-      "low_price": 76.76,
+      "low_price": 76.74,
       "mean_price": null,
       "best_price": null,
       "best_store": null,
@@ -1602,7 +1616,7 @@
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 76.76,
+          "price_nzd": 76.74,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c6eedfd0a00008928f1e&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FJGhEQkoKrF%2Fkaruba",
           "in_stock": false
@@ -1612,24 +1626,24 @@
     {
       "bgg_id": 260180,
       "name": "Project L",
-      "low_price": 47.99,
-      "mean_price": 68.05,
-      "best_price": 45.01,
+      "low_price": 47.97,
+      "mean_price": 68.04,
+      "best_price": 45.0,
       "best_store": "Amazon AU",
-      "discount_pct": 33.85,
+      "discount_pct": 33.86,
       "disc_mean_pct": null,
-      "delta": 4.38,
+      "delta": 4.36,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 45.01,
+          "price_nzd": 45.0,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=682f2c27db2ea8ba4ba4742c&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fr3cJkFHUON%2Fproject-l",
           "in_stock": true
         },
         {
           "store": "Gameology",
-          "price_nzd": 48.67,
+          "price_nzd": 48.66,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=644d6d151188080008c16d7a&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fr3cJkFHUON%2Fproject-l",
           "in_stock": true
@@ -1709,13 +1723,13 @@
     {
       "bgg_id": 194655,
       "name": "Santorini",
-      "low_price": 115.33,
-      "mean_price": 115.33,
-      "best_price": 115.24,
+      "low_price": 115.45,
+      "mean_price": 115.45,
+      "best_price": 115.22,
       "best_store": "Amazon AU",
-      "discount_pct": 0.08,
+      "discount_pct": 0.2,
       "disc_mean_pct": null,
-      "delta": 0.08,
+      "delta": 0.2,
       "offers": [
         {
           "store": "HobbyMaster",
@@ -1726,7 +1740,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 115.24,
+          "price_nzd": 115.22,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=68b1ad0499cb97aded39c62d&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F5_TQJXBwtr%2Fsantorini",
           "in_stock": true
@@ -1756,13 +1770,13 @@
     {
       "bgg_id": 135779,
       "name": "A Fake Artist Goes to New York",
-      "low_price": 41.92,
+      "low_price": 41.96,
       "mean_price": 49.15,
       "best_price": 41.89,
       "best_store": "Amazon AU",
-      "discount_pct": 14.77,
+      "discount_pct": 14.76,
       "disc_mean_pct": null,
-      "delta": 0.06,
+      "delta": 0.15,
       "offers": [
         {
           "store": "Amazon AU",
@@ -1780,7 +1794,7 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 48.1,
+          "price_nzd": 48.08,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=64ac3604ddd31e0008bb0a6d&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F_EYQLtWuZC%2Fa-fake-artist-goes-to-new-york",
           "in_stock": true
@@ -1843,24 +1857,24 @@
     {
       "bgg_id": 410291,
       "name": "Heat: Heavy Rain",
-      "low_price": 58.45,
-      "mean_price": 70.71,
-      "best_price": 58.41,
+      "low_price": 58.51,
+      "mean_price": 70.72,
+      "best_price": 58.4,
       "best_store": "Gameology",
-      "discount_pct": 17.39,
+      "discount_pct": 17.43,
       "disc_mean_pct": null,
-      "delta": 0.06,
+      "delta": 0.16,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 58.41,
+          "price_nzd": 58.4,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=65a01fa65ec64e00085b1274&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F8Dp1ru1HKU%2Fheat-heavy-rain",
           "in_stock": true
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 59.87,
+          "price_nzd": 59.85,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=678518fcc8d50b44a34cfd55&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F8Dp1ru1HKU%2Fheat-heavy-rain",
           "in_stock": true
@@ -1889,9 +1903,9 @@
         {
           "store": "Ironhorse Hobbies",
           "price_nzd": 71.95,
-          "availability": "Out of stock",
+          "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6756eb253cdf8a95a02dac5f&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F8Dp1ru1HKU%2Fheat-heavy-rain",
-          "in_stock": false
+          "in_stock": true
         },
         {
           "store": "Game Centre",
@@ -1920,23 +1934,23 @@
       "bgg_id": 240980,
       "name": "Blood on the Clocktower",
       "low_price": 227.11,
-      "mean_price": 262.68,
-      "best_price": 226.95,
+      "mean_price": 262.72,
+      "best_price": 226.89,
       "best_store": "Gameology",
-      "discount_pct": 13.6,
+      "discount_pct": 13.64,
       "disc_mean_pct": null,
-      "delta": 0.06,
+      "delta": 0.08,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 226.95,
+          "price_nzd": 226.89,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=64ac35c52e854e0008a40453&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FshpSk_nTQm%2Fblood-on-the-clocktower",
           "in_stock": true
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 232.35,
+          "price_nzd": 232.29,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6924610c06b28fef30cb4a55&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FshpSk_nTQm%2Fblood-on-the-clocktower",
           "in_stock": true
@@ -1981,17 +1995,17 @@
     {
       "bgg_id": 134352,
       "name": "Two Rooms and a Boom",
-      "low_price": 79.8,
-      "mean_price": 79.8,
-      "best_price": 79.62,
+      "low_price": 79.68,
+      "mean_price": 79.68,
+      "best_price": 79.6,
       "best_store": "Gameology",
-      "discount_pct": 0.22,
+      "discount_pct": 0.1,
       "disc_mean_pct": null,
-      "delta": 0.22,
+      "delta": 0.1,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 79.62,
+          "price_nzd": 79.6,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=666c7602829e1f0008c924db&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F3Zxa6BMW8u%2Ftwo-rooms-and-a-boom",
           "in_stock": true
@@ -2025,8 +2039,8 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 111.15,
-          "availability": "In stock",
+          "price_nzd": 119.83,
+          "availability": "Backorder",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=68d2adf9238dc91472cecf5f&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FmEvYVhbFa6%2Fteotihuacan-city-of-gods",
           "in_stock": true
         },
@@ -2066,7 +2080,7 @@
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 66.44,
+          "price_nzd": 66.42,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=644d6e43aa982a00082d0d71&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F4b_bwFUYog%2Fres-arcana",
           "in_stock": false
@@ -2121,17 +2135,24 @@
     {
       "bgg_id": 293014,
       "name": "Nidavellir",
-      "low_price": 39.52,
-      "mean_price": 71.06,
-      "best_price": 75.0,
-      "best_store": "Escape Board-Em with Solve It & Escape",
-      "discount_pct": -5.54,
+      "low_price": 39.56,
+      "mean_price": 73.34,
+      "best_price": 39.48,
+      "best_store": "Amazon AU",
+      "discount_pct": 46.17,
       "disc_mean_pct": null,
-      "delta": -49.93,
+      "delta": 0.11,
       "offers": [
         {
+          "store": "Amazon AU",
+          "price_nzd": 39.48,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=694016cfea3b561f8dd36b36&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FSgoO-Iub1Z%2Fnidavellir",
+          "in_stock": true
+        },
+        {
           "store": "Gameology",
-          "price_nzd": 59.56,
+          "price_nzd": 59.54,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c688cf435e00087492aa&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FSgoO-Iub1Z%2Fnidavellir",
           "in_stock": false
@@ -2252,13 +2273,13 @@
     {
       "bgg_id": 220,
       "name": "High Society",
-      "low_price": 33.58,
-      "mean_price": 34.0,
+      "low_price": 33.62,
+      "mean_price": 33.99,
       "best_price": 33.56,
       "best_store": "Amazon AU",
-      "discount_pct": 1.29,
+      "discount_pct": 1.27,
       "disc_mean_pct": null,
-      "delta": 0.07,
+      "delta": 0.17,
       "offers": [
         {
           "store": "Amazon AU",
@@ -2269,7 +2290,7 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 34.34,
+          "price_nzd": 34.33,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c69acf435e0008749377&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fq2p8_Jtk8p%2Fhigh-society",
           "in_stock": true
@@ -2286,24 +2307,24 @@
     {
       "bgg_id": 287954,
       "name": "Azul: Summer Pavilion",
-      "low_price": 63.14,
-      "mean_price": 79.27,
-      "best_price": 63.0,
+      "low_price": 63.04,
+      "mean_price": 79.24,
+      "best_price": 62.98,
       "best_store": "Gameology",
       "discount_pct": 20.52,
       "disc_mean_pct": null,
-      "delta": 0.17,
+      "delta": 0.08,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 63.0,
+          "price_nzd": 62.98,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=64b032fbcb14aa0008f84c00&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FhbL8-nXEze%2Fazul-summer-pavilion",
           "in_stock": true
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 65.86,
+          "price_nzd": 65.85,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6927045fea3b561f8d53b756&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FhbL8-nXEze%2Fazul-summer-pavilion",
           "in_stock": true
@@ -2356,16 +2377,16 @@
       "bgg_id": 258779,
       "name": "Planet Unknown",
       "low_price": 144.88,
-      "mean_price": 175.04,
-      "best_price": 154.48,
+      "mean_price": 171.0,
+      "best_price": 154.4,
       "best_store": "Amazon AU",
-      "discount_pct": 11.75,
+      "discount_pct": 9.71,
       "disc_mean_pct": null,
-      "delta": -5.48,
+      "delta": -5.57,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 154.48,
+          "price_nzd": 154.4,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=692c4aefea3b561f8d9e416e&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F671dyiG6Dw%2Fplanet-unknown",
           "in_stock": true
@@ -2400,7 +2421,7 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 194.85,
+          "price_nzd": 194.79,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=659dd64d50876c0008c039ff&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F671dyiG6Dw%2Fplanet-unknown",
           "in_stock": false
@@ -2419,15 +2440,15 @@
       "name": "MicroMacro: Crime City",
       "low_price": 63.04,
       "mean_price": 73.74,
-      "best_price": 63.0,
+      "best_price": 62.98,
       "best_store": "Gameology",
-      "discount_pct": 14.56,
+      "discount_pct": 14.59,
       "disc_mean_pct": null,
-      "delta": 0.06,
+      "delta": 0.09,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 63.0,
+          "price_nzd": 62.98,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=644d682a450aec00086bcda7&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FVQqEhpax9D%2Fmicromacro-crime-city",
           "in_stock": true
@@ -2493,24 +2514,24 @@
     {
       "bgg_id": 345972,
       "name": "Cat in the Box: Deluxe Edition",
-      "low_price": 55.01,
-      "mean_price": 64.16,
-      "best_price": 54.97,
-      "best_store": "Gameology",
-      "discount_pct": 14.32,
+      "low_price": 55.07,
+      "mean_price": 64.19,
+      "best_price": 57.46,
+      "best_store": "Amazon AU",
+      "discount_pct": 10.48,
       "disc_mean_pct": null,
-      "delta": 0.07,
+      "delta": -3.72,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 54.97,
-          "availability": "In stock",
+          "price_nzd": 54.96,
+          "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=64776455b582c00008b455b0&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FGQL9Tw-RzO%2Fcat-in-the-box-deluxe-edition",
-          "in_stock": true
+          "in_stock": false
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 57.47,
+          "price_nzd": 57.46,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=68bd8fab99cb97aded5e894e&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FGQL9Tw-RzO%2Fcat-in-the-box-deluxe-edition",
           "in_stock": true
@@ -2541,13 +2562,13 @@
     {
       "bgg_id": 336986,
       "name": "Flamecraft",
-      "low_price": 72.05,
+      "low_price": 72.02,
       "mean_price": 80.31,
       "best_price": 71.89,
       "best_store": "Amazon AU",
-      "discount_pct": 10.49,
+      "discount_pct": 10.48,
       "disc_mean_pct": null,
-      "delta": 0.2,
+      "delta": 0.16,
       "offers": [
         {
           "store": "Amazon AU",
@@ -2565,7 +2586,7 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 80.2,
+          "price_nzd": 80.18,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=644d6289dbd180000892909f&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FIl_CaPaElq%2Fflamecraft",
           "in_stock": true
@@ -2606,7 +2627,7 @@
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 33.19,
+          "price_nzd": 33.18,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c6d2912a8100086c7eb0&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F7G0rT0RqIm%2Fhanamikoji",
           "in_stock": false
@@ -2631,204 +2652,28 @@
       "bgg_id": 268620,
       "name": "Similo",
       "low_price": 18.0,
-      "mean_price": 28.18,
-      "best_price": 19.02,
-      "best_store": "Amazon AU",
-      "discount_pct": 32.51,
+      "mean_price": 28.22,
+      "best_price": null,
+      "best_store": null,
+      "discount_pct": null,
       "disc_mean_pct": null,
-      "delta": -3.62,
-      "offers": [
-        {
-          "store": "Amazon AU",
-          "price_nzd": 19.02,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=682c9202db2ea8ba4b84f1a9&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Hobby Games",
-          "price_nzd": 20.0,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6548e4cecb7a0200082f78ad&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Game Centre",
-          "price_nzd": 22.0,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=69284849ea3b561f8dc8e1ef&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Escapist",
-          "price_nzd": 22.95,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=686685a0ea0e5f3daefda6f1&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Escapist",
-          "price_nzd": 22.95,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=686685bdea0e5f3daefe132e&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Hobby Games",
-          "price_nzd": 22.99,
-          "availability": "Out of stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6548e4584ed82f0008a1a2ff&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": false
-        },
-        {
-          "store": "Hobby Games",
-          "price_nzd": 22.99,
-          "availability": "Out of stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=667d62cce37fc6c58686ecbb&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": false
-        },
-        {
-          "store": "Game Centre",
-          "price_nzd": 23.0,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=65f98dcbcdeeb70008a6c3e6&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Game Centre",
-          "price_nzd": 24.0,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=69399ee106b28fef30769c16&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Gamersphere",
-          "price_nzd": 24.99,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f7cb1e51af69ea4b814635&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Gamersphere",
-          "price_nzd": 25.99,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f7a01251af69ea4b5b80ac&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Gamersphere",
-          "price_nzd": 25.99,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f7a01251af69ea4b5b81a5&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Gamersphere",
-          "price_nzd": 25.99,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f7a01551af69ea4b5b8d8d&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Gamersphere",
-          "price_nzd": 25.99,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f7a01c51af69ea4b5bb4e2&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Amazon AU",
-          "price_nzd": 26.36,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=691c838706b28fef30ab7d59&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Amazon AU",
-          "price_nzd": 26.36,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=67bd2eb7e0f6abb2099446e2&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Amazon AU",
-          "price_nzd": 27.56,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=681b6d87391b3fbf3248971f&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Game Centre",
-          "price_nzd": 28.0,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=672e0f92113e2cbeca6f446c&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Amazon AU",
-          "price_nzd": 31.14,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=691c709306b28fef3074109b&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Gamersphere",
-          "price_nzd": 31.99,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f7a01451af69ea4b5b8887&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Gamersphere",
-          "price_nzd": 31.99,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f7cb3151af69ea4b8182ac&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "Amazon AU",
-          "price_nzd": 32.29,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=693d668aea3b561f8d4a4150&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "The Nile NZ",
-          "price_nzd": 34.39,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=684c251eb2553149ee21b063&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "The Nile NZ",
-          "price_nzd": 34.47,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=684c2268b2553149ee18eb79&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        },
-        {
-          "store": "The Nile NZ",
-          "price_nzd": 36.54,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=684c23b6b2553149ee1d77ef&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
-          "in_stock": true
-        }
-      ]
+      "delta": null,
+      "offers": []
     },
     {
       "bgg_id": 266083,
       "name": "L.L.A.M.A.",
-      "low_price": 15.53,
-      "mean_price": 23.67,
-      "best_price": 15.52,
+      "low_price": 15.55,
+      "mean_price": 23.68,
+      "best_price": 15.54,
       "best_store": "Amazon AU",
-      "discount_pct": 34.44,
+      "discount_pct": 34.36,
       "disc_mean_pct": null,
-      "delta": 0.05,
+      "delta": 0.04,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 15.52,
+          "price_nzd": 15.54,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=692ee4f5ea3b561f8d156157&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FoTEHQNhsaG%2Flama",
           "in_stock": true
@@ -2859,17 +2704,17 @@
     {
       "bgg_id": 141572,
       "name": "Paperback",
-      "low_price": 57.39,
-      "mean_price": 57.39,
-      "best_price": 57.27,
+      "low_price": 57.31,
+      "mean_price": 57.31,
+      "best_price": 57.25,
       "best_store": "Gameology",
-      "discount_pct": 0.21,
+      "discount_pct": 0.1,
       "disc_mean_pct": null,
-      "delta": 0.21,
+      "delta": 0.1,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 57.27,
+          "price_nzd": 57.25,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=66dcb0e82ed3e94ad059587f&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F67BKawSrIj%2Fpaperback",
           "in_stock": true
@@ -2879,17 +2724,17 @@
     {
       "bgg_id": 245654,
       "name": "Railroad Ink: Deep Blue Edition",
-      "low_price": 35.56,
-      "mean_price": 48.29,
-      "best_price": 35.48,
+      "low_price": 35.51,
+      "mean_price": 48.27,
+      "best_price": 35.47,
       "best_store": "Gameology",
       "discount_pct": 26.52,
       "disc_mean_pct": null,
-      "delta": 0.17,
+      "delta": 0.08,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 35.48,
+          "price_nzd": 35.47,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c6c0c7bfba00089876b2&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F2ukSnJ39H9%2Frailroad-ink-deep-blue-edition",
           "in_stock": true
@@ -2930,7 +2775,7 @@
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 65.29,
+          "price_nzd": 65.28,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c6f8561c650008039b8a&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FVHUh_GEd1L%2Fmysterium",
           "in_stock": false
@@ -3024,16 +2869,23 @@
       "bgg_id": 148949,
       "name": "Istanbul",
       "low_price": 115.0,
-      "mean_price": 131.86,
-      "best_price": 115.0,
-      "best_store": "Game Centre",
-      "discount_pct": 12.79,
+      "mean_price": 131.85,
+      "best_price": 107.65,
+      "best_store": "Amazon AU",
+      "discount_pct": 18.35,
       "disc_mean_pct": null,
-      "delta": 0.0,
+      "delta": 5.57,
       "offers": [
         {
+          "store": "Amazon AU",
+          "price_nzd": 107.65,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=693828fd06b28fef304fec07&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FDMDhmm1Mi0%2Fistanbul-big-box",
+          "in_stock": true
+        },
+        {
           "store": "Gameology",
-          "price_nzd": 114.59,
+          "price_nzd": 114.56,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=644d637925895d0008ae9de5&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FDMDhmm1Mi0%2Fistanbul-big-box",
           "in_stock": false
@@ -3046,13 +2898,6 @@
           "in_stock": true
         },
         {
-          "store": "Amazon AU",
-          "price_nzd": 117.22,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=693828fd06b28fef304fec07&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FDMDhmm1Mi0%2Fistanbul-big-box",
-          "in_stock": true
-        },
-        {
           "store": "Ironhorse Hobbies",
           "price_nzd": 128.95,
           "availability": "In stock",
@@ -3061,7 +2906,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 139.04,
+          "price_nzd": 139.0,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=690b57ab1c6ea03c3cb4ca96&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FDMDhmm1Mi0%2Fistanbul-big-box",
           "in_stock": true
@@ -3078,13 +2923,13 @@
     {
       "bgg_id": 346965,
       "name": "Azul: Queen's Garden",
-      "low_price": 52.85,
-      "mean_price": 77.44,
+      "low_price": 52.83,
+      "mean_price": 77.43,
       "best_price": 52.74,
       "best_store": "Amazon AU",
       "discount_pct": 31.89,
       "disc_mean_pct": null,
-      "delta": 0.15,
+      "delta": 0.12,
       "offers": [
         {
           "store": "Amazon AU",
@@ -3095,7 +2940,7 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 64.15,
+          "price_nzd": 64.13,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=657c86eb18e3d700087c5da2&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FEv6O7JAqLG%2Fazul-queens-garden",
           "in_stock": true
@@ -3126,17 +2971,17 @@
     {
       "bgg_id": 338628,
       "name": "Trails",
-      "low_price": 40.16,
-      "mean_price": 43.08,
+      "low_price": 46.0,
+      "mean_price": 46.0,
       "best_price": 46.0,
       "best_store": "Escape Board-Em with Solve It & Escape",
-      "discount_pct": -6.78,
+      "discount_pct": 0.0,
       "disc_mean_pct": null,
-      "delta": -13.56,
+      "delta": 0.0,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 40.07,
+          "price_nzd": 40.06,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6536973506f1660008a2a7d9&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FymB8oJ6uyX%2Ftrails",
           "in_stock": false
@@ -3161,7 +3006,7 @@
       "bgg_id": 128882,
       "name": "The Resistance: Avalon",
       "low_price": 39.99,
-      "mean_price": 53.3,
+      "mean_price": 53.29,
       "best_price": 39.99,
       "best_store": "Pop Stop",
       "discount_pct": 24.96,
@@ -3184,14 +3029,14 @@
         },
         {
           "store": "Gameology",
-          "price_nzd": 45.8,
+          "price_nzd": 45.79,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=64ac3610a0f4a20008e960fa&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FItF8JsIfpj%2Fthe-resistance-avalon",
           "in_stock": true
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 47.88,
+          "price_nzd": 47.87,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=691dcfd706b28fef3046e9af&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FItF8JsIfpj%2Fthe-resistance-avalon",
           "in_stock": true
@@ -3250,7 +3095,7 @@
     {
       "bgg_id": 172081,
       "name": "Burgle Bros.",
-      "low_price": 65.29,
+      "low_price": 65.28,
       "mean_price": null,
       "best_price": null,
       "best_store": null,
@@ -3260,7 +3105,7 @@
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 65.29,
+          "price_nzd": 65.28,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c6c1cf435e00087494c6&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F5T2DG9cIrd%2Fburgle-bros",
           "in_stock": false
@@ -3287,7 +3132,7 @@
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 49.82,
+          "price_nzd": 49.8,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c686561c650008039648&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fz3pagk2sas%2Fparks-nightfall-expansion",
           "in_stock": false
@@ -3331,24 +3176,24 @@
     {
       "bgg_id": 180593,
       "name": "The Bloody Inn",
-      "low_price": 61.99,
-      "mean_price": 63.35,
-      "best_price": 61.85,
+      "low_price": 61.9,
+      "mean_price": 63.34,
+      "best_price": 61.84,
       "best_store": "Gameology",
-      "discount_pct": 2.37,
+      "discount_pct": 2.36,
       "disc_mean_pct": null,
-      "delta": 0.22,
+      "delta": 0.09,
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 61.85,
+          "price_nzd": 61.84,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=64c92a969c84d20008e7efad&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FKZdLev9-7v%2Fthe-bloody-inn",
           "in_stock": true
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 64.67,
+          "price_nzd": 64.65,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=691b27145bcf0704c08c3556&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FKZdLev9-7v%2Fthe-bloody-inn",
           "in_stock": true
@@ -3397,7 +3242,7 @@
     {
       "bgg_id": 171908,
       "name": "El Grande Big Box",
-      "low_price": 81.34,
+      "low_price": 81.32,
       "mean_price": null,
       "best_price": null,
       "best_store": null,
@@ -3407,7 +3252,7 @@
       "offers": [
         {
           "store": "Gameology",
-          "price_nzd": 81.34,
+          "price_nzd": 81.32,
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=65c16d5df857890008cae3df&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F-IO6W6K0sN%2Fel-grande",
           "in_stock": false
