@@ -18,6 +18,7 @@ from config import (
     SESSION_TIMEOUT_SECONDS,
 )
 from shared.rate_limiting import admin_attempt_tracker, admin_sessions
+from utils.jwt_utils import verify_jwt_token, extract_token_from_header
 
 logger = logging.getLogger(__name__)
 
@@ -82,26 +83,34 @@ def revoke_session(session_token: Optional[str]):
 
 def require_admin_auth(
     request: Request,
+    authorization: Optional[str] = Header(None),
     x_admin_token: Optional[str] = Header(None),
     admin_session: Optional[str] = Cookie(None),
 ) -> None:
     """
     Dependency for admin endpoints.
-    Validates admin authentication via session cookie or token header.
+    Validates admin authentication via JWT token (preferred), session cookie, or legacy token header.
 
     Raises:
         HTTPException: 401 if authentication fails, 429 if rate limited
     """
     client_ip = get_client_ip(request)
 
-    # Clean up expired sessions periodically
-    cleanup_expired_sessions()
+    # 1. Try JWT token from Authorization header (preferred method)
+    jwt_token = extract_token_from_header(authorization)
+    if jwt_token:
+        payload = verify_jwt_token(jwt_token)
+        if payload:
+            logger.debug(f"Valid JWT authentication from {client_ip}")
+            return  # Valid JWT, authentication successful
 
-    # Try session cookie first (preferred method)
+    # 2. Try session cookie (legacy method - for backward compatibility)
+    cleanup_expired_sessions()
     if admin_session and validate_session(admin_session, client_ip):
+        logger.debug(f"Valid session authentication from {client_ip}")
         return  # Valid session, authentication successful
 
-    # Fall back to legacy header-based token authentication
+    # 3. Fall back to direct admin token header (legacy method)
     current_time = time.time()
 
     # Clean old attempts from tracker
@@ -123,7 +132,7 @@ def require_admin_auth(
             ),
         )
 
-    # Validate token
+    # Validate direct admin token
     if not ADMIN_TOKEN or x_admin_token != ADMIN_TOKEN:
         admin_attempt_tracker[client_ip].append(current_time)
         logger.warning(f"Invalid admin token attempt from {client_ip}")

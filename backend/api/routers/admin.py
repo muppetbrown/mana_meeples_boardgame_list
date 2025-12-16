@@ -30,10 +30,12 @@ from api.dependencies import (
 from bgg_service import fetch_bgg_thing
 from config import (
     ADMIN_TOKEN,
+    JWT_EXPIRATION_DAYS,
     RATE_LIMIT_ATTEMPTS,
     RATE_LIMIT_WINDOW,
     SESSION_TIMEOUT_SECONDS,
 )
+from utils.jwt_utils import generate_jwt_token
 from database import get_db
 from exceptions import GameNotFoundError, ValidationError
 import schemas
@@ -57,8 +59,8 @@ async def admin_login(
     request: Request, credentials: schemas.AdminLogin, response: Response
 ):
     """
-    Admin login endpoint - validates token and creates secure session cookie.
-    This replaces the insecure localStorage-based authentication.
+    Admin login endpoint - validates token and returns JWT.
+    JWT tokens are stateless and persist across server restarts.
     """
     client_ip = get_client_ip(request)
     current_time = time.time()
@@ -85,46 +87,24 @@ async def admin_login(
         logger.warning(f"Invalid admin login attempt from {client_ip}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # Create session
-    session_token = create_session(client_ip)
-
-    # Set httpOnly secure cookie
-    # Note: SameSite=None is required for cross-origin requests
-    # (frontend on different domain)
-    response.set_cookie(
-        key="admin_session",
-        value=session_token,
-        httponly=True,  # Prevents JavaScript access (XSS protection)
-        secure=True,  # Only sent over HTTPS (required for SameSite=None)
-        # Allow cross-origin cookie (frontend/backend on different domains)
-        samesite="none",
-        max_age=SESSION_TIMEOUT_SECONDS,
-        path="/",
-    )
+    # Generate JWT token
+    jwt_token = generate_jwt_token(client_ip)
 
     logger.info(f"Successful admin login from {client_ip}")
     return {
         "success": True,
         "message": "Login successful",
-        "expires_in": SESSION_TIMEOUT_SECONDS,
+        "token": jwt_token,
+        "expires_in_days": JWT_EXPIRATION_DAYS,
     }
 
 
 @router.post("/logout")
-async def admin_logout(
-    response: Response, admin_session: Optional[str] = Cookie(None)
-):
+async def admin_logout(response: Response):
     """
-    Admin logout endpoint - revokes session and clears cookie.
+    Admin logout endpoint - with JWT, logout is client-side (token deletion).
+    This endpoint is kept for API consistency.
     """
-    # Revoke session
-    revoke_session(admin_session)
-
-    # Clear cookie (must match settings used when cookie was set)
-    response.delete_cookie(
-        key="admin_session", path="/", samesite="none", secure=True
-    )
-
     logger.info("Admin logout")
     return {"success": True, "message": "Logged out successfully"}
 
