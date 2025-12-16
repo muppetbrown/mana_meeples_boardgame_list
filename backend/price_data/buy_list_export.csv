@@ -13,6 +13,7 @@ game_id,bgo_link,rank,name,bgg_id
 282,https://www.boardgameoracle.com/en-NZ/boardgame/price/kpase6kheF/root,13,Root,237182
 283,https://www.boardgameoracle.com/en-NZ/boardgame/price/RAWR9o2JFh/gaia-project,14,Gaia Project,220308
 284,https://www.boardgameoracle.com/en-NZ/boardgame/price/G9zv2hrtCk/parks,15,Parks (Second Edition),437306
+285,https://www.boardgameoracle.com/en-NZ/boardgame/price/xIqBIb5UF3/aeons-end,16,Aeon's End,191189
 286,https://www.boardgameoracle.com/en-NZ/boardgame/price/YuI5r9aUyL/telestrations,18,Telestrations,46213
 287,https://www.boardgameoracle.com/en-NZ/boardgame/price/1fceNlC8dC/draftosaurus,19,Draftosaurus,264055
 288,https://www.boardgameoracle.com/en-NZ/boardgame/price/i0kG0sEypk/onitama,20,Onitama,160477
@@ -23,6 +24,7 @@ game_id,bgo_link,rank,name,bgg_id
 293,https://www.boardgameoracle.com/en-NZ/boardgame/price/Y9c_xQFjBO/carnegie,25,Carnegie,310873
 213,https://www.boardgameoracle.com/en-NZ/boardgame/price/1ZNrBrjfLr/star-wars-rebellion,26,Star Wars: Rebellion,187645
 294,https://www.boardgameoracle.com/en-NZ/boardgame/price/KOLN99FBId/sleeping-gods,27,Sleeping Gods,255984
+295,https://www.boardgameoracle.com/en-NZ/boardgame/price/CUFEtjqWfk/paleo,28,Paleo,300531
 214,https://www.boardgameoracle.com/en-NZ/boardgame/price/sd_mxziM3f/the-loop,29,The LOOP,316412
 296,https://www.boardgameoracle.com/en-NZ/boardgame/price/x-sVOMQdBT/crokinole,30,Crokinole,521
 215,https://www.boardgameoracle.com/en-NZ/boardgame/price/bpybuLeJ_t/junk-art-revolution,31,Junk Art Revolution,448188
@@ -33,35 +35,58 @@ game_id,bgo_link,rank,name,bgg_id
 300,https://www.boardgameoracle.com/en-NZ/boardgame/price/ojzSzbi7Vl/mandala,36,Mandala,264241
 301,https://www.boardgameoracle.com/en-NZ/boardgame/price/_EYQLtWuZC/a-fake-artist-goes-to-new-york,38,A Fake Artist Goes to New York,135779
 302,https://www.boardgameoracle.com/en-NZ/boardgame/price/kZ_7gsBEb-/times-up-title-recall,39,Time's Up! Title Recall!,36553
+303,https://www.boardgameoracle.com/en-NZ/boardgame/price/OXENQN29oG/werewords,40,Werewords,219215
 217,https://www.boardgameoracle.com/en-NZ/boardgame/price/nXRwUjoIza/detective-club,41,Detective Club,256788
+304,https://www.boardgameoracle.com/en-NZ/boardgame/price/OOTHYy-AFt/wingspan-oceania-expansion,42,Wingspan: Oceania Expansion,300580
+305,https://www.boardgameoracle.com/en-NZ/boardgame/price/nieCowQmCo/cascadia-landmarks,43,Cascadia: Landmarks,385318
 218,https://www.boardgameoracle.com/en-NZ/boardgame/price/8Dp1ru1HKU/heat-heavy-rain,44,Heat: Heavy Rain,410291
+306,https://www.boardgameoracle.com/en-NZ/boardgame/price/PAhwpJxL0U/ticket-to-ride-map-collection-volume-6-france-and-old-west,47,Ticket to Ride Map Collection 6: France & Old West,233891
+307,https://www.boardgameoracle.com/en-NZ/boardgame/price/gv4cb-vT20/decrypto-expansion-01-laserdrive,48,Decrypto: Expansion #01 – Laserdrive,273938
 308,https://www.boardgameoracle.com/en-NZ/boardgame/price/shpSk_nTQm/blood-on-the-clocktower,49,Blood on the Clocktower,240980
 219,https://www.boardgameoracle.com/en-NZ/boardgame/price/3Zxa6BMW8u/two-rooms-and-a-boom,50,Two Rooms and a Boom,134352
 309,https://www.boardgameoracle.com/en-NZ/boardgame/price/mEvYVhbFa6/teotihuacan-city-of-gods,51,Teotihuacan: City of Gods,229853
+310,https://www.boardgameoracle.com/en-NZ/boardgame/price/zFzNnZaPTz/under-falling-skies,52,Under Falling Skies,306735
 220,https://www.boardgameoracle.com/en-NZ/boardgame/price/4b_bwFUYog/res-arcana,53,Res Arcana,262712
 221,https://www.boardgameoracle.com/en-NZ/boardgame/price/2SEZhr1QZy/clans-of-caledonia,54,Clans of Caledonia,216132
 311,https://www.boardgameoracle.com/en-NZ/boardgame/price/Agr8YLhfAS/praga-caput-regni,55,Praga Caput Regni,308765
 209,https://www.boardgameoracle.com/en-NZ/boardgame/price/SgoO-Iub1Z/nidavellir,56,Nidavellir,293014
 312,https://www.boardgameoracle.com/en-NZ/boardgame/price/3QE76TzanS/scout,57,SCOUT,291453
+313,https://www.boardgameoracle.com/en-NZ/boardgame/price/G63OMeI2S7/arboretum,58,Arboretum,140934
 314,https://www.boardgameoracle.com/en-NZ/boardgame/price/q2p8_Jtk8p/high-society,59,High Society,220
+361,https://www.boardgameoracle.com/en-NZ/boardgame/price/sehkInkSCf/sprawlopolis,60,Sprawlopolis,251658
+316,https://www.boardgameoracle.com/en-NZ/boardgame/price/sevmepMizp/tiny-towns,61,Tiny Towns,265736
+317,https://www.boardgameoracle.com/en-NZ/boardgame/price/rqvcrTXJ3H/the-isle-of-cats,62,The Isle of Cats,281259
 222,https://www.boardgameoracle.com/en-NZ/boardgame/price/hbL8-nXEze/azul-summer-pavilion,63,Azul: Summer Pavilion,287954
 318,https://www.boardgameoracle.com/en-NZ/boardgame/price/671dyiG6Dw/planet-unknown,64,Planet Unknown,258779
 319,https://www.boardgameoracle.com/en-NZ/boardgame/price/VQqEhpax9D/micromacro-crime-city,66,MicroMacro: Crime City,318977
+320,https://www.boardgameoracle.com/en-NZ/boardgame/price/jD6DwiuskG/the-guild-of-merchant-explorers,67,The Guild of Merchant Explorers,350933
+321,https://www.boardgameoracle.com/en-NZ/boardgame/price/Fh1yyKqqdu/fantastic-factories,68,Fantastic Factories,216600
+322,https://www.boardgameoracle.com/en-NZ/boardgame/price/kgox9xGtaa/point-city,69,Point City,368017
 323,https://www.boardgameoracle.com/en-NZ/boardgame/price/GQL9Tw-RzO/cat-in-the-box-deluxe-edition,70,Cat in the Box: Deluxe Edition,345972
 223,https://www.boardgameoracle.com/en-NZ/boardgame/price/Il_CaPaElq/flamecraft,71,Flamecraft,336986
 224,https://www.boardgameoracle.com/en-NZ/boardgame/price/7G0rT0RqIm/hanamikoji,72,Hanamikoji,158600
 324,https://www.boardgameoracle.com/en-NZ/boardgame/price/CFfHoVQzHu/similo,73,Similo,268620
+325,https://www.boardgameoracle.com/en-NZ/boardgame/price/jMT-_Uoie5/coup,74,Coup,131357
+326,https://www.boardgameoracle.com/en-NZ/boardgame/price/nWQ3P8Ufah/skull-king,75,Skull King,150145
 210,https://www.boardgameoracle.com/en-NZ/boardgame/price/oTEHQNhsaG/lama,76,L.L.A.M.A.,266083
+328,https://www.boardgameoracle.com/en-NZ/boardgame/price/g9BWdegK5J/splendor-duel,77,Splendor Duel,364073
 225,https://www.boardgameoracle.com/en-NZ/boardgame/price/67BKawSrIj/paperback,78,Paperback,141572
 329,https://www.boardgameoracle.com/en-NZ/boardgame/price/2ukSnJ39H9/railroad-ink-deep-blue-edition,79,Railroad Ink: Deep Blue Edition,245654
 226,https://www.boardgameoracle.com/en-NZ/boardgame/price/VHUh_GEd1L/mysterium,80,Mysterium,181304
+330,https://www.boardgameoracle.com/en-NZ/boardgame/price/kSyFCDDJXJ/cartographers-heroes,81,Cartographers Heroes,315767
 331,https://www.boardgameoracle.com/en-NZ/boardgame/price/BHRQNsUf39/isle-of-skye-from-chieftain-to-king,82,Isle of Skye: From Chieftain to King,176494
 332,https://www.boardgameoracle.com/en-NZ/boardgame/price/DMDhmm1Mi0/istanbul-big-box,83,Istanbul,148949
+333,https://www.boardgameoracle.com/en-NZ/boardgame/price/46HTD3IHNG/hansa-teutonica,84,Hansa Teutonica,43015
 334,https://www.boardgameoracle.com/en-NZ/boardgame/price/Ev6O7JAqLG/azul-queens-garden,85,Azul: Queen's Garden,346965
 227,https://www.boardgameoracle.com/en-NZ/boardgame/price/ymB8oJ6uyX/trails,86,Trails,338628
 335,https://www.boardgameoracle.com/en-NZ/boardgame/price/ItF8JsIfpj/the-resistance-avalon,87,The Resistance: Avalon,128882
 228,https://www.boardgameoracle.com/en-NZ/boardgame/price/5T2DG9cIrd/burgle-bros,88,Burgle Bros.,172081
+336,https://www.boardgameoracle.com/en-NZ/boardgame/price/OPf2A4uVYp/tiny-epic-galaxies,89,Tiny Epic Galaxies,163967
 229,https://www.boardgameoracle.com/en-NZ/boardgame/price/z3pagk2sas/parks-nightfall-expansion,90,PARKS: Nightfall,298729
+337,https://www.boardgameoracle.com/en-NZ/boardgame/price/h4IgHB3OKM/tuscany-essential-edition,91,Viticulture: Tuscany Essential Edition,202174
+338,https://www.boardgameoracle.com/en-NZ/boardgame/price/m0g4V0Ym-r/dice-throne-season-one,92,Dice Throne: Season One,216734
+339,https://www.boardgameoracle.com/en-NZ/boardgame/price/K90tlbR0eo/clank-in-space,93,Clank! In! Space!: A Deck-Building Adventure,233371
+340,https://www.boardgameoracle.com/en-NZ/boardgame/price/J8HMKApyM0/fantasy-realms,94,Fantasy Realms,223040
 230,https://www.boardgameoracle.com/en-NZ/boardgame/price/l5rOiw0rWO/noctiluca,95,Noctiluca,269752
 231,https://www.boardgameoracle.com/en-NZ/boardgame/price/KZdLev9-7v/the-bloody-inn,96,The Bloody Inn,180593
 232,https://www.boardgameoracle.com/en-NZ/boardgame/price/7lfjuWxWFm/cosmic-encounter,97,Cosmic Encounter,39463
