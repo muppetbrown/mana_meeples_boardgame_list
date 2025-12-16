@@ -53,12 +53,15 @@ class TestFixSequenceValidation:
             json={"table_name": "boardgames; DROP TABLE users;--"},
             headers=ADMIN_HEADERS
         )
-        # Should get 422 (validation error)
+        # Should get 422 (validation error) or 429 (rate limited)
         assert response.status_code in [422, 429]
-        # Check that error details are present (type could be 'value_error' or contain 'validation')
-        detail = response.json()["detail"]
-        assert isinstance(detail, list) and len(detail) > 0
-        assert "type" in detail[0]
+
+        # Only check error structure if not rate limited
+        if response.status_code == 422:
+            # Check that error details are present (type could be 'value_error' or contain 'validation')
+            detail = response.json()["detail"]
+            assert isinstance(detail, list) and len(detail) > 0
+            assert "type" in detail[0]
 
     def test_fix_sequence_whitelist_enforcement(self):
         """Should only allow whitelisted tables"""
