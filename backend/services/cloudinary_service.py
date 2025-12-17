@@ -110,11 +110,9 @@ class CloudinaryService:
 
             # Upload with optimizations
             upload_options = {
-                "public_id": public_id,
-                "folder": self.folder,
+                "public_id": public_id,  # Already includes folder path
                 "overwrite": False,  # Don't overwrite existing
                 "resource_type": "image",
-                "type": "upload",
                 "quality": "auto:best",  # Automatic quality optimization
                 "tags": ["boardgame"],
             }
