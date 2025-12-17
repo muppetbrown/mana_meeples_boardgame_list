@@ -6,16 +6,18 @@ import { useImageLazyLoad } from "../hooks/useLazyLoad";
 /**
  * Optimized image component with progressive loading, error handling, and CLS prevention
  *
- * Phase 2 enhancements:
+ * Best practice enhancements:
  * - Responsive images with srcset for different screen sizes
- * - Advanced Intersection Observer lazy loading (loads 100px before visible)
+ * - Advanced Intersection Observer lazy loading (loads 400px before visible)
+ * - Coordinated lazy loading: IntersectionObserver OR native lazy, not both
  * - Blur-up loading effect for smoother perceived performance
+ * - Explicit dimensions to prevent Cumulative Layout Shift (CLS)
  *
  * @param {string} url - Image URL to load
  * @param {string} alt - Alt text for accessibility
  * @param {string} className - CSS classes for the image element
  * @param {string} fallbackClass - CSS classes for fallback/placeholder
- * @param {string} loading - Native lazy loading ("lazy" | "eager")
+ * @param {string} loading - Native lazy loading ("lazy" | "eager") - only used if useIntersectionObserver is false
  * @param {string} fetchPriority - Resource fetch priority ("high" | "low" | "auto")
  * @param {number} width - Explicit width to prevent layout shift
  * @param {number} height - Explicit height to prevent layout shift
@@ -42,6 +44,7 @@ export default function GameImage({
   const [imageLoaded, setImageLoaded] = useState(false);
 
   // Advanced lazy loading with Intersection Observer
+  // BEST PRACTICE: Use IntersectionObserver OR native lazy loading, not both
   const isLazy = loading === "lazy";
   const { ref: lazyRef, shouldLoad } = useImageLazyLoad({
     enabled: isLazy && useIntersectionObserver
@@ -49,6 +52,9 @@ export default function GameImage({
 
   // For eager loading or when IntersectionObserver is disabled, always load
   const shouldLoadImage = !isLazy || !useIntersectionObserver || shouldLoad;
+
+  // If using IntersectionObserver, disable native lazy loading to avoid conflicts
+  const effectiveLoading = (isLazy && useIntersectionObserver) ? "eager" : loading;
 
   const handleImageError = () => {
     setImageError(true);
@@ -77,15 +83,24 @@ export default function GameImage({
   }
 
   return (
-    <div ref={lazyRef} className="relative" style={{ aspectRatio }}>
-      {/* Blur-up loading placeholder with gradient */}
-      {!imageLoaded && shouldLoadImage && (
+    <div
+      ref={lazyRef}
+      className="image-container relative"
+      style={{
+        aspectRatio,
+        width: width ? `${width}px` : '100%',
+        height: height ? `${height}px` : 'auto'
+      }}
+    >
+      {/* Blur-up loading placeholder with gradient - always render to prevent CLS */}
+      {!imageLoaded && (
         <div
           className={`absolute inset-0 ${fallbackClass || "bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 rounded-xl flex items-center justify-center"}`}
           style={{
-            animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            animation: shouldLoadImage ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none',
             backdropFilter: 'blur(10px)'
           }}
+          aria-hidden="true"
         >
           <svg className="w-8 h-8 text-slate-400" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
             <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
@@ -101,7 +116,7 @@ export default function GameImage({
           sizes={srcSet ? sizes : undefined}
           alt={alt || "Game cover image"}
           className={`${className} ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500 ease-out`}
-          loading={loading}
+          loading={effectiveLoading}
           fetchpriority={fetchPriority}
           onError={handleImageError}
           onLoad={handleImageLoad}
