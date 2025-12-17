@@ -6,7 +6,9 @@ Handles uploading BGG images to Cloudinary with automatic transformations.
 import os
 import logging
 import hashlib
+import io
 from typing import Optional, Dict
+import httpx
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
@@ -56,13 +58,18 @@ class CloudinaryService:
     async def upload_from_url(
         self,
         url: str,
+        http_client: httpx.AsyncClient,
         game_id: Optional[int] = None
     ) -> Optional[Dict]:
         """
         Upload an image from URL to Cloudinary.
 
+        Downloads the image first with proper headers (to work around BGG's restrictions),
+        then uploads the bytes to Cloudinary.
+
         Args:
             url: The source image URL (usually from BGG)
+            http_client: httpx client for downloading the image
             game_id: Optional game ID for metadata
 
         Returns:
@@ -84,6 +91,14 @@ class CloudinaryService:
                 # Image doesn't exist, proceed with upload
                 pass
 
+            # First, download the image from BGG with proper headers
+            logger.info(f"Downloading image from BGG: {url}")
+            response = await http_client.get(url)
+            response.raise_for_status()
+
+            image_bytes = response.content
+            logger.info(f"Downloaded {len(image_bytes)} bytes from BGG")
+
             # Upload with optimizations
             upload_options = {
                 "public_id": public_id,
@@ -101,8 +116,10 @@ class CloudinaryService:
             if game_id:
                 upload_options["context"] = f"game_id={game_id}"
 
-            # Upload from URL
-            result = cloudinary.uploader.upload(url, **upload_options)
+            # Upload the image bytes to Cloudinary (not from URL)
+            # Create a file-like object from bytes
+            image_file = io.BytesIO(image_bytes)
+            result = cloudinary.uploader.upload(image_file, **upload_options)
 
             logger.info(
                 f"Uploaded to Cloudinary: {public_id} "
@@ -111,6 +128,9 @@ class CloudinaryService:
 
             return result
 
+        except httpx.HTTPError as e:
+            logger.error(f"Failed to download image from BGG: {e}")
+            return None
         except Exception as e:
             logger.error(f"Failed to upload to Cloudinary: {e}")
             return None

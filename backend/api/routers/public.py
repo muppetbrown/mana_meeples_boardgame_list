@@ -235,7 +235,8 @@ async def image_proxy(
         # If Cloudinary is enabled, upload and return Cloudinary URL
         if CLOUDINARY_ENABLED and 'cf.geekdo-images.com' in url:
             # Upload to Cloudinary (or get existing)
-            upload_result = await cloudinary_service.upload_from_url(url)
+            # Pass httpx_client so we can download with proper headers first
+            upload_result = await cloudinary_service.upload_from_url(url, httpx_client)
 
             if upload_result:
                 # Get optimized URL with transformations
