@@ -41,19 +41,22 @@ class CloudinaryService:
             return False
         return True
 
-    def _get_public_id(self, url: str) -> str:
+    def _get_public_id(self, url: str, include_folder: bool = True) -> str:
         """
         Generate a unique public_id for Cloudinary based on URL.
         Uses MD5 hash of URL for consistency.
 
         Args:
             url: The original image URL
+            include_folder: Whether to include folder in public_id
 
         Returns:
-            Public ID string (e.g., "boardgame-library/abc123def456")
+            Public ID string (e.g., "abc123def456" or "boardgame-library/abc123def456")
         """
         url_hash = hashlib.md5(url.encode()).hexdigest()
-        return f"{self.folder}/{url_hash}"
+        if include_folder:
+            return f"{self.folder}/{url_hash}"
+        return url_hash
 
     async def upload_from_url(
         self,
@@ -80,12 +83,14 @@ class CloudinaryService:
             return None
 
         try:
-            public_id = self._get_public_id(url)
+            # Use hash only as public_id, folder is specified separately
+            hash_only = self._get_public_id(url, include_folder=False)
+            full_public_id = self._get_public_id(url, include_folder=True)
 
-            # Check if image already exists in Cloudinary
+            # Check if image already exists in Cloudinary (using full path)
             try:
-                existing = cloudinary.api.resource(public_id)
-                logger.info(f"Image already exists in Cloudinary: {public_id}")
+                existing = cloudinary.api.resource(full_public_id)
+                logger.info(f"Image already exists in Cloudinary: {full_public_id}")
                 return existing
             except cloudinary.exceptions.NotFound:
                 # Image doesn't exist, proceed with upload
@@ -109,8 +114,10 @@ class CloudinaryService:
             logger.info(f"Downloaded {len(image_bytes)} bytes from BGG")
 
             # Upload with optimizations
+            # Use hash as public_id, folder specified separately to avoid double-nesting
             upload_options = {
-                "public_id": public_id,  # Already includes folder path
+                "public_id": hash_only,  # Just the hash, no folder prefix
+                "folder": self.folder,  # Folder specified separately
                 "overwrite": False,  # Don't overwrite existing
                 "resource_type": "image",
                 "quality": "auto:best",  # Automatic quality optimization
@@ -127,7 +134,7 @@ class CloudinaryService:
             result = cloudinary.uploader.upload(image_file, **upload_options)
 
             logger.info(
-                f"Uploaded to Cloudinary: {public_id} "
+                f"Uploaded to Cloudinary: {full_public_id} "
                 f"(format: {result.get('format')}, size: {result.get('bytes')} bytes)"
             )
 
