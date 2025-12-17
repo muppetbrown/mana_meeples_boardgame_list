@@ -3,6 +3,7 @@ import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { labelFor } from "../../constants/categories";
 import GameImage from "../GameImage";
+import { getAfterGameCreateUrl } from "../../constants/aftergame";
 
 export default function GameCardPublic({
   game,
@@ -320,16 +321,31 @@ export default function GameCardPublic({
               </div>
             )}
 
-            {/* View Full Details Link */}
-            <Link
-              to={href}
-              className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 font-semibold text-sm mt-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded px-2 py-1"
-            >
-              <span>View Full Details</span>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2 mt-3">
+              {/* Plan a Game Button */}
+              <a
+                href={getAfterGameCreateUrl(game.aftergame_game_id)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-semibold text-sm hover:from-teal-600 hover:to-emerald-600 transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                aria-label="Plan a game session on AfterGame"
+              >
+                <span role="img" aria-label="Game planning">🎲</span>
+                <span>Plan a Game</span>
+              </a>
+
+              {/* View Full Details Link */}
+              <Link
+                to={href}
+                className="inline-flex items-center gap-2 text-emerald-600 hover:text-emerald-700 font-semibold text-sm px-2 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded"
+              >
+                <span>View Full Details</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

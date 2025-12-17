@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from "react";
-import { bulkUpdateNZDesigners, reimportAllGames, fetchAllSleeveData, fixDatabaseSequence, getDebugCategories, getDebugDatabaseInfo, getDebugPerformance, exportGamesCSV, getHealthCheck, getDbHealthCheck } from "../../api/client";
+import { bulkUpdateNZDesigners, bulkUpdateAfterGameIDs, reimportAllGames, fetchAllSleeveData, fixDatabaseSequence, getDebugCategories, getDebugDatabaseInfo, getDebugPerformance, exportGamesCSV, getHealthCheck, getDbHealthCheck } from "../../api/client";
 
 export function AdminToolsPanel({ onToast, onLibraryReload }) {
   const [nzDesignersText, setNzDesignersText] = useState("");
+  const [afterGameText, setAfterGameText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [debugData, setDebugData] = useState(null);
   const [debugType, setDebugType] = useState("");
@@ -51,6 +52,41 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
       setIsLoading(false);
     }
   }, [nzDesignersText, onToast, onLibraryReload, downloadText]);
+
+  const handleBulkAfterGameIDs = useCallback(async () => {
+    if (!afterGameText.trim()) {
+      onToast("Please enter CSV data", "error");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const result = await bulkUpdateAfterGameIDs(afterGameText);
+      const msg = `Updated: ${result.updated?.length || 0}, Not found: ${result.not_found?.length || 0}, Errors: ${result.errors?.length || 0}`;
+      onToast(msg, "success");
+
+      const ts = new Date().toISOString().replace(/[:.]/g, "-");
+      const log = [
+        "Updated:",
+        ...(result.updated || []),
+        "",
+        "Not found:",
+        ...(result.not_found || []),
+        "",
+        "Errors:",
+        ...(result.errors || []),
+        "",
+      ].join("\n");
+      downloadText(`aftergame-ids-${ts}.log.txt`, log);
+
+      setAfterGameText("");
+      if (onLibraryReload) await onLibraryReload();
+    } catch (error) {
+      onToast("Bulk AfterGame IDs update failed", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [afterGameText, onToast, onLibraryReload, downloadText]);
 
   const handleReimportAll = useCallback(async () => {
     if (!window.confirm("This will re-import ALL games from BGG and may take several minutes. Continue?")) {
@@ -177,6 +213,41 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
           disabled={isLoading || !nzDesignersText.trim()}
         >
           {isLoading ? "Updating..." : "Update NZ Designers"}
+        </button>
+      </div>
+
+      {/* AfterGame IDs Bulk Update */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+          🎲 Bulk Update AfterGame IDs
+        </h3>
+        <p className="text-sm text-gray-600 mb-2">
+          CSV format: <code>bgg_id,aftergame_game_id[,title]</code>
+        </p>
+        <div className="mb-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+          <p className="text-xs text-gray-700">
+            <strong>Example:</strong><br />
+            <code className="text-xs">
+              174430,ac3a5f77-3e19-47af-a61a-d648d04b02e2,Gloomhaven<br />
+              167791,bd4b6e88-4c2a-48bf-b71b-e759e15c13f3,Terraforming Mars
+            </code>
+          </p>
+        </div>
+        <textarea
+          className="w-full h-32 border rounded-lg p-2 font-mono text-sm mb-2"
+          placeholder="174430,ac3a5f77-3e19-47af-a61a-d648d04b02e2,Gloomhaven"
+          value={afterGameText}
+          onChange={(e) => setAfterGameText(e.target.value)}
+          disabled={isLoading}
+        />
+        <button
+          className={`px-4 py-2 rounded-lg text-white ${
+            isLoading ? "bg-gray-400" : "bg-emerald-600 hover:bg-emerald-700"
+          }`}
+          onClick={handleBulkAfterGameIDs}
+          disabled={isLoading || !afterGameText.trim()}
+        >
+          {isLoading ? "Updating..." : "Update AfterGame IDs"}
         </button>
       </div>
 

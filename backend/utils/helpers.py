@@ -298,6 +298,8 @@ def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         "expansion_type": getattr(game, "expansion_type", None),
         "modifies_players_min": getattr(game, "modifies_players_min", None),
         "modifies_players_max": getattr(game, "modifies_players_max", None),
+        # AfterGame integration
+        "aftergame_game_id": getattr(game, "aftergame_game_id", None),
     }
 
 
