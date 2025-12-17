@@ -12,9 +12,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Set up Cloudinary credentials
-os.environ.setdefault("CLOUDINARY_CLOUD_NAME", "dsobsswqq")
-os.environ.setdefault("CLOUDINARY_API_KEY", "159742555664292")
-os.environ.setdefault("CLOUDINARY_API_SECRET", "6-fZDSeelRLTGe9J4a-w0GG8Gow")
+os.environ.setdefault("CLOUDINARY_CLOUD_NAME")
+os.environ.setdefault("CLOUDINARY_API_KEY")
+os.environ.setdefault("CLOUDINARY_API_SECRET")
 
 print("=" * 60)
 print("CLOUDINARY CONNECTION TEST")
