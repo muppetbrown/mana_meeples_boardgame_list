@@ -4,6 +4,7 @@ import { useSearchParams } from "react-router-dom";
 import { getPublicGames, getPublicCategoryCounts } from "../api/client";
 import { CATEGORY_KEYS, CATEGORY_LABELS } from "../constants/categories";
 import GameCardPublic from "../components/public/GameCardPublic";
+import GameCardSkeleton from "../components/public/GameCardSkeleton";
 import SortSelect from "../components/public/SortSelect";
 import SearchBox from "../components/public/SearchBox";
 
@@ -201,9 +202,10 @@ export default function PublicCatalogue() {
     setLoadingMore(true);
     const nextPage = page + 1;
 
-    // Save current scroll position before loading new content
+    // BEST PRACTICE: Save scroll anchor point for stable scroll position
     const scrollBeforeLoad = window.scrollY;
-    const documentHeightBefore = document.documentElement.scrollHeight;
+    const viewportHeight = window.innerHeight;
+    const scrollBottom = scrollBeforeLoad + viewportHeight;
 
     try {
       const params = { q: qDebounced, page: nextPage, page_size: pageSize, sort };
@@ -236,18 +238,23 @@ export default function PublicCatalogue() {
         setPage(nextPage);
       }
 
-      // Restore scroll position after content loads to prevent jumping
-      // Wait for the DOM to update with new content
+      // BEST PRACTICE: Wait for layout AND paint to complete before checking scroll
+      // Using double requestAnimationFrame ensures layout and paint are done
       requestAnimationFrame(() => {
-        const documentHeightAfter = document.documentElement.scrollHeight;
-        const heightDifference = documentHeightAfter - documentHeightBefore;
+        requestAnimationFrame(() => {
+          // CSS scroll-anchor should handle this, but as fallback:
+          // Only restore if scroll position changed unexpectedly (> 50px drift)
+          const currentScroll = window.scrollY;
+          const drift = Math.abs(currentScroll - scrollBeforeLoad);
 
-        // If content was added above the viewport (shouldn't happen with append),
-        // or if the scroll position changed unexpectedly, restore it
-        const currentScroll = window.scrollY;
-        if (Math.abs(currentScroll - scrollBeforeLoad) > 10) {
-          window.scrollTo(0, scrollBeforeLoad);
-        }
+          if (drift > 50) {
+            // Smooth scroll restoration to avoid jarring jumps
+            window.scrollTo({
+              top: scrollBeforeLoad,
+              behavior: 'instant' // Use instant to avoid animation during correction
+            });
+          }
+        });
       });
     } catch (e) {
       console.error("Failed to load more games:", e);
@@ -264,7 +271,7 @@ export default function PublicCatalogue() {
 
     // Use a ref to track when the observer last triggered to prevent rapid-fire calls
     let lastTriggerTime = 0;
-    const MIN_TRIGGER_INTERVAL = 500; // Minimum 500ms between triggers
+    const MIN_TRIGGER_INTERVAL = 300; // OPTIMIZED: Reduced to 300ms for snappier loading
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -280,8 +287,8 @@ export default function PublicCatalogue() {
       },
       {
         root: null, // viewport
-        rootMargin: '200px', // Trigger 200px before reaching the sentinel
-        threshold: 0.1,
+        rootMargin: '400px', // OPTIMIZED: Increased to 400px to match image lazy loading
+        threshold: 0, // OPTIMIZED: 0 is more reliable than 0.1 for triggering
       }
     );
 
@@ -712,9 +719,11 @@ export default function PublicCatalogue() {
           )}
 
           {loading && (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-emerald-500 border-t-transparent"></div>
-              <p className="mt-4 text-slate-600">Loading games...</p>
+            <div className="game-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              {/* Show skeleton loaders matching the grid layout */}
+              {Array.from({ length: pageSize }).map((_, index) => (
+                <GameCardSkeleton key={`skeleton-${index}`} />
+              ))}
             </div>
           )}
 
@@ -732,7 +741,7 @@ export default function PublicCatalogue() {
 
           {!loading && !error && allLoadedItems.length > 0 && (
             <>
-              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              <div className="game-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
                 {allLoadedItems.map((game, index) => (
                   <GameCardPublic
                     key={game.id}

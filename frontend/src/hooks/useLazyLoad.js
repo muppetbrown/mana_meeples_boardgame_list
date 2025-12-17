@@ -68,7 +68,7 @@ export function useLazyLoad({
  */
 export function useImageLazyLoad(options = {}) {
   const { ref, hasBeenVisible } = useLazyLoad({
-    rootMargin: '100px', // Load images 100px before they're visible
+    rootMargin: '400px', // Load images 400px before visible for smooth scrolling
     threshold: 0.01,
     ...options
   });

@@ -6,6 +6,8 @@
 html, body, #root {
   height: 100%;
   scrollbar-gutter: stable;
+  /* Enable CSS scroll anchoring to prevent jumps during content loading */
+  overflow-anchor: auto;
 }
 
 body {
@@ -156,6 +158,30 @@ textarea:focus:not(:focus-visible) {
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+/* Prevent layout shifts during image and content loading */
+.game-card-container {
+  /* Reserve minimum height to prevent CLS */
+  min-height: 300px;
+  /* Ensure consistent sizing */
+  contain: layout;
+}
+
+/* Optimize grid layout for better scroll performance */
+.game-grid {
+  /* Enable layout containment for better performance */
+  contain: layout style;
+  /* Prevent scroll anchoring issues in grid */
+  overflow-anchor: auto;
+}
+
+/* Image container should maintain aspect ratio even before load */
+.image-container {
+  /* Prevent cumulative layout shift */
+  contain: layout size;
+  /* Ensure aspect ratio is maintained */
+  position: relative;
 }
 
 /* Print styles */
