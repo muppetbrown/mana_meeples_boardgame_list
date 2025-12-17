@@ -743,23 +743,27 @@ export default function PublicCatalogue() {
 
               {/* Infinite Scroll Trigger & Loading Indicator */}
               {allLoadedItems.length < total && (
-                <div
-                  ref={loadMoreTriggerRef}
-                  className="mt-8 py-8 text-center"
-                >
-                  {loadingMore ? (
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="inline-block animate-spin rounded-full h-8 w-8 border-3 border-emerald-500 border-t-transparent"></div>
-                      <p className="text-sm text-slate-600">
-                        Loading more games...
-                      </p>
+                <>
+                  {/* Show skeleton loaders while loading more to prevent scrollbar jumps */}
+                  {loadingMore && (
+                    <div className="game-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 mt-6">
+                      {Array.from({ length: Math.min(pageSize, total - allLoadedItems.length) }).map((_, index) => (
+                        <GameCardSkeleton key={`loading-skeleton-${index}`} />
+                      ))}
                     </div>
-                  ) : (
-                    <p className="text-xs text-slate-400">
-                      Scroll for more • {allLoadedItems.length} of {total}
-                    </p>
                   )}
-                </div>
+
+                  <div
+                    ref={loadMoreTriggerRef}
+                    className="mt-8 py-8 text-center"
+                  >
+                    {!loadingMore && (
+                      <p className="text-xs text-slate-400">
+                        Scroll for more • {allLoadedItems.length} of {total}
+                      </p>
+                    )}
+                  </div>
+                </>
               )}
 
               {/* End of results message */}
