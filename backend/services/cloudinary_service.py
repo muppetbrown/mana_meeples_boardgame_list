@@ -178,6 +178,19 @@ class CloudinaryService:
         try:
             public_id = self._get_public_id(url)
 
+            # Get resource details from Cloudinary to ensure we have correct format/version
+            try:
+                resource = cloudinary.api.resource(public_id)
+                resource_format = resource.get('format')
+                resource_version = resource.get('version')
+            except cloudinary.exceptions.NotFound:
+                # Image not uploaded to Cloudinary yet, return original URL
+                logger.warning(f"Image not found in Cloudinary: {public_id}")
+                return url
+            except Exception as e:
+                logger.error(f"Failed to get Cloudinary resource details: {e}")
+                return url
+
             # Build transformation parameters
             transformation = {
                 "quality": quality,
@@ -192,8 +205,15 @@ class CloudinaryService:
                 transformation["crop"] = crop
                 transformation["gravity"] = gravity
 
+            # Include version and format in URL generation
+            # Format must match the stored resource format
+            if resource_version:
+                transformation["version"] = resource_version
+
             # Generate URL with transformations
-            cloudinary_url = CloudinaryImage(public_id).build_url(
+            # The public_id should include the format extension
+            public_id_with_format = f"{public_id}.{resource_format}" if resource_format else public_id
+            cloudinary_url = CloudinaryImage(public_id_with_format).build_url(
                 **transformation
             )
 
