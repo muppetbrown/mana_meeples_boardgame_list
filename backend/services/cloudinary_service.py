@@ -106,9 +106,7 @@ class CloudinaryService:
                 "overwrite": False,  # Don't overwrite existing
                 "resource_type": "image",
                 "type": "upload",
-                "format": "auto",  # Auto-detect best format (WebP/AVIF)
                 "quality": "auto:best",  # Automatic quality optimization
-                "fetch_format": "auto",  # Serve best format based on browser
                 "tags": ["boardgame"],
             }
 
