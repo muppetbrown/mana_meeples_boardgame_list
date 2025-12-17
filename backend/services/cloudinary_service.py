@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 
 # Configure Cloudinary from environment variables
 cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME", "dsobsswqq"),
-    api_key=os.getenv("CLOUDINARY_API_KEY", "159742555664292"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET", "6-fZDSeelRLTGe9J4a-w0GG8Gow"),
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
     secure=True
 )
 
