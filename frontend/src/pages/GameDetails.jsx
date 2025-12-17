@@ -2,10 +2,11 @@
 import React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import DOMPurify from "dompurify";
-import { getPublicGame, imageProxyUrl } from "../api/client";
+import { getPublicGame } from "../api/client";
 import { labelFor } from "../constants/categories";
 import { GameDetailsSkeleton } from "../components/common/SkeletonLoader";
 import ExpansionMiniCard from "../components/public/ExpansionMiniCard";
+import GameImage from "../components/GameImage";
 
 export default function GameDetails() {
   const { id } = useParams();
@@ -87,7 +88,7 @@ export default function GameDetails() {
 
   if (!game) return null;
 
-  const img = game.image_url ? imageProxyUrl(game.image_url) : null;
+  const img = game.image_url;
   const cat = labelFor(game.mana_meeple_category);
 
   return (
@@ -113,23 +114,17 @@ export default function GameDetails() {
             <div className="grid grid-cols-1 lg:grid-cols-[400px,1fr] gap-0">
               {/* Image Section */}
               <div className="relative bg-gradient-to-br from-slate-100 to-slate-200 aspect-[4/3] sm:aspect-square lg:aspect-square">
-                {img ? (
-                  <img
-                    src={img}
-                    alt={`${game.title} board game cover`}
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-600">
-                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-300 flex items-center justify-center mb-3 sm:mb-4">
-                      <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                        <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                    <span className="text-base sm:text-lg font-medium">No Image Available</span>
-                  </div>
-                )}
+                <GameImage
+                  url={img}
+                  alt={`${game.title} board game cover`}
+                  className="w-full h-full object-cover"
+                  fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-600 bg-gradient-to-br from-slate-100 to-slate-200"
+                  loading="eager"
+                  fetchPriority="high"
+                  width={400}
+                  height={400}
+                  aspectRatio="1/1"
+                />
                 
                 {/* Category Badge */}
                 {cat && (

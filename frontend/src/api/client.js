@@ -4,7 +4,7 @@
  * Uses centralized configuration from config/api.js
  */
 import axios from "axios";
-import { API_BASE, imageProxyUrl as proxyUrl } from "../config/api";
+import { API_BASE, imageProxyUrl as proxyUrl, generateSrcSet } from "../config/api";
 
 /**
  * Axios instance configured for API communication
@@ -368,9 +368,10 @@ export async function getDbHealthCheck() {
 // ============================================================================
 
 /**
- * Re-export image proxy URL helper from centralized config
+ * Re-export image utilities from centralized config
  */
 export const imageProxyUrl = proxyUrl;
+export { generateSrcSet };
 
 // Import game from BoardGameGeek by BGG ID
 export async function importFromBGG(bggId, force = false) {

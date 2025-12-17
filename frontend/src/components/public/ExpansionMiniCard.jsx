@@ -1,10 +1,10 @@
 // src/components/public/ExpansionMiniCard.jsx
 import React from "react";
 import { Link } from "react-router-dom";
-import { imageProxyUrl } from "../../config/api";
+import GameImage from "../GameImage";
 
 export default function ExpansionMiniCard({ expansion }) {
-  const imgSrc = expansion.image_url ? imageProxyUrl(expansion.image_url) : null;
+  const imgSrc = expansion.image_url;
 
   return (
     <Link
@@ -14,25 +14,16 @@ export default function ExpansionMiniCard({ expansion }) {
       <div className="flex gap-3">
         {/* Thumbnail */}
         <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
-          {imgSrc ? (
-            <img
-              src={imgSrc}
-              alt={`Cover for ${expansion.title}`}
-              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
-              loading="lazy"
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextElementSibling.style.display = 'flex';
-              }}
-            />
-          ) : null}
-
-          {/* Fallback when no image */}
-          <div className={`w-full h-full flex items-center justify-center text-slate-400 ${imgSrc ? 'hidden' : 'flex'}`}>
-            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-              <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-            </svg>
-          </div>
+          <GameImage
+            url={imgSrc}
+            alt={`Cover for ${expansion.title}`}
+            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
+            fallbackClass="w-full h-full flex items-center justify-center text-slate-400 bg-gradient-to-br from-slate-100 to-slate-200"
+            loading="lazy"
+            width={80}
+            height={80}
+            aspectRatio="1/1"
+          />
         </div>
 
         {/* Content */}
