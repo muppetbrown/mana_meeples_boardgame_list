@@ -85,3 +85,13 @@ SESSION_TIMEOUT_SECONDS = int(os.getenv("SESSION_TIMEOUT_SECONDS", "3600"))
 # JWT configuration
 # JWT tokens are valid for 7 days by default
 JWT_EXPIRATION_DAYS = int(os.getenv("JWT_EXPIRATION_DAYS", "7"))
+
+# GitHub configuration for triggering workflows
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
+GITHUB_REPO_OWNER = os.getenv("GITHUB_REPO_OWNER", "muppetbrown")
+GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "mana_meeples_boardgame_list")
+if not GITHUB_TOKEN:
+    print(
+        "WARNING: GITHUB_TOKEN not set - workflow triggering will be unavailable",
+        file=sys.stderr,
+    )

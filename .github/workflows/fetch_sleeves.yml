@@ -1,21 +1,27 @@
 name: Fetch Sleeve Data
 
 on:
-  workflow_dispatch:  # Manual trigger only
+  workflow_dispatch:  # Manual trigger with optional game ID filter
+    inputs:
+      game_ids:
+        description: 'Comma-separated list of game IDs (leave empty for all games)'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   fetch-sleeves:
     runs-on: ubuntu-latest
     timeout-minutes: 120  # Allow 2 hours for completion
-    
+
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-      
+
       - name: Install dependencies
         run: |
           pip install -r backend/requirements.txt
@@ -32,5 +38,12 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONPATH: ${{ github.workspace }}/backend
+          GAME_IDS: ${{ inputs.game_ids }}
         run: |
-          python scripts/fetch_all_sleeves.py
+          if [ -n "$GAME_IDS" ]; then
+            echo "Fetching sleeves for game IDs: $GAME_IDS"
+            python scripts/fetch_all_sleeves.py --game-ids "$GAME_IDS"
+          else
+            echo "Fetching sleeves for all games"
+            python scripts/fetch_all_sleeves.py
+          fi

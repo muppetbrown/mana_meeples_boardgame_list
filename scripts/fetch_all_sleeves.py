@@ -1,6 +1,6 @@
 """
-One-time migration script to fetch sleeve data for all existing games
-Re-runs will update existing sleeve data
+Fetch sleeve data for games from BoardGameGeek
+Can fetch for all games or specific game IDs
 """
 import sys
 import os
@@ -18,6 +18,7 @@ from selenium.webdriver.chrome.options import Options
 print("DEBUG: Imported Selenium")
 import time
 import threading
+import argparse
 print("DEBUG: All imports complete")
 
 
@@ -67,8 +68,13 @@ def create_driver():
 
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Fetch sleeve data for games')
+    parser.add_argument('--game-ids', type=str, help='Comma-separated list of game IDs')
+    args = parser.parse_args()
+
     print("=" * 80)
-    print("BULK SLEEVE DATA FETCH")
+    print("SLEEVE DATA FETCH")
     print("=" * 80)
 
     # Setup Selenium
@@ -77,8 +83,18 @@ def main():
     db = SessionLocal()
 
     try:
-        # Get all games with BGG IDs (can't scrape without BGG ID)
-        games = db.query(Game).filter(Game.bgg_id.isnot(None)).all()
+        # Get games to process
+        query = db.query(Game).filter(Game.bgg_id.isnot(None))
+
+        if args.game_ids:
+            # Parse game IDs from comma-separated string
+            game_id_list = [int(gid.strip()) for gid in args.game_ids.split(',') if gid.strip()]
+            query = query.filter(Game.id.in_(game_id_list))
+            print(f"\nFiltering to {len(game_id_list)} specific game(s): {game_id_list}")
+        else:
+            print(f"\nFetching sleeves for ALL games with BGG IDs")
+
+        games = query.all()
         total = len(games)
 
         print(f"\nFound {total} games with BGG IDs to process\n")

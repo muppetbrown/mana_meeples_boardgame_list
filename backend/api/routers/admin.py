@@ -203,51 +203,8 @@ async def import_from_bgg(
 
             background_tasks.add_task(download_task)
 
-        # Fetch sleeve data in background to avoid blocking the import
-        if background_tasks:
-
-            def sleeve_task():
-                """Background task to fetch and save sleeve data"""
-                from services.sleeve_scraper import scrape_sleeve_data
-                from database import SessionLocal
-
-                # Create a new database session for the background task
-                db_session = SessionLocal()
-                try:
-                    logger.info(
-                        f"Background task: Fetching sleeve data for '{game.title}' (BGG ID: {bgg_id})"
-                    )
-                    sleeve_result = scrape_sleeve_data(bgg_id, game.title)
-                    logger.info(
-                        f"Background task: Sleeve data fetch result: {sleeve_result['status']}"
-                    )
-
-                    # Save sleeve data using game service
-                    game_service = GameService(db_session)
-                    # Fetch the game in this session
-                    from models import Game
-
-                    game_in_session = db_session.query(Game).get(game.id)
-                    if game_in_session:
-                        # Create a fake bgg_data dict with just sleeve data
-                        sleeve_bgg_data = {"sleeve_data": sleeve_result}
-                        game_service._save_sleeve_data(
-                            game_in_session, sleeve_bgg_data
-                        )
-                        db_session.commit()
-                        logger.info(
-                            f"Background task: Successfully saved sleeve data for '{game.title}'"
-                        )
-                except Exception as e:
-                    logger.error(
-                        f"Background task: Failed to fetch/save sleeve data for {game.title}: {e}",
-                        exc_info=True,
-                    )
-                    db_session.rollback()
-                finally:
-                    db_session.close()
-
-            background_tasks.add_task(sleeve_task)
+        # Note: Sleeve data is fetched via GitHub Actions workflow (not on Render server)
+        # Users can select games in Manage Library and trigger sleeve fetch for selected games
 
         return {"id": game.id, "title": game.title, "cached": was_cached}
 
@@ -427,3 +384,80 @@ async def fix_sequence(
             exc_info=True
         )
         raise HTTPException(status_code=500, detail=f"Failed to fix sequence: {str(e)}")
+
+
+@router.post("/trigger-sleeve-fetch")
+async def trigger_sleeve_fetch(
+    request: Request,
+    game_ids: list[int],
+    _: None = Depends(require_admin_auth),
+):
+    """
+    Trigger GitHub Actions workflow to fetch sleeve data for selected games.
+    Requires GITHUB_TOKEN to be configured in environment variables.
+    """
+    from config import GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+    import httpx
+
+    if not GITHUB_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="GitHub token not configured. Cannot trigger workflow.",
+        )
+
+    if not game_ids:
+        raise HTTPException(
+            status_code=400, detail="At least one game ID must be provided"
+        )
+
+    # Prepare workflow dispatch request
+    workflow_name = "fetch_sleeves.yml"
+    game_ids_str = ",".join(str(gid) for gid in game_ids)
+
+    url = f"https://api.github.com/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/actions/workflows/{workflow_name}/dispatches"
+
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    payload = {
+        "ref": "main",  # or master, depending on your default branch
+        "inputs": {"game_ids": game_ids_str},
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, json=payload, headers=headers)
+
+            if response.status_code == 204:
+                # Success - workflow dispatched
+                logger.info(
+                    f"Successfully triggered sleeve fetch workflow for {len(game_ids)} game(s)"
+                )
+                return {
+                    "success": True,
+                    "message": f"Sleeve fetch workflow triggered for {len(game_ids)} game(s)",
+                    "game_ids": game_ids,
+                }
+            else:
+                error_detail = response.text
+                logger.error(
+                    f"Failed to trigger workflow. Status: {response.status_code}, Error: {error_detail}"
+                )
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"GitHub API error: {error_detail}",
+                )
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error triggering workflow: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to trigger workflow: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error triggering workflow: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Unexpected error: {str(e)}"
+        )

@@ -477,6 +477,16 @@ export async function generateSleeveShoppingList(gameIds) {
 }
 
 /**
+ * Trigger GitHub Actions workflow to fetch sleeve data for selected games
+ * @param {Array<number>} gameIds - Array of game IDs
+ * @returns {Promise<Object>} Workflow trigger confirmation
+ */
+export async function triggerSleeveFetch(gameIds) {
+  const r = await api.post("/api/admin/trigger-sleeve-fetch", gameIds);
+  return r.data;
+}
+
+/**
  * Get sleeve data for a specific game
  * @param {number} gameId - Game ID
  * @returns {Promise<Array>} Array of sleeve objects
