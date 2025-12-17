@@ -110,7 +110,11 @@ export function imageProxyUrl(url, size = 'original') {
 }
 
 /**
- * Generate responsive image srcset for BGG images
+ * Generate responsive image srcset for BGG images with Cloudinary
+ *
+ * When Cloudinary is enabled (backend), this generates srcset with width/height
+ * parameters that the backend uses for Cloudinary transformations.
+ * The backend handles automatic format conversion (WebP/AVIF) and optimization.
  *
  * @param {string} url - The original image URL
  * @returns {string|null} - srcset string with multiple resolutions
@@ -120,17 +124,21 @@ export function generateSrcSet(url) {
     return null; // Only works for BGG images
   }
 
-  // Generate URLs for different sizes
-  // BGG typical image dimensions: thumbnail(~55px), medium-thumb(~150px), medium(~300px), detail(~500px), original(variable)
+  // Generate URLs for different sizes with Cloudinary transformations
+  // The backend will handle uploading to Cloudinary and applying transformations
   const sizes = [
-    { size: 'medium-thumb', width: 200 },
-    { size: 'medium', width: 400 },
-    { size: 'detail', width: 600 },
-    { size: 'original', width: 1200 }
+    { width: 200, height: 200 },   // Small mobile
+    { width: 400, height: 400 },   // Large mobile / small tablet
+    { width: 600, height: 600 },   // Tablet / small desktop
+    { width: 800, height: 800 },   // Desktop
+    { width: 1200, height: 1200 }  // High-DPI displays
   ];
 
   return sizes
-    .map(({ size, width }) => `${imageProxyUrl(url, size)} ${width}w`)
+    .map(({ width, height }) => {
+      const proxyUrl = `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(url)}&width=${width}&height=${height}`;
+      return `${proxyUrl} ${width}w`;
+    })
     .join(', ');
 }
 

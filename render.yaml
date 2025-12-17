@@ -20,6 +20,12 @@ services:
         value: https://mana-meeples-boardgame-list-opgf.onrender.com
       - key: THUMBS_DIR
         value: /var/data/thumbs
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
     disk:
       name: thumbs-storage
       mountPath: /var/data
