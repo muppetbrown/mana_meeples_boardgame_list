@@ -66,10 +66,13 @@ export default function PublicCatalogue() {
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
     const handleScroll = () => {
-      // Skip scroll handling during loading operations to prevent jumping
-      if (loadingMore || !ticking.current) {
-        if (!loadingMore && !ticking.current) {
-          window.requestAnimationFrame(() => {
+      // CRITICAL: Skip ALL scroll handling during loading to prevent freeze/jump
+      if (isLoadingMoreRef.current || loadingMore) {
+        return;
+      }
+
+      if (!ticking.current) {
+        window.requestAnimationFrame(() => {
             const currentScrollY = window.scrollY;
             const scrollDelta = currentScrollY - lastScrollY.current;
             const headerHeight = headerRef.current?.offsetHeight || 0;
@@ -118,8 +121,7 @@ export default function PublicCatalogue() {
             ticking.current = false;
           });
 
-          ticking.current = true;
-        }
+        ticking.current = true;
       }
     };
 
@@ -202,11 +204,6 @@ export default function PublicCatalogue() {
     setLoadingMore(true);
     const nextPage = page + 1;
 
-    // BEST PRACTICE: Save scroll anchor point for stable scroll position
-    const scrollBeforeLoad = window.scrollY;
-    const viewportHeight = window.innerHeight;
-    const scrollBottom = scrollBeforeLoad + viewportHeight;
-
     try {
       const params = { q: qDebounced, page: nextPage, page_size: pageSize, sort };
       if (category !== "all") params.category = category;
@@ -238,24 +235,9 @@ export default function PublicCatalogue() {
         setPage(nextPage);
       }
 
-      // BEST PRACTICE: Wait for layout AND paint to complete before checking scroll
-      // Using double requestAnimationFrame ensures layout and paint are done
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          // CSS scroll-anchor should handle this, but as fallback:
-          // Only restore if scroll position changed unexpectedly (> 50px drift)
-          const currentScroll = window.scrollY;
-          const drift = Math.abs(currentScroll - scrollBeforeLoad);
-
-          if (drift > 50) {
-            // Smooth scroll restoration to avoid jarring jumps
-            window.scrollTo({
-              top: scrollBeforeLoad,
-              behavior: 'instant' // Use instant to avoid animation during correction
-            });
-          }
-        });
-      });
+      // REMOVED: Scroll restoration that was fighting with user scrolling
+      // CSS scroll-anchor (overflow-anchor: auto) handles this automatically
+      // No manual intervention needed - browser maintains scroll position naturally
     } catch (e) {
       console.error("Failed to load more games:", e);
     } finally {
@@ -271,24 +253,28 @@ export default function PublicCatalogue() {
 
     // Use a ref to track when the observer last triggered to prevent rapid-fire calls
     let lastTriggerTime = 0;
-    const MIN_TRIGGER_INTERVAL = 300; // OPTIMIZED: Reduced to 300ms for snappier loading
+    const MIN_TRIGGER_INTERVAL = 1000; // FIXED: Increased to 1000ms to prevent freeze during loading
 
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
         const now = Date.now();
 
-        // When sentinel becomes visible and we're not already loading
-        // AND we haven't triggered too recently
-        if (entry.isIntersecting && (now - lastTriggerTime) > MIN_TRIGGER_INTERVAL) {
+        // CRITICAL: Only trigger if NOT currently loading AND enough time has passed
+        // This prevents the freeze/jump issue during scroll
+        if (
+          entry.isIntersecting &&
+          !isLoadingMoreRef.current &&
+          (now - lastTriggerTime) > MIN_TRIGGER_INTERVAL
+        ) {
           lastTriggerTime = now;
           loadMore();
         }
       },
       {
         root: null, // viewport
-        rootMargin: '400px', // OPTIMIZED: Increased to 400px to match image lazy loading
-        threshold: 0, // OPTIMIZED: 0 is more reliable than 0.1 for triggering
+        rootMargin: '200px', // FIXED: Reduced to 200px to avoid too-early triggering
+        threshold: 0,
       }
     );
 
