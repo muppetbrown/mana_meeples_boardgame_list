@@ -203,6 +203,52 @@ async def import_from_bgg(
 
             background_tasks.add_task(download_task)
 
+        # Fetch sleeve data in background to avoid blocking the import
+        if background_tasks:
+
+            def sleeve_task():
+                """Background task to fetch and save sleeve data"""
+                from services.sleeve_scraper import scrape_sleeve_data
+                from database import SessionLocal
+
+                # Create a new database session for the background task
+                db_session = SessionLocal()
+                try:
+                    logger.info(
+                        f"Background task: Fetching sleeve data for '{game.title}' (BGG ID: {bgg_id})"
+                    )
+                    sleeve_result = scrape_sleeve_data(bgg_id, game.title)
+                    logger.info(
+                        f"Background task: Sleeve data fetch result: {sleeve_result['status']}"
+                    )
+
+                    # Save sleeve data using game service
+                    game_service = GameService(db_session)
+                    # Fetch the game in this session
+                    from models import Game
+
+                    game_in_session = db_session.query(Game).get(game.id)
+                    if game_in_session:
+                        # Create a fake bgg_data dict with just sleeve data
+                        sleeve_bgg_data = {"sleeve_data": sleeve_result}
+                        game_service._save_sleeve_data(
+                            game_in_session, sleeve_bgg_data
+                        )
+                        db_session.commit()
+                        logger.info(
+                            f"Background task: Successfully saved sleeve data for '{game.title}'"
+                        )
+                except Exception as e:
+                    logger.error(
+                        f"Background task: Failed to fetch/save sleeve data for {game.title}: {e}",
+                        exc_info=True,
+                    )
+                    db_session.rollback()
+                finally:
+                    db_session.close()
+
+            background_tasks.add_task(sleeve_task)
+
         return {"id": game.id, "title": game.title, "cached": was_cached}
 
     except ValidationError as e:

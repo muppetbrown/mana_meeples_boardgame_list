@@ -807,17 +807,9 @@ def _extract_comprehensive_game_data(item, bgg_id: int) -> Dict:
         f"Successfully extracted comprehensive data for '{data['title']}'"
     )
 
-    # Fetch sleeve data using Selenium scraper
-    try:
-        from services.sleeve_scraper import scrape_sleeve_data
-
-        logger.info(f"Fetching sleeve data for '{data['title']}' (BGG ID: {bgg_id})")
-        sleeve_result = scrape_sleeve_data(bgg_id, data['title'])
-        data['sleeve_data'] = sleeve_result
-        logger.info(f"Sleeve data fetch result: {sleeve_result['status']}")
-    except Exception as e:
-        logger.error(f"Failed to fetch sleeve data for {data['title']}: {e}")
-        data['sleeve_data'] = {'status': 'error', 'card_types': [], 'notes': None}
+    # Note: Sleeve data fetching has been moved to a background task in the import endpoint
+    # to prevent blocking the import process. Sleeve data is now fetched asynchronously
+    # after the game is created/updated.
 
     return data
 
