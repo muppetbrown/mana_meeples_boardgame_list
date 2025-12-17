@@ -733,13 +733,15 @@ export default function PublicCatalogue() {
           {!loading && !error && allLoadedItems.length > 0 && (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-                {allLoadedItems.map((game) => (
+                {allLoadedItems.map((game, index) => (
                   <GameCardPublic
                     key={game.id}
                     game={game}
                     isExpanded={expandedCards.has(game.id)}
                     onToggleExpand={() => toggleCardExpansion(game.id)}
                     prefersReducedMotion={prefersReducedMotion}
+                    priority={index < 8}
+                    lazy={index >= 8}
                   />
                 ))}
               </div>

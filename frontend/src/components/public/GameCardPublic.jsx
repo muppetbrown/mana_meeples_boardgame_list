@@ -1,18 +1,19 @@
 // src/components/public/GameCardPublic.jsx - Enhanced with Collapsible Details
 import React, { useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { imageProxyUrl } from "../../config/api";
 import { labelFor } from "../../constants/categories";
+import GameImage from "../GameImage";
 
 export default function GameCardPublic({
   game,
   lazy = false,
   isExpanded = false,
   onToggleExpand,
-  prefersReducedMotion = false
+  prefersReducedMotion = false,
+  priority = false // Add priority prop for above-fold images
 }) {
   const href = `/game/${game.id}`;
-  const imgSrc = game.image_url ? imageProxyUrl(game.image_url) : null;
+  const imgSrc = game.image_url;
   const categoryLabel = labelFor(game.mana_meeple_category);
   const cardRef = useRef(null);
 
@@ -113,28 +114,17 @@ export default function GameCardPublic({
         aria-label={`View details for ${game.title}`}
       >
         <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 aspect-square">
-          {imgSrc ? (
-            <img
-              src={imgSrc}
-              alt={`Cover art for ${game.title}`}
-              className={`w-full h-full object-cover ${transitionClass} group-hover:scale-110`}
-              loading={lazy ? "lazy" : "eager"}
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextElementSibling.style.display = 'flex';
-              }}
-            />
-          ) : null}
-          
-          {/* Fallback when no image */}
-          <div className={`w-full h-full flex flex-col items-center justify-center text-slate-500 ${imgSrc ? 'hidden' : 'flex'}`}>
-            <div className={`w-16 h-16 rounded-full bg-slate-300 flex items-center justify-center mb-3 group-hover:bg-slate-400 ${transitionClass}`}>
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <span className="text-sm font-medium">No Image Available</span>
-          </div>
+          <GameImage
+            url={imgSrc}
+            alt={`Cover art for ${game.title}`}
+            className={`w-full h-full object-cover ${transitionClass} group-hover:scale-110`}
+            fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-gradient-to-br from-slate-100 to-slate-200"
+            loading={lazy ? "lazy" : "eager"}
+            fetchPriority={priority ? "high" : "auto"}
+            width={400}
+            height={400}
+            aspectRatio="1/1"
+          />
           
           {/* Category Badge */}
           {categoryLabel && (
