@@ -6,8 +6,8 @@
 html, body, #root {
   height: 100%;
   scrollbar-gutter: stable;
-  /* Enable CSS scroll anchoring to prevent jumps during content loading */
-  overflow-anchor: auto;
+  /* Disable CSS scroll anchoring - it causes jumps when content loads at bottom */
+  overflow-anchor: none;
 }
 
 body {
@@ -172,8 +172,8 @@ textarea:focus:not(:focus-visible) {
 .game-grid {
   /* Enable layout containment for better performance */
   contain: layout style;
-  /* Prevent scroll anchoring issues in grid */
-  overflow-anchor: auto;
+  /* Disable scroll anchoring to prevent jumps when adding content */
+  overflow-anchor: none;
 }
 
 /* Image container should maintain aspect ratio even before load */
