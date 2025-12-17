@@ -95,3 +95,20 @@ if not GITHUB_TOKEN:
         "WARNING: GITHUB_TOKEN not set - workflow triggering will be unavailable",
         file=sys.stderr,
     )
+
+# Cloudinary configuration for image CDN and optimization
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
+CLOUDINARY_ENABLED = bool(CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET)
+
+if CLOUDINARY_ENABLED:
+    print(
+        f"Cloudinary CDN enabled: {CLOUDINARY_CLOUD_NAME}",
+        file=sys.stderr,
+    )
+else:
+    print(
+        "WARNING: Cloudinary not configured - using direct BGG image URLs",
+        file=sys.stderr,
+    )

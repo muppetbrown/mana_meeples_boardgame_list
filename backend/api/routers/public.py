@@ -192,21 +192,31 @@ async def get_games_by_designer(
 async def image_proxy(
     request: Request,
     url: str = Query(..., description="Image URL to proxy"),
+    width: Optional[int] = Query(None, description="Target width for resize"),
+    height: Optional[int] = Query(None, description="Target height for resize"),
     db: Session = Depends(get_db),
 ):
     """
-    Proxy external images with caching headers.
+    Proxy external images with Cloudinary CDN and caching.
+
+    If Cloudinary is enabled:
+    - Automatically uploads BGG images to Cloudinary on first request
+    - Returns optimized Cloudinary URL with WebP/AVIF support
+    - Supports width/height parameters for responsive images
+
+    If Cloudinary is disabled:
+    - Falls back to direct proxy with caching headers
 
     Rate limit: 60 requests/minute to prevent abuse.
     Security: Only proxies images from trusted sources (BGG, local storage).
     """
-    # Import httpx_client from main
+    # Import dependencies
     from main import httpx_client  # noqa: E402
+    from config import API_BASE, CLOUDINARY_ENABLED  # noqa: E402
+    from services.cloudinary_service import cloudinary_service  # noqa: E402
 
     try:
         # Validate URL - only allow trusted sources
-        from config import API_BASE  # noqa: E402
-
         trusted_domains = [
             'cf.geekdo-images.com',  # BGG CDN
             'cf.geekdo-static.com',  # BGG static
@@ -222,6 +232,26 @@ async def image_proxy(
                 detail="Image proxy only supports BoardGameGeek images"
             )
 
+        # If Cloudinary is enabled, upload and return Cloudinary URL
+        if CLOUDINARY_ENABLED and 'cf.geekdo-images.com' in url:
+            # Upload to Cloudinary (or get existing)
+            upload_result = await cloudinary_service.upload_from_url(url)
+
+            if upload_result:
+                # Get optimized URL with transformations
+                cloudinary_url = cloudinary_service.get_image_url(
+                    url,
+                    width=width,
+                    height=height
+                )
+
+                # Redirect to Cloudinary URL
+                return Response(
+                    status_code=302,
+                    headers={"Location": cloudinary_url}
+                )
+
+        # Fallback to direct proxy if Cloudinary fails or is disabled
         # Determine cache max age based on URL
         cache_max_age = (
             31536000 if url.startswith(API_BASE + "/thumbs/") else 300
