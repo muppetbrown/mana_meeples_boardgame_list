@@ -57,36 +57,81 @@ function resolveApiBase() {
 export const API_BASE = resolveApiBase().replace(/\/+$/, "");
 
 /**
+ * Generate BGG image URL at specific size
+ *
+ * @param {string} url - The original image URL
+ * @param {string} size - Size variant ('thumbnail'|'medium-thumb'|'medium'|'detail'|'original')
+ * @returns {string} - URL with size suffix
+ */
+function getBGGImageVariant(url, size) {
+  if (!url || !url.includes('cf.geekdo-images.com')) return url;
+
+  const sizeMap = {
+    'thumbnail': '_t.',
+    'medium-thumb': '_mt.',
+    'medium': '_md.',
+    'detail': '_d.',
+    'original': '_original.'
+  };
+
+  const suffix = sizeMap[size] || '_original.';
+
+  // Replace any existing size suffix with the requested one
+  return url
+    .replace(/_t\./g, suffix)
+    .replace(/_mt\./g, suffix)
+    .replace(/_md\./g, suffix)
+    .replace(/_d\./g, suffix)
+    .replace(/_original\./g, suffix);
+}
+
+/**
  * Enhanced image proxy URL with BGG image quality optimization
  *
  * For BoardGameGeek images, attempts to get the highest resolution available.
  * Priority order: _original > _d (detail) > _md (medium) > _mt (medium thumb) > _t (thumbnail)
  *
  * @param {string} url - The original image URL
+ * @param {string} size - Optional size variant for responsive images
  * @returns {string|null} - Proxied image URL or null if no URL provided
  */
-export function imageProxyUrl(url) {
+export function imageProxyUrl(url, size = 'original') {
   if (!url) return null;
 
-  // For BGG images, optimize for best quality
+  // For BGG images, optimize for requested quality
   if (url.includes('cf.geekdo-images.com')) {
-    let optimizedUrl = url;
-
-    // Try to upgrade to original size (best quality)
-    if (!optimizedUrl.includes('_original.')) {
-      optimizedUrl = optimizedUrl
-        .replace('_t.', '_original.')      // from thumbnail
-        .replace('_mt.', '_original.')     // from medium thumb
-        .replace('_md.', '_original.')     // from medium detail
-        .replace('_d.', '_original.');     // from detail
-    }
-
-    // Backend will handle fallback chain if _original doesn't exist
+    const optimizedUrl = getBGGImageVariant(url, size);
+    // Backend will handle fallback chain if requested size doesn't exist
     return `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(optimizedUrl)}`;
   }
 
   // For non-BGG images, proxy as-is
   return `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(url)}`;
+}
+
+/**
+ * Generate responsive image srcset for BGG images
+ *
+ * @param {string} url - The original image URL
+ * @returns {string|null} - srcset string with multiple resolutions
+ */
+export function generateSrcSet(url) {
+  if (!url || !url.includes('cf.geekdo-images.com')) {
+    return null; // Only works for BGG images
+  }
+
+  // Generate URLs for different sizes
+  // BGG typical image dimensions: thumbnail(~55px), medium-thumb(~150px), medium(~300px), detail(~500px), original(variable)
+  const sizes = [
+    { size: 'medium-thumb', width: 200 },
+    { size: 'medium', width: 400 },
+    { size: 'detail', width: 600 },
+    { size: 'original', width: 1200 }
+  ];
+
+  return sizes
+    .map(({ size, width }) => `${imageProxyUrl(url, size)} ${width}w`)
+    .join(', ');
 }
 
 /**
