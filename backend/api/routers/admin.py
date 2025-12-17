@@ -203,6 +203,9 @@ async def import_from_bgg(
 
             background_tasks.add_task(download_task)
 
+        # Note: Sleeve data is fetched via GitHub Actions workflow (not on Render server)
+        # Users can select games in Manage Library and trigger sleeve fetch for selected games
+
         return {"id": game.id, "title": game.title, "cached": was_cached}
 
     except ValidationError as e:
@@ -381,3 +384,80 @@ async def fix_sequence(
             exc_info=True
         )
         raise HTTPException(status_code=500, detail=f"Failed to fix sequence: {str(e)}")
+
+
+@router.post("/trigger-sleeve-fetch")
+async def trigger_sleeve_fetch(
+    request: Request,
+    game_ids: list[int],
+    _: None = Depends(require_admin_auth),
+):
+    """
+    Trigger GitHub Actions workflow to fetch sleeve data for selected games.
+    Requires GITHUB_TOKEN to be configured in environment variables.
+    """
+    from config import GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+    import httpx
+
+    if not GITHUB_TOKEN:
+        raise HTTPException(
+            status_code=503,
+            detail="GitHub token not configured. Cannot trigger workflow.",
+        )
+
+    if not game_ids:
+        raise HTTPException(
+            status_code=400, detail="At least one game ID must be provided"
+        )
+
+    # Prepare workflow dispatch request
+    workflow_name = "fetch_sleeves.yml"
+    game_ids_str = ",".join(str(gid) for gid in game_ids)
+
+    url = f"https://api.github.com/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}/actions/workflows/{workflow_name}/dispatches"
+
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    payload = {
+        "ref": "main",  # or master, depending on your default branch
+        "inputs": {"game_ids": game_ids_str},
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(url, json=payload, headers=headers)
+
+            if response.status_code == 204:
+                # Success - workflow dispatched
+                logger.info(
+                    f"Successfully triggered sleeve fetch workflow for {len(game_ids)} game(s)"
+                )
+                return {
+                    "success": True,
+                    "message": f"Sleeve fetch workflow triggered for {len(game_ids)} game(s)",
+                    "game_ids": game_ids,
+                }
+            else:
+                error_detail = response.text
+                logger.error(
+                    f"Failed to trigger workflow. Status: {response.status_code}, Error: {error_detail}"
+                )
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"GitHub API error: {error_detail}",
+                )
+
+    except httpx.HTTPError as e:
+        logger.error(f"HTTP error triggering workflow: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to trigger workflow: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error triggering workflow: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Unexpected error: {str(e)}"
+        )

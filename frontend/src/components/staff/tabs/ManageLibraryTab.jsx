@@ -3,7 +3,7 @@ import React, { useState, useMemo } from "react";
 import { useStaff } from "../../../context/StaffContext";
 import CategoryFilter from "../../CategoryFilter";
 import { CATEGORY_LABELS } from "../../../constants/categories";
-import { imageProxyUrl, generateSleeveShoppingList } from "../../../api/client";
+import { imageProxyUrl, generateSleeveShoppingList, triggerSleeveFetch } from "../../../api/client";
 import GameEditModal from "../GameEditModal";
 import SleeveShoppingListModal from "../SleeveShoppingListModal";
 
@@ -111,6 +111,28 @@ export function ManageLibraryTab() {
     }
   };
 
+  const handleTriggerSleeveFetch = async () => {
+    if (selectedGames.size === 0) {
+      showToast('Please select at least one game', 'error');
+      return;
+    }
+
+    if (!window.confirm(`Trigger GitHub Actions workflow to fetch sleeve data for ${selectedGames.size} game(s)?\n\nThis will run in the background and may take a few minutes.`)) {
+      return;
+    }
+
+    try {
+      const data = await triggerSleeveFetch(Array.from(selectedGames));
+      showToast(`Sleeve fetch workflow triggered for ${selectedGames.size} game(s)`, 'success');
+      // Clear selection after triggering
+      setSelectedGames(new Set());
+    } catch (err) {
+      console.error('Failed to trigger sleeve fetch:', err);
+      const errorMsg = err.response?.data?.detail || 'Failed to trigger sleeve fetch workflow';
+      showToast(errorMsg, 'error');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header with Stats */}
@@ -165,13 +187,20 @@ export function ManageLibraryTab() {
 
             <div className="flex gap-2">
               <button
+                onClick={handleTriggerSleeveFetch}
+                disabled={selectedGames.size === 0}
+                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Trigger GitHub Actions workflow to fetch sleeve data"
+              >
+                🔄 Fetch Sleeve Data
+              </button>
+              <button
                 onClick={handleGenerateSleeveList}
                 disabled={selectedGames.size === 0}
                 className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 📋 Generate Sleeve Shopping List
               </button>
-              {/* Future action buttons can go here */}
             </div>
           </div>
         </div>
