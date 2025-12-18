@@ -21,6 +21,8 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
     modifies_players_max: null,
     // Sleeve status
     is_sleeved: false,
+    // AfterGame integration
+    aftergame_game_id: null,
   });
 
   // Initialize form with game data
@@ -34,6 +36,7 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
         modifies_players_min: game.modifies_players_min || null,
         modifies_players_max: game.modifies_players_max || null,
         is_sleeved: game.is_sleeved || false,
+        aftergame_game_id: game.aftergame_game_id || null,
       });
     }
   }, [game]);
@@ -64,6 +67,7 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
       modifies_players_min: formData.modifies_players_min ? parseInt(formData.modifies_players_min) : null,
       modifies_players_max: formData.modifies_players_max ? parseInt(formData.modifies_players_max) : null,
       is_sleeved: formData.is_sleeved,
+      aftergame_game_id: formData.aftergame_game_id || null,
     };
 
     onSave(saveData);
@@ -73,6 +77,7 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
     { id: 'category', label: '📑 Category', icon: '📑' },
     { id: 'expansion', label: '🎯 Expansion', icon: '🎯' },
     { id: 'sleeves', label: '🃏 Sleeves', icon: '🃏' },
+    { id: 'integration', label: '🎲 AfterGame', icon: '🎲' },
   ];
 
   return (
@@ -292,6 +297,54 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
                   </p>
                   <p className="text-xs text-gray-600">
                     When generating a shopping list, this game's sleeve requirements will only be included if it's not marked as already sleeved.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* AfterGame Integration Tab */}
+          {activeTab === 'integration' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
+                <p className="text-sm text-gray-700 mb-2">
+                  <strong>🎲 AfterGame Integration</strong>
+                </p>
+                <p className="text-xs text-gray-600">
+                  Connect this game to AfterGame to enable players to plan game sessions directly from the library.
+                  Enter the AfterGame game ID (UUID format) to enable deep linking.
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="aftergame_game_id" className="block text-sm font-semibold text-gray-700 mb-2">
+                  AfterGame Game ID
+                </label>
+                <input
+                  type="text"
+                  id="aftergame_game_id"
+                  value={formData.aftergame_game_id || ''}
+                  onChange={(e) => handleChange('aftergame_game_id', e.target.value.trim() || null)}
+                  placeholder="e.g., ac3a5f77-3e19-47af-a61a-d648d04b02e2"
+                  className="w-full border-2 border-gray-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 rounded-lg px-4 py-2 outline-none transition-all font-mono text-sm"
+                />
+                <p className="mt-2 text-xs text-gray-500">
+                  Find the game ID in AfterGame's URL or database. Format: UUID (36 characters with dashes)
+                </p>
+              </div>
+
+              {formData.aftergame_game_id && (
+                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-sm text-green-800">
+                    ✅ When set, the "Plan a Game" button will link directly to this specific game on AfterGame
+                  </p>
+                </div>
+              )}
+
+              {!formData.aftergame_game_id && (
+                <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <p className="text-sm text-amber-800">
+                    ℹ️ Without an AfterGame ID, the "Plan a Game" button will link to the generic game creation page
                   </p>
                 </div>
               )}

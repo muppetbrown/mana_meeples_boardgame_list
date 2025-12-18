@@ -511,3 +511,91 @@ async def bulk_update_nz_designers(
         raise HTTPException(
             status_code=500, detail=f"Bulk update failed: {str(e)}"
         )
+
+
+@router.post("/bulk-update-aftergame-ids")
+async def bulk_update_aftergame_ids(
+    csv_data: dict,
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin_auth),
+):
+    """Bulk update AfterGame game IDs from CSV (admin only)"""
+    try:
+        csv_text = csv_data.get("csv_data", "")
+        if not csv_text.strip():
+            raise HTTPException(status_code=400, detail="No CSV data provided")
+
+        lines = [
+            line.strip()
+            for line in csv_text.strip().split("\n")
+            if line.strip()
+        ]
+        updated = []
+        not_found = []
+        errors = []
+
+        for line_num, line in enumerate(lines, 1):
+            try:
+                # Expected format: bgg_id,aftergame_game_id[,title]
+                parts = [p.strip() for p in line.split(",")]
+                if len(parts) < 2:
+                    errors.append(
+                        f"Line {line_num}: Must have at least "
+                        f"bgg_id,aftergame_game_id"
+                    )
+                    continue
+
+                # Parse BGG ID
+                try:
+                    bgg_id = int(parts[0])
+                except ValueError:
+                    errors.append(
+                        f"Line {line_num}: Invalid BGG ID '{parts[0]}'"
+                    )
+                    continue
+
+                aftergame_id = parts[1].strip() if parts[1].strip() else None
+
+                # Basic UUID validation (optional but recommended)
+                if aftergame_id and len(aftergame_id) != 36:
+                    logger.warning(
+                        f"Line {line_num}: AfterGame ID '{aftergame_id}' "
+                        f"doesn't match expected UUID format (36 chars)"
+                    )
+
+                # Find and update game
+                game = db.execute(
+                    select(Game).where(Game.bgg_id == bgg_id)
+                ).scalar_one_or_none()
+                if not game:
+                    not_found.append(f"BGG ID {bgg_id}: Game not found")
+                    continue
+
+                old_aftergame_id = game.aftergame_game_id
+                game.aftergame_game_id = aftergame_id
+                db.add(game)
+
+                updated.append(
+                    f"BGG ID {bgg_id} ({game.title}): "
+                    f"{old_aftergame_id or 'None'} → {aftergame_id or 'None'}"
+                )
+
+            except Exception as e:
+                errors.append(f"Line {line_num}: {str(e)}")
+
+        db.commit()
+
+        return {
+            "message": f"Processed {len(lines)} lines",
+            "updated": updated,
+            "not_found": not_found,
+            "errors": errors,
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Bulk AfterGame ID update failed: {e}")
+        raise HTTPException(
+            status_code=500, detail=f"Bulk AfterGame ID update failed: {str(e)}"
+        )

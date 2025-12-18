@@ -617,6 +617,51 @@ def run_migrations():
             conn.rollback()
             raise
 
+        # Migration: Add aftergame_game_id column if it doesn't exist
+        try:
+            result = conn.execute(
+                text(
+                    """
+                    SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name='boardgames' AND column_name='aftergame_game_id'
+                """
+                )
+            )
+            column_exists = result.fetchone() is not None
+
+            if not column_exists:
+                logger.info("Adding aftergame_game_id column to boardgames table...")
+                conn.execute(
+                    text(
+                        """
+                        ALTER TABLE boardgames
+                        ADD COLUMN aftergame_game_id VARCHAR(36)
+                    """
+                    )
+                )
+                conn.commit()
+                logger.info("aftergame_game_id column added successfully")
+
+                # Create index on aftergame_game_id
+                logger.info("Creating index on aftergame_game_id...")
+                conn.execute(
+                    text(
+                        """
+                        CREATE INDEX idx_boardgames_aftergame_game_id ON boardgames(aftergame_game_id)
+                    """
+                    )
+                )
+                conn.commit()
+                logger.info("aftergame_game_id index created successfully")
+            else:
+                logger.info("aftergame_game_id column already exists")
+
+        except Exception as e:
+            logger.error(f"Migration error (aftergame_game_id field): {e}")
+            conn.rollback()
+            raise
+
     logger.info("Database migrations completed")
 
 

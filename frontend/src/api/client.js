@@ -229,6 +229,16 @@ export async function bulkUpdateNZDesigners(csv_data) {
 }
 
 /**
+ * Bulk update AfterGame game IDs from CSV
+ * @param {string} csv_data - CSV text data (format: bgg_id,aftergame_game_id[,title])
+ * @returns {Promise<Object>} Update results
+ */
+export async function bulkUpdateAfterGameIDs(csv_data) {
+  const r = await api.post("/api/admin/bulk-update-aftergame-ids", { csv_data });
+  return r.data;
+}
+
+/**
  * Re-import all games with enhanced BGG data
  * @returns {Promise<Object>} Re-import initiation confirmation
  */
