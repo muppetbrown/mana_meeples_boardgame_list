@@ -188,7 +188,7 @@ async def get_games_by_designer(
 
 
 @router.get("/image-proxy")
-@limiter.limit("60/minute")  # Prevent DDoS while allowing normal browsing
+@limiter.limit("300/minute")  # Allow higher rate for pages with many images
 async def image_proxy(
     request: Request,
     url: str = Query(..., description="Image URL to proxy"),
@@ -207,7 +207,7 @@ async def image_proxy(
     If Cloudinary is disabled:
     - Falls back to direct proxy with caching headers
 
-    Rate limit: 60 requests/minute to prevent abuse.
+    Rate limit: 300 requests/minute to support pages with many images.
     Security: Only proxies images from trusted sources (BGG, local storage).
     """
     # Import dependencies
