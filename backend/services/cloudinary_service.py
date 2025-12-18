@@ -111,7 +111,17 @@ class CloudinaryService:
             response.raise_for_status()
 
             image_bytes = response.content
-            logger.info(f"Downloaded {len(image_bytes)} bytes from BGG")
+            image_size = len(image_bytes)
+            logger.info(f"Downloaded {image_size} bytes from BGG")
+
+            # Check file size - Cloudinary free tier has 10MB limit
+            MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB in bytes
+            if image_size > MAX_FILE_SIZE:
+                logger.warning(
+                    f"Image too large for Cloudinary: {image_size} bytes "
+                    f"(max: {MAX_FILE_SIZE} bytes). Skipping upload, will use direct proxy."
+                )
+                return None
 
             # Upload with optimizations
             # Use hash as public_id, folder specified separately to avoid double-nesting
@@ -142,6 +152,10 @@ class CloudinaryService:
 
         except httpx.HTTPError as e:
             logger.error(f"Failed to download image from BGG: {e}")
+            return None
+        except cloudinary.exceptions.Error as e:
+            # Cloudinary-specific errors (rate limits, file size, etc.)
+            logger.error(f"Cloudinary API error: {e}")
             return None
         except Exception as e:
             logger.error(f"Failed to upload to Cloudinary: {e}")
