@@ -1,5 +1,10 @@
 # Mana & Meeples Board Game Library
 
+[![CI/CD](https://github.com/muppetbrown/mana_meeples_boardgame_list/actions/workflows/ci.yml/badge.svg)](https://github.com/muppetbrown/mana_meeples_boardgame_list/actions)
+[![codecov](https://codecov.io/gh/muppetbrown/mana_meeples_boardgame_list/branch/main/graph/badge.svg)](https://codecov.io/gh/muppetbrown/mana_meeples_boardgame_list)
+[![Frontend Tests](https://img.shields.io/badge/Frontend%20Coverage-62.77%25-success)](frontend/coverage)
+[![Backend Tests](https://img.shields.io/badge/Backend%20Tests-190%2B-success)](backend/tests)
+
 A comprehensive board game catalogue system connecting a FastAPI backend with a React frontend, enabling visitors to browse the café's complete game collection with advanced filtering, search, and BoardGameGeek integration.
 
 ## 🎯 Project Overview
