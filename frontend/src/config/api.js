@@ -92,17 +92,24 @@ function getBGGImageVariant(url, size) {
  * Priority order: _original > _d (detail) > _md (medium) > _mt (medium thumb) > _t (thumbnail)
  *
  * @param {string} url - The original image URL
- * @param {string} size - Optional size variant for responsive images
+ * @param {string} size - Optional size variant for responsive images ('original'|'detail'|'medium'|'medium-thumb'|'thumbnail')
+ * @param {number} width - Optional width for Cloudinary transformation
+ * @param {number} height - Optional height for Cloudinary transformation
  * @returns {string|null} - Proxied image URL or null if no URL provided
  */
-export function imageProxyUrl(url, size = 'original') {
+export function imageProxyUrl(url, size = 'original', width = null, height = null) {
   if (!url) return null;
 
   // For BGG images, optimize for requested quality
   if (url.includes('cf.geekdo-images.com')) {
     const optimizedUrl = getBGGImageVariant(url, size);
-    // Backend will handle fallback chain if requested size doesn't exist
-    return `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(optimizedUrl)}`;
+    let proxyUrl = `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(optimizedUrl)}`;
+
+    // Add width/height parameters for Cloudinary transformations
+    if (width) proxyUrl += `&width=${width}`;
+    if (height) proxyUrl += `&height=${height}`;
+
+    return proxyUrl;
   }
 
   // For non-BGG images, proxy as-is

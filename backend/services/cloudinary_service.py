@@ -163,7 +163,7 @@ class CloudinaryService:
         height: Optional[int] = None,
         quality: str = "auto:best",
         format: str = "auto",
-        crop: str = "fill",
+        crop: str = "limit",
         gravity: str = "auto"
     ) -> str:
         """
@@ -175,7 +175,7 @@ class CloudinaryService:
             height: Target height (optional)
             quality: Quality setting (default: auto:best)
             format: Output format (default: auto for WebP/AVIF)
-            crop: Crop mode (default: fill)
+            crop: Crop mode (default: limit - fit within dimensions without cropping)
             gravity: Crop gravity (default: auto)
 
         Returns:
@@ -192,18 +192,23 @@ class CloudinaryService:
             # This eliminates another 4-6 second API call per request
 
             # Build transformation parameters
+            # Note: Cloudinary expects these exact parameter names
             transformation = {
                 "quality": quality,
                 "fetch_format": format,
             }
 
-            if width:
-                transformation["width"] = width
-            if height:
-                transformation["height"] = height
+            # Add resize transformations if width/height specified
             if width or height:
+                # Use 'limit' crop mode to fit within dimensions without cropping
+                # This maintains aspect ratio and ensures the image isn't larger than specified
                 transformation["crop"] = crop
-                transformation["gravity"] = gravity
+                if width:
+                    transformation["width"] = width
+                if height:
+                    transformation["height"] = height
+                if crop == "fill":  # Only use gravity for fill mode
+                    transformation["gravity"] = gravity
 
             # Generate URL with transformations
             # Use public_id directly - Cloudinary will handle format detection
@@ -211,10 +216,11 @@ class CloudinaryService:
                 **transformation
             )
 
+            logger.debug(f"Generated Cloudinary URL: {cloudinary_url}")
             return cloudinary_url
 
         except Exception as e:
-            logger.error(f"Failed to generate Cloudinary URL: {e}")
+            logger.error(f"Failed to generate Cloudinary URL for {url}: {e}")
             return url  # Fallback to original URL
 
     def get_responsive_urls(self, url: str) -> Dict[str, str]:
