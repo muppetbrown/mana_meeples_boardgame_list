@@ -6,13 +6,22 @@ Comprehensive test suite for the Mana & Meeples API backend.
 
 ```
 tests/
-├── conftest.py           # Pytest fixtures and configuration
-├── test_api/             # API endpoint tests
-│   ├── test_public.py    # Public endpoints (/api/public/*)
-│   └── test_admin.py     # Admin endpoints (/api/admin/*)
-├── test_services/        # Business logic tests (future)
-└── test_integration/     # End-to-end tests (future)
+├── conftest.py              # Pytest fixtures and configuration
+├── test_api/                # API endpoint tests
+│   ├── test_public.py       # Public endpoints (30 tests)
+│   ├── test_admin.py        # Admin endpoints (25 tests)
+│   ├── test_bulk.py         # Bulk operations (15 tests)
+│   ├── test_auth_flow.py    # Authentication flow (10 tests)
+│   └── test_security.py     # Security tests
+├── test_services/           # Business logic tests
+│   ├── test_game_service.py # GameService (50 tests)
+│   ├── test_image_service.py # ImageService (20 tests)
+│   └── test_bgg_service.py  # BGG Service (25 tests)
+└── test_utils/              # Helper function tests
+    └── test_helpers.py      # Helper functions (15 tests)
 ```
+
+**Total: 190+ tests** providing comprehensive coverage of all backend functionality.
 
 ## Running Tests
 
