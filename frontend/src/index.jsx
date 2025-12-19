@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import * as Sentry from "@sentry/react";
 import "./index.css";
 import App from "./App";
+import * as serviceWorkerRegistration from './utils/serviceWorkerRegistration';
 
 // Initialize Sentry for error tracking and performance monitoring
 // Only initializes if VITE_SENTRY_DSN is configured
@@ -58,3 +59,20 @@ root.render(
     </BrowserRouter>
   </React.StrictMode>
 );
+
+// Register service worker for offline support and caching
+// In production, this enables:
+// - Offline browsing of previously loaded games
+// - Faster repeat visits through aggressive caching
+// - Better performance on mobile and slow connections
+// - PWA installation capability
+serviceWorkerRegistration.register({
+  onSuccess: () => {
+    console.log('[App] Service worker registered - offline support enabled');
+  },
+  onUpdate: (registration) => {
+    console.log('[App] New content available - please refresh the page');
+    // Optionally: Show a toast notification to users that updates are available
+    // You could dispatch an event here that a component listens to
+  }
+});

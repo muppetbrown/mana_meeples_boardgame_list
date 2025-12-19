@@ -32,6 +32,10 @@ export default defineConfig({
     }
   },
 
+  // PWA configuration
+  // Service worker and manifest.json are in /public and will be copied as-is to build output
+  // This ensures the service worker is at the root level for proper scope
+
   // Enable CSS modules
   css: {
     modules: {
