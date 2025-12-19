@@ -87,18 +87,13 @@ class CloudinaryService:
             hash_only = self._get_public_id(url, include_folder=False)
             full_public_id = self._get_public_id(url, include_folder=True)
 
-            # Check if image already exists in Cloudinary (using full path)
-            try:
-                existing = cloudinary.api.resource(full_public_id)
-                logger.info(f"Image already exists in Cloudinary: {full_public_id}")
-                return existing
-            except cloudinary.exceptions.NotFound:
-                # Image doesn't exist, proceed with upload
-                pass
+            # PERFORMANCE FIX: Don't check if image exists - let Cloudinary handle it
+            # The overwrite=False option will skip upload if it exists
+            # This eliminates a 4-6 second API call per request
 
             # First, download the image from BGG with proper headers
             # BGG requires User-Agent and Referer headers to prevent hotlinking
-            logger.info(f"Downloading image from BGG: {url}")
+            logger.debug(f"Preparing to upload image from BGG: {url}")
 
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -184,7 +179,7 @@ class CloudinaryService:
             gravity: Crop gravity (default: auto)
 
         Returns:
-            Cloudinary URL with transformations, or original URL if not uploaded
+            Cloudinary URL with transformations
         """
         if not self.enabled:
             return url
@@ -192,18 +187,9 @@ class CloudinaryService:
         try:
             public_id = self._get_public_id(url)
 
-            # Get resource details from Cloudinary to ensure we have correct format/version
-            try:
-                resource = cloudinary.api.resource(public_id)
-                resource_format = resource.get('format')
-                resource_version = resource.get('version')
-            except cloudinary.exceptions.NotFound:
-                # Image not uploaded to Cloudinary yet, return original URL
-                logger.warning(f"Image not found in Cloudinary: {public_id}")
-                return url
-            except Exception as e:
-                logger.error(f"Failed to get Cloudinary resource details: {e}")
-                return url
+            # PERFORMANCE FIX: Build URL directly without API calls
+            # Cloudinary will return 404 if image doesn't exist, which is acceptable
+            # This eliminates another 4-6 second API call per request
 
             # Build transformation parameters
             transformation = {
@@ -219,15 +205,9 @@ class CloudinaryService:
                 transformation["crop"] = crop
                 transformation["gravity"] = gravity
 
-            # Include version and format in URL generation
-            # Format must match the stored resource format
-            if resource_version:
-                transformation["version"] = resource_version
-
             # Generate URL with transformations
-            # The public_id should include the format extension
-            public_id_with_format = f"{public_id}.{resource_format}" if resource_format else public_id
-            cloudinary_url = CloudinaryImage(public_id_with_format).build_url(
+            # Use public_id directly - Cloudinary will handle format detection
+            cloudinary_url = CloudinaryImage(public_id).build_url(
                 **transformation
             )
 
