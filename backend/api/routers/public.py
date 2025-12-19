@@ -232,27 +232,37 @@ async def image_proxy(
                 detail="Image proxy only supports BoardGameGeek images"
             )
 
-        # If Cloudinary is enabled, return Cloudinary URL directly
+        # If Cloudinary is enabled, try to return Cloudinary URL
         if CLOUDINARY_ENABLED and 'cf.geekdo-images.com' in url:
             # PERFORMANCE FIX: Don't upload on every request - just generate URL
             # Images should be pre-uploaded via admin endpoints
             # This eliminates slow download + upload on every page view
 
-            # Get optimized URL with transformations
-            cloudinary_url = cloudinary_service.get_image_url(
-                url,
-                width=width,
-                height=height
-            )
+            try:
+                # Get optimized URL with transformations
+                cloudinary_url = cloudinary_service.get_image_url(
+                    url,
+                    width=width,
+                    height=height
+                )
 
-            # Redirect to Cloudinary URL with long-term caching
-            return Response(
-                status_code=302,
-                headers={
-                    "Location": cloudinary_url,
-                    "Cache-Control": "public, max-age=31536000, immutable"
-                }
-            )
+                # Only redirect to Cloudinary if we got a valid URL that differs from original
+                # If get_image_url returned the original URL, it means Cloudinary failed
+                if cloudinary_url and cloudinary_url != url:
+                    # Redirect to Cloudinary URL with long-term caching
+                    return Response(
+                        status_code=302,
+                        headers={
+                            "Location": cloudinary_url,
+                            "Cache-Control": "public, max-age=31536000, immutable"
+                        }
+                    )
+                else:
+                    # Cloudinary failed, fall through to direct proxy
+                    logger.debug(f"Cloudinary URL generation failed for {url}, using direct proxy")
+            except Exception as e:
+                # If Cloudinary fails for any reason, fall through to direct proxy
+                logger.warning(f"Cloudinary error for {url}: {e}, falling back to direct proxy")
 
         # Fallback to direct proxy if Cloudinary fails or is disabled
         # Determine cache max age based on URL

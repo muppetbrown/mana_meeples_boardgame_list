@@ -111,7 +111,7 @@ export default function GameImage({
       {/* Only render img when shouldLoadImage is true (for IntersectionObserver) */}
       {shouldLoadImage && (
         <img
-          src={imageProxyUrl(url)}
+          src={imageProxyUrl(url, 'original', width, height)}
           srcSet={srcSet}
           sizes={srcSet ? sizes : undefined}
           alt={alt || "Game cover image"}
