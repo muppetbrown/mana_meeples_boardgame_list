@@ -232,25 +232,27 @@ async def image_proxy(
                 detail="Image proxy only supports BoardGameGeek images"
             )
 
-        # If Cloudinary is enabled, upload and return Cloudinary URL
+        # If Cloudinary is enabled, return Cloudinary URL directly
         if CLOUDINARY_ENABLED and 'cf.geekdo-images.com' in url:
-            # Upload to Cloudinary (or get existing)
-            # Pass httpx_client so we can download with proper headers first
-            upload_result = await cloudinary_service.upload_from_url(url, httpx_client)
+            # PERFORMANCE FIX: Don't upload on every request - just generate URL
+            # Images should be pre-uploaded via admin endpoints
+            # This eliminates slow download + upload on every page view
 
-            if upload_result:
-                # Get optimized URL with transformations
-                cloudinary_url = cloudinary_service.get_image_url(
-                    url,
-                    width=width,
-                    height=height
-                )
+            # Get optimized URL with transformations
+            cloudinary_url = cloudinary_service.get_image_url(
+                url,
+                width=width,
+                height=height
+            )
 
-                # Redirect to Cloudinary URL
-                return Response(
-                    status_code=302,
-                    headers={"Location": cloudinary_url}
-                )
+            # Redirect to Cloudinary URL with long-term caching
+            return Response(
+                status_code=302,
+                headers={
+                    "Location": cloudinary_url,
+                    "Cache-Control": "public, max-age=31536000, immutable"
+                }
+            )
 
         # Fallback to direct proxy if Cloudinary fails or is disabled
         # Determine cache max age based on URL
