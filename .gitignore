@@ -60,3 +60,8 @@ yarn-error.log*
 # Test databases
 file:testdb
 testdb
+
+# Test coverage
+coverage/
+.nyc_output/
+*.lcov
