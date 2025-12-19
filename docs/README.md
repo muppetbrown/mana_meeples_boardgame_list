@@ -12,20 +12,33 @@ This directory contains all project documentation organized by category.
 - **[DEPLOYMENT_GUIDE.md](deployment/DEPLOYMENT_GUIDE.md)** - Backend deployment guide
 - **[LIBRARY_DEPLOYMENT_GUIDE.md](deployment/LIBRARY_DEPLOYMENT_GUIDE.md)** - Frontend deployment guide
 
-### `/refactoring` - Code Refactoring Documentation
-- **[CODE_REVIEW_SUMMARY.md](refactoring/CODE_REVIEW_SUMMARY.md)** - Comprehensive code review findings
-- **[REFACTORING_PLAN.md](refactoring/REFACTORING_PLAN.md)** - 8-phase refactoring plan
-- **[PHASE_2_IMPLEMENTATION_GUIDE.md](refactoring/PHASE_2_IMPLEMENTATION_GUIDE.md)** - Phase 2 backend reorganization guide
-
 ### `/misc` - Miscellaneous Documentation
-- **[URL_UPDATE_SUMMARY.md](misc/URL_UPDATE_SUMMARY.md)** - URL and endpoint update summary
+- **[TESTING_GUIDE.md](misc/TESTING_GUIDE.md)** - Testing guide
 - **[ai_dev_principles.md](misc/ai_dev_principles.md)** - AI development principles
+
+## 📄 Root-Level Documentation
+
+### Core Documentation
+- **[README.md](../README.md)** - Project overview and getting started
+- **[CLAUDE.md](../CLAUDE.md)** - Project configuration and architecture (AI development)
+- **[CODE_REVIEW_COMPREHENSIVE.md](../CODE_REVIEW_COMPREHENSIVE.md)** - Comprehensive code review and analysis
+
+### Project Planning
+- **[PRIORITIZED_IMPROVEMENT_ROADMAP.md](../PRIORITIZED_IMPROVEMENT_ROADMAP.md)** - Sprint-by-sprint improvement plan (includes Sprint 2 Week 6)
+- **[TEST_COVERAGE_IMPROVEMENT_PLAN.md](../TEST_COVERAGE_IMPROVEMENT_PLAN.md)** - Test coverage strategy and plan
+- **[SPRINT_1_SUMMARY.md](../SPRINT_1_SUMMARY.md)** - Sprint 1 completion report (security hardening)
+
+### Setup & Configuration
+- **[CLOUDINARY_SETUP.md](../CLOUDINARY_SETUP.md)** - Cloudinary CDN setup and testing guide
+- **[SLEEVE_FETCH_SETUP.md](../SLEEVE_FETCH_SETUP.md)** - Sleeve fetch setup guide
 
 ## 🔗 Quick Links
 
-**Project Configuration**: See [CLAUDE.md](../CLAUDE.md) in project root
+**Project Configuration**: See [CLAUDE.md](../CLAUDE.md) - Essential for understanding the system
 
-**Current Implementation Status**: See [Refactoring Plan](refactoring/REFACTORING_PLAN.md)
+**Code Quality**: See [CODE_REVIEW_COMPREHENSIVE.md](../CODE_REVIEW_COMPREHENSIVE.md) - Full code analysis
+
+**Improvement Roadmap**: See [PRIORITIZED_IMPROVEMENT_ROADMAP.md](../PRIORITIZED_IMPROVEMENT_ROADMAP.md) - Sprint 2 Week 6 and beyond
 
 **Admin Operations**: Start with [Admin Guide](admin/ADMIN_GUIDE.md)
 

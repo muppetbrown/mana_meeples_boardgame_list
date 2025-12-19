@@ -266,6 +266,87 @@ upload_options = {
 3. **Lazy load images** - Only load visible images
 4. **Progressive loading** - Use Phase 1 + Phase 2 optimizations
 
+---
+
+## Testing & Verification
+
+### Quick Test Checklist
+
+- [ ] Backend shows "Cloudinary CDN enabled" in logs
+- [ ] Image URLs redirect to cloudinary.com domains
+- [ ] Images appear in Cloudinary dashboard
+- [ ] Images are delivered as WebP/AVIF
+- [ ] Responsive sizes are working
+
+### 1. Check Backend Logs (Production)
+
+On Render Dashboard:
+
+1. Go to https://dashboard.render.com
+2. Select your `mana-meeples-boardgame-list` service
+3. Click "Logs" tab
+4. Look for: `Cloudinary CDN enabled: dsobsswqq`
+
+If you see `WARNING: Cloudinary not configured`, check environment variables.
+
+### 2. Test Image Proxy Endpoint
+
+Test URL directly in browser:
+```
+https://mana-meeples-boardgame-list-opgf.onrender.com/api/public/image-proxy?url=https://cf.geekdo-images.com/PhjygpWSo-0labGrPBMyyg__original/img/mZzaBAEEJpMlJDGd3Jz7r4lNJ2A=/fit-in/246x300/filters:strip_icc()/pic1534148.jpg&width=400&height=400
+```
+
+Browser should redirect (302) to `res.cloudinary.com/dsobsswqq/`
+
+### 3. Check Network Tab
+
+1. Open https://library.manaandmeeples.co.nz
+2. Open DevTools (F12) → Network tab
+3. Filter by "Img"
+4. Reload page
+5. Click on any image request
+
+**✅ Cloudinary Working:**
+```
+Status: 302 Found
+Location: https://res.cloudinary.com/dsobsswqq/image/upload/f_auto,q_auto:best,w_400,h_400/...
+Content-Type: image/webp (or image/avif)
+```
+
+### 4. Verify in Cloudinary Dashboard
+
+1. Go to https://console.cloudinary.com/console
+2. Click "Media Library"
+3. Look for "boardgame-library" folder
+4. You should see uploaded images
+
+### 5. Test Performance Impact
+
+**Expected savings:** 40-70% bandwidth reduction compared to direct BGG images
+
+1. Load catalogue page with Cloudinary enabled
+2. Check Network tab → Total transferred size
+3. Should be significantly smaller than without Cloudinary
+
+### Common Issues
+
+**Images still loading from BGG directly:**
+- Check environment variables are set
+- Restart Render service
+- Clear browser cache
+
+**502 Bad Gateway errors:**
+- Verify API credentials are correct
+- Check Cloudinary quota limits
+- Check Cloudinary status: https://status.cloudinary.com
+
+**Free tier quota exceeded:**
+- Check usage at https://console.cloudinary.com/console
+- Delete unused images from Media Library
+- Consider upgrading to paid plan ($89/month)
+
+---
+
 ## Support
 
 - **Cloudinary Docs**: https://cloudinary.com/documentation
