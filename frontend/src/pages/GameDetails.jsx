@@ -7,6 +7,7 @@ import { labelFor } from "../constants/categories";
 import { GameDetailsSkeleton } from "../components/common/SkeletonLoader";
 import ExpansionMiniCard from "../components/public/ExpansionMiniCard";
 import GameImage from "../components/GameImage";
+import { getAfterGameCreateUrl } from "../constants/aftergame";
 
 export default function GameDetails() {
   const { id } = useParams();
@@ -290,24 +291,40 @@ export default function GameDetails() {
                     </section>
                   )}
 
-                  {/* BoardGameGeek Link */}
-                  {game.bgg_id && (
-                    <section className="pt-4">
+                  {/* Action Buttons */}
+                  <section className="pt-4">
+                    <div className="flex flex-wrap gap-3">
+                      {/* Plan a Game Button */}
                       <a
-                        href={`https://boardgamegeek.com/boardgame/${game.bgg_id}`}
+                        href={getAfterGameCreateUrl(game.aftergame_game_id)}
                         target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
-                        aria-label={`View ${game.title} on BoardGameGeek (opens in new tab)`}
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-medium rounded-xl hover:from-teal-600 hover:to-emerald-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                        aria-label="Plan a game session on AfterGame (opens in new tab)"
                       >
-                        <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                          <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
-                        </svg>
-                        View on BoardGameGeek
+                        <span role="img" aria-label="Game planning" className="text-xl mr-2">🎲</span>
+                        Plan a Game
                         <span className="sr-only"> (opens in new tab)</span>
                       </a>
-                    </section>
-                  )}
+
+                      {/* BoardGameGeek Link */}
+                      {game.bgg_id && (
+                        <a
+                          href={`https://boardgamegeek.com/boardgame/${game.bgg_id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                          aria-label={`View ${game.title} on BoardGameGeek (opens in new tab)`}
+                        >
+                          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
+                          </svg>
+                          View on BoardGameGeek
+                          <span className="sr-only"> (opens in new tab)</span>
+                        </a>
+                      )}
+                    </div>
+                  </section>
                 </div>
               </div>
             </div>
