@@ -7,7 +7,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 
-from sqlalchemy import select, func, or_, and_, case, inspect
+from sqlalchemy import select, func, or_, and_, case, inspect, cast, String
 from sqlalchemy.orm import Session
 
 from models import Game
@@ -123,7 +123,8 @@ class GameService:
             if self._has_designers_text_column():
                 search_conditions.append(Game.designers_text.ilike(search_term))
             elif hasattr(Game, "designers"):
-                search_conditions.append(Game.designers.ilike(search_term))
+                # Cast JSON to text for searching (required for SQLite and PostgreSQL)
+                search_conditions.append(cast(Game.designers, String).ilike(search_term))
 
             # Add description search for keyword functionality
             if hasattr(Game, "description"):
@@ -140,7 +141,8 @@ class GameService:
             if self._has_designers_text_column():
                 query = query.where(Game.designers_text.ilike(designer_filter))
             elif hasattr(Game, "designers"):
-                query = query.where(Game.designers.ilike(designer_filter))
+                # Cast JSON to text for searching (required for SQLite and PostgreSQL)
+                query = query.where(cast(Game.designers, String).ilike(designer_filter))
 
         # Apply NZ designer filter
         if nz_designer is not None:
@@ -302,7 +304,8 @@ class GameService:
         if self._has_designers_text_column():
             query = query.where(Game.designers_text.ilike(designer_filter))
         elif hasattr(Game, "designers"):
-            query = query.where(Game.designers.ilike(designer_filter))
+            # Cast JSON to text for searching (required for SQLite and PostgreSQL)
+            query = query.where(cast(Game.designers, String).ilike(designer_filter))
 
         return self.db.execute(query).scalars().all()
 
