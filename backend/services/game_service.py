@@ -7,7 +7,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 
-from sqlalchemy import select, func, or_, and_, case
+from sqlalchemy import select, func, or_, and_, case, inspect
 from sqlalchemy.orm import Session
 
 from models import Game
@@ -23,6 +23,22 @@ class GameService:
 
     def __init__(self, db: Session):
         self.db = db
+        self._has_designers_text_col = None  # Cache column existence check
+
+    def _has_designers_text_column(self) -> bool:
+        """
+        Check if designers_text column exists in actual database schema.
+        Caches result for performance.
+        """
+        if self._has_designers_text_col is None:
+            try:
+                inspector = inspect(self.db.get_bind())
+                columns = [col['name'] for col in inspector.get_columns('boardgames')]
+                self._has_designers_text_col = 'designers_text' in columns
+            except Exception as e:
+                logger.warning(f"Could not inspect database schema: {e}")
+                self._has_designers_text_col = False
+        return self._has_designers_text_col
 
     def get_game_by_id(self, game_id: int) -> Optional[Game]:
         """
@@ -103,10 +119,8 @@ class GameService:
             search_conditions = [Game.title.ilike(search_term)]
 
             # Add designer search - use designers_text if available (Sprint 4 GIN index optimization)
-            # Check if column exists in actual database table, not just model definition
-            has_designers_text_col = "designers_text" in [c.name for c in Game.__table__.columns]
-
-            if has_designers_text_col:
+            # Check if column exists in actual database schema (not just model definition)
+            if self._has_designers_text_column():
                 search_conditions.append(Game.designers_text.ilike(search_term))
             elif hasattr(Game, "designers"):
                 search_conditions.append(Game.designers.ilike(search_term))
@@ -122,10 +136,8 @@ class GameService:
         if designer and designer.strip():
             designer_filter = f"%{designer.strip()}%"
 
-            # Check if column exists in actual database table, not just model definition
-            has_designers_text_col = "designers_text" in [c.name for c in Game.__table__.columns]
-
-            if has_designers_text_col:
+            # Check if column exists in actual database schema (not just model definition)
+            if self._has_designers_text_column():
                 query = query.where(Game.designers_text.ilike(designer_filter))
             elif hasattr(Game, "designers"):
                 query = query.where(Game.designers.ilike(designer_filter))
@@ -286,7 +298,8 @@ class GameService:
         query = select(Game).where(Game.status == "OWNED")
 
         # Use optimized designers_text column with GIN index (10-100x faster)
-        if hasattr(Game, "designers_text"):
+        # Check if column exists in actual database schema (not just model definition)
+        if self._has_designers_text_column():
             query = query.where(Game.designers_text.ilike(designer_filter))
         elif hasattr(Game, "designers"):
             query = query.where(Game.designers.ilike(designer_filter))
