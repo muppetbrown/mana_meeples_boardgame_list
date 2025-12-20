@@ -43,11 +43,13 @@ Sprint 6 successfully migrated the entire codebase from **SQLAlchemy 1.4.52** to
 9. `backend/scripts/fix_wingspan_asia.py` - 1 query pattern migrated
 10. `backend/scripts/export_buy_list.py` - 1 query pattern migrated
 
-**Already 2.0 Compatible (2 files):**
-- `backend/services/game_service.py` - Already using `select()` API ✅
+**Service Layer (1 file):**
+11. `backend/services/game_service.py` - Already using `select()` API, but **`case()` syntax updated** ✅
+
+**Already 2.0 Compatible (1 file):**
 - `backend/services/image_service.py` - Using 2.0-compatible patterns ✅
 
-**Total:** 10 files modified, 28 query patterns migrated
+**Total:** 11 files modified, 28 query patterns migrated + `case()` syntax fix
 
 ---
 
@@ -300,6 +302,61 @@ results = db.execute(
 - Wrap entire statement in `db.execute()`
 - Call `.all()` on result (returns list of Row objects)
 - **Note:** No `.scalars()` needed for multi-column results
+
+---
+
+#### Pattern 8: case() Expression Syntax
+
+**Breaking Change:** SQLAlchemy 2.0 changed how `case()` accepts conditions.
+
+**Before (1.4):**
+```python
+avg_time = case(
+    [  # List of tuples
+        (
+            and_(Game.playtime_min.isnot(None), Game.playtime_max.isnot(None)),
+            (Game.playtime_min + Game.playtime_max) / 2,
+        ),
+        (Game.playtime_min.isnot(None), Game.playtime_min),
+        (Game.playtime_max.isnot(None), Game.playtime_max),
+    ],
+    else_=999999,
+)
+```
+
+**After (2.0):**
+```python
+# Positional arguments instead of list
+avg_time = case(
+    (  # Tuple as positional argument
+        and_(Game.playtime_min.isnot(None), Game.playtime_max.isnot(None)),
+        (Game.playtime_min + Game.playtime_max) / 2,
+    ),
+    (Game.playtime_min.isnot(None), Game.playtime_min),
+    (Game.playtime_max.isnot(None), Game.playtime_max),
+    else_=999999,
+)
+```
+
+**Changes:**
+- Remove list brackets `[...]` around when clauses
+- Pass tuples as positional arguments to `case()`
+- `else_` parameter remains the same
+
+**Error if not fixed:**
+```
+sqlalchemy.exc.ArgumentError: The "whens" argument to case(), when referring to a
+sequence of items, is now passed as a series of positional elements, rather than as a list.
+```
+
+**Affected Code:**
+- `backend/services/game_service.py` - Playtime sorting (time_asc/time_desc)
+
+**Tests Fixed:**
+- `test_get_games_sort_time_asc`
+- `test_get_games_sort_time_desc`
+- `test_sort_playtime_asc`
+- `test_sort_playtime_desc`
 
 ---
 
