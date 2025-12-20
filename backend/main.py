@@ -129,7 +129,6 @@ if os.getenv("SENTRY_DSN"):
         # Debug mode (off in production)
         debug=False,
     )
-    logger.info("Sentry initialized for error tracking and performance monitoring")
 
 # ------------------------------------------------------------------------------
 # Logging setup
