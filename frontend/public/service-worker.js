@@ -25,22 +25,78 @@ const CACHE_DURATION = {
   IMAGES: 7 * 24 * 60 * 60 * 1000,  // 7 days for images
 };
 
+// Track if storage is available (Safari ITP may block it)
+let storageAvailable = true;
+
+// Test if Cache API is accessible
+async function checkStorageAvailability() {
+  try {
+    const testCacheName = 'sw-storage-test';
+    const cache = await caches.open(testCacheName);
+    await caches.delete(testCacheName);
+    storageAvailable = true;
+    return true;
+  } catch (error) {
+    console.warn('[Service Worker] Storage blocked (Safari ITP):', error.message);
+    storageAvailable = false;
+    return false;
+  }
+}
+
+// Safe cache wrapper that handles blocked storage
+async function safeOpenCache(cacheName) {
+  if (!storageAvailable) {
+    throw new Error('Storage unavailable');
+  }
+  try {
+    return await caches.open(cacheName);
+  } catch (error) {
+    console.warn('[Service Worker] Cache open blocked:', error.message);
+    storageAvailable = false;
+    throw error;
+  }
+}
+
+// Safe cache match wrapper
+async function safeCacheMatch(request) {
+  if (!storageAvailable) {
+    return null;
+  }
+  try {
+    return await caches.match(request);
+  } catch (error) {
+    console.warn('[Service Worker] Cache match blocked:', error.message);
+    storageAvailable = false;
+    return null;
+  }
+}
+
 // Install event - cache app shell
 self.addEventListener('install', (event) => {
   console.log('[Service Worker] Installing...');
 
   event.waitUntil(
-    caches.open(CACHES.APP_SHELL)
-      .then((cache) => {
-        console.log('[Service Worker] Caching app shell');
-        return cache.addAll(APP_SHELL_URLS);
-      })
-      .then(() => {
-        console.log('[Service Worker] App shell cached');
-        return self.skipWaiting(); // Activate immediately
+    checkStorageAvailability()
+      .then((available) => {
+        if (!available) {
+          console.warn('[Service Worker] Storage unavailable, skipping cache');
+          return self.skipWaiting();
+        }
+
+        return safeOpenCache(CACHES.APP_SHELL)
+          .then((cache) => {
+            console.log('[Service Worker] Caching app shell');
+            return cache.addAll(APP_SHELL_URLS);
+          })
+          .then(() => {
+            console.log('[Service Worker] App shell cached');
+            return self.skipWaiting();
+          });
       })
       .catch((error) => {
-        console.error('[Service Worker] Failed to cache app shell:', error);
+        console.warn('[Service Worker] Cache setup failed, continuing without cache:', error.message);
+        // Don't fail installation, just skip caching
+        return self.skipWaiting();
       })
   );
 });
@@ -50,9 +106,15 @@ self.addEventListener('activate', (event) => {
   console.log('[Service Worker] Activating...');
 
   event.waitUntil(
-    caches.keys()
-      .then((cacheNames) => {
-        return Promise.all(
+    (async () => {
+      try {
+        if (!storageAvailable) {
+          console.warn('[Service Worker] Storage unavailable, skipping cache cleanup');
+          return self.clients.claim();
+        }
+
+        const cacheNames = await caches.keys();
+        await Promise.all(
           cacheNames
             .filter((cacheName) => {
               // Remove caches from different versions
@@ -64,11 +126,15 @@ self.addEventListener('activate', (event) => {
               return caches.delete(cacheName);
             })
         );
-      })
-      .then(() => {
+
         console.log('[Service Worker] Activated');
-        return self.clients.claim(); // Take control immediately
-      })
+        return self.clients.claim();
+      } catch (error) {
+        console.warn('[Service Worker] Activation cache cleanup failed:', error.message);
+        // Continue activation even if cache cleanup fails
+        return self.clients.claim();
+      }
+    })()
   );
 });
 
@@ -84,6 +150,12 @@ self.addEventListener('fetch', (event) => {
 
   // Skip chrome-extension and other non-http(s) requests
   if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // If storage is unavailable, just pass through to network
+  if (!storageAvailable) {
+    event.respondWith(fetch(request));
     return;
   }
 
@@ -142,28 +214,33 @@ async function networkFirstStrategy(request, cacheName) {
     // Clone the response before caching
     const responseToCache = networkResponse.clone();
 
-    // Cache successful responses
-    if (networkResponse.ok) {
-      const cache = await caches.open(cacheName);
+    // Cache successful responses (only if storage is available)
+    if (networkResponse.ok && storageAvailable) {
+      try {
+        const cache = await safeOpenCache(cacheName);
 
-      // Add timestamp header for cache freshness checking
-      const headers = new Headers(responseToCache.headers);
-      headers.append('sw-cached-time', Date.now().toString());
+        // Add timestamp header for cache freshness checking
+        const headers = new Headers(responseToCache.headers);
+        headers.append('sw-cached-time', Date.now().toString());
 
-      const modifiedResponse = new Response(responseToCache.body, {
-        status: responseToCache.status,
-        statusText: responseToCache.statusText,
-        headers: headers,
-      });
+        const modifiedResponse = new Response(responseToCache.body, {
+          status: responseToCache.status,
+          statusText: responseToCache.statusText,
+          headers: headers,
+        });
 
-      cache.put(request, modifiedResponse);
+        await cache.put(request, modifiedResponse);
+      } catch (cacheError) {
+        // Caching failed, but network response is still good
+        console.warn('[Service Worker] Cache put failed:', cacheError.message);
+      }
     }
 
     return networkResponse;
   } catch (error) {
     // Network failed, try cache
     console.log('[Service Worker] Network failed, trying cache:', request.url);
-    const cachedResponse = await caches.match(request);
+    const cachedResponse = await safeCacheMatch(request);
 
     if (cachedResponse) {
       console.log('[Service Worker] Serving from cache:', request.url);
@@ -184,8 +261,8 @@ async function networkFirstStrategy(request, cacheName) {
 
 // Strategy: Cache first, fall back to network (good for images and static assets)
 async function cacheFirstStrategy(request, cacheName) {
-  // Try cache first
-  const cachedResponse = await caches.match(request);
+  // Try cache first (only if storage is available)
+  const cachedResponse = await safeCacheMatch(request);
 
   if (cachedResponse) {
     // Check if cache is still fresh for images
@@ -194,7 +271,9 @@ async function cacheFirstStrategy(request, cacheName) {
         return cachedResponse;
       }
       // Cache expired, fetch fresh copy in background
-      fetchAndCache(request, cacheName);
+      if (storageAvailable) {
+        fetchAndCache(request, cacheName);
+      }
     }
     return cachedResponse;
   }
@@ -203,19 +282,24 @@ async function cacheFirstStrategy(request, cacheName) {
   try {
     const networkResponse = await fetch(request);
 
-    // Cache successful responses
-    if (networkResponse.ok) {
-      const cache = await caches.open(cacheName);
-      const headers = new Headers(networkResponse.headers);
-      headers.append('sw-cached-time', Date.now().toString());
+    // Cache successful responses (only if storage is available)
+    if (networkResponse.ok && storageAvailable) {
+      try {
+        const cache = await safeOpenCache(cacheName);
+        const headers = new Headers(networkResponse.headers);
+        headers.append('sw-cached-time', Date.now().toString());
 
-      const responseToCache = new Response(networkResponse.clone().body, {
-        status: networkResponse.status,
-        statusText: networkResponse.statusText,
-        headers: headers,
-      });
+        const responseToCache = new Response(networkResponse.clone().body, {
+          status: networkResponse.status,
+          statusText: networkResponse.statusText,
+          headers: headers,
+        });
 
-      cache.put(request, responseToCache);
+        await cache.put(request, responseToCache);
+      } catch (cacheError) {
+        // Caching failed, but network response is still good
+        console.warn('[Service Worker] Cache put failed:', cacheError.message);
+      }
     }
 
     return networkResponse;
@@ -236,10 +320,14 @@ async function cacheFirstStrategy(request, cacheName) {
 
 // Helper: Fetch and cache in background (fire and forget)
 function fetchAndCache(request, cacheName) {
+  if (!storageAvailable) {
+    return;
+  }
+
   fetch(request)
     .then((response) => {
       if (response.ok) {
-        return caches.open(cacheName).then((cache) => {
+        return safeOpenCache(cacheName).then((cache) => {
           const headers = new Headers(response.headers);
           headers.append('sw-cached-time', Date.now().toString());
 
@@ -254,7 +342,7 @@ function fetchAndCache(request, cacheName) {
       }
     })
     .catch((error) => {
-      console.error('[Service Worker] Background fetch failed:', error);
+      console.warn('[Service Worker] Background fetch/cache failed:', error.message);
     });
 }
 
@@ -266,20 +354,37 @@ self.addEventListener('message', (event) => {
 
   if (event.data && event.data.type === 'CLEAR_CACHE') {
     event.waitUntil(
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
-          cacheNames
-            .filter((cacheName) => cacheName.startsWith('mana-meeples-'))
-            .map((cacheName) => caches.delete(cacheName))
-        );
-      }).then(() => {
-        console.log('[Service Worker] All caches cleared');
-        return self.clients.matchAll();
-      }).then((clients) => {
-        clients.forEach((client) => {
-          client.postMessage({ type: 'CACHE_CLEARED' });
-        });
-      })
+      (async () => {
+        try {
+          if (!storageAvailable) {
+            console.warn('[Service Worker] Storage unavailable, cannot clear cache');
+            const clients = await self.clients.matchAll();
+            clients.forEach((client) => {
+              client.postMessage({ type: 'CACHE_CLEARED', error: 'Storage unavailable' });
+            });
+            return;
+          }
+
+          const cacheNames = await caches.keys();
+          await Promise.all(
+            cacheNames
+              .filter((cacheName) => cacheName.startsWith('mana-meeples-'))
+              .map((cacheName) => caches.delete(cacheName))
+          );
+
+          console.log('[Service Worker] All caches cleared');
+          const clients = await self.clients.matchAll();
+          clients.forEach((client) => {
+            client.postMessage({ type: 'CACHE_CLEARED' });
+          });
+        } catch (error) {
+          console.warn('[Service Worker] Cache clear failed:', error.message);
+          const clients = await self.clients.matchAll();
+          clients.forEach((client) => {
+            client.postMessage({ type: 'CACHE_CLEARED', error: error.message });
+          });
+        }
+      })()
     );
   }
 });
