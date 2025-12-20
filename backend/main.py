@@ -39,12 +39,67 @@ from middleware.logging import RequestLoggingMiddleware
 from middleware.security import SecurityHeadersMiddleware
 
 # ------------------------------------------------------------------------------
-# Sentry initialization
+# Sentry initialization (Sprint 5: Enhanced with custom filtering)
 # ------------------------------------------------------------------------------
 
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from sentry_sdk.integrations.sqlalchemy import SqlalchemyIntegration
+
+
+def before_send_sentry(event, hint):
+    """
+    Custom event filtering and enrichment for Sentry.
+    Sprint 5: Error Handling & Monitoring
+
+    Args:
+        event: Sentry event dictionary
+        hint: Additional context about the event
+
+    Returns:
+        Modified event or None to drop event
+    """
+    # Filter out development errors
+    if os.getenv("ENVIRONMENT") == "development":
+        return None
+
+    # Filter out known non-issues
+    if event.get("logger") == "uvicorn.access":
+        return None
+
+    # Filter out health check errors (noise)
+    if "request" in hint:
+        request = hint["request"]
+        if hasattr(request, "url") and "/health" in str(request.url):
+            return None
+
+    # Enrich with custom context
+    if "request" in hint:
+        request = hint["request"]
+        # Tag user type (admin vs public)
+        if hasattr(request, "url"):
+            url_path = str(request.url.path) if hasattr(request.url, "path") else str(request.url)
+            event.setdefault("tags", {})
+            event["tags"]["user_type"] = "admin" if "/admin/" in url_path else "public"
+            event["tags"]["endpoint_type"] = (
+                "api" if "/api/" in url_path else "static"
+            )
+
+    # Add environment info
+    event.setdefault("tags", {})
+    event["tags"]["python_version"] = os.getenv("PYTHON_VERSION", "unknown")
+
+    # Add custom context for BGG-related errors
+    if "exception" in event:
+        for exc in event["exception"].get("values", []):
+            if "BGG" in exc.get("type", ""):
+                event.setdefault("contexts", {})
+                event["contexts"]["bgg"] = {
+                    "circuit_breaker_state": "available",  # Will be updated dynamically
+                }
+
+    return event
+
 
 # Initialize Sentry for error tracking and performance monitoring
 # Only initializes if SENTRY_DSN is configured
@@ -52,6 +107,7 @@ if os.getenv("SENTRY_DSN"):
     sentry_sdk.init(
         dsn=os.getenv("SENTRY_DSN"),
         environment=os.getenv("ENVIRONMENT", "production"),
+        release=os.getenv("GIT_COMMIT_SHA", "unknown"),  # Track releases
         # Performance monitoring
         integrations=[
             FastApiIntegration(),
@@ -62,11 +118,18 @@ if os.getenv("SENTRY_DSN"):
         traces_sample_rate=(
             0.1 if os.getenv("ENVIRONMENT") == "production" else 1.0
         ),
-        # Filter out development errors
-        before_send=lambda event, hint: (
-            None if os.getenv("ENVIRONMENT") == "development" else event
-        ),
+        # Enable profiling for performance insights
+        profiles_sample_rate=0.1,
+        # Custom event filtering and enrichment
+        before_send=before_send_sentry,
+        # Attach stack traces to all messages
+        attach_stacktrace=True,
+        # Increase breadcrumbs for better debugging
+        max_breadcrumbs=50,
+        # Debug mode (off in production)
+        debug=False,
     )
+    logger.info("Sentry initialized for error tracking and performance monitoring")
 
 # ------------------------------------------------------------------------------
 # Logging setup

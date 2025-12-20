@@ -2,14 +2,26 @@
 """
 Image service layer - handles thumbnail downloads, caching, and image proxying.
 Manages background image processing tasks.
+Sprint 5: Enhanced with retry logic, error reporting, and failure tracking
 """
 import os
 import logging
 import httpx
+import traceback
 from typing import Optional
+from datetime import datetime
 from sqlalchemy.orm import Session
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+)
 
-from models import Game
+import sentry_sdk
+
+from models import Game, BackgroundTaskFailure
 from config import HTTP_TIMEOUT
 
 logger = logging.getLogger(__name__)
@@ -41,11 +53,62 @@ class ImageService:
         """Ensure thumbnails directory exists"""
         os.makedirs(THUMBS_DIR, exist_ok=True)
 
+    async def _record_background_task_failure(
+        self,
+        task_type: str,
+        game_id: Optional[int],
+        error: Exception,
+        url: Optional[str] = None,
+        retry_count: int = 0,
+    ) -> None:
+        """
+        Record background task failure in database for monitoring.
+        Sprint 5: Error Handling & Monitoring
+
+        Args:
+            task_type: Type of task that failed (e.g., "thumbnail_download")
+            game_id: ID of the game related to the failure
+            error: The exception that occurred
+            url: Associated URL if applicable
+            retry_count: Number of retry attempts made
+        """
+        try:
+            failure = BackgroundTaskFailure(
+                task_type=task_type,
+                game_id=game_id,
+                error_message=str(error),
+                error_type=type(error).__name__,
+                stack_trace=traceback.format_exc(),
+                retry_count=retry_count,
+                url=url,
+                resolved=False,
+            )
+            self.db.add(failure)
+            self.db.commit()
+
+            logger.info(
+                f"Recorded background task failure: {task_type} for game {game_id}"
+            )
+
+        except Exception as e:
+            # Don't let failure tracking break the application
+            logger.error(f"Failed to record background task failure: {e}")
+            # Still capture the original error in Sentry
+            sentry_sdk.capture_exception(error)
+
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((httpx.TimeoutException, httpx.NetworkError)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
     async def download_thumbnail(
         self, url: str, filename_prefix: str
     ) -> Optional[str]:
         """
         Download thumbnail from URL and save to local storage.
+        Uses exponential backoff retry for network errors.
 
         Args:
             url: URL of the image to download
@@ -74,6 +137,8 @@ class ImageService:
 
         except Exception as e:
             logger.error(f"Failed to download thumbnail from {url}: {e}")
+            # Capture exception in Sentry
+            sentry_sdk.capture_exception(e)
             return None
 
     async def download_and_update_game_thumbnail(
@@ -81,6 +146,7 @@ class ImageService:
     ) -> bool:
         """
         Background task to download and update game thumbnail with retry logic.
+        Sprint 5: Enhanced with Sentry reporting and failure tracking
 
         Args:
             game_id: ID of the game to update
@@ -119,12 +185,36 @@ class ImageService:
 
             except Exception as e:
                 logger.error(
-                    f"Attempt {attempt + 1}/{max_retries} failed for game {game_id}: {e}"
+                    f"Attempt {attempt + 1}/{max_retries} failed for game {game_id}: {e}",
+                    extra={"game_id": game_id, "url": thumbnail_url},
                 )
+
+                # On final retry failure, record in database and Sentry
                 if attempt == max_retries - 1:
                     logger.error(
-                        f"All retry attempts exhausted for game {game_id}"
+                        f"All retry attempts exhausted for game {game_id}",
+                        extra={"game_id": game_id, "url": thumbnail_url},
                     )
+
+                    # Capture in Sentry with context
+                    with sentry_sdk.push_scope() as scope:
+                        scope.set_tag("task_type", "thumbnail_download")
+                        scope.set_context(
+                            "game",
+                            {"game_id": game_id, "title": game.title},
+                        )
+                        scope.set_context("download", {"url": thumbnail_url})
+                        sentry_sdk.capture_exception(e)
+
+                    # Record failure in database
+                    await self._record_background_task_failure(
+                        task_type="thumbnail_download",
+                        game_id=game_id,
+                        error=e,
+                        url=thumbnail_url,
+                        retry_count=max_retries,
+                    )
+
                     return False
 
         return False

@@ -461,3 +461,183 @@ async def trigger_sleeve_fetch(
         raise HTTPException(
             status_code=500, detail=f"Unexpected error: {str(e)}"
         )
+
+
+# ------------------------------------------------------------------------------
+# Error Monitoring Endpoints (Sprint 5)
+# ------------------------------------------------------------------------------
+
+
+@router.get("/monitoring/background-failures")
+async def get_background_task_failures(
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin_auth),
+    resolved: Optional[bool] = Query(None, description="Filter by resolved status"),
+    task_type: Optional[str] = Query(None, description="Filter by task type"),
+    limit: int = Query(50, ge=1, le=500, description="Number of results"),
+):
+    """
+    Get recent background task failures for monitoring.
+    Sprint 5: Error Handling & Monitoring
+
+    Returns failure data including:
+    - Task type (thumbnail_download, bgg_import, etc.)
+    - Error messages and stack traces
+    - Associated game IDs
+    - Retry counts
+    - Resolution status
+    """
+    from models import BackgroundTaskFailure
+
+    try:
+        # Build query
+        query = db.query(BackgroundTaskFailure)
+
+        # Apply filters
+        if resolved is not None:
+            query = query.filter(BackgroundTaskFailure.resolved == resolved)
+
+        if task_type:
+            query = query.filter(BackgroundTaskFailure.task_type == task_type)
+
+        # Order by most recent first
+        query = query.order_by(BackgroundTaskFailure.created_at.desc())
+
+        # Limit results
+        failures = query.limit(limit).all()
+
+        # Get summary statistics
+        total_failures = db.query(BackgroundTaskFailure).count()
+        unresolved_failures = (
+            db.query(BackgroundTaskFailure)
+            .filter(BackgroundTaskFailure.resolved == False)
+            .count()
+        )
+
+        # Get failure counts by task type
+        task_type_counts = (
+            db.query(
+                BackgroundTaskFailure.task_type,
+                db.func.count(BackgroundTaskFailure.id).label("count"),
+            )
+            .filter(BackgroundTaskFailure.resolved == False)
+            .group_by(BackgroundTaskFailure.task_type)
+            .all()
+        )
+
+        return {
+            "total_failures": total_failures,
+            "unresolved_failures": unresolved_failures,
+            "task_type_counts": {
+                task_type: count for task_type, count in task_type_counts
+            },
+            "failures": [
+                {
+                    "id": f.id,
+                    "task_type": f.task_type,
+                    "game_id": f.game_id,
+                    "error_message": f.error_message,
+                    "error_type": f.error_type,
+                    "retry_count": f.retry_count,
+                    "url": f.url,
+                    "resolved": f.resolved,
+                    "created_at": f.created_at.isoformat() if f.created_at else None,
+                    "resolved_at": (
+                        f.resolved_at.isoformat() if f.resolved_at else None
+                    ),
+                }
+                for f in failures
+            ],
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get background task failures: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve background task failures: {str(e)}",
+        )
+
+
+@router.post("/monitoring/background-failures/{failure_id}/resolve")
+async def resolve_background_failure(
+    request: Request,
+    failure_id: int = Path(..., description="ID of the failure to resolve"),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin_auth),
+):
+    """
+    Mark a background task failure as resolved.
+    Sprint 5: Error Handling & Monitoring
+    """
+    from models import BackgroundTaskFailure
+    from datetime import datetime
+
+    try:
+        failure = db.query(BackgroundTaskFailure).filter(
+            BackgroundTaskFailure.id == failure_id
+        ).first()
+
+        if not failure:
+            raise HTTPException(status_code=404, detail="Failure record not found")
+
+        failure.resolved = True
+        failure.resolved_at = datetime.utcnow()
+
+        db.commit()
+
+        logger.info(f"Marked background failure {failure_id} as resolved")
+
+        return {
+            "success": True,
+            "message": f"Background failure {failure_id} marked as resolved",
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to resolve background failure: {e}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to resolve background failure: {str(e)}",
+        )
+
+
+@router.get("/monitoring/circuit-breaker-status")
+async def get_circuit_breaker_status(
+    request: Request,
+    _: None = Depends(require_admin_auth),
+):
+    """
+    Get BGG circuit breaker status for monitoring.
+    Sprint 5: Error Handling & Monitoring
+
+    Returns:
+    - Circuit breaker state (closed, open, half_open)
+    - Failure count
+    - Last failure time
+    """
+    from bgg_service import bgg_circuit_breaker, _is_bgg_available
+
+    try:
+        state = bgg_circuit_breaker.current_state
+
+        return {
+            "circuit_breaker": "BGG API",
+            "state": state,
+            "is_available": _is_bgg_available(),
+            "failure_count": bgg_circuit_breaker.fail_counter,
+            "description": {
+                "closed": "Service is healthy and accepting requests",
+                "open": "Service is down, requests are failing fast",
+                "half_open": "Service is recovering, testing with limited requests",
+            }.get(state, "Unknown state"),
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get circuit breaker status: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve circuit breaker status: {str(e)}",
+        )
