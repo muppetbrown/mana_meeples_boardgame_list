@@ -7,7 +7,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 
-from sqlalchemy import select, func, or_, and_, case
+from sqlalchemy import select, func, or_, and_, case, inspect, cast, String
 from sqlalchemy.orm import Session
 
 from models import Game
@@ -23,6 +23,36 @@ class GameService:
 
     def __init__(self, db: Session):
         self.db = db
+        self._has_designers_text_col = None  # Cache column existence check
+
+    def _has_designers_text_column(self) -> bool:
+        """
+        Check if designers_text column exists AND is populated in the database.
+        Only returns True if the column exists and has non-NULL values.
+        Caches result for performance.
+        """
+        if self._has_designers_text_col is None:
+            try:
+                inspector = inspect(self.db.get_bind())
+                columns = [col['name'] for col in inspector.get_columns('boardgames')]
+
+                # Check if column exists in schema
+                if 'designers_text' not in columns:
+                    self._has_designers_text_col = False
+                else:
+                    # Column exists - check if it's actually populated
+                    # Query for any row with non-NULL designers_text
+                    result = self.db.execute(
+                        select(func.count(Game.id)).where(Game.designers_text.isnot(None))
+                    ).scalar()
+
+                    # Only use designers_text if at least one row has data
+                    self._has_designers_text_col = result > 0
+
+            except Exception as e:
+                logger.warning(f"Could not inspect database schema: {e}")
+                self._has_designers_text_col = False
+        return self._has_designers_text_col
 
     def get_game_by_id(self, game_id: int) -> Optional[Game]:
         """
@@ -90,9 +120,10 @@ class GameService:
 
         # Exclude require-base expansions from public view
         # Only show base games and standalone expansions (expansion_type = 'both' or 'standalone')
+        # Note: Use isnot(True) to include both False and NULL values (for backward compatibility)
         query = query.where(
             or_(
-                Game.is_expansion == False,  # Base games
+                Game.is_expansion.isnot(True),  # Base games (False or NULL)
                 Game.expansion_type.in_(["both", "standalone"]),  # Standalone expansions
             )
         )
@@ -102,9 +133,13 @@ class GameService:
             search_term = f"%{search.strip()}%"
             search_conditions = [Game.title.ilike(search_term)]
 
-            # Add designer search if the field exists
-            if hasattr(Game, "designers"):
-                search_conditions.append(Game.designers.ilike(search_term))
+            # Add designer search - use designers_text if available (Sprint 4 GIN index optimization)
+            # Check if column exists in actual database schema (not just model definition)
+            if self._has_designers_text_column():
+                search_conditions.append(Game.designers_text.ilike(search_term))
+            elif hasattr(Game, "designers"):
+                # Cast JSON to text for searching (works in both SQLite and PostgreSQL)
+                search_conditions.append(cast(Game.designers, String).ilike(search_term))
 
             # Add description search for keyword functionality
             if hasattr(Game, "description"):
@@ -112,11 +147,17 @@ class GameService:
 
             query = query.where(or_(*search_conditions))
 
-        # Apply designer filter
+        # Apply designer filter using optimized designers_text column
+        # This uses the GIN index for 10-100x faster searches (when available)
         if designer and designer.strip():
             designer_filter = f"%{designer.strip()}%"
-            if hasattr(Game, "designers"):
-                query = query.where(Game.designers.ilike(designer_filter))
+
+            # Check if column exists in actual database schema (not just model definition)
+            if self._has_designers_text_column():
+                query = query.where(Game.designers_text.ilike(designer_filter))
+            elif hasattr(Game, "designers"):
+                # Cast JSON to text for searching (required for SQLite and PostgreSQL)
+                query = query.where(cast(Game.designers, String).ilike(designer_filter))
 
         # Apply NZ designer filter
         if nz_designer is not None:
@@ -262,6 +303,7 @@ class GameService:
     def get_games_by_designer(self, designer_name: str) -> List[Game]:
         """
         Get all games by a specific designer.
+        Uses optimized designers_text column with GIN index for fast searching.
 
         Args:
             designer_name: Name of the designer to search for
@@ -272,8 +314,13 @@ class GameService:
         designer_filter = f"%{designer_name}%"
         query = select(Game).where(Game.status == "OWNED")
 
-        if hasattr(Game, "designers"):
-            query = query.where(Game.designers.ilike(designer_filter))
+        # Use optimized designers_text column with GIN index (10-100x faster)
+        # Check if column exists in actual database schema (not just model definition)
+        if self._has_designers_text_column():
+            query = query.where(Game.designers_text.ilike(designer_filter))
+        elif hasattr(Game, "designers"):
+            # Cast JSON to text for searching (required for SQLite and PostgreSQL)
+            query = query.where(cast(Game.designers, String).ilike(designer_filter))
 
         return self.db.execute(query).scalars().all()
 

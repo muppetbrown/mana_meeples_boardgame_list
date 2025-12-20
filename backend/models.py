@@ -11,6 +11,7 @@ from sqlalchemy import (
     Index,
     Numeric,
     ForeignKey,
+    CheckConstraint,
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref
@@ -40,6 +41,7 @@ class Game(Base):
     mana_meeple_category = Column(String(50), nullable=True, index=True)
     description = Column(Text, nullable=True)
     designers = Column(JSON, nullable=True)  # Store as JSON array
+    designers_text = Column(Text, nullable=True)  # Denormalized text for fast searching with GIN index
     publishers = Column(JSON, nullable=True)  # Store as JSON array
     mechanics = Column(JSON, nullable=True)  # Store as JSON array
     artists = Column(JSON, nullable=True)  # Store as JSON array
@@ -83,6 +85,7 @@ class Game(Base):
 
     # Performance indexes for common queries
     __table_args__ = (
+        # Existing indexes
         Index("idx_year_category", "year", "mana_meeple_category"),
         Index(
             "idx_players_playtime",
@@ -94,6 +97,41 @@ class Game(Base):
         Index("idx_rating_rank", "average_rating", "bgg_rank"),
         Index("idx_created_category", "created_at", "mana_meeple_category"),
         Index("idx_expansion_lookup", "is_expansion", "base_game_id"),
+
+        # Sprint 4 Performance Indexes - for filtered queries
+        # Recently added filter (date_added DESC with status)
+        Index("idx_date_added_status", "date_added", "status", postgresql_where=Column("status") == "OWNED"),
+
+        # NZ designer + category combination filter
+        Index("idx_nz_designer_category", "nz_designer", "mana_meeple_category",
+              postgresql_where=Column("nz_designer") == True),
+
+        # Player count range queries (for filtering by player count)
+        Index("idx_player_range", "players_min", "players_max",
+              postgresql_where=Column("status") == "OWNED"),
+
+        # Complex filtering (category + year + rating for sorting)
+        Index("idx_category_year_rating", "mana_meeple_category", "year", "average_rating",
+              postgresql_where=Column("status") == "OWNED"),
+
+        # GIN index for fast designer text search (requires pg_trgm extension)
+        # Note: This will be created manually in migration due to GIN requirements
+        # Index("idx_designers_gin", "designers_text", postgresql_using="gin",
+        #       postgresql_ops={"designers_text": "gin_trgm_ops"}),
+
+        # Sprint 4 Data Integrity Constraints
+        CheckConstraint("year >= 1900 AND year <= 2100", name="valid_year"),
+        CheckConstraint("players_min >= 1", name="valid_min_players"),
+        CheckConstraint("players_max >= players_min", name="players_max_gte_min"),
+        CheckConstraint("average_rating >= 0 AND average_rating <= 10", name="valid_rating"),
+        CheckConstraint("complexity >= 1 AND complexity <= 5", name="valid_complexity"),
+        CheckConstraint(
+            "status IN ('OWNED', 'BUY_LIST', 'WISHLIST')",
+            name="valid_status"
+        ),
+        CheckConstraint("playtime_min > 0", name="valid_playtime_min"),
+        CheckConstraint("playtime_max >= playtime_min", name="playtime_max_gte_min"),
+        CheckConstraint("min_age >= 0 AND min_age <= 100", name="valid_min_age"),
     )
 
     # Relationships
