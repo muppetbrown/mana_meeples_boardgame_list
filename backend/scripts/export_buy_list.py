@@ -10,7 +10,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pandas as pd
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from config import DATABASE_URL
@@ -26,8 +26,8 @@ def export_buy_list():
 
     try:
         # Query buy list with game details
-        results = (
-            db.query(
+        results = db.execute(
+            select(
                 BuyListGame.game_id,
                 BuyListGame.bgo_link,
                 BuyListGame.rank,
@@ -35,11 +35,10 @@ def export_buy_list():
                 Game.bgg_id,
             )
             .join(Game, BuyListGame.game_id == Game.id)
-            .filter(BuyListGame.on_buy_list == True)
-            .filter(BuyListGame.bgo_link.isnot(None))
+            .where(BuyListGame.on_buy_list == True)
+            .where(BuyListGame.bgo_link.isnot(None))
             .order_by(BuyListGame.rank.nullslast(), Game.title)
-            .all()
-        )
+        ).all()
 
         if not results:
             print("No games found in buy list with BGO links")

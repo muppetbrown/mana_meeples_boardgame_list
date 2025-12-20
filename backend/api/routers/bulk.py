@@ -12,7 +12,7 @@ from fastapi import (
     HTTPException,
     Request,
 )
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from api.dependencies import require_admin_auth
@@ -56,7 +56,7 @@ async def _fetch_sleeve_data_task(game_id: int, bgg_id: int, game_title: str):
         game.has_sleeves = sleeve_data.get('status', 'not_found')
 
         # Delete existing sleeve records
-        db.query(Sleeve).filter(Sleeve.game_id == game.id).delete()
+        db.execute(delete(Sleeve).where(Sleeve.game_id == game.id))
 
         # Save new sleeve records if found
         if sleeve_data.get('status') == 'found' and sleeve_data.get('card_types'):

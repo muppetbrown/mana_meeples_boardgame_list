@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import BaseModel
@@ -34,14 +35,18 @@ def generate_sleeve_shopping_list(
 
     # Get games that are NOT already sleeved
     unsleeved_game_ids = [
-        g.id for g in db.query(Game).filter(
-            Game.id.in_(request.game_ids),
-            (Game.is_sleeved == False) | (Game.is_sleeved.is_(None))
-        ).all()
+        g.id for g in db.execute(
+            select(Game).where(
+                Game.id.in_(request.game_ids),
+                (Game.is_sleeved == False) | (Game.is_sleeved.is_(None))
+            )
+        ).scalars().all()
     ]
 
     # Fetch all sleeves for unsleeved games only
-    sleeves = db.query(Sleeve).filter(Sleeve.game_id.in_(unsleeved_game_ids)).all()
+    sleeves = db.execute(
+        select(Sleeve).where(Sleeve.game_id.in_(unsleeved_game_ids))
+    ).scalars().all()
     
     # Group by size (with tolerance for slight variations)
     size_groups = defaultdict(list)
@@ -61,7 +66,9 @@ def generate_sleeve_shopping_list(
         
         # Get unique game names
         game_ids = set(s.game_id for s in sleeve_group)
-        games = db.query(Game).filter(Game.id.in_(game_ids)).all()
+        games = db.execute(
+            select(Game).where(Game.id.in_(game_ids))
+        ).scalars().all()
         game_names = [g.title for g in games]
         
         # Sum quantities
@@ -84,5 +91,7 @@ def generate_sleeve_shopping_list(
 @router.get("/game/{game_id}", dependencies=[Depends(require_admin_auth)])
 def get_game_sleeves(game_id: int, db: Session = Depends(get_db)):
     """Get all sleeve requirements for a specific game"""
-    sleeves = db.query(Sleeve).filter(Sleeve.game_id == game_id).all()
+    sleeves = db.execute(
+        select(Sleeve).where(Sleeve.game_id == game_id)
+    ).scalars().all()
     return sleeves

@@ -15,14 +15,16 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from database import SessionLocal
 from models import Game
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 
 def fix_wingspan_asia():
     """Update Wingspan Asia to be recognized as standalone expansion."""
     db = SessionLocal()
     try:
         # Find Wingspan Asia by BGG ID
-        wingspan_asia = db.query(Game).filter(Game.bgg_id == 266192).first()
+        wingspan_asia = db.execute(
+            select(Game).where(Game.bgg_id == 266192)
+        ).scalar_one_or_none()
 
         if not wingspan_asia:
             print("❌ Wingspan Asia (BGG ID 266192) not found in database")

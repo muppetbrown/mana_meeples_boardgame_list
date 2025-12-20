@@ -22,9 +22,9 @@ engine_kwargs = {
 logger.info(
     f"Configuring database engine for: {DATABASE_URL.split('@')[0]}@..."
 )
-engine = create_engine(DATABASE_URL, future=True, **engine_kwargs)
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 SessionLocal = sessionmaker(
-    autocommit=False, autoflush=False, bind=engine, future=True
+    autocommit=False, autoflush=False, bind=engine
 )
 
 

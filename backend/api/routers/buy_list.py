@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, joinedload
 
 from api.dependencies import require_admin_auth
@@ -166,30 +166,30 @@ async def list_buy_list_games(
     """
     try:
         # Base query with eager loading
-        query = (
-            db.query(BuyListGame)
+        stmt = (
+            select(BuyListGame)
             .options(joinedload(BuyListGame.game))
-            .filter(BuyListGame.on_buy_list == True)
+            .where(BuyListGame.on_buy_list == True)
         )
 
         # Apply filters
         if on_buy_list is not None:
-            query = query.filter(BuyListGame.on_buy_list == on_buy_list)
+            stmt = stmt.where(BuyListGame.on_buy_list == on_buy_list)
 
         if lpg_status:
-            query = query.filter(BuyListGame.lpg_status == lpg_status)
+            stmt = stmt.where(BuyListGame.lpg_status == lpg_status)
 
         # Apply sorting
         if sort_by == "rank":
-            query = query.order_by(
+            stmt = stmt.order_by(
                 desc(BuyListGame.rank) if sort_desc else BuyListGame.rank
             )
         elif sort_by == "title":
-            query = query.join(Game).order_by(
+            stmt = stmt.join(Game).order_by(
                 desc(Game.title) if sort_desc else Game.title
             )
         elif sort_by == "updated_at":
-            query = query.order_by(
+            stmt = stmt.order_by(
                 desc(BuyListGame.updated_at) if sort_desc else BuyListGame.updated_at
             )
         elif sort_by == "discount":
@@ -199,34 +199,33 @@ async def list_buy_list_games(
             pass
         else:
             # Default to rank
-            query = query.order_by(BuyListGame.rank.nullslast())
+            stmt = stmt.order_by(BuyListGame.rank.nullslast())
 
-        buy_list_entries = query.all()
+        buy_list_entries = db.execute(stmt).scalars().all()
 
         # Get latest price snapshots for all games
         game_ids = [entry.game_id for entry in buy_list_entries]
         if game_ids:
             # Subquery to get latest checked_at per game
             latest_dates = (
-                db.query(
+                select(
                     PriceSnapshot.game_id,
                     func.max(PriceSnapshot.checked_at).label("max_date"),
                 )
-                .filter(PriceSnapshot.game_id.in_(game_ids))
+                .where(PriceSnapshot.game_id.in_(game_ids))
                 .group_by(PriceSnapshot.game_id)
                 .subquery()
             )
 
             # Get full price snapshots for latest dates
-            latest_prices = (
-                db.query(PriceSnapshot)
+            latest_prices = db.execute(
+                select(PriceSnapshot)
                 .join(
                     latest_dates,
                     (PriceSnapshot.game_id == latest_dates.c.game_id)
                     & (PriceSnapshot.checked_at == latest_dates.c.max_date),
                 )
-                .all()
-            )
+            ).scalars().all()
 
             # Create lookup dict
             price_lookup = {price.game_id: price for price in latest_prices}
@@ -296,7 +295,9 @@ async def add_to_buy_list(
         from bgg_service import fetch_bgg_thing
 
         # Check if game with this BGG ID already exists
-        game = db.query(Game).filter(Game.bgg_id == data.bgg_id).first()
+        game = db.execute(
+            select(Game).where(Game.bgg_id == data.bgg_id)
+        ).scalar_one_or_none()
 
         if not game:
             # Game doesn't exist - import from BGG
@@ -347,9 +348,9 @@ async def add_to_buy_list(
                 logger.info(f"Updated game '{game.title}' status to BUY_LIST")
 
         # Check if already on buy list
-        existing = (
-            db.query(BuyListGame).filter(BuyListGame.game_id == game.id).first()
-        )
+        existing = db.execute(
+            select(BuyListGame).where(BuyListGame.game_id == game.id)
+        ).scalar_one_or_none()
         if existing:
             raise HTTPException(
                 status_code=400, detail="Game already on buy list"
@@ -391,7 +392,9 @@ async def update_buy_list_game(
 ):
     """Update buy list game details (rank, LPG status, etc.)"""
     try:
-        buy_list_entry = db.query(BuyListGame).filter(BuyListGame.id == buy_list_id).first()
+        buy_list_entry = db.execute(
+            select(BuyListGame).where(BuyListGame.id == buy_list_id)
+        ).scalar_one_or_none()
         if not buy_list_entry:
             raise HTTPException(status_code=404, detail="Buy list entry not found")
 
@@ -416,12 +419,11 @@ async def update_buy_list_game(
         _ = buy_list_entry.game
 
         # Get latest price
-        latest_price = (
-            db.query(PriceSnapshot)
-            .filter(PriceSnapshot.game_id == buy_list_entry.game_id)
+        latest_price = db.execute(
+            select(PriceSnapshot)
+            .where(PriceSnapshot.game_id == buy_list_entry.game_id)
             .order_by(desc(PriceSnapshot.checked_at))
-            .first()
-        )
+        ).scalar_one_or_none()
 
         logger.info(f"Updated buy list entry {buy_list_id}")
 
@@ -439,7 +441,9 @@ async def update_buy_list_game(
 async def remove_from_buy_list(buy_list_id: int, db: Session = Depends(get_db)):
     """Remove a game from the buy list"""
     try:
-        buy_list_entry = db.query(BuyListGame).filter(BuyListGame.id == buy_list_id).first()
+        buy_list_entry = db.execute(
+            select(BuyListGame).where(BuyListGame.id == buy_list_id)
+        ).scalar_one_or_none()
         if not buy_list_entry:
             raise HTTPException(status_code=404, detail="Buy list entry not found")
 
@@ -538,7 +542,9 @@ async def bulk_import_buy_list_csv(
                 lpg_status = row.get("lpg_status", "").strip() or None
 
                 # Check if game exists in database
-                game = db.query(Game).filter(Game.bgg_id == bgg_id).first()
+                game = db.execute(
+                    select(Game).where(Game.bgg_id == bgg_id)
+                ).scalar_one_or_none()
 
                 if not game:
                     # Auto-import from BGG
@@ -582,7 +588,9 @@ async def bulk_import_buy_list_csv(
                         game.status = "BUY_LIST"
 
                 # Check if already on buy list
-                existing = db.query(BuyListGame).filter(BuyListGame.game_id == game.id).first()
+                existing = db.execute(
+                    select(BuyListGame).where(BuyListGame.game_id == game.id)
+                ).scalar_one_or_none()
 
                 if existing:
                     # Update existing entry
@@ -685,18 +693,16 @@ async def import_prices_from_json(
                 # Find game by BGG ID or title
                 game = None
                 if "bgg_id" in game_data and game_data["bgg_id"]:
-                    game = (
-                        db.query(Game)
-                        .filter(Game.bgg_id == game_data["bgg_id"])
-                        .first()
-                    )
+                    game = db.execute(
+                        select(Game)
+                        .where(Game.bgg_id == game_data["bgg_id"])
+                    ).scalar_one_or_none()
 
                 if not game and "name" in game_data:
-                    game = (
-                        db.query(Game)
-                        .filter(Game.title == game_data["name"])
-                        .first()
-                    )
+                    game = db.execute(
+                        select(Game)
+                        .where(Game.title == game_data["name"])
+                    ).scalar_one_or_none()
 
                 if not game:
                     logger.warning(
@@ -766,9 +772,9 @@ async def import_prices_from_json(
 async def get_last_price_update(db: Session = Depends(get_db)):
     """Get timestamp of last price update"""
     try:
-        latest_snapshot = (
-            db.query(PriceSnapshot).order_by(desc(PriceSnapshot.checked_at)).first()
-        )
+        latest_snapshot = db.execute(
+            select(PriceSnapshot).order_by(desc(PriceSnapshot.checked_at))
+        ).scalar_one_or_none()
 
         if not latest_snapshot:
             return {"last_updated": None, "source_file": None}
