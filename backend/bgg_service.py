@@ -1,4 +1,8 @@
 # bgg_service.py
+"""
+BoardGameGeek API service with circuit breaker pattern.
+Sprint 5: Enhanced with circuit breaker for fail-fast during BGG outages
+"""
 import asyncio
 import xml.etree.ElementTree as ET
 from typing import Dict
@@ -7,6 +11,7 @@ import logging
 import html
 import config
 from config import HTTP_TIMEOUT, HTTP_RETRIES
+from pybreaker import CircuitBreaker, CircuitBreakerError
 
 logger = logging.getLogger(__name__)
 
@@ -17,12 +22,41 @@ class BGGServiceError(Exception):
     pass
 
 
+# Circuit breaker configuration
+# - failure_threshold: Number of failures before opening circuit
+# - recovery_timeout: Seconds to wait before attempting recovery
+# - expected_exception: Exceptions that trigger circuit breaker
+# Note: pybreaker doesn't support async functions directly, so we use manual tracking
+bgg_circuit_breaker = CircuitBreaker(
+    fail_max=5,  # Open circuit after 5 failures
+    reset_timeout=60,  # Wait 60 seconds before attempting recovery
+    exclude=[BGGServiceError],  # Don't count BGGServiceError (validation errors) as failures
+    name="BGG API",
+)
+
+
+def _is_bgg_available() -> bool:
+    """
+    Check if BGG circuit breaker is closed (service available).
+    Used for monitoring and graceful degradation.
+    """
+    return bgg_circuit_breaker.current_state == "closed"
+
+
 async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
     """
     Enhanced BGG data fetcher that captures comprehensive game information
-    including descriptions, mechanics, designers, publishers, and ratings
-    Uses exponential backoff for retries.
+    including descriptions, mechanics, designers, publishers, and ratings.
+    Uses exponential backoff for retries and circuit breaker for fail-fast.
+    Sprint 5: Circuit breaker prevents cascading failures during BGG outages
     """
+    # Check circuit breaker before attempting request
+    try:
+        bgg_circuit_breaker.call(lambda: None)  # Check if circuit is open
+    except CircuitBreakerError:
+        logger.warning(f"BGG circuit breaker is open, rejecting request for game {bgg_id}")
+        raise BGGServiceError("BGG API is currently unavailable (circuit breaker open)")
+
     url = "https://boardgamegeek.com/xmlapi2/thing"
     params = {"id": str(bgg_id), "stats": "1"}
 

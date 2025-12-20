@@ -259,3 +259,31 @@ class Sleeve(Base):
 
     def __repr__(self):
         return f"<Sleeve {self.width_mm}x{self.height_mm} qty={self.quantity} for game_id={self.game_id}>"
+
+
+class BackgroundTaskFailure(Base):
+    """
+    Tracks background task failures for monitoring and debugging.
+    Helps identify systematic issues with async operations.
+    Sprint 5: Error Handling & Monitoring
+    """
+
+    __tablename__ = "background_task_failures"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    task_type = Column(String(100), nullable=False, index=True)  # e.g., "thumbnail_download", "bgg_import"
+    game_id = Column(Integer, ForeignKey("boardgames.id", ondelete="SET NULL"), nullable=True, index=True)
+    error_message = Column(Text, nullable=False)
+    error_type = Column(String(200), nullable=True)  # Exception class name
+    stack_trace = Column(Text, nullable=True)
+    retry_count = Column(Integer, default=0, nullable=False)
+    url = Column(String(512), nullable=True)  # Associated URL if applicable
+    resolved = Column(Boolean, default=False, nullable=False, index=True)
+    resolved_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    __table_args__ = (
+        Index("idx_task_failure_type_date", "task_type", "created_at"),
+        Index("idx_task_failure_resolved", "resolved", "created_at"),
+        Index("idx_task_failure_game", "game_id", "task_type"),
+    )
