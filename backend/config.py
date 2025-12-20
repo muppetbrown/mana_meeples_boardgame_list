@@ -112,3 +112,27 @@ else:
         "WARNING: Cloudinary not configured - using direct BGG image URLs",
         file=sys.stderr,
     )
+
+# Redis configuration (Sprint 8: Redis Session Storage)
+# For horizontal scaling and multi-instance deployments
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_ENABLED = os.getenv("REDIS_ENABLED", "true").lower() in ("true", "1", "yes")
+
+if REDIS_ENABLED:
+    # Extract host for logging (hide password if present)
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(REDIS_URL)
+        redis_host = parsed.hostname or "localhost"
+        redis_port = parsed.port or 6379
+        print(
+            f"Redis enabled: {redis_host}:{redis_port}",
+            file=sys.stderr,
+        )
+    except Exception:
+        print("Redis enabled: configuration loaded", file=sys.stderr)
+else:
+    print(
+        "WARNING: Redis disabled - using in-memory storage (not suitable for multi-instance deployment)",
+        file=sys.stderr,
+    )
