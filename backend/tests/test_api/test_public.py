@@ -197,9 +197,9 @@ class TestPublicGamesAdvancedFiltering:
     def test_get_games_designer_filter(self, client, db_session):
         """Test filtering by designer name"""
         games = [
-            Game(title="Game 1", designers=["Matt Leacock"]),
-            Game(title="Game 2", designers=["Klaus Teuber"]),
-            Game(title="Game 3", designers=["Matt Leacock", "Klaus Teuber"]),
+            Game(title="Game 1", designers=["Matt Leacock"], status="OWNED"),
+            Game(title="Game 2", designers=["Klaus Teuber"], status="OWNED"),
+            Game(title="Game 3", designers=["Matt Leacock", "Klaus Teuber"], status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -410,9 +410,9 @@ class TestDesignerEndpoint:
     def test_get_games_by_designer_success(self, client, db_session):
         """Test getting games by designer name"""
         games = [
-            Game(title="Pandemic", designers=["Matt Leacock"]),
-            Game(title="Forbidden Island", designers=["Matt Leacock"]),
-            Game(title="Catan", designers=["Klaus Teuber"]),
+            Game(title="Pandemic", designers=["Matt Leacock"], status="OWNED"),
+            Game(title="Forbidden Island", designers=["Matt Leacock"], status="OWNED"),
+            Game(title="Catan", designers=["Klaus Teuber"], status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
