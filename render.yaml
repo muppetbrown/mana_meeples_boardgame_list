@@ -17,7 +17,7 @@ services:
       - key: CORS_ORIGINS
         value: https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz,https://library.manaandmeeples.co.nz,https://mana-meeples-library-web.onrender.com
       - key: PUBLIC_BASE_URL
-        value: https://mana-meeples-boardgame-list-opgf.onrender.com
+        value: https://mana-meeples-boardgame-list.onrender.com
       - key: THUMBS_DIR
         value: /var/data/thumbs
       - key: CLOUDINARY_CLOUD_NAME
@@ -38,7 +38,7 @@ services:
     staticPublishPath: ./frontend/build
     envVars:
       - key: VITE_API_BASE
-        value: https://mana-meeples-boardgame-list-opgf.onrender.com
+        value: https://mana-meeples-boardgame-list.onrender.com
     routes:
       - type: rewrite
         source: /*
