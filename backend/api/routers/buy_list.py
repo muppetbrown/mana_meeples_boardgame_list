@@ -773,7 +773,7 @@ async def get_last_price_update(db: Session = Depends(get_db)):
     """Get timestamp of last price update"""
     try:
         latest_snapshot = db.execute(
-            select(PriceSnapshot).order_by(desc(PriceSnapshot.checked_at))
+            select(PriceSnapshot).order_by(desc(PriceSnapshot.checked_at)).limit(1)
         ).scalar_one_or_none()
 
         if not latest_snapshot:
