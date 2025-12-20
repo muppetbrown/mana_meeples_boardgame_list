@@ -17,7 +17,12 @@ from config import (
     RATE_LIMIT_WINDOW,
     SESSION_TIMEOUT_SECONDS,
 )
-from shared.rate_limiting import admin_attempt_tracker, admin_sessions
+from shared.rate_limiting import (
+    admin_attempt_tracker,  # Legacy - for backward compatibility
+    admin_sessions,  # Legacy - for backward compatibility
+    session_storage,  # New Redis-backed storage
+    rate_limit_tracker,  # New Redis-backed tracker
+)
 from utils.jwt_utils import verify_jwt_token, extract_token_from_header
 
 logger = logging.getLogger(__name__)
@@ -32,52 +37,74 @@ def get_client_ip(request: Request) -> str:
 
 
 def create_session(client_ip: str) -> str:
-    """Create a new admin session and return session token"""
+    """
+    Create a new admin session and return session token.
+    Sprint 8: Uses Redis for storage when available.
+    """
     session_token = secrets.token_urlsafe(32)
-    admin_sessions[session_token] = {
+    session_data = {
         "created_at": datetime.utcnow(),
         "ip": client_ip,
     }
+
+    # Store in Redis-backed storage (with automatic fallback to memory)
+    session_storage.set_session(session_token, session_data, SESSION_TIMEOUT_SECONDS)
     logger.info(f"Created new admin session from {client_ip}")
     return session_token
 
 
 def validate_session(session_token: Optional[str], client_ip: str) -> bool:
-    """Validate admin session token"""
-    if not session_token or session_token not in admin_sessions:
+    """
+    Validate admin session token.
+    Sprint 8: Uses Redis for storage when available.
+    """
+    if not session_token:
         return False
 
-    session = admin_sessions[session_token]
+    # Retrieve from Redis-backed storage (with automatic fallback to memory)
+    session = session_storage.get_session(session_token)
+    if not session:
+        return False
 
-    # Check if session has expired
+    # Check if session has expired (should be handled by Redis TTL, but double-check)
     session_age = (datetime.utcnow() - session["created_at"]).total_seconds()
     if session_age > SESSION_TIMEOUT_SECONDS:
         logger.info(f"Session expired for {client_ip} (age: {session_age}s)")
-        del admin_sessions[session_token]
+        session_storage.delete_session(session_token)
         return False
 
     return True
 
 
 def cleanup_expired_sessions():
-    """Remove expired sessions from storage"""
-    current_time = datetime.utcnow()
-    expired_tokens = [
-        token
-        for token, session in admin_sessions.items()
-        if (current_time - session["created_at"]).total_seconds()
-        > SESSION_TIMEOUT_SECONDS
-    ]
-    for token in expired_tokens:
-        del admin_sessions[token]
-    if expired_tokens:
-        logger.info(f"Cleaned up {len(expired_tokens)} expired sessions")
+    """
+    Remove expired sessions from storage.
+    Sprint 8: Redis handles expiration automatically via TTL, but we keep
+    this function for backward compatibility with in-memory fallback.
+    """
+    # Redis handles this automatically via TTL
+    # Only needed for in-memory fallback (legacy admin_sessions dict)
+    if admin_sessions:
+        current_time = datetime.utcnow()
+        expired_tokens = [
+            token
+            for token, session in admin_sessions.items()
+            if (current_time - session["created_at"]).total_seconds()
+            > SESSION_TIMEOUT_SECONDS
+        ]
+        for token in expired_tokens:
+            del admin_sessions[token]
+        if expired_tokens:
+            logger.info(f"Cleaned up {len(expired_tokens)} expired sessions from memory")
 
 
 def revoke_session(session_token: Optional[str]):
-    """Revoke/logout an admin session"""
-    if session_token and session_token in admin_sessions:
-        del admin_sessions[session_token]
+    """
+    Revoke/logout an admin session.
+    Sprint 8: Uses Redis for storage when available.
+    """
+    if session_token:
+        session_storage.delete_session(session_token)
         logger.info("Revoked admin session")
 
 
@@ -111,18 +138,18 @@ def require_admin_auth(
         return  # Valid session, authentication successful
 
     # 3. Fall back to direct admin token header (legacy method)
+    # Sprint 8: Use Redis-backed rate limiting
     current_time = time.time()
+
+    # Get current attempts from Redis-backed tracker
+    attempts = rate_limit_tracker.get_attempts(client_ip)
 
     # Clean old attempts from tracker
     cutoff_time = current_time - RATE_LIMIT_WINDOW
-    admin_attempt_tracker[client_ip] = [
-        attempt_time
-        for attempt_time in admin_attempt_tracker[client_ip]
-        if attempt_time > cutoff_time
-    ]
+    attempts = [attempt_time for attempt_time in attempts if attempt_time > cutoff_time]
 
     # Check if rate limited
-    if len(admin_attempt_tracker[client_ip]) >= RATE_LIMIT_ATTEMPTS:
+    if len(attempts) >= RATE_LIMIT_ATTEMPTS:
         logger.warning(f"Rate limited admin token attempts from {client_ip}")
         raise HTTPException(
             status_code=429,
@@ -134,6 +161,7 @@ def require_admin_auth(
 
     # Validate direct admin token
     if not ADMIN_TOKEN or x_admin_token != ADMIN_TOKEN:
-        admin_attempt_tracker[client_ip].append(current_time)
+        attempts.append(current_time)
+        rate_limit_tracker.set_attempts(client_ip, attempts, RATE_LIMIT_WINDOW)
         logger.warning(f"Invalid admin token attempt from {client_ip}")
         raise HTTPException(status_code=401, detail="Invalid admin token")

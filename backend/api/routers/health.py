@@ -47,6 +47,41 @@ async def health_check_db(db: Session = Depends(get_db)):
         raise HTTPException(status_code=503, detail="Database unavailable")
 
 
+@health_router.get("/redis")
+async def health_check_redis():
+    """
+    Redis health check.
+    Sprint 8: Monitor Redis connectivity for session storage and rate limiting.
+    """
+    try:
+        from redis_client import get_redis_client
+        from config import REDIS_ENABLED
+
+        if not REDIS_ENABLED:
+            return {
+                "status": "disabled",
+                "message": "Redis is disabled, using in-memory storage",
+            }
+
+        redis_client = get_redis_client()
+        if redis_client.ping():
+            return {
+                "status": "healthy",
+                "message": "Redis is connected and responding",
+            }
+        else:
+            return {
+                "status": "unhealthy",
+                "message": "Redis is not responding",
+            }
+    except Exception as e:
+        logger.error(f"Redis health check failed: {e}")
+        return {
+            "status": "error",
+            "message": f"Redis health check error: {str(e)}",
+        }
+
+
 # ------------------------------------------------------------------------------
 # Debug endpoints (admin only)
 # ------------------------------------------------------------------------------

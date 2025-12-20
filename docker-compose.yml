@@ -1,0 +1,46 @@
+# docker-compose.yml
+# Local development environment for Mana & Meeples Board Game Library
+# Sprint 8: Redis Session Storage
+
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: mana_meeples_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - mana_meeples_network
+
+  # Optional: Redis Commander for GUI management
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: mana_meeples_redis_commander
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - mana_meeples_network
+    profiles:
+      - tools
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  mana_meeples_network:
+    driver: bridge

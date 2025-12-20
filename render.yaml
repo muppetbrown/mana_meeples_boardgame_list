@@ -26,10 +26,29 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      # Sprint 8: Redis Session Storage (horizontal scaling)
+      # Add these environment variables after creating Redis service in Render dashboard
+      # - key: REDIS_URL
+      #   fromService:
+      #     name: mana-meeples-redis
+      #     type: redis
+      #     property: connectionString
+      # - key: REDIS_ENABLED
+      #   value: true
     disk:
       name: thumbs-storage
       mountPath: /var/data
       sizeGB: 1
+
+# Sprint 8: Redis Service (uncomment to enable)
+# Enables horizontal scaling and multi-instance deployments
+# To enable: Create Redis service in Render dashboard or uncomment below
+#
+# - type: redis
+#   name: mana-meeples-redis
+#   plan: starter  # or free for development
+#   maxmemoryPolicy: allkeys-lru
+#   ipAllowList: []  # empty = allow all Render services
 
   - type: web
     name: mana-meeples-library-web

@@ -77,8 +77,8 @@ class TestSessionManagement:
 
         if response.status_code == 200:
             data = response.json()
-            assert "expires_in" in data
-            assert isinstance(data["expires_in"], int)
+            assert "expires_in_days" in data
+            assert isinstance(data["expires_in_days"], int)
 
     def test_session_info_in_response(self, client):
         """Test that login response includes session information"""
@@ -92,7 +92,7 @@ class TestSessionManagement:
             data = response.json()
             assert data.get("success") is True
             assert "message" in data
-            assert data["expires_in"] > 0
+            assert data["expires_in_days"] > 0
 
     def test_logout_clears_session(self, client):
         """Test that logout properly clears session"""
