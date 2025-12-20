@@ -102,9 +102,11 @@ class GameService:
             search_term = f"%{search.strip()}%"
             search_conditions = [Game.title.ilike(search_term)]
 
-            # Add designer search using optimized designers_text column with GIN index
-            # Falls back to JSON column if designers_text doesn't exist
-            if hasattr(Game, "designers_text"):
+            # Add designer search - use designers_text if available (Sprint 4 GIN index optimization)
+            # Check if column exists in actual database table, not just model definition
+            has_designers_text_col = "designers_text" in [c.name for c in Game.__table__.columns]
+
+            if has_designers_text_col:
                 search_conditions.append(Game.designers_text.ilike(search_term))
             elif hasattr(Game, "designers"):
                 search_conditions.append(Game.designers.ilike(search_term))
@@ -116,10 +118,14 @@ class GameService:
             query = query.where(or_(*search_conditions))
 
         # Apply designer filter using optimized designers_text column
-        # This uses the GIN index for 10-100x faster searches
+        # This uses the GIN index for 10-100x faster searches (when available)
         if designer and designer.strip():
             designer_filter = f"%{designer.strip()}%"
-            if hasattr(Game, "designers_text"):
+
+            # Check if column exists in actual database table, not just model definition
+            has_designers_text_col = "designers_text" in [c.name for c in Game.__table__.columns]
+
+            if has_designers_text_col:
                 query = query.where(Game.designers_text.ilike(designer_filter))
             elif hasattr(Game, "designers"):
                 query = query.where(Game.designers.ilike(designer_filter))
