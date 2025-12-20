@@ -37,7 +37,7 @@ async function checkStorageAvailability() {
     storageAvailable = true;
     return true;
   } catch (error) {
-    console.warn('[Service Worker] Storage blocked (Safari ITP):', error.message);
+    // Silently handle storage blocking (browser logs its own warnings)
     storageAvailable = false;
     return false;
   }
@@ -51,7 +51,7 @@ async function safeOpenCache(cacheName) {
   try {
     return await caches.open(cacheName);
   } catch (error) {
-    console.warn('[Service Worker] Cache open blocked:', error.message);
+    // Silently mark storage as unavailable
     storageAvailable = false;
     throw error;
   }
@@ -65,7 +65,8 @@ async function safeCacheMatch(request) {
   try {
     return await caches.match(request);
   } catch (error) {
-    console.warn('[Service Worker] Cache match blocked:', error.message);
+    // Silently mark storage as unavailable without logging
+    // (browser already logs tracking prevention warnings)
     storageAvailable = false;
     return null;
   }
@@ -93,9 +94,8 @@ self.addEventListener('install', (event) => {
             return self.skipWaiting();
           });
       })
-      .catch((error) => {
-        console.warn('[Service Worker] Cache setup failed, continuing without cache:', error.message);
-        // Don't fail installation, just skip caching
+      .catch(() => {
+        // Silently continue without cache if setup fails
         return self.skipWaiting();
       })
   );
@@ -130,8 +130,7 @@ self.addEventListener('activate', (event) => {
         console.log('[Service Worker] Activated');
         return self.clients.claim();
       } catch (error) {
-        console.warn('[Service Worker] Activation cache cleanup failed:', error.message);
-        // Continue activation even if cache cleanup fails
+        // Silently continue activation even if cache cleanup fails
         return self.clients.claim();
       }
     })()
@@ -153,9 +152,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // If storage is unavailable, just pass through to network
+  // If storage is unavailable, just pass through to network immediately
+  // This prevents browser warnings about blocked storage access
   if (!storageAvailable) {
-    event.respondWith(fetch(request));
+    event.respondWith(
+      fetch(request).catch(() => {
+        // Return offline response for failed network requests
+        return new Response('Offline - no cache available', {
+          status: 503,
+          statusText: 'Service Unavailable',
+        });
+      })
+    );
     return;
   }
 
@@ -231,8 +239,8 @@ async function networkFirstStrategy(request, cacheName) {
 
         await cache.put(request, modifiedResponse);
       } catch (cacheError) {
-        // Caching failed, but network response is still good
-        console.warn('[Service Worker] Cache put failed:', cacheError.message);
+        // Silently fail cache put - network response is still good
+        storageAvailable = false;
       }
     }
 
@@ -297,8 +305,8 @@ async function cacheFirstStrategy(request, cacheName) {
 
         await cache.put(request, responseToCache);
       } catch (cacheError) {
-        // Caching failed, but network response is still good
-        console.warn('[Service Worker] Cache put failed:', cacheError.message);
+        // Silently fail cache put - network response is still good
+        storageAvailable = false;
       }
     }
 
@@ -341,8 +349,9 @@ function fetchAndCache(request, cacheName) {
         });
       }
     })
-    .catch((error) => {
-      console.warn('[Service Worker] Background fetch/cache failed:', error.message);
+    .catch(() => {
+      // Silently fail background cache updates
+      storageAvailable = false;
     });
 }
 
@@ -378,7 +387,7 @@ self.addEventListener('message', (event) => {
             client.postMessage({ type: 'CACHE_CLEARED' });
           });
         } catch (error) {
-          console.warn('[Service Worker] Cache clear failed:', error.message);
+          // Silently handle cache clear failures
           const clients = await self.clients.matchAll();
           clients.forEach((client) => {
             client.postMessage({ type: 'CACHE_CLEARED', error: error.message });

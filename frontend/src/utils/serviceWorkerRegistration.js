@@ -12,7 +12,24 @@ const isLocalhost = Boolean(
 export function register(config) {
   if ('serviceWorker' in navigator) {
     // Wait for page load to avoid slowing down initial page load
-    window.addEventListener('load', () => {
+    window.addEventListener('load', async () => {
+      // Check if storage is accessible before registering service worker
+      // This prevents hundreds of console warnings in Safari with ITP
+      const storageAvailable = await checkStorageAvailability();
+
+      if (!storageAvailable) {
+        console.log('[Service Worker] Storage blocked by browser - skipping registration');
+        // Unregister any existing service workers to prevent warnings
+        if (navigator.serviceWorker.controller) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (const registration of registrations) {
+            await registration.unregister();
+          }
+          console.log('[Service Worker] Unregistered existing service workers');
+        }
+        return;
+      }
+
       const swUrl = `/service-worker.js`;
 
       if (isLocalhost) {
@@ -32,6 +49,19 @@ export function register(config) {
         registerValidSW(swUrl, config);
       }
     });
+  }
+}
+
+// Check if Cache API is accessible (Safari ITP may block it)
+async function checkStorageAvailability() {
+  try {
+    const testCacheName = 'sw-registration-test';
+    const cache = await caches.open(testCacheName);
+    await caches.delete(testCacheName);
+    return true;
+  } catch (error) {
+    // Storage is blocked (Safari ITP, Firefox tracking protection, etc.)
+    return false;
   }
 }
 
