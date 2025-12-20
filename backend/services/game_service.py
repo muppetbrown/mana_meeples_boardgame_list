@@ -227,34 +227,32 @@ class GameService:
                 return query.order_by(Game.average_rating.asc().nulls_last())
             return query.order_by(Game.title.asc())
         elif sort == "time_asc":
+            # SQLAlchemy 2.0: case() takes positional args, not a list
             avg_time = case(
-                [
-                    (
-                        and_(
-                            Game.playtime_min.isnot(None),
-                            Game.playtime_max.isnot(None),
-                        ),
-                        (Game.playtime_min + Game.playtime_max) / 2,
+                (
+                    and_(
+                        Game.playtime_min.isnot(None),
+                        Game.playtime_max.isnot(None),
                     ),
-                    (Game.playtime_min.isnot(None), Game.playtime_min),
-                    (Game.playtime_max.isnot(None), Game.playtime_max),
-                ],
+                    (Game.playtime_min + Game.playtime_max) / 2,
+                ),
+                (Game.playtime_min.isnot(None), Game.playtime_min),
+                (Game.playtime_max.isnot(None), Game.playtime_max),
                 else_=999999,
             )
             return query.order_by(avg_time.asc())
         elif sort == "time_desc":
+            # SQLAlchemy 2.0: case() takes positional args, not a list
             avg_time = case(
-                [
-                    (
-                        and_(
-                            Game.playtime_min.isnot(None),
-                            Game.playtime_max.isnot(None),
-                        ),
-                        (Game.playtime_min + Game.playtime_max) / 2,
+                (
+                    and_(
+                        Game.playtime_min.isnot(None),
+                        Game.playtime_max.isnot(None),
                     ),
-                    (Game.playtime_min.isnot(None), Game.playtime_min),
-                    (Game.playtime_max.isnot(None), Game.playtime_max),
-                ],
+                    (Game.playtime_min + Game.playtime_max) / 2,
+                ),
+                (Game.playtime_min.isnot(None), Game.playtime_min),
+                (Game.playtime_max.isnot(None), Game.playtime_max),
                 else_=0,
             )
             return query.order_by(avg_time.desc())
