@@ -418,7 +418,7 @@ export default function PublicCatalogue() {
                   />
                 </a>
                 <a
-                  href="https://aftergame.co.nz"
+                  href="https://aftergame.app"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded transition-opacity hover:opacity-80"
@@ -831,3 +831,4 @@ export default function PublicCatalogue() {
     </div>
   );
 }
+
