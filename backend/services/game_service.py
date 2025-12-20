@@ -106,9 +106,10 @@ class GameService:
 
         # Exclude require-base expansions from public view
         # Only show base games and standalone expansions (expansion_type = 'both' or 'standalone')
+        # Note: Use isnot(True) to include both False and NULL values (for backward compatibility)
         query = query.where(
             or_(
-                Game.is_expansion == False,  # Base games
+                Game.is_expansion.isnot(True),  # Base games (False or NULL)
                 Game.expansion_type.in_(["both", "standalone"]),  # Standalone expansions
             )
         )
@@ -123,7 +124,7 @@ class GameService:
             if self._has_designers_text_column():
                 search_conditions.append(Game.designers_text.ilike(search_term))
             elif hasattr(Game, "designers"):
-                # Cast JSON to text for searching (required for SQLite and PostgreSQL)
+                # Cast JSON to text for searching (works in both SQLite and PostgreSQL)
                 search_conditions.append(cast(Game.designers, String).ilike(search_term))
 
             # Add description search for keyword functionality
