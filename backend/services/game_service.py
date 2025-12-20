@@ -27,14 +27,28 @@ class GameService:
 
     def _has_designers_text_column(self) -> bool:
         """
-        Check if designers_text column exists in actual database schema.
+        Check if designers_text column exists AND is populated in the database.
+        Only returns True if the column exists and has non-NULL values.
         Caches result for performance.
         """
         if self._has_designers_text_col is None:
             try:
                 inspector = inspect(self.db.get_bind())
                 columns = [col['name'] for col in inspector.get_columns('boardgames')]
-                self._has_designers_text_col = 'designers_text' in columns
+
+                # Check if column exists in schema
+                if 'designers_text' not in columns:
+                    self._has_designers_text_col = False
+                else:
+                    # Column exists - check if it's actually populated
+                    # Query for any row with non-NULL designers_text
+                    result = self.db.execute(
+                        select(func.count(Game.id)).where(Game.designers_text.isnot(None))
+                    ).scalar()
+
+                    # Only use designers_text if at least one row has data
+                    self._has_designers_text_col = result > 0
+
             except Exception as e:
                 logger.warning(f"Could not inspect database schema: {e}")
                 self._has_designers_text_col = False
