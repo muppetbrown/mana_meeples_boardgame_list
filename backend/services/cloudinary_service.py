@@ -7,7 +7,7 @@ import os
 import logging
 import hashlib
 import io
-from typing import Optional, Dict
+from typing import Optional, Dict, Set
 import httpx
 import cloudinary
 import cloudinary.uploader
@@ -32,6 +32,9 @@ class CloudinaryService:
         """Initialize Cloudinary service"""
         self.folder = "boardgame-library"  # Organize images in folder
         self.enabled = self._check_cloudinary_enabled()
+        # Track URLs that failed to upload (in-memory cache)
+        # This prevents repeated attempts to use broken Cloudinary URLs
+        self._failed_uploads: Set[str] = set()
 
     def _check_cloudinary_enabled(self) -> bool:
         """Check if Cloudinary is properly configured"""
@@ -116,6 +119,8 @@ class CloudinaryService:
                     f"Image too large for Cloudinary: {image_size} bytes "
                     f"(max: {MAX_FILE_SIZE} bytes). Skipping upload, will use direct proxy."
                 )
+                # Track this URL as failed so we don't try to use Cloudinary for it
+                self._failed_uploads.add(url)
                 return None
 
             # Upload with optimizations
@@ -147,13 +152,19 @@ class CloudinaryService:
 
         except httpx.HTTPError as e:
             logger.error(f"Failed to download image from BGG: {e}")
+            # Track this URL as failed
+            self._failed_uploads.add(url)
             return None
         except cloudinary.exceptions.Error as e:
             # Cloudinary-specific errors (rate limits, file size, etc.)
             logger.error(f"Cloudinary API error: {e}")
+            # Track this URL as failed
+            self._failed_uploads.add(url)
             return None
         except Exception as e:
             logger.error(f"Failed to upload to Cloudinary: {e}")
+            # Track this URL as failed
+            self._failed_uploads.add(url)
             return None
 
     def get_image_url(
@@ -179,9 +190,14 @@ class CloudinaryService:
             gravity: Crop gravity (default: auto)
 
         Returns:
-            Cloudinary URL with transformations
+            Cloudinary URL with transformations, or original URL if upload previously failed
         """
         if not self.enabled:
+            return url
+
+        # Check if this URL previously failed to upload
+        if url in self._failed_uploads:
+            logger.debug(f"URL previously failed to upload, using direct proxy: {url}")
             return url
 
         try:
