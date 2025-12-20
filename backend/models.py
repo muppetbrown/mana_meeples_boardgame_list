@@ -41,7 +41,6 @@ class Game(Base):
     mana_meeple_category = Column(String(50), nullable=True, index=True)
     description = Column(Text, nullable=True)
     designers = Column(JSON, nullable=True)  # Store as JSON array
-    designers_text = Column(Text, nullable=True)  # Denormalized text for fast searching with GIN index
     publishers = Column(JSON, nullable=True)  # Store as JSON array
     mechanics = Column(JSON, nullable=True)  # Store as JSON array
     artists = Column(JSON, nullable=True)  # Store as JSON array
@@ -113,11 +112,6 @@ class Game(Base):
         # Complex filtering (category + year + rating for sorting)
         Index("idx_category_year_rating", "mana_meeple_category", "year", "average_rating",
               postgresql_where=Column("status") == "OWNED"),
-
-        # GIN index for fast designer text search (requires pg_trgm extension)
-        # Note: This will be created manually in migration due to GIN requirements
-        # Index("idx_designers_gin", "designers_text", postgresql_using="gin",
-        #       postgresql_ops={"designers_text": "gin_trgm_ops"}),
 
         # Sprint 4 Data Integrity Constraints
         CheckConstraint("year >= 1900 AND year <= 2100", name="valid_year"),
