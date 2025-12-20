@@ -40,7 +40,7 @@ function resolveApiBase() {
   if (typeof window !== "undefined" &&
       (window.location.hostname.includes('onrender.com') ||
        window.location.hostname.includes('manaandmeeples.co.nz'))) {
-    const productionUrl = "https://mana-meeples-boardgame-list-opgf.onrender.com";
+    const productionUrl = "https://mana-meeples-boardgame-list.onrender.com";
     console.warn('[API Config] VITE_API_BASE not set, using production fallback:', productionUrl);
     return productionUrl;
   }

@@ -48,20 +48,10 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
     return sort.endsWith('_desc') ? 'desc' : 'asc';
   }, [sort]);
 
-  // Debug current state
-  React.useEffect(() => {
-    console.log('Current sort state:', {
-      sort,
-      parsedKey: getCurrentSortKey(),
-      parsedDirection: getCurrentDirection()
-    });
-  }, [sort, getCurrentSortKey, getCurrentDirection]);
-
   const handleFieldChange = (e) => {
     const newKey = e.target.value;
     const option = sortOptions.find(opt => opt.key === newKey);
     const newSort = `${newKey}_${option.defaultDir}`;
-    console.log(`Changing sort field: ${sort} → ${newSort}`);
     onChange(newSort);
   };
 
@@ -70,7 +60,6 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
     const currentDir = getCurrentDirection();
     const newDir = currentDir === 'asc' ? 'desc' : 'asc';
     const newSort = `${currentKey}_${newDir}`;
-    console.log(`Toggling sort direction: ${sort} → ${newSort}`);
     onChange(newSort);
   };
 
