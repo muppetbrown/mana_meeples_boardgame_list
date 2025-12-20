@@ -331,7 +331,11 @@ export default function GameCardPublic({
                 className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-semibold text-sm hover:from-teal-600 hover:to-emerald-600 transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                 aria-label="Plan a game session on AfterGame"
               >
-                <span role="img" aria-label="Game planning">🎲</span>
+                <img
+                  src="/Aftergame_Icon_Logo_V3-Light.webp"
+                  alt="AfterGame"
+                  className="w-5 h-5"
+                />
                 <span>Plan a Game</span>
               </a>
 

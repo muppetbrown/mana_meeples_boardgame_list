@@ -302,7 +302,11 @@ export default function GameDetails() {
                         className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-medium rounded-xl hover:from-teal-600 hover:to-emerald-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                         aria-label="Plan a game session on AfterGame (opens in new tab)"
                       >
-                        <span role="img" aria-label="Game planning" className="text-xl mr-2">🎲</span>
+                        <img
+                          src="/Aftergame_Icon_Logo_V3-Light.webp"
+                          alt="AfterGame"
+                          className="w-6 h-6 mr-2"
+                        />
                         Plan a Game
                         <span className="sr-only"> (opens in new tab)</span>
                       </a>
