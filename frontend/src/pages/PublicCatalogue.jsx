@@ -400,6 +400,38 @@ export default function PublicCatalogue() {
                 Explore our game collection
               </p>
             </div>
+            {/* Partner Logos - Desktop only */}
+            <div className="hidden lg:flex flex-col items-end gap-2 flex-shrink-0">
+              <p className="text-xs text-slate-500 font-medium">With help from:</p>
+              <div className="flex gap-3 items-center">
+                <a
+                  href="https://boardgamegeek.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded transition-opacity hover:opacity-80"
+                  aria-label="Visit BoardGameGeek"
+                >
+                  <img
+                    src="/boardgamegeek_logo.webp"
+                    alt="BoardGameGeek"
+                    className="h-8 w-auto"
+                  />
+                </a>
+                <a
+                  href="https://aftergame.co.nz"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded transition-opacity hover:opacity-80"
+                  aria-label="Visit Aftergame"
+                >
+                  <img
+                    src="/Aftergame Logo V3-Light.png"
+                    alt="Aftergame"
+                    className="h-8 w-auto"
+                  />
+                </a>
+              </div>
+            </div>
           </div>
           <div className="w-12 sm:w-20 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 rounded-full mb-4" aria-hidden="true"></div>
 
