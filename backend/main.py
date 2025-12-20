@@ -15,6 +15,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import delete
 from starlette.types import ASGIApp, Receive, Scope, Send
 from shared.rate_limiting import (
     get_limiter,
@@ -292,7 +293,7 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
             game.has_sleeves = sleeve_data.get('status', 'not_found')
 
             # Delete existing sleeve records for this game
-            db.query(Sleeve).filter(Sleeve.game_id == game.id).delete()
+            db.execute(delete(Sleeve).where(Sleeve.game_id == game.id))
 
             # Save new sleeve records if found
             if sleeve_data.get('status') == 'found' and sleeve_data.get('card_types'):

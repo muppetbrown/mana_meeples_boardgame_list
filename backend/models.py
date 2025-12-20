@@ -13,10 +13,12 @@ from sqlalchemy import (
     ForeignKey,
     CheckConstraint,
 )
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import DeclarativeBase, relationship, backref
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    """Base class for all database models"""
+    pass
 
 
 class Game(Base):

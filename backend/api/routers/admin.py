@@ -18,7 +18,7 @@ from fastapi import (
     Request,
     Response,
 )
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from api.dependencies import (
@@ -492,39 +492,40 @@ async def get_background_task_failures(
 
     try:
         # Build query
-        query = db.query(BackgroundTaskFailure)
+        stmt = select(BackgroundTaskFailure)
 
         # Apply filters
         if resolved is not None:
-            query = query.filter(BackgroundTaskFailure.resolved == resolved)
+            stmt = stmt.where(BackgroundTaskFailure.resolved == resolved)
 
         if task_type:
-            query = query.filter(BackgroundTaskFailure.task_type == task_type)
+            stmt = stmt.where(BackgroundTaskFailure.task_type == task_type)
 
         # Order by most recent first
-        query = query.order_by(BackgroundTaskFailure.created_at.desc())
+        stmt = stmt.order_by(BackgroundTaskFailure.created_at.desc())
 
         # Limit results
-        failures = query.limit(limit).all()
+        failures = db.execute(stmt.limit(limit)).scalars().all()
 
         # Get summary statistics
-        total_failures = db.query(BackgroundTaskFailure).count()
-        unresolved_failures = (
-            db.query(BackgroundTaskFailure)
-            .filter(BackgroundTaskFailure.resolved == False)
-            .count()
-        )
+        total_failures = db.execute(
+            select(func.count()).select_from(BackgroundTaskFailure)
+        ).scalar()
+        unresolved_failures = db.execute(
+            select(func.count())
+            .select_from(BackgroundTaskFailure)
+            .where(BackgroundTaskFailure.resolved == False)
+        ).scalar()
 
         # Get failure counts by task type
-        task_type_counts = (
-            db.query(
+        task_type_counts = db.execute(
+            select(
                 BackgroundTaskFailure.task_type,
-                db.func.count(BackgroundTaskFailure.id).label("count"),
+                func.count(BackgroundTaskFailure.id).label("count"),
             )
-            .filter(BackgroundTaskFailure.resolved == False)
+            .where(BackgroundTaskFailure.resolved == False)
             .group_by(BackgroundTaskFailure.task_type)
-            .all()
-        )
+        ).all()
 
         return {
             "total_failures": total_failures,
@@ -574,9 +575,11 @@ async def resolve_background_failure(
     from datetime import datetime
 
     try:
-        failure = db.query(BackgroundTaskFailure).filter(
-            BackgroundTaskFailure.id == failure_id
-        ).first()
+        failure = db.execute(
+            select(BackgroundTaskFailure).where(
+                BackgroundTaskFailure.id == failure_id
+            )
+        ).scalar_one_or_none()
 
         if not failure:
             raise HTTPException(status_code=404, detail="Failure record not found")
