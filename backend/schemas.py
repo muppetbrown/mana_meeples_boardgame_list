@@ -1,4 +1,4 @@
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator, ConfigDict, RootModel
 from typing import Dict, List, Optional
 
 
@@ -8,6 +8,8 @@ class Range(BaseModel):
 
 
 class GameOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True, extra="allow")
+
     id: int
     title: str
     categories: List[str]
@@ -19,10 +21,6 @@ class GameOut(BaseModel):
     thumbnail_url: Optional[str] = None
     game_type: Optional[str] = None
 
-    class Config:
-        orm_mode = True
-        extra = "allow"
-
 
 class PagedGames(BaseModel):
     total: int
@@ -31,14 +29,15 @@ class PagedGames(BaseModel):
     items: List[GameOut]
 
 
-class CategoryCounts(BaseModel):
-    __root__: Dict[str, int]
+class CategoryCounts(RootModel[Dict[str, int]]):
+    root: Dict[str, int]
 
 
 class BGGGameImport(BaseModel):
     bgg_id: int
 
-    @validator("bgg_id")
+    @field_validator("bgg_id")
+    @classmethod
     def validate_bgg_id(cls, v):
         if v <= 0 or v > 999999:
             raise ValueError("BGG ID must be between 1 and 999999")
@@ -48,7 +47,8 @@ class BGGGameImport(BaseModel):
 class CSVImport(BaseModel):
     csv_data: str
 
-    @validator("csv_data")
+    @field_validator("csv_data")
+    @classmethod
     def validate_csv_data(cls, v):
         if not v.strip():
             raise ValueError("CSV data cannot be empty")
@@ -58,7 +58,8 @@ class CSVImport(BaseModel):
 class AdminLogin(BaseModel):
     token: str
 
-    @validator("token")
+    @field_validator("token")
+    @classmethod
     def validate_token(cls, v):
         if not v or len(v.strip()) < 10:
             raise ValueError("Token must be at least 10 characters")
@@ -70,7 +71,8 @@ class FixSequenceRequest(BaseModel):
 
     table_name: str = "boardgames"
 
-    @validator("table_name")
+    @field_validator("table_name")
+    @classmethod
     def validate_table_name(cls, v):
         # Whitelist allowed tables to prevent SQL injection
         allowed_tables = {
@@ -102,7 +104,8 @@ class BuyListGameCreate(BaseModel):
     lpg_rrp: Optional[float] = None
     lpg_status: Optional[str] = None
 
-    @validator("bgg_id")
+    @field_validator("bgg_id")
+    @classmethod
     def validate_bgg_id(cls, v):
         if v <= 0 or v > 999999:
             raise ValueError("BGG ID must be between 1 and 999999")
@@ -122,6 +125,8 @@ class BuyListGameUpdate(BaseModel):
 class PriceSnapshotOut(BaseModel):
     """Schema for price snapshot output"""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     game_id: int
     checked_at: str
@@ -132,12 +137,11 @@ class PriceSnapshotOut(BaseModel):
     discount_pct: Optional[float] = None
     delta: Optional[float] = None
 
-    class Config:
-        orm_mode = True
-
 
 class BuyListGameOut(BaseModel):
     """Schema for buy list game output with game details and latest prices"""
+
+    model_config = ConfigDict(from_attributes=True)
 
     id: int
     game_id: int
@@ -156,6 +160,3 @@ class BuyListGameOut(BaseModel):
     latest_price: Optional[PriceSnapshotOut] = None
     # Computed field
     buy_filter: Optional[bool] = None
-
-    class Config:
-        orm_mode = True
