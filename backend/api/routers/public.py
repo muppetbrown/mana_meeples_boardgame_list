@@ -249,31 +249,16 @@ async def image_proxy(
                 # Only redirect to Cloudinary if we got a valid URL that differs from original
                 # If get_image_url returned the original URL, it means Cloudinary failed
                 if cloudinary_url and cloudinary_url != url:
-                    # Validate that Cloudinary URL exists before redirecting
-                    # This prevents 404s from broken Cloudinary URLs
-                    try:
-                        head_response = await httpx_client.head(cloudinary_url, timeout=5.0)
-                        if head_response.status_code == 404:
-                            # Image doesn't exist in Cloudinary, mark as failed and fall back
-                            logger.warning(f"Cloudinary URL returned 404, marking as failed: {cloudinary_url}")
-                            cloudinary_service._failed_uploads.add(url)
-                            # Fall through to direct proxy
-                        elif head_response.is_error:
-                            # Other error, fall through to direct proxy
-                            logger.warning(f"Cloudinary URL returned error {head_response.status_code}, using direct proxy")
-                            # Fall through to direct proxy
-                        else:
-                            # Cloudinary URL is valid, redirect to it
-                            return Response(
-                                status_code=302,
-                                headers={
-                                    "Location": cloudinary_url,
-                                    "Cache-Control": "public, max-age=31536000, immutable"
-                                }
-                            )
-                    except Exception as head_error:
-                        # If HEAD request fails, log and fall through to direct proxy
-                        logger.warning(f"Failed to validate Cloudinary URL: {head_error}, using direct proxy")
+                    # Redirect to Cloudinary URL directly without validation
+                    # Browser will handle 404s gracefully with image fallback
+                    # This eliminates the HEAD request bottleneck that was blocking images
+                    return Response(
+                        status_code=302,
+                        headers={
+                            "Location": cloudinary_url,
+                            "Cache-Control": "public, max-age=31536000, immutable"
+                        }
+                    )
                 else:
                     # Cloudinary failed, fall through to direct proxy
                     logger.debug(f"Cloudinary URL generation failed for {url}, using direct proxy")
