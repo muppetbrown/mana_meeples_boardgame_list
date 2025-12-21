@@ -11,7 +11,7 @@ from models import Game
 
 
 @pytest.fixture
-def diverse_games(test_db):
+def diverse_games(db_session):
     """Create diverse set of games for filtering tests"""
     games = [
         Game(
@@ -77,43 +77,43 @@ def diverse_games(test_db):
     ]
 
     for game in games:
-        test_db.add(game)
-    test_db.commit()
+        db_session.add(game)
+    db_session.commit()
     return games
 
 
 class TestSearchFilterIntegration:
     """Test complex search and filter combinations"""
 
-    def test_filter_by_single_category(self, test_client, diverse_games):
+    def test_filter_by_single_category(self, client, diverse_games):
         """Should filter games by category"""
-        response = test_client.get('/api/public/games?category=GATEWAY_STRATEGY')
+        response = client.get('/api/public/games?category=GATEWAY_STRATEGY')
 
         assert response.status_code == 200
         data = response.json()
         assert data['total'] >= 4  # Catan, Wingspan, Azul, Ticket to Ride, NZ Game
 
-    def test_filter_by_nz_designer(self, test_client, diverse_games):
+    def test_filter_by_nz_designer(self, client, diverse_games):
         """Should filter games by NZ designer flag"""
-        response = test_client.get('/api/public/games?nz_designer=true')
+        response = client.get('/api/public/games?nz_designer=true')
 
         assert response.status_code == 200
         data = response.json()
         assert data['total'] == 1
         assert data['items'][0]['title'] == "NZ Designer Game"
 
-    def test_search_by_title(self, test_client, diverse_games):
+    def test_search_by_title(self, client, diverse_games):
         """Should search games by title"""
-        response = test_client.get('/api/public/games?q=pandemic')
+        response = client.get('/api/public/games?q=pandemic')
 
         assert response.status_code == 200
         data = response.json()
         assert data['total'] >= 1
         assert any('pandemic' in item['title'].lower() for item in data['items'])
 
-    def test_search_by_designer(self, test_client, diverse_games):
+    def test_search_by_designer(self, client, diverse_games):
         """Should search games by designer name"""
-        response = test_client.get('/api/public/games?q=leacock')
+        response = client.get('/api/public/games?q=leacock')
 
         assert response.status_code == 200
         data = response.json()
@@ -121,71 +121,71 @@ class TestSearchFilterIntegration:
         titles = [item['title'] for item in data['items']]
         assert 'Pandemic' in titles
 
-    def test_category_and_search_combination(self, test_client, diverse_games):
+    def test_category_and_search_combination(self, client, diverse_games):
         """Should combine category filter and search"""
-        response = test_client.get('/api/public/games?category=GATEWAY_STRATEGY&q=wing')
+        response = client.get('/api/public/games?category=GATEWAY_STRATEGY&q=wing')
 
         assert response.status_code == 200
         data = response.json()
         assert data['total'] >= 1
         assert data['items'][0]['title'] == 'Wingspan'
 
-    def test_nz_designer_and_category_combination(self, test_client, diverse_games):
+    def test_nz_designer_and_category_combination(self, client, diverse_games):
         """Should combine NZ designer and category filters"""
-        response = test_client.get('/api/public/games?nz_designer=true&category=GATEWAY_STRATEGY')
+        response = client.get('/api/public/games?nz_designer=true&category=GATEWAY_STRATEGY')
 
         assert response.status_code == 200
         data = response.json()
         assert data['total'] == 1
 
-    def test_sort_by_title_ascending(self, test_client, diverse_games):
+    def test_sort_by_title_ascending(self, client, diverse_games):
         """Should sort games by title ascending"""
-        response = test_client.get('/api/public/games?sort=title_asc&page_size=50')
+        response = client.get('/api/public/games?sort=title_asc&page_size=50')
 
         assert response.status_code == 200
         data = response.json()
         titles = [item['title'] for item in data['items']]
         assert titles == sorted(titles)
 
-    def test_sort_by_title_descending(self, test_client, diverse_games):
+    def test_sort_by_title_descending(self, client, diverse_games):
         """Should sort games by title descending"""
-        response = test_client.get('/api/public/games?sort=title_desc&page_size=50')
+        response = client.get('/api/public/games?sort=title_desc&page_size=50')
 
         assert response.status_code == 200
         data = response.json()
         titles = [item['title'] for item in data['items']]
         assert titles == sorted(titles, reverse=True)
 
-    def test_sort_by_year_ascending(self, test_client, diverse_games):
+    def test_sort_by_year_ascending(self, client, diverse_games):
         """Should sort games by year ascending"""
-        response = test_client.get('/api/public/games?sort=year_asc&page_size=50')
+        response = client.get('/api/public/games?sort=year_asc&page_size=50')
 
         assert response.status_code == 200
         data = response.json()
         years = [item['year'] for item in data['items'] if item['year']]
         assert years == sorted(years)
 
-    def test_sort_by_year_descending(self, test_client, diverse_games):
+    def test_sort_by_year_descending(self, client, diverse_games):
         """Should sort games by year descending (newest first)"""
-        response = test_client.get('/api/public/games?sort=year_desc&page_size=50')
+        response = client.get('/api/public/games?sort=year_desc&page_size=50')
 
         assert response.status_code == 200
         data = response.json()
         years = [item['year'] for item in data['items'] if item['year']]
         assert years == sorted(years, reverse=True)
 
-    def test_sort_by_rating_descending(self, test_client, diverse_games):
+    def test_sort_by_rating_descending(self, client, diverse_games):
         """Should sort games by rating descending (best first)"""
-        response = test_client.get('/api/public/games?sort=rating_desc&page_size=50')
+        response = client.get('/api/public/games?sort=rating_desc&page_size=50')
 
         assert response.status_code == 200
         data = response.json()
         ratings = [item['average_rating'] for item in data['items'] if item.get('average_rating')]
         assert ratings == sorted(ratings, reverse=True)
 
-    def test_category_search_and_sort_combination(self, test_client, diverse_games):
+    def test_category_search_and_sort_combination(self, client, diverse_games):
         """Should combine category, search, and sorting"""
-        response = test_client.get(
+        response = client.get(
             '/api/public/games?category=GATEWAY_STRATEGY&q=a&sort=year_desc&page_size=50'
         )
 
@@ -193,9 +193,9 @@ class TestSearchFilterIntegration:
         data = response.json()
         assert data['total'] >= 2  # Azul, Catan, etc.
 
-    def test_pagination_first_page(self, test_client, diverse_games):
+    def test_pagination_first_page(self, client, diverse_games):
         """Should return first page of results"""
-        response = test_client.get('/api/public/games?page=1&page_size=3')
+        response = client.get('/api/public/games?page=1&page_size=3')
 
         assert response.status_code == 200
         data = response.json()
@@ -203,144 +203,144 @@ class TestSearchFilterIntegration:
         assert data['page'] == 1
         assert data['page_size'] == 3
 
-    def test_pagination_second_page(self, test_client, diverse_games):
+    def test_pagination_second_page(self, client, diverse_games):
         """Should return second page of results"""
-        response = test_client.get('/api/public/games?page=2&page_size=3')
+        response = client.get('/api/public/games?page=2&page_size=3')
 
         assert response.status_code == 200
         data = response.json()
         assert data['page'] == 2
 
-    def test_pagination_with_filters(self, test_client, diverse_games):
+    def test_pagination_with_filters(self, client, diverse_games):
         """Should paginate filtered results correctly"""
-        response = test_client.get('/api/public/games?category=GATEWAY_STRATEGY&page=1&page_size=2')
+        response = client.get('/api/public/games?category=GATEWAY_STRATEGY&page=1&page_size=2')
 
         assert response.status_code == 200
         data = response.json()
         assert len(data['items']) == 2
         assert data['total'] >= 4
 
-    def test_large_page_size(self, test_client, diverse_games):
+    def test_large_page_size(self, client, diverse_games):
         """Should handle large page sizes"""
-        response = test_client.get('/api/public/games?page_size=100')
+        response = client.get('/api/public/games?page_size=100')
 
         assert response.status_code == 200
         data = response.json()
         assert len(data['items']) <= 100
 
-    def test_invalid_page_number(self, test_client):
+    def test_invalid_page_number(self, client):
         """Should handle invalid page numbers"""
-        response = test_client.get('/api/public/games?page=0')
+        response = client.get('/api/public/games?page=0')
 
         # Should either default to page 1 or return error
         assert response.status_code in [200, 400, 422]
 
-    def test_empty_search_results(self, test_client, diverse_games):
+    def test_empty_search_results(self, client, diverse_games):
         """Should handle searches with no results"""
-        response = test_client.get('/api/public/games?q=nonexistentgamexyz123')
+        response = client.get('/api/public/games?q=nonexistentgamexyz123')
 
         assert response.status_code == 200
         data = response.json()
         assert data['total'] == 0
         assert data['items'] == []
 
-    def test_category_with_no_games(self, test_client, diverse_games):
+    def test_category_with_no_games(self, client, diverse_games):
         """Should handle category filters with no matching games"""
         # Assuming no games in this category
-        response = test_client.get('/api/public/games?category=SOME_EMPTY_CATEGORY')
+        response = client.get('/api/public/games?category=SOME_EMPTY_CATEGORY')
 
         assert response.status_code == 200
         data = response.json()
         # May return empty results or all results depending on implementation
 
-    def test_filter_by_designer_name(self, test_client, diverse_games):
+    def test_filter_by_designer_name(self, client, diverse_games):
         """Should filter by specific designer"""
-        response = test_client.get('/api/public/games?designer=Klaus Teuber')
+        response = client.get('/api/public/games?designer=Klaus Teuber')
 
         assert response.status_code == 200
         data = response.json()
         assert data['total'] >= 1
 
-    def test_complex_search_query(self, test_client, diverse_games):
+    def test_complex_search_query(self, client, diverse_games):
         """Should handle complex search queries"""
-        response = test_client.get('/api/public/games?q=strategy adventure')
+        response = client.get('/api/public/games?q=strategy adventure')
 
         assert response.status_code == 200
         data = response.json()
         # Should return games matching search terms
 
-    def test_case_insensitive_search(self, test_client, diverse_games):
+    def test_case_insensitive_search(self, client, diverse_games):
         """Should perform case-insensitive search"""
-        response1 = test_client.get('/api/public/games?q=PANDEMIC')
-        response2 = test_client.get('/api/public/games?q=pandemic')
-        response3 = test_client.get('/api/public/games?q=PaNdEmIc')
+        response1 = client.get('/api/public/games?q=PANDEMIC')
+        response2 = client.get('/api/public/games?q=pandemic')
+        response3 = client.get('/api/public/games?q=PaNdEmIc')
 
         assert response1.status_code == 200
         assert response2.status_code == 200
         assert response3.status_code == 200
         assert response1.json()['total'] == response2.json()['total'] == response3.json()['total']
 
-    def test_special_characters_in_search(self, test_client, diverse_games):
+    def test_special_characters_in_search(self, client, diverse_games):
         """Should handle special characters in search"""
-        response = test_client.get('/api/public/games?q=7 Wonders')
+        response = client.get('/api/public/games?q=7 Wonders')
 
         assert response.status_code == 200
         data = response.json()
         assert data['total'] >= 1
 
-    def test_filter_uncategorized_games(self, test_client, test_db):
+    def test_filter_uncategorized_games(self, client, db_session):
         """Should filter games without a category"""
         # Create game without category
         uncategorized = Game(
             title="Uncategorized Game", bgg_id=888888,
             mana_meeple_category=None, status="OWNED"
         )
-        test_db.add(uncategorized)
-        test_db.commit()
+        db_session.add(uncategorized)
+        db_session.commit()
 
-        response = test_client.get('/api/public/games?category=uncategorized')
+        response = client.get('/api/public/games?category=uncategorized')
 
         assert response.status_code == 200
         data = response.json()
         assert data['total'] >= 1
 
-    def test_multiple_filters_reduce_results(self, test_client, diverse_games):
+    def test_multiple_filters_reduce_results(self, client, diverse_games):
         """Should reduce results when adding more filters"""
-        response1 = test_client.get('/api/public/games')
-        response2 = test_client.get('/api/public/games?category=GATEWAY_STRATEGY')
-        response3 = test_client.get('/api/public/games?category=GATEWAY_STRATEGY&nz_designer=true')
+        response1 = client.get('/api/public/games')
+        response2 = client.get('/api/public/games?category=GATEWAY_STRATEGY')
+        response3 = client.get('/api/public/games?category=GATEWAY_STRATEGY&nz_designer=true')
 
         assert response1.json()['total'] >= response2.json()['total'] >= response3.json()['total']
 
-    def test_search_with_pagination(self, test_client, diverse_games):
+    def test_search_with_pagination(self, client, diverse_games):
         """Should paginate search results correctly"""
-        response = test_client.get('/api/public/games?q=a&page=1&page_size=2')
+        response = client.get('/api/public/games?q=a&page=1&page_size=2')
 
         assert response.status_code == 200
         data = response.json()
         assert len(data['items']) <= 2
 
-    def test_sort_with_null_values(self, test_client, test_db, diverse_games):
+    def test_sort_with_null_values(self, client, db_session, diverse_games):
         """Should handle sorting when some games have null values"""
         # Create game with null year
         no_year = Game(
             title="No Year Game", bgg_id=777777,
             year=None, status="OWNED"
         )
-        test_db.add(no_year)
-        test_db.commit()
+        db_session.add(no_year)
+        db_session.commit()
 
-        response = test_client.get('/api/public/games?sort=year_asc&page_size=50')
+        response = client.get('/api/public/games?sort=year_asc&page_size=50')
 
         assert response.status_code == 200
         # Should not crash, nulls typically at end or beginning
 
-    def test_filter_performance_with_large_dataset(self, test_client, diverse_games):
+    def test_filter_performance_with_large_dataset(self, client, diverse_games):
         """Should perform well with complex filters"""
         import time
 
         start = time.time()
-        response = test_client.get(
+        response = client.get(
             '/api/public/games?category=GATEWAY_STRATEGY&q=game&sort=rating_desc'
         )
         duration = time.time() - start
@@ -348,46 +348,46 @@ class TestSearchFilterIntegration:
         assert response.status_code == 200
         assert duration < 1.0  # Should complete within 1 second
 
-    def test_category_counts_endpoint(self, test_client, diverse_games):
+    def test_category_counts_endpoint(self, client, diverse_games):
         """Should return accurate category counts"""
-        response = test_client.get('/api/public/category-counts')
+        response = client.get('/api/public/category-counts')
 
         assert response.status_code == 200
         data = response.json()
         assert 'GATEWAY_STRATEGY' in data
         assert data['GATEWAY_STRATEGY'] >= 4
 
-    def test_url_encoded_search_parameters(self, test_client, diverse_games):
+    def test_url_encoded_search_parameters(self, client, diverse_games):
         """Should handle URL-encoded search parameters"""
-        response = test_client.get('/api/public/games?q=7%20Wonders')
+        response = client.get('/api/public/games?q=7%20Wonders')
 
         assert response.status_code == 200
         data = response.json()
         assert data['total'] >= 1
 
-    def test_simultaneous_filters_are_AND_not_OR(self, test_client, diverse_games):
+    def test_simultaneous_filters_are_AND_not_OR(self, client, diverse_games):
         """Should treat multiple filters as AND (intersection) not OR (union)"""
         # Filter for games that are BOTH cooperative AND have NZ designer
         # Should be very restrictive
-        response = test_client.get('/api/public/games?category=COOP_ADVENTURE&nz_designer=true')
+        response = client.get('/api/public/games?category=COOP_ADVENTURE&nz_designer=true')
 
         assert response.status_code == 200
         data = response.json()
         # Should return 0 or very few results (no NZ cooperative games in test data)
         assert data['total'] == 0
 
-    def test_returns_correct_total_count(self, test_client, diverse_games):
+    def test_returns_correct_total_count(self, client, diverse_games):
         """Should return correct total count separate from page items"""
-        response = test_client.get('/api/public/games?page=1&page_size=2')
+        response = client.get('/api/public/games?page=1&page_size=2')
 
         assert response.status_code == 200
         data = response.json()
         assert data['total'] >= 10  # Total games in diverse_games
         assert len(data['items']) == 2  # Page size
 
-    def test_search_matches_partial_words(self, test_client, diverse_games):
+    def test_search_matches_partial_words(self, client, diverse_games):
         """Should match partial word searches"""
-        response = test_client.get('/api/public/games?q=gloom')
+        response = client.get('/api/public/games?q=gloom')
 
         assert response.status_code == 200
         data = response.json()
