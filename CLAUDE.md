@@ -237,6 +237,95 @@ pool_pre_ping=True   # Test connections before use
 - Removed SQLite-specific PRAGMA-based migrations
 - Indexes maintained for performance (title, bgg_id, mana_meeple_category, nz_designer)
 
+### Redis Infrastructure (Sprint 8-9: Horizontal Scaling)
+
+**Status**: ✅ COMPLETED (December 2025)
+
+**Redis Configuration**:
+- **Purpose**: Session storage and rate limiting for multi-instance horizontal scaling
+- **Provider**: Configurable (Render Redis, Upstash, Redis Labs, or self-hosted)
+- **Fallback**: Automatic in-memory fallback when Redis unavailable
+- **Driver**: redis 5.0.1 (async-compatible Python client)
+
+**Architecture Features**:
+- **Graceful degradation**: System works with or without Redis
+- **Connection pooling**: Automatic connection management with health checks
+- **TTL-based expiration**: Automatic cleanup of expired sessions and rate limit data
+- **Dual-mode operation**: Redis-first with in-memory fallback
+
+**Redis Client Settings** (redis_client.py):
+```python
+socket_connect_timeout=5    # Connection timeout
+socket_timeout=5            # Operation timeout
+retry_on_timeout=True       # Auto-retry on timeout
+health_check_interval=30    # Connection health check frequency
+decode_responses=True       # Auto-decode to strings
+```
+
+**Environment Variables**:
+```bash
+REDIS_URL=redis://localhost:6379/0  # Redis connection URL
+REDIS_ENABLED=true                   # Enable/disable Redis (fallback to memory)
+SESSION_TIMEOUT_SECONDS=3600         # Session expiration (1 hour default)
+```
+
+**Session Storage** (shared/rate_limiting.py):
+- **Class**: `SessionStorage` - Handles admin sessions with Redis backend
+- **Storage**: `session:{token}` keys with automatic TTL expiration
+- **Data**: JSON-serialized session data (created_at, IP, etc.)
+- **Methods**: `set_session()`, `get_session()`, `delete_session()`
+
+**Rate Limiting** (shared/rate_limiting.py):
+- **Class**: `RateLimitTracker` - Tracks authentication attempts per IP
+- **Storage**: `ratelimit:admin:{ip}` keys with automatic TTL expiration
+- **Data**: JSON arrays of attempt timestamps
+- **Methods**: `get_attempts()`, `set_attempts()`
+
+**Health Monitoring**:
+- **Endpoint**: `GET /api/health/redis`
+- **Response Statuses**:
+  - `healthy` - Redis connected and responding
+  - `disabled` - Redis disabled, using in-memory storage
+  - `unhealthy` - Redis not responding
+  - `error` - Redis health check failed
+
+**Local Development** (Docker Compose):
+```yaml
+services:
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    volumes: [redis_data:/data]
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+```
+
+**Testing**:
+- **Script**: `backend/test_redis_integration.py`
+- **Test Coverage**: Connection, operations, session storage, rate limiting
+- **Usage**: `python backend/test_redis_integration.py` (requires Redis running)
+
+**Production Deployment**:
+- **Recommended**: Render Redis or Upstash (managed Redis services)
+- **Configuration**: Set `REDIS_URL` and `REDIS_ENABLED=true` in environment
+- **Monitoring**: Health check endpoint + Redis metrics (memory, connections, keys)
+- **Benefits**: Multi-instance deployment, session persistence across restarts
+
+**Migration Impact**:
+- **Backward compatible**: System works with or without Redis
+- **No data loss**: In-memory fallback for development and single-instance deployments
+- **Zero downtime**: Can enable/disable Redis without service interruption
+- **Multi-instance ready**: Supports horizontal scaling with shared session state
+
+**Documentation**:
+- **Setup Guide**: `REDIS_SETUP.md` - Comprehensive Redis deployment instructions
+- **Sprint Summary**: `SPRINT_8_REDIS_SUMMARY.md` - Implementation details and testing
+- **Roadmap**: `PRIORITIZED_IMPROVEMENT_ROADMAP.md` - Sprint 8-9 completion tracking
+
 ## Component Architecture Details
 
 ### Error Handling System
