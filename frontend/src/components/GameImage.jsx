@@ -85,12 +85,8 @@ export default function GameImage({
   return (
     <div
       ref={lazyRef}
-      className="image-container relative"
-      style={{
-        aspectRatio,
-        width: width ? `${width}px` : '100%',
-        height: height ? `${height}px` : 'auto'
-      }}
+      className="game-image-container relative w-full"
+      style={{ aspectRatio }}
     >
       {/* Blur-up loading placeholder with gradient - always render to prevent CLS */}
       {!imageLoaded && (
@@ -111,7 +107,7 @@ export default function GameImage({
       {/* Only render img when shouldLoadImage is true (for IntersectionObserver) */}
       {shouldLoadImage && (
         <img
-          src={imageProxyUrl(url, 'original', width, height)}
+          src={imageProxyUrl(url, 'original')}
           srcSet={srcSet}
           sizes={srcSet ? sizes : undefined}
           alt={alt || "Game cover image"}
@@ -121,9 +117,6 @@ export default function GameImage({
           onError={handleImageError}
           onLoad={handleImageLoad}
           decoding="async"
-          width={width}
-          height={height}
-          style={{ aspectRatio }}
         />
       )}
     </div>

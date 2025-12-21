@@ -122,8 +122,6 @@ export default function GameDetails() {
                   fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-600 bg-gradient-to-br from-slate-100 to-slate-200"
                   loading="eager"
                   fetchPriority="high"
-                  width={400}
-                  height={400}
                   aspectRatio="1/1"
                 />
                 

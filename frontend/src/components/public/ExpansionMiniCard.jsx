@@ -20,8 +20,6 @@ export default function ExpansionMiniCard({ expansion }) {
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
             fallbackClass="w-full h-full flex items-center justify-center text-slate-400 bg-gradient-to-br from-slate-100 to-slate-200"
             loading="lazy"
-            width={80}
-            height={80}
             aspectRatio="1/1"
           />
         </div>

@@ -178,10 +178,19 @@ textarea:focus:not(:focus-visible) {
 
 /* Image container should maintain aspect ratio even before load */
 .image-container {
-  /* Prevent cumulative layout shift */
-  contain: layout size;
+  /* Prevent cumulative layout shift - removed 'size' containment to allow responsive sizing */
+  contain: layout;
   /* Ensure aspect ratio is maintained */
   position: relative;
+}
+
+/* New game image container without size containment for responsive layouts */
+.game-image-container {
+  /* Only contain layout, not size - allows responsive behavior */
+  contain: layout;
+  position: relative;
+  /* Ensure images don't overflow */
+  overflow: hidden;
 }
 
 /* Print styles */
