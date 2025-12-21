@@ -37,7 +37,7 @@ export default function GameImage({
   height,
   aspectRatio = "1/1", // Default to square for board game covers
   sizes = "(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 400px",
-  useResponsive = true,
+  useResponsive = false, // Disabled - Cloudinary handles responsive images automatically
   useIntersectionObserver = true
 }) {
   const [imageError, setImageError] = useState(false);

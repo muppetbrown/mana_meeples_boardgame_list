@@ -239,12 +239,10 @@ async def image_proxy(
             # This eliminates slow download + upload on every page view
 
             try:
-                # Get optimized URL with transformations
-                cloudinary_url = cloudinary_service.get_image_url(
-                    url,
-                    width=width,
-                    height=height
-                )
+                # Get optimized URL without size transformations
+                # Don't pass width/height - use base Cloudinary URL only
+                # This prevents 404s from requesting transformed versions that don't exist
+                cloudinary_url = cloudinary_service.get_image_url(url)
 
                 # Only redirect to Cloudinary if we got a valid URL that differs from original
                 # If get_image_url returned the original URL, it means Cloudinary failed
