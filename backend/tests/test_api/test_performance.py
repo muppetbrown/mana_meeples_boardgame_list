@@ -8,7 +8,7 @@ Tests API performance benchmarks and response times
 import pytest
 import time
 from fastapi.testclient import TestClient
-from backend.models import Game
+from models import Game
 
 
 @pytest.fixture

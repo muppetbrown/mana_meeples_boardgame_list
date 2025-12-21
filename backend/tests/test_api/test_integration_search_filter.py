@@ -7,7 +7,7 @@ Tests complex search and filtering scenarios with multiple combinations
 
 import pytest
 from fastapi.testclient import TestClient
-from backend.models import Game
+from models import Game
 
 
 @pytest.fixture

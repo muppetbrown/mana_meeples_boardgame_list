@@ -86,7 +86,7 @@ class TestBuyListWorkflowsIntegration:
 
     def test_bulk_add_to_buy_list(self, test_client, test_db):
         """Should add multiple games to buy list at once"""
-        from backend.models import Game
+        from models import Game
 
         # Create multiple games
         games = [
@@ -149,7 +149,7 @@ class TestBuyListWorkflowsIntegration:
 
     def test_buy_list_sorting_by_priority(self, test_client, test_db):
         """Should return buy list sorted by priority"""
-        from backend.models import Game
+        from models import Game
 
         # Create games with different priorities
         games = [
@@ -204,7 +204,7 @@ class TestBuyListWorkflowsIntegration:
 
     def test_buy_list_filter_by_status(self, test_client, test_db):
         """Should filter buy list by status"""
-        from backend.models import Game
+        from models import Game
 
         # Create and add games with different statuses
         game1 = Game(title="Ordered Game", bgg_id=30001, status="OWNED")
@@ -249,7 +249,7 @@ class TestBuyListWorkflowsIntegration:
 
     def test_buy_list_pagination(self, test_client, test_db):
         """Should paginate large buy lists"""
-        from backend.models import Game
+        from models import Game
 
         # Create many games
         games = [
@@ -277,7 +277,7 @@ class TestBuyListWorkflowsIntegration:
 
     def test_buy_list_reordering(self, test_client, test_db):
         """Should allow reordering buy list items"""
-        from backend.models import Game
+        from models import Game
 
         games = [
             Game(title=f"Reorder {i}", bgg_id=50000+i, status="OWNED")
@@ -316,7 +316,7 @@ class TestBuyListWorkflowsIntegration:
 
     def test_buy_list_statistics(self, test_client, test_db):
         """Should return buy list statistics"""
-        from backend.models import Game
+        from models import Game
 
         # Create and add games
         games = [
