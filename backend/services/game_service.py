@@ -408,15 +408,17 @@ class GameService:
         return game_title
 
     def update_game_from_bgg_data(
-        self, game: Game, bgg_data: Dict[str, Any]
+        self, game: Game, bgg_data: Dict[str, Any], commit: bool = True
     ) -> None:
         """
         Update a Game model instance with BGG data.
-        Consolidates logic used by both single import and bulk import.
+        Single source of truth for all BGG data mapping.
+        Used by: import endpoints, bulk operations, and background tasks.
 
         Args:
             game: Game object to update
             bgg_data: Dictionary containing BGG data
+            commit: Whether to commit changes to database (default True)
         """
         # Update basic fields
         game.title = bgg_data.get("title", game.title)
@@ -427,12 +429,30 @@ class GameService:
         game.playtime_min = bgg_data.get("playtime_min", game.playtime_min)
         game.playtime_max = bgg_data.get("playtime_max", game.playtime_max)
 
-        # Update enhanced fields
+        # Update enhanced fields (description, designers, publishers, etc.)
         self._update_game_enhanced_fields(game, bgg_data)
 
-        # Re-categorize based on BGG categories
+        # Auto-link to base game if this is an expansion
+        self._auto_link_expansion(game, bgg_data)
+
+        # Re-categorize based on BGG categories (unless manually categorized)
         categories = parse_categories(game.categories)
         game.mana_meeple_category = categorize_game(categories)
+
+        # Add to session
+        self.db.add(game)
+
+        # Commit if requested
+        if commit:
+            self.db.commit()
+            self.db.refresh(game)
+
+        # Save sleeve data (requires game.id, so must be after initial commit)
+        self._save_sleeve_data(game, bgg_data)
+
+        # Final commit for sleeve data if needed
+        if commit:
+            self.db.commit()
 
     def _auto_link_expansion(self, game: Game, bgg_data: Dict[str, Any]) -> None:
         """
@@ -529,52 +549,21 @@ class GameService:
             return existing, True
 
         if existing:
-            # Update existing game
-            self.update_game_from_bgg_data(existing, bgg_data)
-
-            # Auto-link to base game if this is an expansion
-            self._auto_link_expansion(existing, bgg_data)
-
-            # Update sleeve data
-            self._save_sleeve_data(existing, bgg_data)
-
-            self.db.add(existing)
-            self.db.commit()
-            self.db.refresh(existing)
+            # Update existing game using consolidated method
+            self.update_game_from_bgg_data(existing, bgg_data, commit=True)
             logger.info(
                 f"Updated from BGG: {existing.title} (BGG ID: {bgg_id})"
             )
             return existing, True
         else:
-            # Create new game
-            categories_str = ", ".join(bgg_data.get("categories", []))
-            categories = parse_categories(categories_str)
-
+            # Create new game with minimal data
             game = Game(
                 title=bgg_data.get("title", ""),
-                categories=categories_str,
-                year=bgg_data.get("year"),
-                players_min=bgg_data.get("players_min"),
-                players_max=bgg_data.get("players_max"),
-                playtime_min=bgg_data.get("playtime_min"),
-                playtime_max=bgg_data.get("playtime_max"),
                 bgg_id=bgg_id,
-                mana_meeple_category=categorize_game(categories),
             )
 
-            # Add enhanced fields
-            self._update_game_enhanced_fields(game, bgg_data)
-
-            # Auto-link to base game if this is an expansion
-            self._auto_link_expansion(game, bgg_data)
-
-            self.db.add(game)
-            self.db.commit()
-            self.db.refresh(game)
-
-            # Save sleeve data after game is committed (needs game.id)
-            self._save_sleeve_data(game, bgg_data)
-            self.db.commit()
+            # Use consolidated method to populate all BGG data
+            self.update_game_from_bgg_data(game, bgg_data, commit=True)
 
             logger.info(f"Imported from BGG: {game.title} (BGG ID: {bgg_id})")
             return game, False

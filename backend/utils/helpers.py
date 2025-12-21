@@ -142,8 +142,29 @@ CATEGORY_MAPPING = {
 }
 
 
-def parse_categories(raw_categories) -> List[str]:
-    """Parse categories from various formats into a clean list"""
+def parse_categories(raw_categories: Optional[Any]) -> List[str]:
+    """
+    Parse categories from various formats into a clean list.
+
+    Handles multiple input formats:
+    - List of strings
+    - JSON array string
+    - Comma-separated string
+
+    Args:
+        raw_categories: Categories in string, list, or JSON format
+
+    Returns:
+        List of category strings (empty list if no valid categories)
+
+    Examples:
+        >>> parse_categories("Action, Strategy")
+        ['Action', 'Strategy']
+        >>> parse_categories(['Action', 'Strategy'])
+        ['Action', 'Strategy']
+        >>> parse_categories('["Action", "Strategy"]')
+        ['Action', 'Strategy']
+    """
     if not raw_categories:
         return []
 
@@ -166,8 +187,24 @@ def parse_categories(raw_categories) -> List[str]:
     return [c.strip() for c in raw_str.split(",") if c.strip()]
 
 
-def parse_json_field(field_value) -> List[str]:
-    """Parse JSON field (designers, publishers, mechanics, etc.) into a list"""
+def parse_json_field(field_value: Optional[Any]) -> List[str]:
+    """
+    Parse JSON field (designers, publishers, mechanics, etc.) into a list.
+
+    Args:
+        field_value: JSON string or list to parse
+
+    Returns:
+        List of strings (empty list if parsing fails or no data)
+
+    Examples:
+        >>> parse_json_field('["Designer A", "Designer B"]')
+        ['Designer A', 'Designer B']
+        >>> parse_json_field(['Designer A', 'Designer B'])
+        ['Designer A', 'Designer B']
+        >>> parse_json_field(None)
+        []
+    """
     if not field_value:
         return []
 
@@ -182,7 +219,27 @@ def parse_json_field(field_value) -> List[str]:
 
 
 def categorize_game(categories: List[str]) -> Optional[str]:
-    """Automatically categorize a game based on its BGG categories"""
+    """
+    Automatically categorize a game based on its BGG categories.
+
+    Uses keyword matching and scoring to assign one of the predefined
+    Mana & Meeples categories. Exact matches score higher (10 points)
+    than keyword matches (1 point each).
+
+    Args:
+        categories: List of BGG category strings
+
+    Returns:
+        Category key (one of CATEGORY_KEYS) or None if no match
+
+    Examples:
+        >>> categorize_game(['cooperative game', 'adventure'])
+        'COOP_ADVENTURE'
+        >>> categorize_game(['party game', 'humor'])
+        'PARTY_ICEBREAKERS'
+        >>> categorize_game([])
+        None
+    """
     if not categories:
         return None
 
@@ -191,7 +248,7 @@ def categorize_game(categories: List[str]) -> Optional[str]:
     category_text = " ".join(normalized_cats)
 
     # Score each category based on keyword matches
-    scores = {}
+    scores: Dict[str, int] = {}
     for category_key, mapping in CATEGORY_MAPPING.items():
         score = 0
 
@@ -216,7 +273,23 @@ def categorize_game(categories: List[str]) -> Optional[str]:
 
 
 def make_absolute_url(request: Request, url: Optional[str]) -> Optional[str]:
-    """Convert relative URLs to absolute URLs"""
+    """
+    Convert relative URLs to absolute URLs using request base URL.
+
+    Args:
+        request: FastAPI Request object
+        url: URL string (relative or absolute)
+
+    Returns:
+        Absolute URL string or None if url is None
+
+    Examples:
+        >>> # Assuming request.base_url is "https://example.com"
+        >>> make_absolute_url(request, "/thumbs/image.jpg")
+        'https://example.com/thumbs/image.jpg'
+        >>> make_absolute_url(request, "https://external.com/image.jpg")
+        'https://external.com/image.jpg'
+    """
     if not url:
         return None
     if url.startswith("http://") or url.startswith("https://"):
@@ -227,7 +300,25 @@ def make_absolute_url(request: Request, url: Optional[str]) -> Optional[str]:
 
 
 def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
-    """Convert game model to dictionary for API response"""
+    """
+    Convert game model to dictionary for API response.
+
+    Handles all game fields including optional enhanced data from BGG.
+    Provides field aliases for frontend compatibility.
+    Prioritizes BGG image URLs over local files (for ephemeral filesystems).
+
+    Args:
+        request: FastAPI Request object (for building absolute URLs)
+        game: Game model instance
+
+    Returns:
+        Dictionary representation of game with all fields
+
+    Note:
+        - Image priority: BGG large image > BGG thumbnail > local file
+        - Includes field aliases (e.g., year_published, min_players)
+        - Handles missing optional fields gracefully with getattr
+    """
     categories = parse_categories(game.categories)
 
     # Parse JSON fields safely
@@ -303,8 +394,28 @@ def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
     }
 
 
-def calculate_category_counts(games) -> Dict[str, int]:
-    """Calculate counts for each category"""
+def calculate_category_counts(games: Any) -> Dict[str, int]:
+    """
+    Calculate counts for each category from a list of games.
+
+    Args:
+        games: List of Game objects or tuples from select queries
+               (supports both ORM objects and raw query results)
+
+    Returns:
+        Dictionary mapping category keys to counts, including:
+        - "all": Total count
+        - CATEGORY_KEYS: Individual category counts
+        - "uncategorized": Games without assigned category
+
+    Examples:
+        >>> games = [game1, game2, game3]  # Game objects
+        >>> counts = calculate_category_counts(games)
+        >>> counts['all']
+        3
+        >>> counts['COOP_ADVENTURE']
+        1
+    """
     counts = {"all": len(games), "uncategorized": 0}
 
     # Initialize category counts
@@ -331,7 +442,24 @@ def calculate_category_counts(games) -> Dict[str, int]:
 def success_response(
     data: Any = None, message: str = "Success"
 ) -> Dict[str, Any]:
-    """Standardized success response format"""
+    """
+    Create a standardized success response format.
+
+    Args:
+        data: Response data (optional)
+        message: Success message (default: "Success")
+
+    Returns:
+        Standardized success response dictionary with:
+        - success: True
+        - message: Success message
+        - timestamp: ISO 8601 timestamp
+        - data: Response data (if provided)
+
+    Examples:
+        >>> success_response({"id": 123}, "Game created")
+        {'success': True, 'message': 'Game created', 'timestamp': '...', 'data': {'id': 123}}
+    """
     response = {
         "success": True,
         "message": message,
@@ -345,7 +473,24 @@ def success_response(
 def error_response(
     message: str, error_code: str = "GENERAL_ERROR", details: Any = None
 ) -> Dict[str, Any]:
-    """Standardized error response format"""
+    """
+    Create a standardized error response format.
+
+    Args:
+        message: Error message
+        error_code: Error code string (default: "GENERAL_ERROR")
+        details: Additional error details (optional)
+
+    Returns:
+        Standardized error response dictionary with:
+        - success: False
+        - error: Object containing code, message, and optional details
+        - timestamp: ISO 8601 timestamp
+
+    Examples:
+        >>> error_response("Game not found", "NOT_FOUND", {"game_id": 123})
+        {'success': False, 'error': {'code': 'NOT_FOUND', 'message': '...'}, 'timestamp': '...'}
+    """
     response = {
         "success": False,
         "error": {"code": error_code, "message": message},

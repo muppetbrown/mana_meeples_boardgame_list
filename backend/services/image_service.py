@@ -249,6 +249,7 @@ class ImageService:
         """
         Re-import game data and thumbnail from BGG.
         Used by bulk reimport operations.
+        Uses consolidated GameService.update_game_from_bgg_data method.
 
         Args:
             game_id: ID of the game to reimport
@@ -258,6 +259,7 @@ class ImageService:
             True if successful, False otherwise
         """
         from bgg_service import fetch_bgg_thing
+        from services.game_service import GameService
 
         try:
             game = self.db.get(Game, game_id)
@@ -265,42 +267,12 @@ class ImageService:
                 logger.warning(f"Game {game_id} not found for reimport")
                 return False
 
-            # Fetch enhanced data from BGG
+            # Fetch enhanced data from BGG (including sleeve data)
             bgg_data = await fetch_bgg_thing(bgg_id)
 
-            # Update game with enhanced data (using GameService would be better,
-            # but avoiding circular import)
-            game.title = bgg_data.get("title", game.title)
-            game.categories = ", ".join(bgg_data.get("categories", []))
-            game.year = bgg_data.get("year", game.year)
-            game.players_min = bgg_data.get("players_min", game.players_min)
-            game.players_max = bgg_data.get("players_max", game.players_max)
-            game.playtime_min = bgg_data.get("playtime_min", game.playtime_min)
-            game.playtime_max = bgg_data.get("playtime_max", game.playtime_max)
-
-            # Update enhanced fields if they exist
-            enhanced_fields = [
-                "description",
-                "designers",
-                "publishers",
-                "mechanics",
-                "artists",
-                "average_rating",
-                "complexity",
-                "bgg_rank",
-                "users_rated",
-                "min_age",
-                "is_cooperative",
-                "game_type",
-                "image",
-                "thumbnail_url",
-            ]
-            for field in enhanced_fields:
-                if hasattr(game, field):
-                    setattr(game, field, bgg_data.get(field))
-
-            self.db.add(game)
-            self.db.commit()
+            # Use consolidated GameService method for all BGG data mapping
+            game_service = GameService(self.db)
+            game_service.update_game_from_bgg_data(game, bgg_data, commit=True)
 
             logger.info(f"Re-imported game {game_id}: {game.title}")
             return True

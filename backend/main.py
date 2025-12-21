@@ -242,7 +242,10 @@ async def _download_and_update_thumbnail(game_id: int, thumbnail_url: str):
 
 
 async def _reimport_single_game(game_id: int, bgg_id: int):
-    """Background task to re-import a single game with enhanced data"""
+    """
+    Background task to re-import a single game with enhanced data.
+    Uses consolidated GameService.update_game_from_bgg_data method.
+    """
     try:
         db = SessionLocal()
         game = db.get(Game, game_id)
@@ -253,66 +256,10 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
         # Fetch enhanced data from BGG (including sleeve data)
         bgg_data = await fetch_bgg_thing(bgg_id)
 
-        # Update game with enhanced data
-        game.title = bgg_data.get("title", game.title)
-        game.categories = ", ".join(bgg_data.get("categories", []))
-        game.year = bgg_data.get("year", game.year)
-        game.players_min = bgg_data.get("players_min", game.players_min)
-        game.players_max = bgg_data.get("players_max", game.players_max)
-        game.playtime_min = bgg_data.get("playtime_min", game.playtime_min)
-        game.playtime_max = bgg_data.get("playtime_max", game.playtime_max)
-
-        # Update enhanced fields if they exist in the model
-        for field in [
-            "description",
-            "designers",
-            "publishers",
-            "mechanics",
-            "artists",
-            "average_rating",
-            "complexity",
-            "bgg_rank",
-            "users_rated",
-            "min_age",
-            "is_cooperative",
-            "game_type",
-            "image",
-            "thumbnail_url",
-        ]:
-            if hasattr(game, field):
-                setattr(game, field, bgg_data.get(field))
-
-        db.add(game)
-        db.commit()
-
-        # Save sleeve data if available
-        from models import Sleeve
-        sleeve_data = bgg_data.get('sleeve_data')
-        if sleeve_data:
-            # Update has_sleeves status
-            game.has_sleeves = sleeve_data.get('status', 'not_found')
-
-            # Delete existing sleeve records for this game
-            db.execute(delete(Sleeve).where(Sleeve.game_id == game.id))
-
-            # Save new sleeve records if found
-            if sleeve_data.get('status') == 'found' and sleeve_data.get('card_types'):
-                notes = sleeve_data.get('notes')
-                for card_type in sleeve_data['card_types']:
-                    # Ensure quantity is never None (fallback to 0)
-                    quantity = card_type.get('quantity') or 0
-                    sleeve = Sleeve(
-                        game_id=game.id,
-                        card_name=card_type.get('name'),
-                        width_mm=card_type['width_mm'],
-                        height_mm=card_type['height_mm'],
-                        quantity=quantity,
-                        notes=notes
-                    )
-                    db.add(sleeve)
-
-                db.commit()
-                logger.info(f"Saved {len(sleeve_data['card_types'])} sleeve types for {game.title}")
+        # Use consolidated GameService method for all BGG data mapping
+        from services.game_service import GameService
+        game_service = GameService(db)
+        game_service.update_game_from_bgg_data(game, bgg_data, commit=True)
 
         logger.info(f"Re-imported game {game_id}: {game.title}")
 
