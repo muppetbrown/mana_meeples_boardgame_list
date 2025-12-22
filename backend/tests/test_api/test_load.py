@@ -166,7 +166,7 @@ class TestConcurrentLoad:
                 # Read operation
                 response = client.get(
                     '/api/admin/games?page_size=10',
-                    headers={'Authorization': 'Bearer test_token'}
+                    headers={'X-Admin-Token': 'test_admin_token'}
                 )
                 return response.status_code == 200
             except Exception:

@@ -187,7 +187,7 @@ class TestAPIPerformance:
         start = time.time()
         response = client.get(
             '/api/admin/games?page_size=24',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
         duration = time.time() - start
 

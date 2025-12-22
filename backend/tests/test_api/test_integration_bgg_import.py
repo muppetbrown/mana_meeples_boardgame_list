@@ -41,7 +41,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={bgg_id}',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code == 201
@@ -57,7 +57,7 @@ class TestBGGImportFlowIntegration:
 
         response = client.post(
             f'/api/admin/import/bgg?bgg_id={bgg_id}&force=false',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 200
@@ -80,7 +80,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={bgg_id}&force=true',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code == 200
@@ -92,7 +92,7 @@ class TestBGGImportFlowIntegration:
         """Should return 400 for invalid BGG ID"""
         response = client.post(
             '/api/admin/import/bgg?bgg_id=99999999',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code in [400, 404]
@@ -110,7 +110,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', side_effect=TimeoutException("Timeout")):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=13',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code in [500, 503, 504]
@@ -122,7 +122,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bad_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=13',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         # Should either reject or handle gracefully
@@ -155,7 +155,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=12345',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code == 201
@@ -185,7 +185,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=11111',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code == 201
@@ -208,7 +208,7 @@ class TestBGGImportFlowIntegration:
             response = client.post(
                 '/api/admin/bulk-import-csv',
                 files=files,
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code == 200
@@ -223,7 +223,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={sample_game.bgg_id}',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         # Should return existing game or indicate duplicate
@@ -242,7 +242,7 @@ class TestBGGImportFlowIntegration:
         for i in range(10):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={i}',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
             responses.append(response.status_code)
 
@@ -261,7 +261,7 @@ class TestBGGImportFlowIntegration:
             with patch('bgg_service.fetch_bgg_thing', return_value={'title': f'Game {bgg_id}'}):
                 response = client.post(
                     f'/api/admin/import/bgg?bgg_id={bgg_id}',
-                    headers={'Authorization': 'Bearer test_token'}
+                    headers={'X-Admin-Token': 'test_admin_token'}
                 )
                 results.append(response.status_code)
 
@@ -281,7 +281,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=99999',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code == 201
@@ -300,7 +300,7 @@ class TestBGGImportFlowIntegration:
             with patch('services.image_service.ImageService.download_and_update_game_thumbnail') as mock_download:
                 response = client.post(
                     '/api/admin/import/bgg?bgg_id=88888',
-                    headers={'Authorization': 'Bearer test_token'}
+                    headers={'X-Admin-Token': 'test_admin_token'}
                 )
 
         assert response.status_code == 201
@@ -317,7 +317,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=77777',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code == 201
@@ -335,7 +335,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=66666',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code == 201
@@ -354,7 +354,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=55555',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code == 201
@@ -373,13 +373,13 @@ class TestBGGImportFlowIntegration:
             # Import once
             response1 = client.post(
                 '/api/admin/import/bgg?bgg_id=44444',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
             # Import again (without force)
             response2 = client.post(
                 '/api/admin/import/bgg?bgg_id=44444&force=false',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response1.status_code == 201
@@ -393,7 +393,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bad_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=33333',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code in [400, 422, 500]
@@ -413,7 +413,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={sample_game.bgg_id}&force=true',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code == 200
@@ -429,7 +429,7 @@ class TestBGGImportFlowIntegration:
             with patch('logging.Logger.info') as mock_log:
                 response = client.post(
                     '/api/admin/import/bgg?bgg_id=22222',
-                    headers={'Authorization': 'Bearer test_token'}
+                    headers={'X-Admin-Token': 'test_admin_token'}
                 )
 
         assert response.status_code == 201
@@ -442,7 +442,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=11112',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code == 201
@@ -463,7 +463,7 @@ class TestBGGImportFlowIntegration:
 
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=11113',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         # May succeed if retry logic is implemented
@@ -488,7 +488,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/reimport-all-games',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         # Should start background task or return success
@@ -499,7 +499,7 @@ class TestBGGImportFlowIntegration:
         with patch('bgg_service.fetch_bgg_thing', side_effect=ValueError("Invalid BGG ID")):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=00000',
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'X-Admin-Token': 'test_admin_token'}
             )
 
         assert response.status_code in [400, 500]

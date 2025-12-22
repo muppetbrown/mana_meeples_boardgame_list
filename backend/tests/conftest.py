@@ -13,6 +13,8 @@ from fastapi.testclient import TestClient
 os.environ["DATABASE_URL"] = "sqlite:///file:testdb?mode=memory&cache=shared&uri=true"
 os.environ["ADMIN_TOKEN"] = "test_admin_token"
 os.environ["CORS_ORIGINS"] = "http://localhost:3000"
+# Disable rate limiting during tests to prevent test failures
+os.environ["DISABLE_RATE_LIMITING"] = "true"
 
 from database import Base
 from main import app

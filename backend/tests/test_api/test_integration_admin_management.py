@@ -27,7 +27,7 @@ class TestAdminGameManagementIntegration:
         response = client.post(
             '/api/admin/games',
             json=game_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 201
@@ -39,7 +39,7 @@ class TestAdminGameManagementIntegration:
         """Should retrieve all games with admin-specific fields"""
         response = client.get(
             '/api/admin/games',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 200
@@ -50,7 +50,7 @@ class TestAdminGameManagementIntegration:
         """Should retrieve single game with all admin fields"""
         response = client.get(
             f'/api/admin/games/{sample_game.id}',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 200
@@ -64,7 +64,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json=update_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 200
@@ -78,7 +78,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json=update_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 200
@@ -92,7 +92,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json=update_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 200
@@ -111,7 +111,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json=update_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 200
@@ -125,7 +125,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             '/api/admin/games/99999',
             json={'title': 'Nope'},
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 404
@@ -136,7 +136,7 @@ class TestAdminGameManagementIntegration:
 
         response = client.delete(
             f'/api/admin/games/{game_id}',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code in [200, 204]
@@ -144,7 +144,7 @@ class TestAdminGameManagementIntegration:
         # Verify deletion
         get_response = client.get(
             f'/api/admin/games/{game_id}',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
         assert get_response.status_code == 404
 
@@ -152,7 +152,7 @@ class TestAdminGameManagementIntegration:
         """Should return 404 when deleting nonexistent game"""
         response = client.delete(
             '/api/admin/games/99999',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 404
@@ -167,7 +167,7 @@ class TestAdminGameManagementIntegration:
         response = client.post(
             '/api/admin/games',
             json=invalid_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code in [400, 422]
@@ -182,7 +182,7 @@ class TestAdminGameManagementIntegration:
         response = client.post(
             '/api/admin/games',
             json=game_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code in [400, 409]
@@ -194,7 +194,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json=update_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code in [400, 422]
@@ -227,7 +227,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json={'title': 'Partially Updated'},
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 200
@@ -241,7 +241,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json={'mana_meeple_category': 'GATEWAY_STRATEGY'},
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 200
@@ -255,7 +255,7 @@ class TestAdminGameManagementIntegration:
         response = client.post(
             '/api/admin/games',
             json=minimal_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 201
@@ -273,7 +273,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json={'title': 'Timestamp Test'},
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code == 200
@@ -289,7 +289,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json=invalid_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         # Should reject or auto-correct
@@ -305,7 +305,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json=invalid_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code in [200, 400, 422]
@@ -317,7 +317,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json=invalid_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         # May accept or reject depending on validation rules
@@ -330,7 +330,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json=invalid_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code in [200, 400, 422]
@@ -342,7 +342,7 @@ class TestAdminGameManagementIntegration:
         response = client.put(
             f'/api/admin/games/{sample_game.id}',
             json=invalid_data,
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'X-Admin-Token': 'test_admin_token'}
         )
 
         assert response.status_code in [200, 400, 422]

@@ -58,6 +58,7 @@ if not BGG_API_KEY:
 # Rate limiting configuration
 RATE_LIMIT_ATTEMPTS = int(os.getenv("RATE_LIMIT_ATTEMPTS", "5"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "300"))  # 5 minutes
+DISABLE_RATE_LIMITING = os.getenv("DISABLE_RATE_LIMITING", "false").lower() in ("true", "1", "yes")
 
 # Debug configuration for BGG data extraction
 SAVE_DEBUG_INFO = os.getenv("SAVE_DEBUG_INFO", "false").lower() in (
