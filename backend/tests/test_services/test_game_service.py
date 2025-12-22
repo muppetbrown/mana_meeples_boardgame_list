@@ -196,7 +196,7 @@ class TestGameService:
     def test_get_filtered_games_pagination(self, db_session):
         """Test pagination works correctly"""
         # Create 25 games
-        games = [Game(title=f"Game {i}") for i in range(25)]
+        games = [Game(title=f"Game {i}", players_min=2, playtime_min=30, status="OWNED") for i in range(25)]
         for game in games:
             db_session.add(game)
         db_session.commit()
@@ -286,9 +286,9 @@ class TestGameService:
     def test_get_games_by_designer(self, db_session):
         """Test retrieving games by designer name"""
         games = [
-            Game(title="Game 1", designers=["Alice", "Bob"]),
-            Game(title="Game 2", designers=["Alice", "Charlie"]),
-            Game(title="Game 3", designers=["Bob", "Dave"]),
+            Game(title="Game 1", designers=["Alice", "Bob"], players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="Game 2", designers=["Alice", "Charlie"], players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="Game 3", designers=["Bob", "Dave"], players_min=2, playtime_min=30, status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -476,7 +476,7 @@ class TestGameService:
 
     def test_search_empty_string(self, db_session):
         """Test empty search returns all games"""
-        games = [Game(title=f"Game {i}", status="OWNED") for i in range(3)]
+        games = [Game(title=f"Game {i}", status="OWNED", players_min=2, playtime_min=30) for i in range(3)]
         for game in games:
             db_session.add(game)
         db_session.commit()
@@ -488,7 +488,7 @@ class TestGameService:
 
     def test_search_whitespace_only(self, db_session):
         """Test whitespace-only search is ignored"""
-        games = [Game(title=f"Game {i}", status="OWNED") for i in range(3)]
+        games = [Game(title=f"Game {i}", status="OWNED", players_min=2, playtime_min=30) for i in range(3)]
         for game in games:
             db_session.add(game)
         db_session.commit()
@@ -500,7 +500,7 @@ class TestGameService:
 
     def test_pagination_page_beyond_available(self, db_session):
         """Test requesting page beyond available data"""
-        games = [Game(title=f"Game {i}", status="OWNED") for i in range(5)]
+        games = [Game(title=f"Game {i}", status="OWNED", players_min=2, playtime_min=30) for i in range(5)]
         for game in games:
             db_session.add(game)
         db_session.commit()
