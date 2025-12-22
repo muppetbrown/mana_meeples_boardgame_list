@@ -291,6 +291,11 @@ class GameService:
         Raises:
             ValidationError: If game already exists or data is invalid
         """
+        # Validate required fields
+        title = game_data.get("title", "").strip()
+        if not title:
+            raise ValidationError("Title is required and cannot be empty")
+
         # Check if game already exists by BGG ID
         bgg_id = game_data.get("bgg_id")
         if bgg_id:
@@ -298,9 +303,16 @@ class GameService:
             if existing:
                 raise ValidationError("Game with this BGG ID already exists")
 
+        # Validate category if provided
+        mana_category = game_data.get("mana_meeple_category")
+        if mana_category:
+            valid_categories = ["COOP_ADVENTURE", "CORE_STRATEGY", "GATEWAY_STRATEGY", "KIDS_FAMILIES", "PARTY_ICEBREAKERS"]
+            if mana_category not in valid_categories:
+                raise ValidationError(f"Invalid category. Must be one of: {', '.join(valid_categories)}")
+
         # Create game with basic fields
         game = Game(
-            title=game_data.get("title", ""),
+            title=title,
             categories=(
                 ",".join(game_data.get("categories", []))
                 if isinstance(game_data.get("categories"), list)
@@ -312,7 +324,7 @@ class GameService:
             playtime_min=game_data.get("playtime_min"),
             playtime_max=game_data.get("playtime_max"),
             bgg_id=bgg_id,
-            mana_meeple_category=game_data.get("mana_meeple_category"),
+            mana_meeple_category=mana_category,
         )
 
         # Add enhanced fields if they exist in the model
@@ -343,10 +355,26 @@ class GameService:
 
         Raises:
             GameNotFoundError: If game doesn't exist
+            ValidationError: If validation fails
         """
         game = self.get_game_by_id(game_id)
         if not game:
             raise GameNotFoundError(f"Game {game_id} not found")
+
+        # Validate category if being updated
+        if "mana_meeple_category" in game_data:
+            mana_category = game_data["mana_meeple_category"]
+            if mana_category:  # Allow None/empty to clear category
+                valid_categories = ["COOP_ADVENTURE", "CORE_STRATEGY", "GATEWAY_STRATEGY", "KIDS_FAMILIES", "PARTY_ICEBREAKERS"]
+                if mana_category not in valid_categories:
+                    raise ValidationError(f"Invalid category. Must be one of: {', '.join(valid_categories)}")
+
+        # Validate title if being updated
+        if "title" in game_data:
+            title = game_data["title"].strip() if game_data["title"] else ""
+            if not title:
+                raise ValidationError("Title is required and cannot be empty")
+            game_data["title"] = title
 
         # Update allowed fields
         updatable_fields = [

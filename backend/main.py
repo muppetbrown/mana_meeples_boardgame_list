@@ -9,6 +9,7 @@ import logging
 from typing import Dict, Any
 from datetime import datetime
 from collections import defaultdict
+from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, Request
@@ -270,10 +271,48 @@ async def _reimport_single_game(game_id: int, bgg_id: int):
 
 
 # ------------------------------------------------------------------------------
+# Lifespan event handler
+# ------------------------------------------------------------------------------
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup and shutdown events.
+    Replaces deprecated @app.on_event() decorators.
+    """
+    # Startup
+    logger.info("Starting Mana & Meeples API...")
+    logger.info("Verifying database connection...")
+
+    # Verify database connection
+    if not db_ping():
+        logger.error("Database connection failed!")
+        raise RuntimeError("Cannot connect to PostgreSQL database")
+
+    logger.info("Database connection verified")
+
+    # Run migrations to update schema
+    run_migrations()
+
+    os.makedirs(THUMBS_DIR, exist_ok=True)
+    logger.info(f"Thumbnails directory: {THUMBS_DIR}")
+    logger.info("API startup complete")
+
+    yield
+
+    # Shutdown
+    logger.info("Shutting down API...")
+    await httpx_client.aclose()
+    logger.info("API shutdown complete")
+
+
+# ------------------------------------------------------------------------------
 # FastAPI app initialization
 # ------------------------------------------------------------------------------
 
 app = FastAPI(
+    lifespan=lifespan,
     title="Mana & Meeples Board Game Library API",
     version="2.0.0",
     description="""
@@ -454,40 +493,6 @@ app.include_router(buy_list_router)
 app.include_router(sleeves_router)
 app.include_router(health_router)
 app.include_router(debug_router)
-
-# ------------------------------------------------------------------------------
-# Startup and shutdown events
-# ------------------------------------------------------------------------------
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initialize database and create thumbs directory"""
-    logger.info("Starting Mana & Meeples API...")
-    logger.info("Verifying database connection...")
-
-    # Verify database connection
-    if not db_ping():
-        logger.error("Database connection failed!")
-        raise RuntimeError("Cannot connect to PostgreSQL database")
-
-    logger.info("Database connection verified")
-
-    # Run migrations to update schema
-    run_migrations()
-
-    os.makedirs(THUMBS_DIR, exist_ok=True)
-    logger.info(f"Thumbnails directory: {THUMBS_DIR}")
-    logger.info("API startup complete")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Cleanup on shutdown"""
-    logger.info("Shutting down API...")
-    await httpx_client.aclose()
-    logger.info("API shutdown complete")
-
 
 # ------------------------------------------------------------------------------
 # Root endpoint
