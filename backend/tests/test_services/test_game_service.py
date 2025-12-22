@@ -20,7 +20,9 @@ class TestGameService:
             bgg_id=12345,
             year=2020,
             players_min=2,
-            players_max=4
+            players_max=4,
+            playtime_min=30,
+            status="OWNED"
         )
         db_session.add(game)
         db_session.commit()
@@ -45,7 +47,10 @@ class TestGameService:
         game = Game(
             title="BGG Test Game",
             bgg_id=99999,
-            year=2021
+            year=2021,
+            players_min=2,
+            playtime_min=30,
+            status="OWNED"
         )
         db_session.add(game)
         db_session.commit()
@@ -60,7 +65,7 @@ class TestGameService:
         """Test retrieving all games"""
         # Create multiple games
         games = [
-            Game(title=f"Game {i}", bgg_id=i, year=2020 + i)
+            Game(title=f"Game {i}", bgg_id=i, year=2020 + i, players_min=2, playtime_min=30, status="OWNED")
             for i in range(5)
         ]
         for game in games:
@@ -94,7 +99,7 @@ class TestGameService:
     def test_create_game_duplicate_bgg_id(self, db_session):
         """Test creating a game with duplicate BGG ID raises error"""
         # Create first game
-        existing = Game(title="Existing", bgg_id=55555)
+        existing = Game(title="Existing", bgg_id=55555, players_min=2, playtime_min=30, status="OWNED")
         db_session.add(existing)
         db_session.commit()
 
@@ -110,7 +115,7 @@ class TestGameService:
 
     def test_update_game_success(self, db_session):
         """Test updating an existing game"""
-        game = Game(title="Original Title", bgg_id=77777, year=2020)
+        game = Game(title="Original Title", bgg_id=77777, year=2020, players_min=2, playtime_min=30, status="OWNED")
         db_session.add(game)
         db_session.commit()
 
@@ -136,7 +141,7 @@ class TestGameService:
 
     def test_delete_game_success(self, db_session):
         """Test deleting a game"""
-        game = Game(title="To Delete", bgg_id=88888)
+        game = Game(title="To Delete", bgg_id=88888, players_min=2, playtime_min=30, status="OWNED")
         db_session.add(game)
         db_session.commit()
         game_id = game.id
@@ -157,9 +162,9 @@ class TestGameService:
     def test_get_filtered_games_by_category(self, db_session):
         """Test filtering games by category"""
         games = [
-            Game(title="Strategy 1", mana_meeple_category="CORE_STRATEGY"),
-            Game(title="Strategy 2", mana_meeple_category="CORE_STRATEGY"),
-            Game(title="Party", mana_meeple_category="PARTY_ICEBREAKERS"),
+            Game(title="Strategy 1", mana_meeple_category="CORE_STRATEGY", players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="Strategy 2", mana_meeple_category="CORE_STRATEGY", players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="Party", mana_meeple_category="PARTY_ICEBREAKERS", players_min=4, playtime_min=15, status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -174,9 +179,9 @@ class TestGameService:
     def test_get_filtered_games_by_search(self, db_session):
         """Test searching games by title"""
         games = [
-            Game(title="Pandemic Legacy"),
-            Game(title="Pandemic Rising Tide"),
-            Game(title="Ticket to Ride"),
+            Game(title="Pandemic Legacy", players_min=2, playtime_min=45, status="OWNED"),
+            Game(title="Pandemic Rising Tide", players_min=2, playtime_min=60, status="OWNED"),
+            Game(title="Ticket to Ride", players_min=2, playtime_min=30, status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
