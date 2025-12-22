@@ -232,34 +232,36 @@ async def image_proxy(
                 detail="Image proxy only supports BoardGameGeek images"
             )
 
-        # If Cloudinary is enabled, try to return Cloudinary URL
+        # If Cloudinary is enabled, try to upload and return Cloudinary URL
         if CLOUDINARY_ENABLED and 'cf.geekdo-images.com' in url:
-            # PERFORMANCE FIX: Don't upload on every request - just generate URL
-            # Images should be pre-uploaded via admin endpoints
-            # This eliminates slow download + upload on every page view
-
             try:
-                # Get optimized URL without size transformations
-                # Don't pass width/height - use base Cloudinary URL only
-                # This prevents 404s from requesting transformed versions that don't exist
-                cloudinary_url = cloudinary_service.get_image_url(url)
+                # Try to upload image to Cloudinary (will skip if already exists)
+                # This ensures the Cloudinary URL actually works
+                upload_result = await cloudinary_service.upload_from_url(
+                    url,
+                    httpx_client
+                )
 
-                # Only redirect to Cloudinary if we got a valid URL that differs from original
-                # If get_image_url returned the original URL, it means Cloudinary failed
-                if cloudinary_url and cloudinary_url != url:
-                    # Redirect to Cloudinary URL directly without validation
-                    # Browser will handle 404s gracefully with image fallback
-                    # This eliminates the HEAD request bottleneck that was blocking images
-                    return Response(
-                        status_code=302,
-                        headers={
-                            "Location": cloudinary_url,
-                            "Cache-Control": "public, max-age=31536000, immutable"
-                        }
-                    )
-                else:
-                    # Cloudinary failed, fall through to direct proxy
-                    logger.debug(f"Cloudinary URL generation failed for {url}, using direct proxy")
+                # If upload succeeded, generate and redirect to Cloudinary URL
+                if upload_result:
+                    # Get optimized URL without size transformations
+                    # Don't pass width/height - use base Cloudinary URL only
+                    cloudinary_url = cloudinary_service.get_image_url(url)
+
+                    # Only redirect to Cloudinary if we got a valid URL that differs from original
+                    if cloudinary_url and cloudinary_url != url:
+                        logger.debug(f"Redirecting to Cloudinary URL: {cloudinary_url}")
+                        return Response(
+                            status_code=302,
+                            headers={
+                                "Location": cloudinary_url,
+                                "Cache-Control": "public, max-age=31536000, immutable"
+                            }
+                        )
+
+                # Upload failed or returned original URL - fall through to direct proxy
+                logger.debug(f"Cloudinary upload/URL failed for {url}, using direct proxy")
+
             except Exception as e:
                 # If Cloudinary fails for any reason, fall through to direct proxy
                 logger.warning(f"Cloudinary error for {url}: {e}, falling back to direct proxy")
