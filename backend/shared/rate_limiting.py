@@ -16,14 +16,18 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
-from config import REDIS_ENABLED
+from config import REDIS_ENABLED, DISABLE_RATE_LIMITING
 
 logger = logging.getLogger(__name__)
 
 
 def get_limiter() -> Limiter:
     """Create and configure the rate limiter instance"""
-    return Limiter(key_func=get_remote_address)
+    # Disable rate limiting during tests if configured
+    enabled = not DISABLE_RATE_LIMITING
+    if not enabled:
+        logger.info("Rate limiting DISABLED (test mode)")
+    return Limiter(key_func=get_remote_address, enabled=enabled)
 
 
 def get_rate_limit_exception_handler():
