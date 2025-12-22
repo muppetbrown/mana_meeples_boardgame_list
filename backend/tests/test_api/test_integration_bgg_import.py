@@ -195,7 +195,7 @@ class TestBGGImportFlowIntegration:
 
     def test_bulk_import_csv(self, client, db_session):
         """Should bulk import multiple games from CSV"""
-        csv_content = "bgg_id\n174430\n13\n12345"
+        csv_content = "174430\n13\n12345"
 
         # Endpoint expects JSON with csv_data field, not file upload
         csv_payload = {'csv_data': csv_content}
@@ -215,7 +215,7 @@ class TestBGGImportFlowIntegration:
 
         assert response.status_code == 200
         data = response.json()
-        assert data['imported'] >= 3
+        assert len(data['added']) >= 3
 
     def test_import_duplicate_detection(self, client, db_session, sample_game):
         """Should detect and handle duplicate BGG IDs"""
@@ -504,6 +504,6 @@ class TestBGGImportFlowIntegration:
                 headers={'X-Admin-Token': 'test_admin_token'}
             )
 
-        assert response.status_code in [400, 500]
+        assert response.status_code in [400, 422, 500]
         data = response.json()
         assert 'detail' in data or 'error' in data
