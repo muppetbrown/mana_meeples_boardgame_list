@@ -234,7 +234,7 @@ class TestAdminBGGImport:
 
     def test_import_from_bgg_success(self, client, admin_headers):
         """Test successful BGG import"""
-        with patch("bgg_service.fetch_bgg_thing", new_callable=AsyncMock) as mock_fetch:
+        with patch("api.routers.admin.fetch_bgg_thing", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = {
                 "title": "Gloomhaven",
                 "year": 2017,
@@ -273,7 +273,7 @@ class TestAdminBGGImport:
         db_session.add(game)
         db_session.commit()
 
-        with patch("bgg_service.fetch_bgg_thing", new_callable=AsyncMock) as mock_fetch:
+        with patch("api.routers.admin.fetch_bgg_thing", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = {
                 "title": "Gloomhaven Updated",
                 "year": 2017,
@@ -302,7 +302,7 @@ class TestAdminBGGImport:
 
     def test_import_from_bgg_api_error(self, client, admin_headers):
         """Test BGG import when API fails"""
-        with patch("bgg_service.fetch_bgg_thing", new_callable=AsyncMock) as mock_fetch:
+        with patch("api.routers.admin.fetch_bgg_thing", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.side_effect = Exception("BGG API error")
 
             response = client.post(
