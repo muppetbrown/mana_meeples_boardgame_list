@@ -325,6 +325,7 @@ class GameService:
             playtime_max=game_data.get("playtime_max"),
             bgg_id=bgg_id,
             mana_meeple_category=mana_category,
+            status=game_data.get("status", "OWNED"),  # Default to OWNED if not provided
         )
 
         # Add enhanced fields if they exist in the model
@@ -588,6 +589,7 @@ class GameService:
             game = Game(
                 title=bgg_data.get("title", ""),
                 bgg_id=bgg_id,
+                status="OWNED",  # Default status for BGG imports
             )
 
             # Use consolidated method to populate all BGG data
