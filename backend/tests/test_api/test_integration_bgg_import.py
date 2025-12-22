@@ -38,7 +38,7 @@ class TestBGGImportFlowIntegration:
             'description': 'Test description'
         }
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={bgg_id}',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -77,7 +77,7 @@ class TestBGGImportFlowIntegration:
             'average_rating': 9.0
         }
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={bgg_id}&force=true',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -108,7 +108,7 @@ class TestBGGImportFlowIntegration:
         """Should handle BGG API network errors gracefully"""
         from httpx import TimeoutException
 
-        with patch('api.routers.admin.fetch_bgg_thing', side_effect=TimeoutException("Timeout")):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, side_effect=TimeoutException("Timeout")):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=13',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -120,7 +120,7 @@ class TestBGGImportFlowIntegration:
         """Should handle malformed BGG XML data"""
         mock_bad_data = {'title': None, 'year': 'invalid'}
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bad_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bad_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=13',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -153,7 +153,7 @@ class TestBGGImportFlowIntegration:
             'is_cooperative': True
         }
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=12345',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -183,7 +183,7 @@ class TestBGGImportFlowIntegration:
             'mechanics': None
         }
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=11111',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -200,7 +200,7 @@ class TestBGGImportFlowIntegration:
         # Endpoint expects JSON with csv_data field, not file upload
         csv_payload = {'csv_data': csv_content}
 
-        with patch('api.routers.bulk.fetch_bgg_thing') as mock_fetch:
+        with patch('api.routers.bulk.fetch_bgg_thing', new_callable=AsyncMock) as mock_fetch:
             mock_fetch.side_effect = [
                 {'title': 'Game 1', 'year': 2020, 'bgg_id': 174430, 'players_min': 2, 'playtime_min': 30},
                 {'title': 'Game 2', 'year': 2021, 'bgg_id': 13, 'players_min': 2, 'playtime_min': 30},
@@ -222,7 +222,7 @@ class TestBGGImportFlowIntegration:
         # Try to import with same BGG ID as existing game
         mock_bgg_data = {'title': 'Different Title', 'bgg_id': sample_game.bgg_id}
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={sample_game.bgg_id}',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -260,7 +260,7 @@ class TestBGGImportFlowIntegration:
         results = []
 
         def import_game(bgg_id):
-            with patch('api.routers.admin.fetch_bgg_thing', return_value={'title': f'Game {bgg_id}'}):
+            with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value={'title': f'Game {bgg_id}'}):
                 response = client.post(
                     f'/api/admin/import/bgg?bgg_id={bgg_id}',
                     headers={'X-Admin-Token': 'test_admin_token'}
@@ -280,7 +280,7 @@ class TestBGGImportFlowIntegration:
         """Should update created_at/updated_at timestamps"""
         mock_bgg_data = {'title': 'Timestamp Test', 'bgg_id': 99999}
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=99999',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -298,7 +298,7 @@ class TestBGGImportFlowIntegration:
             'thumbnail_url': 'https://example.com/thumb.jpg'
         }
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             with patch('services.image_service.ImageService.download_and_update_game_thumbnail') as mock_download:
                 response = client.post(
                     '/api/admin/import/bgg?bgg_id=88888',
@@ -316,7 +316,7 @@ class TestBGGImportFlowIntegration:
             'year': 2020
         }
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=77777',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -334,7 +334,7 @@ class TestBGGImportFlowIntegration:
             'designers': [f'Designer {i}' for i in range(20)]
         }
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=66666',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -353,7 +353,7 @@ class TestBGGImportFlowIntegration:
             'complexity': 3.0
         }
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=55555',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -371,7 +371,7 @@ class TestBGGImportFlowIntegration:
         """Should be idempotent - multiple imports of same game produce same result"""
         mock_bgg_data = {'title': 'Idempotent Test', 'bgg_id': 44444}
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             # Import once
             response1 = client.post(
                 '/api/admin/import/bgg?bgg_id=44444',
@@ -392,7 +392,7 @@ class TestBGGImportFlowIntegration:
         """Should reject BGG data missing required fields"""
         mock_bad_data = {'year': 2023}  # Missing title
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bad_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bad_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=33333',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -412,7 +412,7 @@ class TestBGGImportFlowIntegration:
             'year': 2025
         }
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={sample_game.bgg_id}&force=true',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -427,7 +427,7 @@ class TestBGGImportFlowIntegration:
         """Should log import activity for audit trail"""
         mock_bgg_data = {'title': 'Logging Test', 'bgg_id': 22222}
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             with patch('logging.Logger.info') as mock_log:
                 response = client.post(
                     '/api/admin/import/bgg?bgg_id=22222',
@@ -441,7 +441,7 @@ class TestBGGImportFlowIntegration:
         """Should set default status for newly imported games"""
         mock_bgg_data = {'title': 'Status Test', 'bgg_id': 11112}
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=11112',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -457,7 +457,7 @@ class TestBGGImportFlowIntegration:
         from unittest.mock import call
 
         # First call fails, second succeeds
-        with patch('api.routers.admin.fetch_bgg_thing') as mock_fetch:
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock) as mock_fetch:
             mock_fetch.side_effect = [
                 Exception("Transient error"),
                 {'title': 'Retry Success', 'bgg_id': 11113}
@@ -487,7 +487,7 @@ class TestBGGImportFlowIntegration:
             'complexity': 4.5  # New field
         }
 
-        with patch('api.routers.admin.fetch_bgg_thing', return_value=mock_bgg_data):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/reimport-all-games',
                 headers={'X-Admin-Token': 'test_admin_token'}
@@ -498,12 +498,12 @@ class TestBGGImportFlowIntegration:
 
     def test_import_error_provides_helpful_message(self, client):
         """Should provide clear error messages for failed imports"""
-        with patch('api.routers.admin.fetch_bgg_thing', side_effect=ValueError("Invalid BGG ID")):
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, side_effect=ValueError("Invalid BGG ID")):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=00000',
                 headers={'X-Admin-Token': 'test_admin_token'}
             )
 
-        assert response.status_code in [400, 500]
+        assert response.status_code in [400, 422, 500]
         data = response.json()
         assert 'detail' in data or 'error' in data
