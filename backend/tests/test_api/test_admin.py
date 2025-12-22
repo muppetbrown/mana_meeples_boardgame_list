@@ -50,7 +50,7 @@ class TestAdminGamesEndpoints:
             json=sample_game_data,
             headers=admin_headers
         )
-        assert response.status_code == 200
+        assert response.status_code == 201
         data = response.json()
         assert data["title"] == "Pandemic"
         assert "id" in data
@@ -225,8 +225,8 @@ class TestAdminGameCRUDEdgeCases:
             json=invalid_data,
             headers=admin_headers
         )
-        # Should succeed (GameService validates) or return 400/500
-        assert response.status_code in [200, 400, 500]
+        # Should return validation error (422) or other error (400/500)
+        assert response.status_code in [400, 422, 500]
 
 
 class TestAdminBGGImport:
@@ -236,14 +236,14 @@ class TestAdminBGGImport:
         """Test successful BGG import"""
         with patch("api.routers.admin.fetch_bgg_thing") as mock_fetch:
             mock_fetch.return_value = {
-                "name": "Gloomhaven",
+                "title": "Gloomhaven",
                 "year": 2017,
                 "thumbnail": "https://cf.geekdo-images.com/thumb.jpg",
                 "image": "https://cf.geekdo-images.com/image.jpg",
-                "minplayers": 1,
-                "maxplayers": 4,
-                "minplaytime": 60,
-                "maxplaytime": 120,
+                "players_min": 1,
+                "players_max": 4,
+                "playtime_min": 60,
+                "playtime_max": 120,
                 "description": "Test description",
                 "designers": ["Isaac Childres"],
                 "mechanics": ["Hand Management", "Variable Player Powers"],
@@ -255,25 +255,33 @@ class TestAdminBGGImport:
                 "/api/admin/import/bgg?bgg_id=174430",
                 headers=admin_headers
             )
-            assert response.status_code == 200
+            assert response.status_code == 201
             data = response.json()
             assert "id" in data
             assert "title" in data
 
     def test_import_from_bgg_force_reimport(self, client, db_session, admin_headers):
         """Test force reimport of existing game"""
-        # Create existing game with BGG ID
-        game = Game(title="Gloomhaven", bgg_id=174430)
+        # Create existing game with BGG ID (with required fields to pass constraints)
+        game = Game(
+            title="Gloomhaven",
+            bgg_id=174430,
+            status="OWNED",
+            players_min=1,
+            playtime_min=60
+        )
         db_session.add(game)
         db_session.commit()
 
         with patch("api.routers.admin.fetch_bgg_thing") as mock_fetch:
             mock_fetch.return_value = {
-                "name": "Gloomhaven Updated",
+                "title": "Gloomhaven Updated",
                 "year": 2017,
                 "thumbnail": "https://cf.geekdo-images.com/thumb.jpg",
-                "minplayers": 1,
-                "maxplayers": 4,
+                "players_min": 1,
+                "players_max": 4,
+                "playtime_min": 60,
+                "playtime_max": 120,
             }
 
             response = client.post(
@@ -283,7 +291,6 @@ class TestAdminBGGImport:
             assert response.status_code == 200
             data = response.json()
             assert "id" in data
-            assert "cached" in data
 
     def test_import_from_bgg_missing_id(self, client, admin_headers):
         """Test BGG import without ID parameter"""

@@ -116,18 +116,19 @@ class Game(Base):
               postgresql_where=Column("status") == "OWNED"),
 
         # Sprint 4 Data Integrity Constraints
-        CheckConstraint("year >= 1900 AND year <= 2100", name="valid_year"),
-        CheckConstraint("players_min >= 1", name="valid_min_players"),
-        CheckConstraint("players_max >= players_min", name="players_max_gte_min"),
-        CheckConstraint("average_rating >= 0 AND average_rating <= 10", name="valid_rating"),
-        CheckConstraint("complexity >= 1 AND complexity <= 5", name="valid_complexity"),
+        # NOTE: All constraints must allow NULL values since fields are nullable
+        CheckConstraint("year IS NULL OR (year >= 1900 AND year <= 2100)", name="valid_year"),
+        CheckConstraint("players_min IS NULL OR players_min >= 1", name="valid_min_players"),
+        CheckConstraint("players_max IS NULL OR players_min IS NULL OR players_max >= players_min", name="players_max_gte_min"),
+        CheckConstraint("average_rating IS NULL OR (average_rating >= 0 AND average_rating <= 10)", name="valid_rating"),
+        CheckConstraint("complexity IS NULL OR (complexity >= 1 AND complexity <= 5)", name="valid_complexity"),
         CheckConstraint(
-            "status IN ('OWNED', 'BUY_LIST', 'WISHLIST')",
+            "status IS NULL OR status IN ('OWNED', 'BUY_LIST', 'WISHLIST')",
             name="valid_status"
         ),
-        CheckConstraint("playtime_min > 0", name="valid_playtime_min"),
-        CheckConstraint("playtime_max >= playtime_min", name="playtime_max_gte_min"),
-        CheckConstraint("min_age >= 0 AND min_age <= 100", name="valid_min_age"),
+        CheckConstraint("playtime_min IS NULL OR playtime_min > 0", name="valid_playtime_min"),
+        CheckConstraint("playtime_max IS NULL OR playtime_min IS NULL OR playtime_max >= playtime_min", name="playtime_max_gte_min"),
+        CheckConstraint("min_age IS NULL OR (min_age >= 0 AND min_age <= 100)", name="valid_min_age"),
     )
 
     # Relationships
