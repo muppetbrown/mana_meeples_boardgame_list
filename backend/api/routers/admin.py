@@ -125,10 +125,11 @@ async def validate_admin_token(
 # ------------------------------------------------------------------------------
 
 
-@router.post("/games")
+@router.post("/games", status_code=201)
 async def create_game(
     game_data: Dict[str, Any],
     request: Request,
+    response: Response,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     _: None = Depends(require_admin_auth),
@@ -158,19 +159,22 @@ async def create_game(
 
             background_tasks.add_task(download_task)
 
-        return {"id": game.id, "title": game.title}
+        return game_to_dict(game)
 
     except ValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to create game: {e}")
+        logger.error(f"Failed to create game: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to create game")
 
 
 @router.post("/import/bgg")
 async def import_from_bgg(
     request: Request,
+    response: Response,
     bgg_id: int = Query(..., description="BGG game ID"),
     force: bool = Query(False, description="Force reimport if exists"),
     background_tasks: BackgroundTasks = None,
@@ -206,13 +210,17 @@ async def import_from_bgg(
         # Note: Sleeve data is fetched via GitHub Actions workflow (not on Render server)
         # Users can select games in Manage Library and trigger sleeve fetch for selected games
 
-        return {"id": game.id, "title": game.title, "cached": was_cached}
+        # Set appropriate status code: 201 for new, 200 for update
+        response.status_code = 201 if not was_cached else 200
+        return game_to_dict(game)
 
     except ValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=422, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to import BGG game {bgg_id}: {e}")
+        logger.error(f"Failed to import BGG game {bgg_id}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to import game: {str(e)}"
         )
@@ -262,10 +270,14 @@ async def update_admin_game(
 
     except GameNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         db.rollback()
         logger.error(
-            f"Failed to update game {game_id}: {e}", extra={"game_id": game_id}
+            f"Failed to update game {game_id}: {e}", extra={"game_id": game_id}, exc_info=True
         )
         raise HTTPException(status_code=500, detail="Failed to update game")
 

@@ -42,9 +42,18 @@ def db_session(db_engine) -> Session:
         bind=db_engine
     )
     session = SessionLocal()
-    yield session
-    session.rollback()
-    session.close()
+    try:
+        yield session
+    finally:
+        # Ensure cleanup even if test fails
+        try:
+            session.rollback()
+        except Exception:
+            pass
+        try:
+            session.close()
+        except Exception:
+            pass
 
 
 @pytest.fixture(scope="function")
@@ -52,6 +61,7 @@ def client(db_session, db_engine):
     """Create a test API client with database override"""
     from database import get_db
     import database as db_module
+    from unittest.mock import AsyncMock
 
     # Store original engine
     original_engine = db_module.engine
@@ -69,8 +79,11 @@ def client(db_session, db_engine):
 
     # Mock the db_ping and run_migrations to prevent startup issues
     # Patch them where they're imported (in main.py), not where they're defined
+    # Also patch os.makedirs and httpx_client.aclose for lifespan events
     with patch('main.db_ping', return_value=True), \
-         patch('main.run_migrations', return_value=None):
+         patch('main.run_migrations', return_value=None), \
+         patch('main.os.makedirs', return_value=None), \
+         patch('main.httpx_client.aclose', new_callable=AsyncMock):
         with TestClient(app, raise_server_exceptions=False) as test_client:
             yield test_client
 
@@ -153,10 +166,15 @@ def admin_headers():
 def sample_game(db_session):
     """Create a sample game in the database for testing"""
     from models import Game
+    import random
+
+    # Use a random bgg_id to avoid conflicts between tests
+    # This ensures each test gets a unique game even if using shared cache
+    unique_bgg_id = 10000 + random.randint(1, 999999)
 
     game = Game(
         title="Test Game",
-        bgg_id=12345,
+        bgg_id=unique_bgg_id,
         year=2023,
         players_min=2,
         players_max=4,
