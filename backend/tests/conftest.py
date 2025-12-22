@@ -13,6 +13,8 @@ from fastapi.testclient import TestClient
 os.environ["DATABASE_URL"] = "sqlite:///file:testdb?mode=memory&cache=shared&uri=true"
 os.environ["ADMIN_TOKEN"] = "test_admin_token"
 os.environ["CORS_ORIGINS"] = "http://localhost:3000"
+# Disable rate limiting during tests to prevent test failures
+os.environ["DISABLE_RATE_LIMITING"] = "true"
 
 from database import Base
 from main import app
@@ -145,3 +147,57 @@ def sample_games_list():
 def admin_headers():
     """Headers with admin authentication"""
     return {"X-Admin-Token": "test_admin_token"}
+
+
+@pytest.fixture
+def sample_game(db_session):
+    """Create a sample game in the database for testing"""
+    from models import Game
+
+    game = Game(
+        title="Test Game",
+        bgg_id=12345,
+        year=2023,
+        players_min=2,
+        players_max=4,
+        playtime_min=30,
+        playtime_max=60,
+        mana_meeple_category="GATEWAY_STRATEGY",
+        complexity=2.5,
+        average_rating=7.5,
+        status="OWNED",
+        designers='["Test Designer"]'
+    )
+    db_session.add(game)
+    db_session.commit()
+    db_session.refresh(game)
+    return game
+
+
+@pytest.fixture
+def large_game_dataset(db_session):
+    """Create a large dataset for performance testing"""
+    from models import Game
+
+    games = []
+    for i in range(500):  # Create 500 games
+        game = Game(
+            title=f"Performance Test Game {i}",
+            bgg_id=100000 + i,
+            year=2000 + (i % 25),
+            players_min=2,
+            players_max=6,
+            playtime_min=30,
+            playtime_max=120,
+            complexity=1.0 + (i % 5),
+            average_rating=6.0 + (i % 4),
+            mana_meeple_category=['GATEWAY_STRATEGY', 'COOP_ADVENTURE', 'PARTY_ICEBREAKERS', 'KIDS_FAMILIES'][i % 4],
+            status="OWNED",
+            designers=f'["Designer {i % 100}"]',
+            nz_designer=(i % 10 == 0)  # Every 10th game is NZ designer
+        )
+        games.append(game)
+        db_session.add(game)
+
+    db_session.commit()
+    return games
