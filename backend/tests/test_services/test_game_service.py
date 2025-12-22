@@ -60,7 +60,7 @@ class TestGameService:
         """Test retrieving all games"""
         # Create multiple games
         games = [
-            Game(title=f"Game {i}", bgg_id=i, year=2020 + i)
+            Game(title=f"Game {i}", bgg_id=i, year=2020 + i, status="OWNED", playtime_min=30)
             for i in range(5)
         ]
         for game in games:
@@ -94,7 +94,7 @@ class TestGameService:
     def test_create_game_duplicate_bgg_id(self, db_session):
         """Test creating a game with duplicate BGG ID raises error"""
         # Create first game
-        existing = Game(title="Existing", bgg_id=55555)
+        existing = Game(title="Existing", bgg_id=55555, status="OWNED", playtime_min=30)
         db_session.add(existing)
         db_session.commit()
 
@@ -110,7 +110,7 @@ class TestGameService:
 
     def test_update_game_success(self, db_session):
         """Test updating an existing game"""
-        game = Game(title="Original Title", bgg_id=77777, year=2020)
+        game = Game(title="Original Title", bgg_id=77777, year=2020, status="OWNED", playtime_min=30)
         db_session.add(game)
         db_session.commit()
 
@@ -136,7 +136,7 @@ class TestGameService:
 
     def test_delete_game_success(self, db_session):
         """Test deleting a game"""
-        game = Game(title="To Delete", bgg_id=88888)
+        game = Game(title="To Delete", bgg_id=88888, status="OWNED", playtime_min=30)
         db_session.add(game)
         db_session.commit()
         game_id = game.id
@@ -157,9 +157,9 @@ class TestGameService:
     def test_get_filtered_games_by_category(self, db_session):
         """Test filtering games by category"""
         games = [
-            Game(title="Strategy 1", mana_meeple_category="CORE_STRATEGY"),
-            Game(title="Strategy 2", mana_meeple_category="CORE_STRATEGY"),
-            Game(title="Party", mana_meeple_category="PARTY_ICEBREAKERS"),
+            Game(title="Strategy 1", mana_meeple_category="CORE_STRATEGY", status="OWNED", playtime_min=60),
+            Game(title="Strategy 2", mana_meeple_category="CORE_STRATEGY", status="OWNED", playtime_min=90),
+            Game(title="Party", mana_meeple_category="PARTY_ICEBREAKERS", status="OWNED", playtime_min=30),
         ]
         for game in games:
             db_session.add(game)
@@ -174,9 +174,9 @@ class TestGameService:
     def test_get_filtered_games_by_search(self, db_session):
         """Test searching games by title"""
         games = [
-            Game(title="Pandemic Legacy"),
-            Game(title="Pandemic Rising Tide"),
-            Game(title="Ticket to Ride"),
+            Game(title="Pandemic Legacy", status="OWNED", playtime_min=60),
+            Game(title="Pandemic Rising Tide", status="OWNED", playtime_min=45),
+            Game(title="Ticket to Ride", status="OWNED", playtime_min=30),
         ]
         for game in games:
             db_session.add(game)
@@ -191,7 +191,7 @@ class TestGameService:
     def test_get_filtered_games_pagination(self, db_session):
         """Test pagination works correctly"""
         # Create 25 games
-        games = [Game(title=f"Game {i}") for i in range(25)]
+        games = [Game(title=f"Game {i}", status="OWNED", playtime_min=30) for i in range(25)]
         for game in games:
             db_session.add(game)
         db_session.commit()
@@ -210,9 +210,9 @@ class TestGameService:
     def test_get_filtered_games_sorting(self, db_session):
         """Test sorting games"""
         games = [
-            Game(title="Zebra Game", year=2020),
-            Game(title="Alpha Game", year=2022),
-            Game(title="Beta Game", year=2021),
+            Game(title="Zebra Game", year=2020, status="OWNED", playtime_min=30),
+            Game(title="Alpha Game", year=2022, status="OWNED", playtime_min=45),
+            Game(title="Beta Game", year=2021, status="OWNED", playtime_min=60),
         ]
         for game in games:
             db_session.add(game)
@@ -249,7 +249,7 @@ class TestGameService:
     def test_create_or_update_from_bgg_update_existing(self, db_session):
         """Test updating existing game from BGG data"""
         # Create existing game
-        existing = Game(title="Old Title", bgg_id=12345, year=2020)
+        existing = Game(title="Old Title", bgg_id=12345, year=2020, status="OWNED", playtime_min=30)
         db_session.add(existing)
         db_session.commit()
 
@@ -281,9 +281,9 @@ class TestGameService:
     def test_get_games_by_designer(self, db_session):
         """Test retrieving games by designer name"""
         games = [
-            Game(title="Game 1", designers=["Alice", "Bob"]),
-            Game(title="Game 2", designers=["Alice", "Charlie"]),
-            Game(title="Game 3", designers=["Bob", "Dave"]),
+            Game(title="Game 1", designers=["Alice", "Bob"], status="OWNED", playtime_min=30),
+            Game(title="Game 2", designers=["Alice", "Charlie"], status="OWNED", playtime_min=45),
+            Game(title="Game 3", designers=["Bob", "Dave"], status="OWNED", playtime_min=60),
         ]
         for game in games:
             db_session.add(game)
@@ -366,9 +366,9 @@ class TestGameService:
     def test_get_filtered_games_excludes_wishlist(self, db_session):
         """Test that filtered games excludes non-OWNED status"""
         games = [
-            Game(title="Owned Game", status="OWNED"),
-            Game(title="Wishlist Game", status="WISHLIST"),
-            Game(title="Buy List Game", status="BUY_LIST"),
+            Game(title="Owned Game", status="OWNED", playtime_min=30),
+            Game(title="Wishlist Game", status="WISHLIST", playtime_min=45),
+            Game(title="Buy List Game", status="BUY_LIST", playtime_min=60),
         ]
         for game in games:
             db_session.add(game)
@@ -399,9 +399,9 @@ class TestGameService:
     def test_sort_title_descending(self, db_session):
         """Test sorting by title descending"""
         games = [
-            Game(title="Alpha", status="OWNED"),
-            Game(title="Zebra", status="OWNED"),
-            Game(title="Beta", status="OWNED"),
+            Game(title="Alpha", status="OWNED", playtime_min=30),
+            Game(title="Zebra", status="OWNED", playtime_min=45),
+            Game(title="Beta", status="OWNED", playtime_min=60),
         ]
         for game in games:
             db_session.add(game)
