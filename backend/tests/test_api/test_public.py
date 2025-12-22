@@ -173,9 +173,9 @@ class TestPublicGamesAdvancedFiltering:
     def test_get_games_nz_designer_filter(self, client, db_session):
         """Test filtering by NZ designer flag"""
         games = [
-            Game(title="NZ Game 1", nz_designer=True),
-            Game(title="NZ Game 2", nz_designer=True),
-            Game(title="Regular Game", nz_designer=False),
+            Game(title="NZ Game 1", nz_designer=True, players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="NZ Game 2", nz_designer=True, players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="Regular Game", nz_designer=False, players_min=2, playtime_min=30, status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -197,9 +197,9 @@ class TestPublicGamesAdvancedFiltering:
     def test_get_games_designer_filter(self, client, db_session):
         """Test filtering by designer name"""
         games = [
-            Game(title="Game 1", designers=["Matt Leacock"], status="OWNED"),
-            Game(title="Game 2", designers=["Klaus Teuber"], status="OWNED"),
-            Game(title="Game 3", designers=["Matt Leacock", "Klaus Teuber"], status="OWNED"),
+            Game(title="Game 1", designers=["Matt Leacock"], status="OWNED", players_min=2, playtime_min=30),
+            Game(title="Game 2", designers=["Klaus Teuber"], status="OWNED", players_min=2, playtime_min=30),
+            Game(title="Game 3", designers=["Matt Leacock", "Klaus Teuber"], status="OWNED", players_min=2, playtime_min=30),
         ]
         for game in games:
             db_session.add(game)
@@ -217,16 +217,25 @@ class TestPublicGamesAdvancedFiltering:
                 title="NZ Coop Game",
                 mana_meeple_category="COOP_ADVENTURE",
                 nz_designer=True,
+                players_min=2,
+                playtime_min=30,
+                status="OWNED"
             ),
             Game(
                 title="Regular Coop Game",
                 mana_meeple_category="COOP_ADVENTURE",
                 nz_designer=False,
+                players_min=2,
+                playtime_min=30,
+                status="OWNED"
             ),
             Game(
                 title="NZ Strategy Game",
                 mana_meeple_category="CORE_STRATEGY",
                 nz_designer=True,
+                players_min=2,
+                playtime_min=30,
+                status="OWNED"
             ),
         ]
         for game in games:
@@ -245,9 +254,9 @@ class TestPublicGamesAdvancedFiltering:
     def test_get_games_players_filter(self, client, db_session):
         """Test filtering by player count"""
         games = [
-            Game(title="2-4 Players", players_min=2, players_max=4),
-            Game(title="1-6 Players", players_min=1, players_max=6),
-            Game(title="3-5 Players", players_min=3, players_max=5),
+            Game(title="2-4 Players", players_min=2, players_max=4, playtime_min=30, status="OWNED"),
+            Game(title="1-6 Players", players_min=1, players_max=6, playtime_min=30, status="OWNED"),
+            Game(title="3-5 Players", players_min=3, players_max=5, playtime_min=30, status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -262,9 +271,9 @@ class TestPublicGamesAdvancedFiltering:
     def test_get_games_search_and_category(self, client, db_session):
         """Test combining search with category filter"""
         games = [
-            Game(title="Pandemic Legacy", mana_meeple_category="COOP_ADVENTURE"),
-            Game(title="Pandemic", mana_meeple_category="COOP_ADVENTURE"),
-            Game(title="Pandemic: Iberia", mana_meeple_category="CORE_STRATEGY"),
+            Game(title="Pandemic Legacy", mana_meeple_category="COOP_ADVENTURE", players_min=2, playtime_min=45, status="OWNED"),
+            Game(title="Pandemic", mana_meeple_category="COOP_ADVENTURE", players_min=2, playtime_min=45, status="OWNED"),
+            Game(title="Pandemic: Iberia", mana_meeple_category="CORE_STRATEGY", players_min=2, playtime_min=45, status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -282,9 +291,9 @@ class TestPublicGamesSorting:
     def test_get_games_sort_rating_desc(self, client, db_session):
         """Test sorting by rating descending"""
         games = [
-            Game(title="Low Rated", average_rating=5.5),
-            Game(title="High Rated", average_rating=8.5),
-            Game(title="Mid Rated", average_rating=7.0),
+            Game(title="Low Rated", average_rating=5.5, players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="High Rated", average_rating=8.5, players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="Mid Rated", average_rating=7.0, players_min=2, playtime_min=30, status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -299,9 +308,9 @@ class TestPublicGamesSorting:
     def test_get_games_sort_rating_asc(self, client, db_session):
         """Test sorting by rating ascending"""
         games = [
-            Game(title="Low Rated", average_rating=5.5),
-            Game(title="High Rated", average_rating=8.5),
-            Game(title="Mid Rated", average_rating=7.0),
+            Game(title="Low Rated", average_rating=5.5, players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="High Rated", average_rating=8.5, players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="Mid Rated", average_rating=7.0, players_min=2, playtime_min=30, status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -316,9 +325,9 @@ class TestPublicGamesSorting:
     def test_get_games_sort_time_asc(self, client, db_session):
         """Test sorting by playtime ascending"""
         games = [
-            Game(title="Long Game", playtime_min=120),
-            Game(title="Short Game", playtime_min=30),
-            Game(title="Medium Game", playtime_min=60),
+            Game(title="Long Game", playtime_min=120, players_min=2, status="OWNED"),
+            Game(title="Short Game", playtime_min=30, players_min=2, status="OWNED"),
+            Game(title="Medium Game", playtime_min=60, players_min=2, status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -333,9 +342,9 @@ class TestPublicGamesSorting:
     def test_get_games_sort_time_desc(self, client, db_session):
         """Test sorting by playtime descending"""
         games = [
-            Game(title="Long Game", playtime_min=120),
-            Game(title="Short Game", playtime_min=30),
-            Game(title="Medium Game", playtime_min=60),
+            Game(title="Long Game", playtime_min=120, players_min=2, status="OWNED"),
+            Game(title="Short Game", playtime_min=30, players_min=2, status="OWNED"),
+            Game(title="Medium Game", playtime_min=60, players_min=2, status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -365,7 +374,7 @@ class TestPublicGamesValidation:
         """Test maximum page size limit"""
         # Add multiple games
         for i in range(50):
-            db_session.add(Game(title=f"Game {i}"))
+            db_session.add(Game(title=f"Game {i}", players_min=2, playtime_min=30, status="OWNED"))
         db_session.commit()
 
         # Request max allowed (1000)
@@ -390,9 +399,9 @@ class TestPublicGamesValidation:
     def test_get_games_uncategorized_filter(self, client, db_session):
         """Test filtering uncategorized games"""
         games = [
-            Game(title="Categorized", mana_meeple_category="COOP_ADVENTURE"),
-            Game(title="Uncategorized 1", mana_meeple_category=None),
-            Game(title="Uncategorized 2", mana_meeple_category=None),
+            Game(title="Categorized", mana_meeple_category="COOP_ADVENTURE", players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="Uncategorized 1", mana_meeple_category=None, players_min=2, playtime_min=30, status="OWNED"),
+            Game(title="Uncategorized 2", mana_meeple_category=None, players_min=2, playtime_min=30, status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -410,9 +419,9 @@ class TestDesignerEndpoint:
     def test_get_games_by_designer_success(self, client, db_session):
         """Test getting games by designer name"""
         games = [
-            Game(title="Pandemic", designers=["Matt Leacock"], status="OWNED"),
-            Game(title="Forbidden Island", designers=["Matt Leacock"], status="OWNED"),
-            Game(title="Catan", designers=["Klaus Teuber"], status="OWNED"),
+            Game(title="Pandemic", designers=["Matt Leacock"], status="OWNED", players_min=2, playtime_min=45),
+            Game(title="Forbidden Island", designers=["Matt Leacock"], status="OWNED", players_min=2, playtime_min=30),
+            Game(title="Catan", designers=["Klaus Teuber"], status="OWNED", players_min=3, playtime_min=60),
         ]
         for game in games:
             db_session.add(game)

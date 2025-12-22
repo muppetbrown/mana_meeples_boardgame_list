@@ -109,7 +109,8 @@ def sample_game_data():
         "designers": ["Matt Leacock"],
         "mechanics": ["Action Points", "Cooperative Game", "Point to Point Movement"],
         "min_age": 8,
-        "is_cooperative": True
+        "is_cooperative": True,
+        "status": "OWNED"
     }
 
 
@@ -122,36 +123,44 @@ def sample_games_list():
             "year": 2008,
             "players_min": 2,
             "players_max": 4,
+            "playtime_min": 45,
             "mana_meeple_category": "COOP_ADVENTURE",
             "complexity": 2.43,
-            "nz_designer": False
+            "nz_designer": False,
+            "status": "OWNED"
         },
         {
             "title": "Catan",
             "year": 1995,
             "players_min": 3,
             "players_max": 4,
+            "playtime_min": 60,
             "mana_meeple_category": "GATEWAY_STRATEGY",
             "complexity": 2.32,
-            "nz_designer": False
+            "nz_designer": False,
+            "status": "OWNED"
         },
         {
             "title": "7 Wonders",
             "year": 2010,
             "players_min": 2,
             "players_max": 7,
+            "playtime_min": 30,
             "mana_meeple_category": "CORE_STRATEGY",
             "complexity": 2.33,
-            "nz_designer": False
+            "nz_designer": False,
+            "status": "OWNED"
         },
         {
             "title": "Codenames",
             "year": 2015,
             "players_min": 2,
             "players_max": 8,
+            "playtime_min": 15,
             "mana_meeple_category": "PARTY_ICEBREAKERS",
             "complexity": 1.31,
-            "nz_designer": False
+            "nz_designer": False,
+            "status": "OWNED"
         }
     ]
 
