@@ -95,6 +95,10 @@ def client(db_session, db_engine):
 @pytest.fixture
 def sample_game_data():
     """Sample game data for testing"""
+    import random
+    # Use a random BGG ID to avoid conflicts between tests
+    unique_bgg_id = 30000 + random.randint(1, 999999)
+
     return {
         "title": "Pandemic",
         "year": 2008,
@@ -105,7 +109,7 @@ def sample_game_data():
         "mana_meeple_category": "COOP_ADVENTURE",
         "complexity": 2.43,
         "average_rating": 7.6,
-        "bgg_id": 30549,
+        "bgg_id": unique_bgg_id,
         "designers": ["Matt Leacock"],
         "mechanics": ["Action Points", "Cooperative Game", "Point to Point Movement"],
         "min_age": 8,
