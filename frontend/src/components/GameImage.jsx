@@ -71,7 +71,7 @@ export default function GameImage({
     return (
       <div
         ref={lazyRef}
-        className={fallbackClass || "w-16 h-16 sm:w-20 sm:h-20 bg-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-700 text-xs sm:text-sm transition-colors hover:bg-slate-300"}
+        className={fallbackClass || "w-full h-full bg-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-700 text-xs sm:text-sm transition-colors hover:bg-slate-300"}
         style={{ aspectRatio }}
       >
         <svg className="w-6 h-6 sm:w-8 sm:h-8 mb-1 sm:mb-2" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
@@ -85,7 +85,7 @@ export default function GameImage({
   return (
     <div
       ref={lazyRef}
-      className="game-image-container relative w-full"
+      className="game-image-container relative w-full h-full"
       style={{ aspectRatio }}
     >
       {/* Blur-up loading placeholder with gradient - always render to prevent CLS */}
