@@ -571,6 +571,10 @@ class GameService:
         if bgg_id <= 0 or bgg_id > 999999:
             raise ValidationError("BGG ID must be between 1 and 999999")
 
+        # Validate required fields in BGG data
+        if not bgg_data.get("title"):
+            raise ValidationError("BGG data must include a title")
+
         # Check if already exists
         existing = self.get_game_by_bgg_id(bgg_id)
 

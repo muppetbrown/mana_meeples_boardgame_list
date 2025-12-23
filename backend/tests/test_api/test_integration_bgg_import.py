@@ -200,7 +200,7 @@ class TestBGGImportFlowIntegration:
         # Endpoint expects JSON with csv_data field, not file upload
         csv_payload = {'csv_data': csv_content}
 
-        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock) as mock_fetch:
+        with patch('api.routers.bulk.fetch_bgg_thing', new_callable=AsyncMock) as mock_fetch:
             mock_fetch.side_effect = [
                 {'title': 'Game 1', 'year': 2020, 'bgg_id': 174430, 'players_min': 2, 'playtime_min': 30},
                 {'title': 'Game 2', 'year': 2021, 'bgg_id': 13, 'players_min': 2, 'playtime_min': 30},
@@ -260,18 +260,22 @@ class TestBGGImportFlowIntegration:
         results = []
 
         def import_game(bgg_id):
-            with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value={'title': f'Game {bgg_id}'}):
-                response = client.post(
-                    f'/api/admin/import/bgg?bgg_id={bgg_id}',
-                    headers={'X-Admin-Token': 'test_admin_token'}
-                )
-                results.append(response.status_code)
+            response = client.post(
+                f'/api/admin/import/bgg?bgg_id={bgg_id}',
+                headers={'X-Admin-Token': 'test_admin_token'}
+            )
+            results.append(response.status_code)
 
-        threads = [threading.Thread(target=import_game, args=(i,)) for i in range(5)]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
+        # Patch OUTSIDE the thread function so all threads share the same mock
+        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock) as mock_fetch:
+            # Use a callable to return different titles for different IDs
+            mock_fetch.side_effect = lambda bgg_id: {'title': f'Game {bgg_id}', 'year': 2023}
+
+            threads = [threading.Thread(target=import_game, args=(i,)) for i in range(5)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
 
         # All should succeed or fail gracefully
         assert all(status in [200, 201, 400, 429, 500] for status in results)

@@ -199,11 +199,19 @@ async def import_from_bgg(
     from main import httpx_client
 
     try:
-        # Fetch from BGG
+        game_service = GameService(db)
+
+        # Check if game exists and return cached version if force=false
+        if not force:
+            existing = game_service.get_game_by_bgg_id(bgg_id)
+            if existing:
+                response.status_code = 200
+                return game_to_dict(request, existing)
+
+        # Fetch from BGG (only if force=true or game doesn't exist)
         bgg_data = await fetch_bgg_thing(bgg_id)
 
         # Use service layer - consolidates all the duplication!
-        game_service = GameService(db)
         game, was_cached = game_service.create_or_update_from_bgg(
             bgg_id=bgg_id, bgg_data=bgg_data, force_update=force
         )
