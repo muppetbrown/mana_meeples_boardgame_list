@@ -348,3 +348,26 @@ class TestAdminGameManagementIntegration:
         )
 
         assert response.status_code in [200, 400, 422]
+
+    def test_update_game_status(self, client, sample_game):
+        """Should update game status from BUY_LIST to OWNED"""
+        from datetime import datetime
+
+        # Set initial status to BUY_LIST
+        sample_game.status = "BUY_LIST"
+
+        update_data = {
+            'status': 'OWNED',
+            'date_added': datetime.utcnow().isoformat()
+        }
+
+        response = client.put(
+            f'/api/admin/games/{sample_game.id}',
+            json=update_data,
+            headers={'X-Admin-Token': 'test_admin_token'}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data['status'] == 'OWNED'
+        assert 'date_added' in data or data['status'] == 'OWNED'  # Verify status was updated

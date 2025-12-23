@@ -389,6 +389,9 @@ class GameService:
             "playtime_max",
             "min_age",
             "nz_designer",
+            # Ownership fields
+            "status",
+            "date_added",
             # Expansion fields
             "is_expansion",
             "expansion_type",
