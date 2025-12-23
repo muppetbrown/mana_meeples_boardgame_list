@@ -377,6 +377,16 @@ class GameService:
                 raise ValidationError("Title is required and cannot be empty")
             game_data["title"] = title
 
+        # Convert date_added string to datetime object if needed
+        if "date_added" in game_data and game_data["date_added"] is not None:
+            if isinstance(game_data["date_added"], str):
+                try:
+                    # Handle ISO format with or without 'Z' suffix
+                    date_str = game_data["date_added"].replace('Z', '+00:00')
+                    game_data["date_added"] = datetime.fromisoformat(date_str)
+                except (ValueError, TypeError) as e:
+                    raise ValidationError(f"Invalid date_added format: {e}")
+
         # Update allowed fields
         updatable_fields = [
             "title",
