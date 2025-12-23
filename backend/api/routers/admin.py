@@ -19,6 +19,7 @@ from fastapi import (
     Response,
 )
 from sqlalchemy import func, select, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from api.dependencies import (
@@ -159,8 +160,20 @@ async def create_game(
 
             background_tasks.add_task(download_task)
 
-        return game_to_dict(game)
+        return game_to_dict(request, game)
 
+    except IntegrityError as e:
+        db.rollback()
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        # Extract constraint name from error message for better user feedback
+        if "players_max_gte_min" in error_msg:
+            raise HTTPException(status_code=400, detail="Maximum players must be greater than or equal to minimum players")
+        elif "playtime_max_gte_min" in error_msg:
+            raise HTTPException(status_code=400, detail="Maximum playtime must be greater than or equal to minimum playtime")
+        elif "valid_year" in error_msg:
+            raise HTTPException(status_code=400, detail="Year must be 1900 or later")
+        else:
+            raise HTTPException(status_code=400, detail=f"Database constraint violation: {error_msg}")
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except ValueError as e:
@@ -186,11 +199,19 @@ async def import_from_bgg(
     from main import httpx_client
 
     try:
-        # Fetch from BGG
+        game_service = GameService(db)
+
+        # Check if game exists and return cached version if force=false
+        if not force:
+            existing = game_service.get_game_by_bgg_id(bgg_id)
+            if existing:
+                response.status_code = 200
+                return game_to_dict(request, existing)
+
+        # Fetch from BGG (only if force=true or game doesn't exist)
         bgg_data = await fetch_bgg_thing(bgg_id)
 
         # Use service layer - consolidates all the duplication!
-        game_service = GameService(db)
         game, was_cached = game_service.create_or_update_from_bgg(
             bgg_id=bgg_id, bgg_data=bgg_data, force_update=force
         )
@@ -212,7 +233,7 @@ async def import_from_bgg(
 
         # Set appropriate status code: 201 for new, 200 for update
         response.status_code = 201 if not was_cached else 200
-        return game_to_dict(game)
+        return game_to_dict(request, game)
 
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
@@ -270,6 +291,18 @@ async def update_admin_game(
 
     except GameNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except IntegrityError as e:
+        db.rollback()
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        # Extract constraint name from error message for better user feedback
+        if "players_max_gte_min" in error_msg:
+            raise HTTPException(status_code=400, detail="Maximum players must be greater than or equal to minimum players")
+        elif "playtime_max_gte_min" in error_msg:
+            raise HTTPException(status_code=400, detail="Maximum playtime must be greater than or equal to minimum playtime")
+        elif "valid_year" in error_msg:
+            raise HTTPException(status_code=400, detail="Year must be 1900 or later")
+        else:
+            raise HTTPException(status_code=400, detail=f"Database constraint violation: {error_msg}")
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except ValueError as e:

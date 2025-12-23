@@ -277,11 +277,24 @@ class TestGameService:
         """Test BGG import with invalid ID raises error"""
         service = GameService(db_session)
 
+        # Test with invalid BGG ID (non-positive)
         with pytest.raises(ValidationError, match="BGG ID must be"):
             service.create_or_update_from_bgg(0, {})
 
         with pytest.raises(ValidationError, match="BGG ID must be"):
-            service.create_or_update_from_bgg(9999999, {})
+            service.create_or_update_from_bgg(-1, {})
+
+    def test_create_or_update_from_bgg_missing_title(self, db_session):
+        """Test BGG import with missing title raises error"""
+        service = GameService(db_session)
+
+        # Test with missing title
+        with pytest.raises(ValidationError, match="title"):
+            service.create_or_update_from_bgg(12345, {"year": 2023})
+
+        # Test with empty title
+        with pytest.raises(ValidationError, match="title"):
+            service.create_or_update_from_bgg(12345, {"title": ""})
 
     def test_get_games_by_designer(self, db_session):
         """Test retrieving games by designer name"""

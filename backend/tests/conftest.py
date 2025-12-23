@@ -25,12 +25,20 @@ def db_engine():
     """Create a test database engine with shared cache"""
     engine = create_engine(
         "sqlite:///file:testdb?mode=memory&cache=shared",
-        connect_args={"check_same_thread": False, "uri": True}
+        connect_args={"check_same_thread": False, "uri": True},
+        poolclass=None  # Disable connection pooling for tests
     )
     Base.metadata.create_all(engine)
     yield engine
-    Base.metadata.drop_all(engine)
-    engine.dispose()
+    # Safely cleanup - ignore errors if connections are already closed
+    try:
+        Base.metadata.drop_all(engine)
+    except Exception:
+        pass
+    try:
+        engine.dispose()
+    except Exception:
+        pass
 
 
 @pytest.fixture(scope="function")
