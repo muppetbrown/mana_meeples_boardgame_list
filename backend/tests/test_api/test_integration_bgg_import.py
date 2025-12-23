@@ -271,7 +271,8 @@ class TestBGGImportFlowIntegration:
             # Use a callable to return different titles for different IDs
             mock_fetch.side_effect = lambda bgg_id: {'title': f'Game {bgg_id}', 'year': 2023}
 
-            threads = [threading.Thread(target=import_game, args=(i,)) for i in range(5)]
+            # Use range(1, 6) to get valid BGG IDs (1, 2, 3, 4, 5) instead of (0, 1, 2, 3, 4)
+            threads = [threading.Thread(target=import_game, args=(i,)) for i in range(1, 6)]
             for t in threads:
                 t.start()
             for t in threads:
