@@ -77,7 +77,6 @@ def cached_query(ttl_seconds: int = DEFAULT_TTL_SECONDS):
 
 def clear_cache():
     """Clear all cached entries"""
-    global _cache_store, _cache_timestamps
     _cache_store.clear()
     _cache_timestamps.clear()
 
