@@ -381,6 +381,7 @@ def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
             if hasattr(game, "date_added") and game.date_added
             else None
         ),
+        "status": getattr(game, "status", "OWNED"),  # Default to OWNED for backward compatibility
         "nz_designer": getattr(game, "nz_designer", False),
         "game_type": getattr(game, "game_type", None),
         # Expansion fields
