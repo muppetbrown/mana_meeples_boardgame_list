@@ -48,8 +48,8 @@ This approach uses the `render.yaml` file for infrastructure-as-code deployment.
 4. **Set environment variables securely**:
    In Render dashboard, you'll be prompted to set:
    ```
-   DATABASE_URL=postgresql://tcg_admin:1FhON1ZvCR7bRry4L9UoonvorMD4BjAR@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles
-   ADMIN_TOKEN=b2f6f6f7af1e4db9a43a8ed5e0d86a38a22fdad8a1e7b4730f9207d767fab1cc
+   DATABASE_URL=postgresql://<username>:<password>@<host>.render.com/<database>
+   ADMIN_TOKEN=<your-secure-64-char-hex-token>
    ```
 
    These are marked with `sync: false` in render.yaml for security.
@@ -73,8 +73,10 @@ If you prefer to update your existing Render service:
 3. **Update Environment Variables**:
    - `DATABASE_URL`: Change from SQLite to PostgreSQL URL
    ```
-   postgresql://tcg_admin:1FhON1ZvCR7bRry4L9UoonvorMD4BjAR@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles
+   postgresql://<username>:<password>@<host>.render.com/<database>
    ```
+
+   (Get the actual connection string from Render Dashboard → PostgreSQL → Connection String)
 
 4. **Trigger manual deploy** or push code to trigger auto-deploy
 
