@@ -54,13 +54,15 @@ code {
   white-space: normal !important;
 }
 
-/* Enhanced focus styles for better accessibility */
+/* Enhanced focus styles for better accessibility (WCAG 2.1 AA) */
 button:focus,
 a:focus,
 input:focus,
 select:focus,
-textarea:focus {
-  outline: 2px solid #3b82f6 !important;
+textarea:focus,
+summary:focus,
+[tabindex]:focus {
+  outline: 3px solid #3b82f6 !important;
   outline-offset: 2px !important;
 }
 
@@ -69,9 +71,13 @@ button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid #3b82f6 !important;
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid #3b82f6 !important;
   outline-offset: 2px !important;
+  /* Add subtle box shadow for better visibility */
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
 }
 
 /* Remove focus outline for mouse users but keep for keyboard users */
@@ -79,8 +85,35 @@ button:focus:not(:focus-visible),
 a:focus:not(:focus-visible),
 input:focus:not(:focus-visible),
 select:focus:not(:focus-visible),
-textarea:focus:not(:focus-visible) {
+textarea:focus:not(:focus-visible),
+summary:focus:not(:focus-visible),
+[tabindex]:focus:not(:focus-visible) {
   outline: none;
+  box-shadow: none;
+}
+
+/* Improve focus visibility for buttons with background colors */
+button.bg-emerald-500:focus-visible,
+button.bg-purple-600:focus-visible,
+button.bg-blue-600:focus-visible {
+  outline-color: #fbbf24 !important; /* Amber color for better contrast */
+  box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.2) !important;
+}
+
+/* Ensure minimum target size for interactive elements (WCAG 2.5.5) */
+button,
+a,
+input[type="checkbox"],
+input[type="radio"],
+summary {
+  min-height: 44px;
+  min-width: 44px;
+  /* Exception for inline links */
+}
+
+a:not([role="button"]):not(.btn) {
+  min-height: auto;
+  min-width: auto;
 }
 
 /* High contrast mode support */
