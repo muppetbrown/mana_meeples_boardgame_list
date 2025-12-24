@@ -1,9 +1,26 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import viteCompression from 'vite-plugin-compression';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Gzip compression
+    viteCompression({
+      algorithm: 'gzip',
+      ext: '.gz',
+      threshold: 1024, // Only compress files larger than 1KB
+      deleteOriginFile: false,
+    }),
+    // Brotli compression (better compression than gzip)
+    viteCompression({
+      algorithm: 'brotliCompress',
+      ext: '.br',
+      threshold: 1024,
+      deleteOriginFile: false,
+    }),
+  ],
 
   // Development server configuration
   server: {
@@ -22,14 +39,29 @@ export default defineConfig({
   build: {
     outDir: 'build',
     sourcemap: true,
-    // Optimize chunk splitting
+    // Optimize chunk splitting for better caching
     rollupOptions: {
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-        }
+          'dompurify': ['dompurify'], // Separate chunk for lazy-loaded dependency
+        },
+        // Optimize chunk naming for better caching
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
       }
-    }
+    },
+    // Enable minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.log in production
+        drop_debugger: true,
+      },
+    },
+    // Optimize chunk size warnings
+    chunkSizeWarningLimit: 600,
   },
 
   // PWA configuration
