@@ -57,10 +57,10 @@ mana_meeples_boardgame_list/
 │   │
 │   └── 📁 services/             # Business logic services
 │
-├── 📁 frontend/                 # React 18 frontend (deployed separately)
+├── 📁 frontend/                 # React 19 frontend (deployed separately)
 │   ├── src/                     # React source code
 │   ├── public/                  # Static assets
-│   └── build/                   # Production build
+│   └── dist/                    # Production build (Vite)
 │
 ├── 📁 docs/                     # All documentation
 │   ├── admin/                   # Admin guides
@@ -107,11 +107,21 @@ Access frontend at: `http://localhost:3000`
 
 ## 📚 Documentation
 
+### Core Documentation
 - **[CLAUDE.md](CLAUDE.md)** - Complete project configuration and architecture
-- **[Documentation Index](docs/README.md)** - All documentation organized by category
-- **[Admin Guide](docs/admin/ADMIN_GUIDE.md)** - Admin operations guide
-- **[Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md)** - Deployment instructions
-- **[Refactoring Plan](docs/refactoring/REFACTORING_PLAN.md)** - Code improvement roadmap
+- **[Testing Guide](TESTING.md)** - Comprehensive testing documentation
+- **[Improvement Roadmap](PRIORITIZED_IMPROVEMENT_ROADMAP.md)** - Development roadmap and priorities
+
+### Guides & References
+- **[Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md)** - Production deployment on Render
+- **[Admin Guide](docs/admin/ADMIN_GUIDE.md)** - Admin interface operations
+- **[API Reference](docs/API_REFERENCE.md)** - Complete API endpoint documentation
+- **[Architecture](docs/ARCHITECTURE.md)** - System architecture overview
+
+### Setup Guides
+- **[Redis Setup](REDIS_SETUP.md)** - Session management and caching
+- **[Cloudinary Setup](CLOUDINARY_SETUP.md)** - Image hosting configuration
+- **[Sleeve Fetch Setup](SLEEVE_FETCH_SETUP.md)** - Card sleeve data integration
 
 ## 🏗️ Architecture
 
@@ -123,10 +133,10 @@ Access frontend at: `http://localhost:3000`
 - **Monitoring**: Performance metrics and structured logging
 
 ### Frontend (React)
-- **Framework**: React 18 with React Router v7
+- **Framework**: React 19 with React Router v7
 - **Styling**: Tailwind CSS
-- **Build Tool**: Create React App
-- **Deployment**: Static site on Render
+- **Build Tool**: Vite 7
+- **Deployment**: Static site on Render with automatic Git deployment
 
 ### Key Integrations
 - **BoardGameGeek API**: Game metadata, ratings, complexity
@@ -135,25 +145,48 @@ Access frontend at: `http://localhost:3000`
 
 ## 🔒 Security Features
 
-- ✅ Secure session management (httpOnly cookies)
-- ✅ XSS protection with DOMPurify
-- ✅ Rate limiting on all endpoints
+- ✅ JWT authentication with secure token validation
+- ✅ Session management with Redis (optional) or in-memory fallback
+- ✅ Rate limiting on all endpoints (IP-based with slowapi)
+- ✅ XSS protection with DOMPurify (frontend)
 - ✅ CSRF protection (SameSite cookies)
 - ✅ SQL injection prevention (SQLAlchemy ORM)
-- ✅ Input validation (Pydantic schemas)
+- ✅ Input validation (Pydantic v2 schemas)
+- ✅ CORS whitelist configuration
+- ✅ Security headers middleware
+- ✅ Circuit breaker for external API calls
+- ✅ Sentry integration for error tracking
 
 ## 🧪 Testing
 
+### Backend Tests
 ```bash
+cd backend
+
 # Run all tests
-pytest tests/
+pytest
 
 # Run with coverage
-pytest --cov=. tests/
+pytest --cov=. --cov-report=html --cov-report=term
 
 # Run specific test
-pytest tests/test_main.py
+pytest tests/test_api/test_public.py
 ```
+
+### Frontend Tests
+```bash
+cd frontend
+
+# Run all tests
+npm test
+
+# Run with coverage
+npm run test:ci
+```
+
+**Test Coverage**: 190+ backend tests, 45 frontend tests, 60%+ overall coverage
+
+See [Testing Guide](TESTING.md) for detailed testing documentation.
 
 ## 🚢 Deployment
 
@@ -174,16 +207,18 @@ git push origin main
 
 See [Deployment Guide](docs/deployment/DEPLOYMENT_GUIDE.md) for details.
 
-## 📊 Current Status
+## 📊 Project Stats
 
-**Phase 2 Complete** ✅ Backend reorganization with modular router architecture
+- **Games in Database**: 400+
+- **API Endpoints**: 20+ (public + admin)
+- **Test Coverage**: 60%+ overall
+- **Backend Tests**: 190+
+- **Frontend Tests**: 45
+- **Documentation Files**: 20+ organized guides
+- **Technology Stack**: FastAPI, React 19, PostgreSQL, Redis (optional)
+- **Deployment**: Fully automated via Git push
 
-**Next Steps**:
-- Phase 3: Frontend reorganization
-- Phase 4: Testing & CI/CD
-- Phase 5-8: Documentation, accessibility, dependencies, monitoring
-
-See [Refactoring Plan](docs/refactoring/REFACTORING_PLAN.md) for full roadmap.
+See [Improvement Roadmap](PRIORITIZED_IMPROVEMENT_ROADMAP.md) for development priorities.
 
 ## 🤝 Contributing
 
