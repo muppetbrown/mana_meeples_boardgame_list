@@ -1,7 +1,7 @@
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
-from config import DATABASE_URL
+from config import DATABASE_URL, READ_REPLICA_URL
 from models import Base
 from datetime import datetime
 import logging
@@ -19,13 +19,29 @@ engine_kwargs = {
     "echo": False,  # Set to True for SQL debugging
 }
 
+# Primary database engine (write operations)
 logger.info(
-    f"Configuring database engine for: {DATABASE_URL.split('@')[0]}@..."
+    f"Configuring primary database engine for: {DATABASE_URL.split('@')[0] if '@' in DATABASE_URL else DATABASE_URL}@..."
 )
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 SessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine
 )
+
+# Read replica engine (read-only operations for better performance)
+# Falls back to primary database if READ_REPLICA_URL is not configured
+if READ_REPLICA_URL:
+    logger.info(
+        f"Configuring read replica engine for: {READ_REPLICA_URL.split('@')[0] if '@' in READ_REPLICA_URL else 'configured'}@..."
+    )
+    read_engine = create_engine(READ_REPLICA_URL, **engine_kwargs)
+    ReadSessionLocal = sessionmaker(
+        autocommit=False, autoflush=False, bind=read_engine
+    )
+else:
+    logger.info("Read replica not configured - using primary database for reads")
+    read_engine = engine
+    ReadSessionLocal = SessionLocal
 
 
 def db_ping() -> bool:
@@ -666,8 +682,26 @@ def run_migrations():
 
 
 def get_db():
-    """Database session dependency for FastAPI endpoints"""
+    """Database session dependency for FastAPI endpoints (write operations)"""
     db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+def get_read_db():
+    """
+    Database session dependency for read-only operations.
+    Uses read replica if configured, otherwise falls back to primary database.
+
+    Usage:
+        @router.get("/api/public/games")
+        async def get_games(db: Session = Depends(get_read_db)):
+            # This will use the read replica if available
+            ...
+    """
+    db = ReadSessionLocal()
     try:
         yield db
     finally:

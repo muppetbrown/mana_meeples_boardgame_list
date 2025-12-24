@@ -17,7 +17,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from database import get_db
+from database import get_db, get_read_db
 from exceptions import GameNotFoundError
 from services import GameService, ImageService
 from utils.helpers import game_to_dict
@@ -51,7 +51,7 @@ async def get_public_games(
     recently_added: Optional[int] = Query(
         None, ge=1, description="Filter games added within last N days"
     ),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_read_db),
 ):
     """Get paginated list of games with filtering and search"""
     # Convert nz_designer string to boolean
@@ -113,7 +113,7 @@ async def get_public_games(
 async def get_public_game(
     request: Request,
     game_id: int = Path(..., description="Game ID"),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_read_db),
 ):
     """Get details for a specific game"""
     service = GameService(db)
@@ -161,7 +161,7 @@ async def get_public_game(
 
 @router.get("/category-counts")
 @limiter.limit("60/minute")  # Category counts change infrequently
-async def get_category_counts(request: Request, db: Session = Depends(get_db)):
+async def get_category_counts(request: Request, db: Session = Depends(get_read_db)):
     """Get counts for each category"""
     service = GameService(db)
     return service.get_category_counts()
@@ -170,7 +170,7 @@ async def get_category_counts(request: Request, db: Session = Depends(get_db)):
 @router.get("/games/by-designer/{designer_name}")
 @limiter.limit("60/minute")  # Designer searches
 async def get_games_by_designer(
-    request: Request, designer_name: str, db: Session = Depends(get_db)
+    request: Request, designer_name: str, db: Session = Depends(get_read_db)
 ):
     """Get games by a specific designer"""
     try:
@@ -194,7 +194,7 @@ async def image_proxy(
     url: str = Query(..., description="Image URL to proxy"),
     width: Optional[int] = Query(None, description="Target width for resize"),
     height: Optional[int] = Query(None, description="Target height for resize"),
-    db: Session = Depends(get_db),
+    db: Session = Depends(get_read_db),
 ):
     """
     Proxy external images with Cloudinary CDN and caching.

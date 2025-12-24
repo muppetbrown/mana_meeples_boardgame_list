@@ -19,6 +19,10 @@ if not ADMIN_TOKEN:
 # Local dev: SQLite fallback for testing
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
 
+# Read replica configuration (optional, for performance optimization)
+# If not set, all operations use the primary database
+READ_REPLICA_URL = os.getenv("READ_REPLICA_URL", "")
+
 # Validate database configuration
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is required")
@@ -28,6 +32,16 @@ if DATABASE_URL.startswith("postgresql://"):
         f"Using PostgreSQL database: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'unknown'}",
         file=sys.stderr,
     )
+    if READ_REPLICA_URL:
+        print(
+            f"Read replica enabled: {READ_REPLICA_URL.split('@')[1] if '@' in READ_REPLICA_URL else 'unknown'}",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            "Read replica not configured - using primary database for all operations",
+            file=sys.stderr,
+        )
 elif DATABASE_URL.startswith("sqlite"):
     print(f"Using SQLite database: {DATABASE_URL}", file=sys.stderr)
 else:

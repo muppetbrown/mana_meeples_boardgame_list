@@ -1,7 +1,6 @@
 // src/pages/GameDetails.jsx
 import React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import DOMPurify from "dompurify";
 import { getPublicGame } from "../api/client";
 import { labelFor } from "../constants/categories";
 import { GameDetailsSkeleton } from "../components/common/SkeletonLoader";
@@ -15,7 +14,15 @@ export default function GameDetails() {
   const [game, setGame] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
+  const [DOMPurify, setDOMPurify] = React.useState(null);
   const handleDesignerClick = (designerName) => {navigate(`/?designer=${encodeURIComponent(designerName)}`);};
+
+  // Lazy load DOMPurify (only needed for game description)
+  React.useEffect(() => {
+    import('dompurify').then(module => {
+      setDOMPurify(module.default);
+    });
+  }, []);
 
   React.useEffect(() => {
     let alive = true;
@@ -224,7 +231,7 @@ export default function GameDetails() {
                   )}
 
                   {/* Description */}
-                  {game.description && (
+                  {game.description && DOMPurify && (
                     <section>
                       <h2 className="font-bold text-slate-800 mb-4">About This Game</h2>
                       <div className="prose prose-slate max-w-none">
