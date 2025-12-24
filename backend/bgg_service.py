@@ -5,7 +5,8 @@ Sprint 5: Enhanced with circuit breaker for fail-fast during BGG outages
 """
 import asyncio
 import xml.etree.ElementTree as ET
-from typing import Dict
+from typing import Dict, Any
+from xml.etree.ElementTree import Element
 import httpx
 import logging
 import html
@@ -43,7 +44,7 @@ def _is_bgg_available() -> bool:
     return bgg_circuit_breaker.current_state == "closed"
 
 
-async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
+async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str, Any]:
     """
     Enhanced BGG data fetcher that captures comprehensive game information
     including descriptions, mechanics, designers, publishers, and ratings.
@@ -406,14 +407,14 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict:
         )
 
 
-def _strip_namespace(root):
+def _strip_namespace(root: Element) -> None:
     """Remove XML namespaces from element tags"""
     for elem in root.iter():
         if "}" in elem.tag:
             elem.tag = elem.tag.split("}", 1)[1]
 
 
-def _extract_comprehensive_game_data(item, bgg_id: int) -> Dict:
+def _extract_comprehensive_game_data(item: Element, bgg_id: int) -> Dict[str, Any]:
     """Extract comprehensive game data from BGG XML response"""
     data = {}
     data["bgg_id"] = bgg_id
@@ -848,7 +849,7 @@ def _extract_comprehensive_game_data(item, bgg_id: int) -> Dict:
     return data
 
 
-def _get_game_classification(item) -> str:
+def _get_game_classification(item: Element) -> str:
     """
     Fallback game classification system based on categories and mechanics
     when BGG ranking data is not available

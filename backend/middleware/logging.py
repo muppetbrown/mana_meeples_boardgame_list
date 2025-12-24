@@ -18,7 +18,7 @@ class RequestLoggingMiddleware:
     def __init__(self, app: ASGIApp):
         self.app = app
 
-    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
@@ -39,7 +39,7 @@ class RequestLoggingMiddleware:
         )
 
         # Capture status code from response
-        async def send_wrapper(message):
+        async def send_wrapper(message: dict) -> None:
             nonlocal status_code
             if message["type"] == "http.response.start":
                 status_code = message.get("status", 200)

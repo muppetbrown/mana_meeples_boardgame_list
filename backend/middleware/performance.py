@@ -5,6 +5,7 @@ Tracks request times, endpoint statistics, and slow queries.
 """
 import time
 from collections import deque, OrderedDict
+from typing import Dict, Any
 
 
 class PerformanceMonitor:
@@ -20,7 +21,7 @@ class PerformanceMonitor:
 
     def record_request(
         self, path: str, method: str, duration: float, status_code: int
-    ):
+    ) -> None:
         """Record request metrics with LRU eviction"""
         self.request_times.append(duration)
         endpoint_key = f"{method} {path}"
@@ -59,7 +60,7 @@ class PerformanceMonitor:
                 }
             )
 
-    def get_stats(self):
+    def get_stats(self) -> Dict[str, Any]:
         """Get performance statistics"""
         if not self.request_times:
             return {"message": "No requests recorded yet"}

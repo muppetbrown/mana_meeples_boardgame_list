@@ -9,7 +9,7 @@ Sprint 8: Migrated to Redis for horizontal scaling support.
 import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Callable, Type
 from collections import defaultdict
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -30,12 +30,12 @@ def get_limiter() -> Limiter:
     return Limiter(key_func=get_remote_address, enabled=enabled)
 
 
-def get_rate_limit_exception_handler():
+def get_rate_limit_exception_handler() -> Callable:
     """Get the rate limit exception handler"""
     return _rate_limit_exceeded_handler
 
 
-def get_rate_limit_exception():
+def get_rate_limit_exception() -> Type[RateLimitExceeded]:
     """Get the rate limit exception class"""
     return RateLimitExceeded
 
