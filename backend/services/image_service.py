@@ -49,7 +49,7 @@ class ImageService:
         )
         self._ensure_thumbs_dir()
 
-    def _ensure_thumbs_dir(self):
+    def _ensure_thumbs_dir(self) -> None:
         """Ensure thumbnails directory exists"""
         os.makedirs(THUMBS_DIR, exist_ok=True)
 
