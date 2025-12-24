@@ -75,10 +75,11 @@ def _get_games_from_db(
     from utils.cache import _cache_store, _cache_timestamps
 
     # Generate cache key
-    cache_key = f"games_query:{_get_cached_games_key(
+    cache_params = _get_cached_games_key(
         search, category, designer, nz_designer,
         players, recently_added, sort, page, page_size
-    )}"
+    )
+    cache_key = f"games_query:{cache_params}"
 
     # Check cache (5 second TTL)
     current_time = time.time()
