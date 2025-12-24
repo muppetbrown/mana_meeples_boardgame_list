@@ -194,7 +194,9 @@ async def get_public_game(
     """Get details for a specific game"""
     service = GameService(db)
     game = service.get_game_by_id(game_id)
-    if not game or game.status != "OWNED":
+    # Only show games that are owned (status is NULL or "OWNED")
+    # Hide games on buy list or wishlist
+    if not game or (game.status is not None and game.status != "OWNED"):
         raise GameNotFoundError("Game not found")
 
     # Build detailed response with expansions and base game info
