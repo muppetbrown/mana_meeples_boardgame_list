@@ -423,6 +423,7 @@ async def update_buy_list_game(
             select(PriceSnapshot)
             .where(PriceSnapshot.game_id == buy_list_entry.game_id)
             .order_by(desc(PriceSnapshot.checked_at))
+            .limit(1)
         ).scalar_one_or_none()
 
         logger.info(f"Updated buy list entry {buy_list_id}")
