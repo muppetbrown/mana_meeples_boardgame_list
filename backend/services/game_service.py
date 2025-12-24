@@ -53,7 +53,7 @@ class GameService:
     def get_all_games(self) -> List[Game]:
         """Get all games for admin view - only OWNED games, excluding buy list and wishlist"""
         return self.db.execute(
-            select(Game).where(Game.status == "OWNED")
+            select(Game).where(or_(Game.status == "OWNED", Game.status.is_(None)))
         ).scalars().all()
 
     def get_filtered_games(
@@ -86,7 +86,8 @@ class GameService:
             Tuple of (list of Game objects, total count)
         """
         # Build base query - only show OWNED games for public view
-        query = select(Game).where(Game.status == "OWNED")
+        # Treat NULL status as OWNED (default)
+        query = select(Game).where(or_(Game.status == "OWNED", Game.status.is_(None)))
 
         # Exclude require-base expansions from public view
         # Only show base games and standalone expansions (expansion_type = 'both' or 'standalone')
@@ -270,7 +271,8 @@ class GameService:
             List of Game objects
         """
         designer_filter = f"%{designer_name}%"
-        query = select(Game).where(Game.status == "OWNED")
+        # Only show OWNED games (or NULL status which defaults to OWNED)
+        query = select(Game).where(or_(Game.status == "OWNED", Game.status.is_(None)))
 
         # Cast JSON to text for searching (works in both SQLite and PostgreSQL)
         if hasattr(Game, "designers"):
@@ -625,8 +627,11 @@ class GameService:
         from utils.helpers import calculate_category_counts
 
         # Only select the columns we need - filter to OWNED games only
+        # Treat NULL status as OWNED (default)
         games = self.db.execute(
-            select(Game.id, Game.mana_meeple_category).where(Game.status == "OWNED")
+            select(Game.id, Game.mana_meeple_category).where(
+                or_(Game.status == "OWNED", Game.status.is_(None))
+            )
         ).all()
 
         return calculate_category_counts(games)
