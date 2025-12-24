@@ -20,6 +20,16 @@ from database import Base
 from main import app
 
 
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """Clear the cache before each test to prevent test pollution"""
+    from utils.cache import clear_cache as clear_cache_func
+    clear_cache_func()
+    yield
+    # Clear again after test to ensure clean state
+    clear_cache_func()
+
+
 @pytest.fixture(scope="function")
 def db_engine():
     """Create a test database engine with shared cache"""
