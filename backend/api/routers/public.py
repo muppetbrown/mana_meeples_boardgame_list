@@ -21,6 +21,7 @@ from database import get_db, get_read_db
 from exceptions import GameNotFoundError
 from services import GameService, ImageService
 from utils.helpers import game_to_dict
+from utils.cache import cached_query
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,80 @@ router = APIRouter(prefix="/api/public", tags=["public"])
 # Import rate limiter from main
 # (after router creation to avoid circular import)
 from main import limiter  # noqa: E402
+
+
+def _get_cached_games_key(
+    search: Optional[str],
+    category: Optional[str],
+    designer: Optional[str],
+    nz_designer: Optional[bool],
+    players: Optional[int],
+    recently_added: Optional[int],
+    sort: str,
+    page: int,
+    page_size: int,
+) -> str:
+    """Generate cache key for game queries"""
+    from utils.cache import make_cache_key
+    return make_cache_key(
+        search, category, designer, nz_designer,
+        players, recently_added, sort, page, page_size
+    )
+
+
+def _get_games_from_db(
+    db: Session,
+    search: Optional[str],
+    category: Optional[str],
+    designer: Optional[str],
+    nz_designer: Optional[bool],
+    players: Optional[int],
+    recently_added: Optional[int],
+    sort: str,
+    page: int,
+    page_size: int,
+):
+    """
+    Execute game query with caching.
+    Sprint 12: Performance optimization for high-concurrency load.
+
+    Uses simple TTL cache (5 seconds) to reduce database load during
+    concurrent requests with identical parameters.
+    """
+    import time
+    from utils.cache import _cache_store, _cache_timestamps
+
+    # Generate cache key
+    cache_key = f"games_query:{_get_cached_games_key(
+        search, category, designer, nz_designer,
+        players, recently_added, sort, page, page_size
+    )}"
+
+    # Check cache (5 second TTL)
+    current_time = time.time()
+    if cache_key in _cache_store and cache_key in _cache_timestamps:
+        if current_time - _cache_timestamps[cache_key] < 5:
+            return _cache_store[cache_key]
+
+    # Cache miss - query database
+    service = GameService(db)
+    result = service.get_filtered_games(
+        search=search,
+        category=category,
+        designer=designer,
+        nz_designer=nz_designer,
+        players=players,
+        recently_added_days=recently_added,
+        sort=sort,
+        page=page,
+        page_size=page_size,
+    )
+
+    # Store in cache
+    _cache_store[cache_key] = result
+    _cache_timestamps[cache_key] = current_time
+
+    return result
 
 
 @router.get("/games")
@@ -62,15 +137,15 @@ async def get_public_games(
         else:
             nz_designer_bool = bool(nz_designer)
 
-    # Use service layer
-    service = GameService(db)
-    games, total = service.get_filtered_games(
+    # Use cached query for better performance under load
+    games, total = _get_games_from_db(
+        db=db,
         search=q if q else None,
         category=category,
         designer=designer,
         nz_designer=nz_designer_bool,
         players=players,
-        recently_added_days=recently_added,
+        recently_added=recently_added,
         sort=sort,
         page=page,
         page_size=page_size,

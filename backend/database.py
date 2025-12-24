@@ -9,10 +9,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 # PostgreSQL connection pooling configuration
+# Optimized for high concurrency load (Sprint 12: Performance)
 engine_kwargs = {
     "poolclass": QueuePool,
-    "pool_size": 5,  # Number of permanent connections
-    "max_overflow": 10,  # Additional connections when pool is full
+    "pool_size": 15,  # Number of permanent connections (increased for load tests)
+    "max_overflow": 20,  # Additional connections when pool is full
     "pool_timeout": 30,  # Seconds to wait for connection from pool
     "pool_recycle": 3600,  # Recycle connections after 1 hour
     "pool_pre_ping": True,  # Test connections before using them
