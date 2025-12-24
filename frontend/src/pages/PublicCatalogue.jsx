@@ -1,4 +1,4 @@
-// src/pages/PublicCatalogue.jsx - Enhanced Mobile-First Version
+// src/pages/PublicCatalogue.jsx - Enhanced Mobile-First Version with Accessibility
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getPublicGames, getPublicCategoryCounts } from "../api/client";
@@ -7,6 +7,8 @@ import GameCardPublic from "../components/public/GameCardPublic";
 import GameCardSkeleton from "../components/public/GameCardSkeleton";
 import SortSelect from "../components/public/SortSelect";
 import SearchBox from "../components/public/SearchBox";
+import SkipNav from "../components/common/SkipNav";
+import LiveRegion from "../components/common/LiveRegion";
 
 export default function PublicCatalogue() {
   // Use URL parameters to preserve state
@@ -39,6 +41,7 @@ export default function PublicCatalogue() {
   const [isFilterExpanded, setIsFilterExpanded] = useState(false); // NEW: Filter panel state
   const [isSticky, setIsSticky] = useState(false); // NEW: Sticky toolbar state
   const [expandedCards, setExpandedCards] = useState(new Set()); // NEW: Track expanded cards
+  const [announcement, setAnnouncement] = useState(""); // Accessibility: Screen reader announcements
 
   // Refs for scroll detection
   const lastScrollY = useRef(0);
@@ -285,18 +288,40 @@ export default function PublicCatalogue() {
     };
   }, [loadMore]); // Re-setup when loadMore changes (filter changes)
 
-  // Helper functions
+  // Helper functions with accessibility announcements
   const updateCategory = (newCategory) => {
     setCategory(newCategory);
     setExpandedCards(new Set()); // Collapse all cards on filter change
+
+    // Announce category change to screen readers
+    const categoryName = newCategory === "all"
+      ? "All Games"
+      : newCategory === "uncategorized"
+      ? "Uncategorized"
+      : CATEGORY_LABELS[newCategory];
+    setAnnouncement(`Filtering by ${categoryName}`);
   };
 
   const updateSort = (newSort) => {
     setSort(newSort);
+    const sortLabels = {
+      "title_asc": "Title A to Z",
+      "title_desc": "Title Z to A",
+      "year_desc": "Newest first",
+      "year_asc": "Oldest first",
+      "rating_desc": "Highest rated first",
+      "rating_asc": "Lowest rated first",
+      "time_asc": "Shortest play time first",
+      "time_desc": "Longest play time first"
+    };
+    setAnnouncement(`Sorting by ${sortLabels[newSort] || newSort}`);
   };
 
   const updateSearch = (newSearch) => {
     setQ(newSearch);
+    if (newSearch) {
+      setAnnouncement(`Searching for ${newSearch}`);
+    }
   };
 
   const clearAllFilters = () => {
@@ -308,18 +333,26 @@ export default function PublicCatalogue() {
     setRecentlyAdded(false);
     setSort("year_desc");
     setExpandedCards(new Set());
+    setAnnouncement("All filters cleared. Showing all games.");
   };
 
   const toggleNzDesigner = () => {
-    setNzDesigner(!nzDesigner);
+    const newValue = !nzDesigner;
+    setNzDesigner(newValue);
+    setAnnouncement(newValue ? "Filtering by New Zealand designers" : "New Zealand designer filter removed");
   };
 
   const toggleRecentlyAdded = () => {
-    setRecentlyAdded(!recentlyAdded);
+    const newValue = !recentlyAdded;
+    setRecentlyAdded(newValue);
+    setAnnouncement(newValue ? "Showing recently added games" : "Recently added filter removed");
   };
 
   const updatePlayers = (newPlayers) => {
     setPlayers(newPlayers);
+    if (newPlayers) {
+      setAnnouncement(`Filtering by ${newPlayers} players`);
+    }
   };
 
   // NEW: Toggle card expansion
@@ -362,8 +395,14 @@ export default function PublicCatalogue() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-amber-50">
+      {/* Skip Navigation for Keyboard Users */}
+      <SkipNav />
+
+      {/* Live Region for Screen Reader Announcements */}
+      <LiveRegion message={announcement} />
+
       <div className="container mx-auto px-4 py-4 sm:py-8">
-        
+
         {/* Header - with scroll-away behavior - wrapped to prevent layout shift */}
         <div className="mb-4">
           <header
@@ -436,11 +475,11 @@ export default function PublicCatalogue() {
           <div className="w-12 sm:w-20 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 rounded-full mb-4" aria-hidden="true"></div>
 
           {/* Category Pills - part of header, hides with header on scroll */}
-          <section aria-labelledby="categories-heading" className="mt-4">
+          <section id="category-filters" aria-labelledby="categories-heading" className="mt-4">
             <h2 id="categories-heading" className="sr-only">
               Game Categories
             </h2>
-            <div className="flex gap-2 overflow-x-auto pb-3 snap-x scrollbar-hide">
+            <div className="flex gap-2 overflow-x-auto pb-3 snap-x scrollbar-hide" role="group" aria-label="Filter games by category">
               <button
                 onClick={() => updateCategory("all")}
                 className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
@@ -449,6 +488,7 @@ export default function PublicCatalogue() {
                     : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
                 }`}
                 aria-pressed={category === "all"}
+                aria-label={`Show all games. ${counts?.all ?? 0} total games.`}
               >
                 All ({counts?.all ?? "..."})
               </button>
@@ -463,6 +503,7 @@ export default function PublicCatalogue() {
                       : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
                   }`}
                   aria-pressed={category === key}
+                  aria-label={`Filter by ${CATEGORY_LABELS[key]}. ${counts?.[key] ?? 0} games in this category.`}
                 >
                   {CATEGORY_LABELS[key]} ({counts?.[key] ?? "..."})
                 </button>
@@ -517,16 +558,20 @@ export default function PublicCatalogue() {
                   
                   {/* Search */}
                   <div>
-                    <label htmlFor="search-mobile" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    <label htmlFor="search-box" className="block text-sm font-semibold text-slate-700 mb-1.5">
                       Search Games
                     </label>
                     <SearchBox
-                      id="search-mobile"
+                      id="search-box"
                       value={q}
                       onChange={updateSearch}
-                      placeholder="Search by title..."
+                      placeholder="Search by title, designer, or description..."
                       className="w-full"
+                      aria-describedby="search-help"
                     />
+                    <p id="search-help" className="sr-only">
+                      Search across game titles, designer names, and descriptions. Results update as you type.
+                    </p>
                   </div>
 
                   {/* Player Count */}
