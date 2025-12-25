@@ -16,11 +16,14 @@ class SecurityHeadersMiddleware:
     Headers added:
     - X-Frame-Options: Prevent clickjacking attacks
     - X-Content-Type-Options: Prevent MIME type sniffing
-    - X-XSS-Protection: Enable browser XSS protection
+    - X-XSS-Protection: DEPRECATED - Only added to HTML responses, not API responses
     - Strict-Transport-Security: Force HTTPS connections
-    - Content-Security-Policy: Control resource loading
+    - Content-Security-Policy: Only added to HTML responses, not API responses
     - Referrer-Policy: Control referrer information
     - Permissions-Policy: Control browser features
+
+    Note: CSP and X-XSS-Protection are only applied to HTML responses.
+    API JSON responses do not need these headers and they can cause webhint warnings.
     """
 
     def __init__(self, app: ASGIApp):
@@ -34,6 +37,10 @@ class SecurityHeadersMiddleware:
         async def send_wrapper(message: dict) -> None:
             if message["type"] == "http.response.start":
                 headers = dict(message.get("headers", []))
+                path = scope.get("path", "")
+
+                # Determine if this is an API endpoint (returns JSON)
+                is_api_endpoint = path.startswith("/api/")
 
                 # X-Frame-Options: Prevent clickjacking
                 # DENY = Never allow framing
@@ -45,9 +52,10 @@ class SecurityHeadersMiddleware:
                 if b"x-content-type-options" not in headers:
                     headers[b"x-content-type-options"] = b"nosniff"
 
-                # X-XSS-Protection: Legacy XSS filter (still used by older browsers)
-                # 1; mode=block = Enable XSS filter and block page if attack detected
-                if b"x-xss-protection" not in headers:
+                # X-XSS-Protection: DEPRECATED and only for HTML pages
+                # NOTE: This header is deprecated and can create security vulnerabilities.
+                # Modern browsers use CSP instead. Only add to non-API responses.
+                if not is_api_endpoint and b"x-xss-protection" not in headers:
                     headers[b"x-xss-protection"] = b"1; mode=block"
 
                 # Strict-Transport-Security (HSTS): Force HTTPS
@@ -58,9 +66,9 @@ class SecurityHeadersMiddleware:
                         b"max-age=31536000; includeSubDomains"
                     )
 
-                # Content-Security-Policy: Control resource loading
+                # Content-Security-Policy: Only for HTML pages, not API JSON responses
                 # This is a moderate policy that allows same-origin and trusted CDNs
-                if b"content-security-policy" not in headers:
+                if not is_api_endpoint and b"content-security-policy" not in headers:
                     csp_policy = "; ".join([
                         "default-src 'self'",
                         "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  # Allow inline scripts for React
