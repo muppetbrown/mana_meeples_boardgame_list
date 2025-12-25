@@ -4,7 +4,13 @@ import { Link } from "react-router-dom";
 import GameImage from "../GameImage";
 
 export default function ExpansionMiniCard({ expansion }) {
-  const imgSrc = expansion.image_url;
+  // Guard against missing expansion data
+  if (!expansion || !expansion.id) {
+    console.warn('ExpansionMiniCard received invalid expansion data:', expansion);
+    return null;
+  }
+
+  const imgSrc = expansion?.image_url;
 
   return (
     <Link
@@ -16,7 +22,7 @@ export default function ExpansionMiniCard({ expansion }) {
         <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
           <GameImage
             url={imgSrc}
-            alt={`Cover for ${expansion.title}`}
+            alt={`Cover for ${expansion?.title || 'expansion'}`}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
             fallbackClass="w-full h-full flex items-center justify-center text-slate-400 bg-gradient-to-br from-slate-100 to-slate-200"
             loading="lazy"
@@ -27,14 +33,14 @@ export default function ExpansionMiniCard({ expansion }) {
         {/* Content */}
         <div className="flex-1 min-w-0">
           <h3 className="font-semibold text-sm text-slate-900 line-clamp-2 group-hover:text-purple-700 transition-colors">
-            {expansion.title}
+            {expansion?.title || 'Untitled Expansion'}
           </h3>
 
           {/* Player count modification */}
-          {expansion.modifies_players_max && (
+          {expansion?.modifies_players_max && (
             <p className="text-xs text-purple-600 mt-1 font-medium">
-              Expands to {expansion.modifies_players_min || expansion.players_min}-
-              {expansion.modifies_players_max} players
+              Expands to {expansion?.modifies_players_min || expansion?.players_min || '?'}-
+              {expansion?.modifies_players_max} players
             </p>
           )}
 
@@ -42,16 +48,16 @@ export default function ExpansionMiniCard({ expansion }) {
           <div className="mt-2">
             <span
               className={`inline-block text-xs px-2 py-0.5 rounded-full font-semibold ${
-                expansion.expansion_type === 'both' || expansion.expansion_type === 'standalone'
+                expansion?.expansion_type === 'both' || expansion?.expansion_type === 'standalone'
                   ? 'bg-indigo-100 text-indigo-800'
-                  : expansion.expansion_type === 'requires_base'
+                  : expansion?.expansion_type === 'requires_base'
                   ? 'bg-purple-100 text-purple-800'
                   : 'bg-slate-100 text-slate-800'
               }`}
             >
-              {expansion.expansion_type === 'both' || expansion.expansion_type === 'standalone'
+              {expansion?.expansion_type === 'both' || expansion?.expansion_type === 'standalone'
                 ? 'Standalone'
-                : expansion.expansion_type === 'requires_base'
+                : expansion?.expansion_type === 'requires_base'
                 ? 'Requires Base'
                 : 'Expansion'}
             </span>
