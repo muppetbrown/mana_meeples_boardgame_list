@@ -5,6 +5,7 @@
  */
 import { useState, useCallback, useEffect } from "react";
 import { validateAdminToken, adminLogin as apiAdminLogin, adminLogout as apiAdminLogout } from "../api/client";
+import { safeStorage } from "../utils/storage";
 
 /**
  * Hook for managing admin authentication
@@ -63,9 +64,9 @@ export function useAuth() {
       await apiAdminLogout();
       setIsAuthenticated(false);
       // Clear JWT token (done in apiAdminLogout, but double-check)
-      localStorage.removeItem("JWT_TOKEN");
+      safeStorage.removeItem("JWT_TOKEN");
       // Also clear legacy token if it exists
-      localStorage.removeItem("ADMIN_TOKEN");
+      safeStorage.removeItem("ADMIN_TOKEN");
       return true;
     } catch (err) {
       setError(err.response?.data?.detail || err.message || "Logout failed");
