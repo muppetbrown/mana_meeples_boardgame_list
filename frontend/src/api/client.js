@@ -5,6 +5,7 @@
  */
 import axios from "axios";
 import { API_BASE, imageProxyUrl as proxyUrl, generateSrcSet } from "../config/api";
+import { safeStorage } from "../utils/storage";
 
 /**
  * Axios instance configured for API communication
@@ -22,8 +23,8 @@ export const api = axios.create({
  */
 api.interceptors.request.use(
   (config) => {
-    // Get JWT token from localStorage
-    const token = localStorage.getItem("JWT_TOKEN");
+    // Get JWT token from safe storage (handles tracking prevention)
+    const token = safeStorage.getItem("JWT_TOKEN");
 
     // Add Authorization header if token exists
     if (token) {
@@ -98,7 +99,7 @@ ${body}`;
 );
 
 /**
- * Helper to get admin token from localStorage (legacy fallback)
+ * Helper to get admin token from safe storage (legacy fallback)
  * @returns {Object} Headers object with admin token if available
  *
  * NOTE: This is kept for backward compatibility but the primary authentication
@@ -106,7 +107,7 @@ ${body}`;
  * Most admin operations should work without explicit headers.
  */
 function getAdminHeaders() {
-  const token = localStorage.getItem("ADMIN_TOKEN");
+  const token = safeStorage.getItem("ADMIN_TOKEN");
   return token ? { "X-Admin-Token": token } : {};
 }
 
@@ -278,9 +279,9 @@ export async function fixDatabaseSequence() {
 export async function adminLogin(token) {
   const r = await api.post("/api/admin/login", { token });
 
-  // Store JWT token in localStorage
+  // Store JWT token in safe storage (handles tracking prevention)
   if (r.data.token) {
-    localStorage.setItem("JWT_TOKEN", r.data.token);
+    safeStorage.setItem("JWT_TOKEN", r.data.token);
   }
 
   return r.data;
@@ -293,8 +294,8 @@ export async function adminLogin(token) {
 export async function adminLogout() {
   const r = await api.post("/api/admin/logout");
 
-  // Clear JWT token from localStorage
-  localStorage.removeItem("JWT_TOKEN");
+  // Clear JWT token from safe storage (handles tracking prevention)
+  safeStorage.removeItem("JWT_TOKEN");
 
   return r.data;
 }
