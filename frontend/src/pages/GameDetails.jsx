@@ -19,9 +19,13 @@ export default function GameDetails() {
 
   // Lazy load DOMPurify (only needed for game description)
   React.useEffect(() => {
-    import('dompurify').then(module => {
-      setDOMPurify(module.default);
-    });
+    import('dompurify')
+      .then(module => {
+        setDOMPurify(module.default);
+      })
+      .catch(err => {
+        console.error('Failed to load DOMPurify:', err);
+      });
   }, []);
 
   React.useEffect(() => {
@@ -32,7 +36,14 @@ export default function GameDetails() {
         const data = await getPublicGame(id);
         if (alive) {
           // Log the game data for debugging
-          console.log('Game details loaded:', { id: data?.id, title: data?.title });
+          console.log('Game details loaded:', {
+            id: data?.id,
+            title: data?.title,
+            hasDescription: !!data?.description,
+            descriptionType: typeof data?.description,
+            hasExpansions: Array.isArray(data?.expansions),
+            expansionsCount: data?.expansions?.length || 0
+          });
           setGame(data);
           setError(null);
         }
@@ -251,17 +262,24 @@ export default function GameDetails() {
                   )}
 
                   {/* Description */}
-                  {game?.description && DOMPurify && (
+                  {game?.description && DOMPurify && typeof game.description === 'string' && (
                     <section>
                       <h2 className="font-bold text-slate-800 mb-4">About This Game</h2>
                       <div className="prose prose-slate max-w-none">
                         <div
                           className="text-slate-700 leading-relaxed"
                           dangerouslySetInnerHTML={{
-                            __html: DOMPurify.sanitize(game.description, {
-                              ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li'],
-                              ALLOWED_ATTR: ['href', 'target', 'rel']
-                            })
+                            __html: (() => {
+                              try {
+                                return DOMPurify.sanitize(game.description, {
+                                  ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li'],
+                                  ALLOWED_ATTR: ['href', 'target', 'rel']
+                                });
+                              } catch (err) {
+                                console.error('DOMPurify sanitize error:', err);
+                                return '<p>Description unavailable</p>';
+                              }
+                            })()
                           }}
                         />
                       </div>
