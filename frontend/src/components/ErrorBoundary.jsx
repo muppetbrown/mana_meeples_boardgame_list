@@ -43,10 +43,19 @@ class ErrorBoundary extends React.Component {
             <h2 className="text-xl font-semibold text-gray-900 text-center mb-2">
               Something went wrong
             </h2>
-            
+
             <p className="text-gray-600 text-center mb-4">
               We encountered an unexpected error. Please try refreshing the page or contact support if the problem persists.
             </p>
+
+            {this.state.error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+                <p className="text-xs font-semibold text-red-800 mb-1">Error Details:</p>
+                <p className="text-xs text-red-600 font-mono break-words">
+                  {this.state.error.toString()}
+                </p>
+              </div>
+            )}
             
             <div className="flex flex-col sm:flex-row gap-3">
               <button
