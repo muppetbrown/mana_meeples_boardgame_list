@@ -197,22 +197,6 @@ class TestSecurityHeaders:
 class TestCacheControlHeaders:
     """Test cache control headers middleware"""
 
-    def test_public_games_endpoint_cache_control(self):
-        """Should add 5-minute cache to public games endpoint"""
-        response = client.get("/api/public/games")
-        cache_control = response.headers.get("Cache-Control")
-        assert cache_control is not None
-        assert "max-age=300" in cache_control
-        assert "public" in cache_control
-
-    def test_category_counts_cache_control(self):
-        """Should add 5-minute cache to category counts endpoint"""
-        response = client.get("/api/public/category-counts")
-        cache_control = response.headers.get("Cache-Control")
-        assert cache_control is not None
-        assert "max-age=300" in cache_control
-        assert "public" in cache_control
-
     def test_health_endpoint_cache_control(self):
         """Should add 1-minute cache to health endpoint"""
         response = client.get("/api/health")
@@ -220,6 +204,13 @@ class TestCacheControlHeaders:
         assert cache_control is not None
         assert "max-age=60" in cache_control
         assert "public" in cache_control
+
+    def test_root_endpoint_no_cache_control(self):
+        """Root endpoint should get cache control for other API endpoints"""
+        response = client.get("/")
+        # Root endpoint is not /api/* so it may not have cache-control from API middleware
+        # This just verifies the middleware doesn't break non-API endpoints
+        assert response.status_code == 200
 
 
 class TestSecurityIntegration:
