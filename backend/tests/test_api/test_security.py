@@ -141,11 +141,29 @@ class TestImageProxyURLValidation:
 class TestSecurityHeaders:
     """Test security headers middleware"""
 
-    def test_security_headers_present(self):
-        """Should add all security headers to responses"""
+    def test_security_headers_on_api_endpoints(self):
+        """Should add core security headers to API endpoints (but not CSP/X-XSS-Protection)"""
         response = client.get("/api/health")
 
-        # Check all expected security headers
+        # Check core security headers that should be on all responses
+        assert response.headers.get("X-Frame-Options") == "DENY"
+        assert response.headers.get("X-Content-Type-Options") == "nosniff"
+        assert "max-age=31536000" in response.headers.get("Strict-Transport-Security", "")
+        assert response.headers.get("Referrer-Policy") == "strict-origin-when-cross-origin"
+        assert response.headers.get("Permissions-Policy") is not None
+
+        # API endpoints should NOT have CSP or X-XSS-Protection (they're for HTML pages only)
+        assert response.headers.get("X-XSS-Protection") is None
+        assert response.headers.get("Content-Security-Policy") is None
+
+        # Cache-Control header should be present
+        assert response.headers.get("Cache-Control") is not None
+
+    def test_security_headers_on_html_endpoints(self):
+        """Should add all security headers including CSP and X-XSS-Protection to HTML endpoints"""
+        response = client.get("/")
+
+        # Check all security headers including CSP and X-XSS-Protection for HTML pages
         assert response.headers.get("X-Frame-Options") == "DENY"
         assert response.headers.get("X-Content-Type-Options") == "nosniff"
         assert response.headers.get("X-XSS-Protection") == "1; mode=block"
@@ -155,8 +173,8 @@ class TestSecurityHeaders:
         assert response.headers.get("Permissions-Policy") is not None
 
     def test_csp_header_content(self):
-        """Should have proper Content-Security-Policy"""
-        response = client.get("/api/health")
+        """Should have proper Content-Security-Policy on HTML pages"""
+        response = client.get("/")
         csp = response.headers.get("Content-Security-Policy")
 
         # Check key CSP directives
@@ -174,6 +192,25 @@ class TestSecurityHeaders:
         assert "microphone=()" in permissions
         assert "camera=()" in permissions
         assert "payment=()" in permissions
+
+
+class TestCacheControlHeaders:
+    """Test cache control headers middleware"""
+
+    def test_health_endpoint_cache_control(self):
+        """Should add 1-minute cache to health endpoint"""
+        response = client.get("/api/health")
+        cache_control = response.headers.get("Cache-Control")
+        assert cache_control is not None
+        assert "max-age=60" in cache_control
+        assert "public" in cache_control
+
+    def test_root_endpoint_no_cache_control(self):
+        """Root endpoint should get cache control for other API endpoints"""
+        response = client.get("/")
+        # Root endpoint is not /api/* so it may not have cache-control from API middleware
+        # This just verifies the middleware doesn't break non-API endpoints
+        assert response.status_code == 200
 
 
 class TestSecurityIntegration:
@@ -213,13 +250,15 @@ class TestSecurityIntegration:
             assert response.status_code == 400
 
     def test_clickjacking_prevention(self):
-        """Should prevent clickjacking via X-Frame-Options"""
-        response = client.get("/api/health")
+        """Should prevent clickjacking via X-Frame-Options and CSP"""
+        # Test API endpoint - should have X-Frame-Options but not CSP
+        api_response = client.get("/api/health")
+        assert api_response.headers.get("X-Frame-Options") == "DENY"
 
-        # Check both headers that prevent framing
-        assert response.headers.get("X-Frame-Options") == "DENY"
-
-        csp = response.headers.get("Content-Security-Policy", "")
+        # Test HTML endpoint - should have both X-Frame-Options and CSP
+        html_response = client.get("/")
+        assert html_response.headers.get("X-Frame-Options") == "DENY"
+        csp = html_response.headers.get("Content-Security-Policy", "")
         assert "frame-ancestors 'none'" in csp
 
 

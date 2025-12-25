@@ -39,6 +39,7 @@ from exceptions import (
 from config import HTTP_TIMEOUT, CORS_ORIGINS
 from middleware.logging import RequestLoggingMiddleware
 from middleware.security import SecurityHeadersMiddleware
+from middleware.cache import APICacheControlMiddleware
 
 # ------------------------------------------------------------------------------
 # Sentry initialization (Sprint 5: Enhanced with custom filtering)
@@ -440,6 +441,7 @@ class CacheThumbsMiddleware:
 # Add middleware in reverse order (last added = first executed)
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(CacheThumbsMiddleware)
+app.add_middleware(APICacheControlMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS configuration
