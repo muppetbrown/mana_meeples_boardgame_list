@@ -10,7 +10,7 @@ export default function SearchBox({ value, onChange, placeholder="Search games..
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       aria-label={placeholder}
-      autoComplete="search"
+      autoComplete="off"
       spellCheck="false"
       role="searchbox"
       {...props}
