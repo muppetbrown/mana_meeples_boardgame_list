@@ -9,6 +9,9 @@ import SortSelect from "../components/public/SortSelect";
 import SearchBox from "../components/public/SearchBox";
 import SkipNav from "../components/common/SkipNav";
 import LiveRegion from "../components/common/LiveRegion";
+import { HelpModal } from "../components/onboarding/HelpModal";
+import { HelpButton } from "../components/onboarding/HelpButton";
+import { useOnboarding } from "../hooks/useOnboarding";
 
 export default function PublicCatalogue() {
   // Use URL parameters to preserve state
@@ -42,6 +45,10 @@ export default function PublicCatalogue() {
   const [isSticky, setIsSticky] = useState(false); // NEW: Sticky toolbar state
   const [expandedCards, setExpandedCards] = useState(new Set()); // NEW: Track expanded cards
   const [announcement, setAnnouncement] = useState(""); // Accessibility: Screen reader announcements
+
+  // Onboarding state
+  const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const { isFirstVisit, markHelpOpened } = useOnboarding();
 
   // Refs for scroll detection
   const lastScrollY = useRef(0);
@@ -872,6 +879,21 @@ export default function PublicCatalogue() {
             </svg>
           </button>
         )}
+
+        {/* Help Button - Mobile-first onboarding */}
+        <HelpButton
+          onClick={() => {
+            setIsHelpModalOpen(true);
+            markHelpOpened();
+          }}
+          showPulse={isFirstVisit}
+        />
+
+        {/* Help Modal */}
+        <HelpModal
+          isOpen={isHelpModalOpen}
+          onClose={() => setIsHelpModalOpen(false)}
+        />
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { labelFor } from "../../constants/categories";
 import GameImage from "../GameImage";
 import { getAfterGameCreateUrl } from "../../constants/aftergame";
+import { useOnboarding } from "../../hooks/useOnboarding";
 
 export default function GameCardPublic({
   game,
@@ -11,8 +12,10 @@ export default function GameCardPublic({
   isExpanded = false,
   onToggleExpand,
   prefersReducedMotion = false,
-  priority = false // Add priority prop for above-fold images
+  priority = false, // Add priority prop for above-fold images
+  showHints = true // Allow parent to control hint visibility
 }) {
+  const { shouldShowCardHint, shouldShowAfterGameHint, markCardExpanded, markAfterGameClicked } = useOnboarding();
   const href = `/game/${game.id}`;
   const imgSrc = game.image_url;
   const categoryLabel = labelFor(game.mana_meeple_category);
@@ -21,6 +24,9 @@ export default function GameCardPublic({
   // Auto-scroll to top of card on mobile when expanded
   useEffect(() => {
     if (isExpanded && cardRef.current) {
+      // Track that user has expanded a card (for onboarding hints)
+      markCardExpanded();
+
       // Check if we're on a mobile device (screen width <= 768px)
       const isMobile = window.innerWidth <= 768;
 
@@ -36,7 +42,7 @@ export default function GameCardPublic({
         }, 100);
       }
     }
-  }, [isExpanded, prefersReducedMotion]);
+  }, [isExpanded, prefersReducedMotion, markCardExpanded]);
 
   // Enhanced category colors with WCAG AAA contrast ratios
   const getCategoryStyle = (category) => {
@@ -184,23 +190,33 @@ export default function GameCardPublic({
             <h3 className="font-bold text-base text-slate-800 line-clamp-2 leading-tight flex-1">
               {game.title}
             </h3>
-            <button
-              className={`flex-shrink-0 p-1 rounded-full hover:bg-slate-100 ${transitionClass} focus:outline-none focus:ring-2 focus:ring-emerald-500`}
-              aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleExpand();
-              }}
-            >
-              <svg 
-                className={`w-5 h-5 text-slate-600 ${transitionClass} ${isExpanded ? 'rotate-180' : ''}`}
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
+            <div className="relative flex-shrink-0">
+              <button
+                className={`p-1 rounded-full hover:bg-slate-100 ${transitionClass} focus:outline-none focus:ring-2 focus:ring-emerald-500 ${shouldShowCardHint && showHints ? 'animate-pulse' : ''}`}
+                aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleExpand();
+                }}
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+                <svg
+                  className={`w-5 h-5 text-slate-600 ${transitionClass} ${isExpanded ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {/* Tap to expand hint - mobile only */}
+              {shouldShowCardHint && showHints && !isExpanded && (
+                <div className="absolute -bottom-6 right-0 md:hidden">
+                  <span className="text-[10px] text-emerald-700 font-semibold whitespace-nowrap bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shadow-sm">
+                    Tap to expand
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Compact Stats - Always Visible */}
@@ -322,20 +338,35 @@ export default function GameCardPublic({
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2 mt-3">
               {/* Plan a Game Button */}
-              <a
-                href={getAfterGameCreateUrl(game.aftergame_game_id)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-semibold text-sm hover:from-teal-600 hover:to-emerald-600 transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
-                aria-label="Plan a game session on AfterGame"
-              >
-                <img
-                  src="/Aftergame_Icon_Logo_V3-Light.webp"
-                  alt="AfterGame"
-                  className="w-5 h-5"
-                />
-                <span>Plan a Game</span>
-              </a>
+              <div className="relative">
+                <a
+                  href={getAfterGameCreateUrl(game.aftergame_game_id)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => markAfterGameClicked()}
+                  className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-semibold text-sm hover:from-teal-600 hover:to-emerald-600 transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                  aria-label="Plan a game session on AfterGame"
+                  title={shouldShowAfterGameHint ? "Schedule a game session with the Mana & Meeples community" : undefined}
+                >
+                  <img
+                    src="/Aftergame_Icon_Logo_V3-Light.webp"
+                    alt="AfterGame"
+                    className="w-5 h-5"
+                  />
+                  <span>Plan a Game</span>
+                </a>
+                {/* AfterGame hint tooltip - mobile only */}
+                {shouldShowAfterGameHint && showHints && (
+                  <div className="absolute -top-12 left-0 right-0 md:hidden pointer-events-none z-10">
+                    <div className="bg-teal-700 text-white text-xs px-3 py-2 rounded-lg shadow-lg text-center">
+                      Schedule a session!
+                      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full">
+                        <div className="border-8 border-transparent border-t-teal-700"></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* View Full Details Link */}
               <Link
