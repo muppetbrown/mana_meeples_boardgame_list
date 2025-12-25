@@ -39,6 +39,8 @@ def _get_cached_games_key(
     designer: Optional[str],
     nz_designer: Optional[bool],
     players: Optional[int],
+    complexity_min: Optional[float],
+    complexity_max: Optional[float],
     recently_added: Optional[int],
     sort: str,
     page: int,
@@ -48,7 +50,7 @@ def _get_cached_games_key(
     from utils.cache import make_cache_key
     return make_cache_key(
         search, category, designer, nz_designer,
-        players, recently_added, sort, page, page_size
+        players, complexity_min, complexity_max, recently_added, sort, page, page_size
     )
 
 
@@ -59,6 +61,8 @@ def _get_games_from_db(
     designer: Optional[str],
     nz_designer: Optional[bool],
     players: Optional[int],
+    complexity_min: Optional[float],
+    complexity_max: Optional[float],
     recently_added: Optional[int],
     sort: str,
     page: int,
@@ -77,7 +81,7 @@ def _get_games_from_db(
     # Generate cache key
     cache_params = _get_cached_games_key(
         search, category, designer, nz_designer,
-        players, recently_added, sort, page, page_size
+        players, complexity_min, complexity_max, recently_added, sort, page, page_size
     )
     cache_key = f"games_query:{cache_params}"
 
@@ -95,6 +99,8 @@ def _get_games_from_db(
         designer=designer,
         nz_designer=nz_designer,
         players=players,
+        complexity_min=complexity_min,
+        complexity_max=complexity_max,
         recently_added_days=recently_added,
         sort=sort,
         page=page,
@@ -124,6 +130,12 @@ async def get_public_games(
     players: Optional[int] = Query(
         None, ge=1, description="Filter by player count"
     ),
+    complexity_min: Optional[float] = Query(
+        None, ge=1, le=5, description="Minimum complexity rating (1-5)"
+    ),
+    complexity_max: Optional[float] = Query(
+        None, ge=1, le=5, description="Maximum complexity rating (1-5)"
+    ),
     recently_added: Optional[int] = Query(
         None, ge=1, description="Filter games added within last N days"
     ),
@@ -146,6 +158,8 @@ async def get_public_games(
         designer=designer,
         nz_designer=nz_designer_bool,
         players=players,
+        complexity_min=complexity_min,
+        complexity_max=complexity_max,
         recently_added=recently_added,
         sort=sort,
         page=page,

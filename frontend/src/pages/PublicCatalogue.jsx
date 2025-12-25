@@ -24,6 +24,7 @@ export default function PublicCatalogue() {
   const [designer, setDesigner] = useState(searchParams.get("designer") || "");
   const [nzDesigner, setNzDesigner] = useState(searchParams.get("nz_designer") === "true");
   const [players, setPlayers] = useState(searchParams.get("players") || "");
+  const [complexityRange, setComplexityRange] = useState(searchParams.get("complexity") || "");
   const [recentlyAdded, setRecentlyAdded] = useState(searchParams.get("recently_added") === "30");
   const [sort, setSort] = useState(searchParams.get("sort") || "year_desc"); // NEW: Default to recent
   const [page, setPage] = useState(1); // NEW: Always start at page 1
@@ -147,11 +148,12 @@ export default function PublicCatalogue() {
     if (designer) params.set("designer", designer);
     if (nzDesigner) params.set("nz_designer", "true");
     if (players) params.set("players", players);
+    if (complexityRange) params.set("complexity", complexityRange);
     if (recentlyAdded) params.set("recently_added", "30");
     if (sort !== "year_desc") params.set("sort", sort); // Changed default
 
     setSearchParams(params, { replace: true });
-  }, [q, category, designer, nzDesigner, players, recentlyAdded, sort, setSearchParams]);
+  }, [q, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, setSearchParams]);
 
   // Fetch category counts
   useEffect(() => {
@@ -182,6 +184,11 @@ export default function PublicCatalogue() {
         if (designer) params.designer = designer;
         if (nzDesigner) params.nz_designer = true;
         if (players) params.players = parseInt(players);
+        if (complexityRange) {
+          const [min, max] = complexityRange.split('-').map(parseFloat);
+          params.complexity_min = min;
+          params.complexity_max = max;
+        }
         if (recentlyAdded) params.recently_added = 30;
 
         const data = await getPublicGames(params);
@@ -203,7 +210,7 @@ export default function PublicCatalogue() {
       }
     })();
     return () => { cancelled = true; };
-  }, [qDebounced, pageSize, category, designer, nzDesigner, players, recentlyAdded, sort]);
+  }, [qDebounced, pageSize, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort]);
 
   // Load more function - Memoized to ensure Intersection Observer has latest filter values
   const loadMore = useCallback(async () => {
@@ -220,6 +227,11 @@ export default function PublicCatalogue() {
       if (designer) params.designer = designer;
       if (nzDesigner) params.nz_designer = true;
       if (players) params.players = parseInt(players);
+      if (complexityRange) {
+        const [min, max] = complexityRange.split('-').map(parseFloat);
+        params.complexity_min = min;
+        params.complexity_max = max;
+      }
       if (recentlyAdded) params.recently_added = 30;
 
       const data = await getPublicGames(params);
@@ -254,7 +266,7 @@ export default function PublicCatalogue() {
       isLoadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [page, qDebounced, pageSize, sort, category, designer, nzDesigner, players, recentlyAdded, total, allLoadedItems.length]);
+  }, [page, qDebounced, pageSize, sort, category, designer, nzDesigner, players, complexityRange, recentlyAdded, total, allLoadedItems.length]);
 
   // Infinite scroll: Intersection Observer for auto-loading more games
   useEffect(() => {
@@ -337,6 +349,7 @@ export default function PublicCatalogue() {
     setDesigner("");
     setNzDesigner(false);
     setPlayers("");
+    setComplexityRange("");
     setRecentlyAdded(false);
     setSort("year_desc");
     setExpandedCards(new Set());
@@ -359,6 +372,20 @@ export default function PublicCatalogue() {
     setPlayers(newPlayers);
     if (newPlayers) {
       setAnnouncement(`Filtering by ${newPlayers} players`);
+    }
+  };
+
+  const updateComplexity = (newComplexity) => {
+    setComplexityRange(newComplexity);
+    if (newComplexity) {
+      const labels = {
+        "1-1.5": "Light",
+        "1.5-2.5": "Light-Medium",
+        "2.5-3.5": "Medium",
+        "3.5-4.5": "Medium-Heavy",
+        "4.5-5": "Heavy"
+      };
+      setAnnouncement(`Filtering by ${labels[newComplexity] || newComplexity} complexity`);
     }
   };
 
@@ -389,9 +416,10 @@ export default function PublicCatalogue() {
     if (designer) count++;
     if (nzDesigner) count++;
     if (players) count++;
+    if (complexityRange) count++;
     if (recentlyAdded) count++;
     return count;
-  }, [q, category, designer, nzDesigner, players, recentlyAdded]);
+  }, [q, category, designer, nzDesigner, players, complexityRange, recentlyAdded]);
 
   // Reduce motion preference
   const prefersReducedMotion = useMemo(() => {
@@ -605,6 +633,26 @@ export default function PublicCatalogue() {
                     </select>
                   </div>
 
+                  {/* Complexity */}
+                  <div>
+                    <label htmlFor="complexity-mobile" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      Complexity
+                    </label>
+                    <select
+                      id="complexity-mobile"
+                      value={complexityRange}
+                      onChange={(e) => updateComplexity(e.target.value)}
+                      className="w-full min-h-[44px] px-3 py-2 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
+                    >
+                      <option value="">Any</option>
+                      <option value="1-1.5">Light (1-1.5)</option>
+                      <option value="1.5-2.5">Light-Medium (1.5-2.5)</option>
+                      <option value="2.5-3.5">Medium (2.5-3.5)</option>
+                      <option value="3.5-4.5">Medium-Heavy (3.5-4.5)</option>
+                      <option value="4.5-5">Heavy (4.5-5)</option>
+                    </select>
+                  </div>
+
                   {/* Quick Filters */}
                   <div className="grid grid-cols-2 gap-2">
                     <button
@@ -667,7 +715,7 @@ export default function PublicCatalogue() {
             </h2>
 
             <div className="space-y-3">
-              {/* Row 1: Search + Players */}
+              {/* Row 1: Search + Players + Complexity */}
               <div className="flex gap-3 items-end">
                 <div className="flex-1">
                   <label htmlFor="search-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
@@ -701,6 +749,25 @@ export default function PublicCatalogue() {
                     <option value="7">7p+</option>
                     <option value="8">8p+</option>
                     <option value="10">10p+</option>
+                  </select>
+                </div>
+
+                <div className="w-48">
+                  <label htmlFor="complexity-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    Complexity
+                  </label>
+                  <select
+                    id="complexity-desktop"
+                    value={complexityRange}
+                    onChange={(e) => updateComplexity(e.target.value)}
+                    className="w-full min-h-[48px] px-3 py-2 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
+                  >
+                    <option value="">Any</option>
+                    <option value="1-1.5">Light</option>
+                    <option value="1.5-2.5">Light-Medium</option>
+                    <option value="2.5-3.5">Medium</option>
+                    <option value="3.5-4.5">Medium-Heavy</option>
+                    <option value="4.5-5">Heavy</option>
                   </select>
                 </div>
               </div>

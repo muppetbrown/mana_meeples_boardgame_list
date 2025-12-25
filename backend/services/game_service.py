@@ -63,6 +63,8 @@ class GameService:
         designer: Optional[str] = None,
         nz_designer: Optional[bool] = None,
         players: Optional[int] = None,
+        complexity_min: Optional[float] = None,
+        complexity_max: Optional[float] = None,
         recently_added_days: Optional[int] = None,
         sort: str = "title_asc",
         page: int = 1,
@@ -77,6 +79,8 @@ class GameService:
             designer: Designer name filter
             nz_designer: Filter by NZ designer flag
             players: Filter by player count
+            complexity_min: Minimum complexity rating (1-5)
+            complexity_max: Maximum complexity rating (1-5)
             recently_added_days: Filter games added within last N days
             sort: Sort order
             page: Page number (1-indexed)
@@ -166,6 +170,23 @@ class GameService:
                     Game.id.in_(expansion_subquery),
                 )
             )
+
+        # Apply complexity filter
+        if complexity_min is not None or complexity_max is not None:
+            if complexity_min is not None:
+                query = query.where(
+                    and_(
+                        Game.complexity.isnot(None),
+                        Game.complexity >= complexity_min
+                    )
+                )
+            if complexity_max is not None:
+                query = query.where(
+                    and_(
+                        Game.complexity.isnot(None),
+                        Game.complexity <= complexity_max
+                    )
+                )
 
         # Apply recently added filter
         if recently_added_days is not None:
