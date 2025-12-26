@@ -111,16 +111,24 @@ export default function GameCardPublic({
     <article
       ref={cardRef}
       data-game-card
-      className={`game-card-container scroll-mt-24 group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 flex flex-row`}
+      className={`game-card-container scroll-mt-24 group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 ${
+        isExpanded
+          ? 'flex flex-col'
+          : 'flex flex-row h-[50vw] md:h-auto'
+      }`}
     >
 
       {/* Image Section - Always Visible */}
       <Link
         to={href}
-        className="block focus:outline-none flex-shrink-0 w-32 sm:w-40"
+        className={`block focus:outline-none flex-shrink-0 ${
+          isExpanded
+            ? 'w-full'
+            : 'w-[50vw] md:w-40'
+        }`}
         aria-label={`View details for ${game.title}`}
       >
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 aspect-square">
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 aspect-square h-full">
           <GameImage
             url={imgSrc}
             alt={`Cover art for ${game.title}`}
