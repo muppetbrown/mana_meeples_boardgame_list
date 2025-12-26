@@ -114,9 +114,8 @@ export default function GameCardPublic({
       className={`game-card-container scroll-mt-24 group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 w-full ${
         isExpanded
           ? 'flex flex-col'
-          : 'flex flex-row h-auto'
+          : 'flex flex-row aspect-[2/1]'
       }`}
-      style={!isExpanded ? { aspectRatio: '2 / 1' } : {}}
     >
 
       {/* Image Section - Always Visible */}
@@ -125,11 +124,11 @@ export default function GameCardPublic({
         className={`block focus:outline-none flex-shrink-0 ${
           isExpanded
             ? 'w-full aspect-square'
-            : 'w-1/2 h-full'
+            : 'h-full aspect-square'
         }`}
         aria-label={`View details for ${game.title}`}
       >
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 w-full h-full" style={{ aspectRatio: '1 / 1' }}>
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 w-full h-full">
           <GameImage
             url={imgSrc}
             alt={`Cover art for ${game.title}`}
@@ -177,10 +176,10 @@ export default function GameCardPublic({
       </Link>
 
       {/* Content Section - Collapsible */}
-      <div className={`flex-1 flex flex-col ${isExpanded ? 'p-3 sm:p-4' : 'p-2 sm:p-3 overflow-hidden'}`}>
+      <div className={`flex-1 flex flex-col min-w-0 ${isExpanded ? 'p-3 sm:p-4' : 'p-2 sm:p-3'}`}>
 
         {/* Compact Info - Always Visible */}
-        <div className="flex-1 min-h-0">
+        <div className="flex-1">
           {/* Title - Full width without expand button */}
           <h3 className="font-bold text-sm md:text-base text-slate-800 line-clamp-2 leading-tight mb-1.5 md:mb-2">
             {game.title}
