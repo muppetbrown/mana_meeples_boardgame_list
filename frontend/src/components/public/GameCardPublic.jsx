@@ -112,16 +112,15 @@ export default function GameCardPublic({
       ref={cardRef}
       data-game-card
       className={`game-card-container scroll-mt-24 group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 w-full ${
-        isExpanded ? 'flex flex-col' : 'relative'
+        isExpanded ? 'flex flex-col' : 'flex flex-row aspect-[2/1]'
       }`}
-      style={!isExpanded ? { paddingBottom: '50%' } : {}}
     >
       {!isExpanded && (
-        <div className="absolute inset-0 flex flex-row">
+        <>
           {/* Image Section - Minimized */}
           <Link
             to={href}
-            className="block focus:outline-none aspect-square h-full flex-shrink-0"
+            className="block focus:outline-none w-1/2 h-full flex-shrink-0"
             aria-label={`View details for ${game.title}`}
           >
             <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 w-full h-full">
@@ -171,8 +170,8 @@ export default function GameCardPublic({
         </div>
       </Link>
 
-      {/* Content Section - Minimized */}
-      <div className="flex-1 h-full flex flex-col p-2 sm:p-3 overflow-hidden min-w-0">
+          {/* Content Section - Minimized */}
+          <div className="w-1/2 h-full flex flex-col p-2 sm:p-3 overflow-hidden min-w-0">
 
         {/* Compact Info - Always Visible */}
         <div className="flex-1">
@@ -397,8 +396,8 @@ export default function GameCardPublic({
           </div>
         </div>
       </div>
-    </div>
-  )}
+        </>
+      )}
 
   {/* Expanded State */}
   {isExpanded && (
