@@ -123,12 +123,12 @@ export default function GameCardPublic({
         to={href}
         className={`block focus:outline-none flex-shrink-0 ${
           isExpanded
-            ? 'w-full'
-            : 'w-[50vw] md:w-40'
+            ? 'w-full aspect-square'
+            : 'w-[50vw] h-full md:w-40 md:aspect-square'
         }`}
         aria-label={`View details for ${game.title}`}
       >
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 aspect-square h-full">
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 w-full h-full">
           <GameImage
             url={imgSrc}
             alt={`Cover art for ${game.title}`}
