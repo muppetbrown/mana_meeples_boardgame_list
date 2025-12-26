@@ -124,7 +124,7 @@ export default function GameCardPublic({
         className={`block focus:outline-none flex-shrink-0 ${
           isExpanded
             ? 'w-full aspect-square'
-            : 'w-1/2 aspect-square'
+            : 'h-full aspect-square'
         }`}
         aria-label={`View details for ${game.title}`}
       >
