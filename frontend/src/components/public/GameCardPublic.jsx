@@ -114,17 +114,18 @@ export default function GameCardPublic({
       className={`game-card-container scroll-mt-24 group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 w-full ${
         isExpanded
           ? 'flex flex-col'
-          : 'flex flex-row aspect-[2/1]'
+          : 'grid aspect-[2/1]'
       }`}
+      style={!isExpanded ? { gridTemplateColumns: '1fr 1fr' } : {}}
     >
 
       {/* Image Section - Always Visible */}
       <Link
         to={href}
-        className={`block focus:outline-none flex-shrink-0 ${
+        className={`block focus:outline-none ${
           isExpanded
             ? 'w-full aspect-square'
-            : 'h-full aspect-square'
+            : 'h-full w-full'
         }`}
         aria-label={`View details for ${game.title}`}
       >
@@ -176,7 +177,7 @@ export default function GameCardPublic({
       </Link>
 
       {/* Content Section - Collapsible */}
-      <div className={`flex-1 flex flex-col min-w-0 ${isExpanded ? 'p-3 sm:p-4' : 'p-2 sm:p-3'}`}>
+      <div className={`flex flex-col min-w-0 ${isExpanded ? 'p-3 sm:p-4' : 'p-2 sm:p-3 h-full overflow-hidden'}`}>
 
         {/* Compact Info - Always Visible */}
         <div className="flex-1">
