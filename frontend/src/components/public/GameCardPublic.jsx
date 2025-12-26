@@ -121,7 +121,7 @@ export default function GameCardPublic({
           {/* Image Section - Minimized */}
           <Link
             to={href}
-            className="block focus:outline-none w-1/2 h-full"
+            className="block focus:outline-none aspect-square h-full flex-shrink-0"
             aria-label={`View details for ${game.title}`}
           >
             <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 w-full h-full">
@@ -172,7 +172,7 @@ export default function GameCardPublic({
       </Link>
 
       {/* Content Section - Minimized */}
-      <div className="w-1/2 h-full flex flex-col p-2 sm:p-3 overflow-hidden min-w-0">
+      <div className="flex-1 h-full flex flex-col p-2 sm:p-3 overflow-hidden min-w-0">
 
         {/* Compact Info - Always Visible */}
         <div className="flex-1">
