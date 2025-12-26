@@ -111,16 +111,16 @@ export default function GameCardPublic({
     <article
       ref={cardRef}
       data-game-card
-      className={`game-card-container scroll-mt-24 group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 ${isExpanded ? 'col-span-2 sm:col-span-1' : ''} flex flex-row md:flex-col`}
+      className={`game-card-container scroll-mt-24 group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 flex flex-row`}
     >
 
       {/* Image Section - Always Visible */}
       <Link
         to={href}
-        className="block focus:outline-none flex-shrink-0 w-32 md:w-full"
+        className="block focus:outline-none flex-shrink-0 w-32 sm:w-40"
         aria-label={`View details for ${game.title}`}
       >
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 aspect-square h-full">
+        <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 aspect-square">
           <GameImage
             url={imgSrc}
             alt={`Cover art for ${game.title}`}
@@ -168,7 +168,7 @@ export default function GameCardPublic({
       </Link>
 
       {/* Content Section - Collapsible */}
-      <div className="p-2 md:p-3 flex-1 flex flex-col">
+      <div className="p-3 sm:p-4 flex-1 flex flex-col">
 
         {/* Compact Info - Always Visible */}
         <div className="flex-1">

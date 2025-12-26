@@ -856,7 +856,7 @@ export default function PublicCatalogue() {
           )}
 
           {loading && (
-            <div className="game-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+            <div className="game-grid grid grid-cols-1 gap-3 sm:gap-4">
               {/* Show skeleton loaders matching the grid layout */}
               {Array.from({ length: pageSize }).map((_, index) => (
                 <GameCardSkeleton key={`skeleton-${index}`} />
@@ -878,7 +878,7 @@ export default function PublicCatalogue() {
 
           {!loading && !error && allLoadedItems.length > 0 && (
             <>
-              <div className="game-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+              <div className="game-grid grid grid-cols-1 gap-3 sm:gap-4">
                 {allLoadedItems.map((game, index) => (
                   <GameCardPublic
                     key={game.id}
@@ -897,7 +897,7 @@ export default function PublicCatalogue() {
                 <>
                   {/* Show skeleton loaders while loading more to prevent scrollbar jumps */}
                   {loadingMore && (
-                    <div className="game-grid grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 mt-6">
+                    <div className="game-grid grid grid-cols-1 gap-3 sm:gap-4 mt-6">
                       {Array.from({ length: Math.min(pageSize, total - allLoadedItems.length) }).map((_, index) => (
                         <GameCardSkeleton key={`loading-skeleton-${index}`} />
                       ))}
