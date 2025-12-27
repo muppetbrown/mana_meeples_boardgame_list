@@ -161,18 +161,18 @@ export default function GameCardPublic({
           </div>
 
           {/* Content Section - Minimized */}
-          <div className="w-1/2 h-full overflow-hidden flex flex-col p-2">
+          <div className="w-1/2 h-full overflow-hidden flex flex-col p-1.5 md:p-2">
 
         {/* Compact Info - Always Visible */}
-        <div className="flex-1">
+        <div className="flex-1 min-h-0">
           {/* Title - Full width without expand button */}
-          <h3 className="font-bold text-sm md:text-base text-slate-800 line-clamp-2 leading-tight mb-1">
+          <h3 className="font-bold text-sm md:text-base text-slate-800 line-clamp-2 leading-tight mb-0.5 md:mb-1">
             {game.title}
           </h3>
 
           {/* Category Badge */}
           {categoryLabel && (
-            <div className="mb-2">
+            <div className="mb-1 md:mb-1.5">
               <span
                 className={`inline-block px-2 py-0.5 rounded text-[10px] md:text-xs font-bold ${getCategoryStyle(game.mana_meeple_category)}`}
                 aria-label={`Category: ${categoryLabel}`}
