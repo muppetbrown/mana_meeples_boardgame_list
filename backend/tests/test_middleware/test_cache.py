@@ -61,7 +61,18 @@ class TestCacheControlMiddleware:
     @pytest.mark.asyncio
     async def test_health_endpoint_caching(self):
         """Test health endpoints have shorter cache"""
-        app = AsyncMock()
+        # Create an app that actually sends ASGI messages
+        async def app(scope, receive, send):
+            await send({
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"application/json"]],
+            })
+            await send({
+                "type": "http.response.body",
+                "body": b'{"status": "ok"}',
+            })
+
         middleware = APICacheControlMiddleware(app)
 
         scope = {
@@ -107,7 +118,18 @@ class TestCacheControlMiddleware:
     @pytest.mark.asyncio
     async def test_default_public_endpoint_caching(self):
         """Test default caching for other public endpoints"""
-        app = AsyncMock()
+        # Create an app that actually sends ASGI messages
+        async def app(scope, receive, send):
+            await send({
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"application/json"]],
+            })
+            await send({
+                "type": "http.response.body",
+                "body": b'{"data": "test"}',
+            })
+
         middleware = APICacheControlMiddleware(app)
 
         scope = {
@@ -134,7 +156,18 @@ class TestCacheControlMiddleware:
     @pytest.mark.asyncio
     async def test_non_public_endpoints_no_cache(self):
         """Test non-public endpoints don't get cache headers"""
-        app = AsyncMock()
+        # Create an app that actually sends ASGI messages
+        async def app(scope, receive, send):
+            await send({
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"application/json"]],
+            })
+            await send({
+                "type": "http.response.body",
+                "body": b'{"data": "test"}',
+            })
+
         middleware = APICacheControlMiddleware(app)
 
         scope = {
@@ -162,7 +195,18 @@ class TestCacheControlMiddleware:
     @pytest.mark.asyncio
     async def test_category_counts_endpoint_caching(self):
         """Test category counts endpoint has proper caching"""
-        app = AsyncMock()
+        # Create an app that actually sends ASGI messages
+        async def app(scope, receive, send):
+            await send({
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [[b"content-type", b"application/json"]],
+            })
+            await send({
+                "type": "http.response.body",
+                "body": b'{"counts": {}}',
+            })
+
         middleware = APICacheControlMiddleware(app)
 
         scope = {
