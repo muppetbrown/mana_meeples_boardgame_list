@@ -111,20 +111,26 @@ export default function GameCardPublic({
     <article
       ref={cardRef}
       data-game-card
-      className={`game-card-container scroll-mt-24 group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 w-full ${
+      className={`game-card-container scroll-mt-24 group bg-white rounded-2xl shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 ${
         isExpanded ? 'flex flex-col' : ''
       }`}
-      style={!isExpanded ? { aspectRatio: '2 / 1', display: 'block' } : {}}
+      style={!isExpanded ? {
+        width: '100%',
+        aspectRatio: '2/1',
+        overflow: 'hidden',
+        display: 'block'
+      } : {}}
     >
       {!isExpanded && (
-        <div className="flex flex-row w-full h-full" style={{ maxHeight: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'row', width: '100%', height: '100%' }}>
           {/* Image Section - Minimized */}
-          <Link
-            to={href}
-            className="block focus:outline-none w-1/2 h-full flex-shrink-0"
-            aria-label={`View details for ${game.title}`}
-          >
-            <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 w-full h-full">
+          <div style={{ width: '50%', height: '100%', flexShrink: 0, overflow: 'hidden' }}>
+            <Link
+              to={href}
+              className="block focus:outline-none w-full h-full"
+              aria-label={`View details for ${game.title}`}
+            >
+              <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 w-full h-full">
           <GameImage
             url={imgSrc}
             alt={`Cover art for ${game.title}`}
@@ -169,10 +175,11 @@ export default function GameCardPublic({
             </div>
           )}
         </div>
-      </Link>
+            </Link>
+          </div>
 
           {/* Content Section - Minimized */}
-          <div className="w-1/2 h-full flex flex-col p-2 sm:p-3 overflow-hidden min-w-0">
+          <div style={{ width: '50%', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '0.5rem' }}>
 
         {/* Compact Info - Always Visible */}
         <div className="flex-1">
