@@ -65,3 +65,6 @@ testdb
 coverage/
 .nyc_output/
 *.lcov
+.coverage
+coverage.json
+htmlcov/
