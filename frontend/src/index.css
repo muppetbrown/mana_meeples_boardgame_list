@@ -202,8 +202,6 @@ a:not([role="button"]):not(.btn) {
 
 /* Prevent layout shifts during image and content loading */
 .game-card-container {
-  /* Reserve minimum height to prevent CLS */
-  min-height: 300px;
   /* Ensure consistent sizing */
   contain: layout;
 }
