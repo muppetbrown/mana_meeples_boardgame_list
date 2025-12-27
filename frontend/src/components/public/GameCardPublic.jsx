@@ -112,11 +112,12 @@ export default function GameCardPublic({
       ref={cardRef}
       data-game-card
       className={`game-card-container scroll-mt-24 group bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 w-full ${
-        isExpanded ? 'flex flex-col' : 'aspect-[2/1]'
+        isExpanded ? 'flex flex-col' : ''
       }`}
+      style={!isExpanded ? { aspectRatio: '2 / 1', display: 'block' } : {}}
     >
       {!isExpanded && (
-        <div className="flex flex-row w-full h-full">
+        <div className="flex flex-row w-full h-full" style={{ maxHeight: '100%' }}>
           {/* Image Section - Minimized */}
           <Link
             to={href}
