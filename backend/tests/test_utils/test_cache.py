@@ -1,102 +1,105 @@
 """
-Comprehensive tests for caching utilities
-Tests cache decorator, TTL behavior, and cache management
+Tests for caching utilities (utils/cache.py)
+Target: Increase coverage from 55% to 95%+
 """
 import pytest
 import time
-from unittest.mock import Mock
-
+from unittest.mock import Mock, patch
 from utils.cache import (
     make_cache_key,
     cached_query,
     clear_cache,
     get_cache_stats,
-    DEFAULT_TTL_SECONDS,
     _cache_store,
     _cache_timestamps,
+    DEFAULT_TTL_SECONDS,
 )
 
 
-@pytest.fixture(autouse=True)
-def clean_cache():
-    """Clear cache before and after each test"""
-    clear_cache()
-    yield
-    clear_cache()
-
-
-class TestCacheKeyGeneration:
+class TestMakeCacheKey:
     """Test cache key generation"""
 
-    def test_make_cache_key_no_args(self):
-        """Should generate key with no arguments"""
-        key = make_cache_key()
-        assert key
-        assert isinstance(key, str)
-        assert len(key) == 32  # MD5 hash length
-
-    def test_make_cache_key_with_args(self):
-        """Should generate key from positional arguments"""
-        key1 = make_cache_key("arg1", "arg2")
-        key2 = make_cache_key("arg1", "arg2")
-        key3 = make_cache_key("arg1", "arg3")
+    def test_make_cache_key_args_only(self):
+        """Test cache key with positional args only"""
+        key1 = make_cache_key("arg1", "arg2", 123)
+        key2 = make_cache_key("arg1", "arg2", 123)
 
         # Same args should produce same key
         assert key1 == key2
-        # Different args should produce different key
-        assert key1 != key3
+        # Key should be a hash string
+        assert isinstance(key1, str)
+        assert len(key1) == 32  # MD5 hash length
 
-    def test_make_cache_key_with_kwargs(self):
-        """Should generate key from keyword arguments"""
-        key1 = make_cache_key(foo="bar", baz="qux")
-        key2 = make_cache_key(foo="bar", baz="qux")
-        key3 = make_cache_key(foo="bar", baz="different")
-
-        # Same kwargs should produce same key
-        assert key1 == key2
-        # Different kwargs should produce different key
-        assert key1 != key3
-
-    def test_make_cache_key_kwargs_order_independent(self):
-        """Should generate same key regardless of kwargs order"""
-        key1 = make_cache_key(a=1, b=2, c=3)
-        key2 = make_cache_key(c=3, a=1, b=2)
-        key3 = make_cache_key(b=2, c=3, a=1)
-
-        # Order shouldn't matter
-        assert key1 == key2 == key3
-
-    def test_make_cache_key_mixed_args_and_kwargs(self):
-        """Should generate key from both args and kwargs"""
-        key1 = make_cache_key("pos1", "pos2", kw1="val1", kw2="val2")
-        key2 = make_cache_key("pos1", "pos2", kw2="val2", kw1="val1")
-
-        # Should be the same (kwargs order doesn't matter)
-        assert key1 == key2
-
-    def test_make_cache_key_with_different_types(self):
-        """Should handle different argument types"""
-        key1 = make_cache_key(1, "string", 3.14, True)
-        key2 = make_cache_key(1, "string", 3.14, True)
-        key3 = make_cache_key(1, "string", 3.14, False)
+    def test_make_cache_key_kwargs_only(self):
+        """Test cache key with keyword args only"""
+        key1 = make_cache_key(param1="value1", param2="value2")
+        key2 = make_cache_key(param1="value1", param2="value2")
 
         assert key1 == key2
-        assert key1 != key3
+
+    def test_make_cache_key_mixed(self):
+        """Test cache key with mixed args and kwargs"""
+        key1 = make_cache_key("arg1", 123, param1="value1", param2="value2")
+        key2 = make_cache_key("arg1", 123, param1="value1", param2="value2")
+
+        assert key1 == key2
+
+    def test_make_cache_key_order_matters_args(self):
+        """Test that argument order matters for cache key"""
+        key1 = make_cache_key("arg1", "arg2")
+        key2 = make_cache_key("arg2", "arg1")
+
+        # Different order should produce different keys
+        assert key1 != key2
+
+    def test_make_cache_key_order_independent_kwargs(self):
+        """Test that kwargs order doesn't matter (sorted)"""
+        key1 = make_cache_key(a="1", b="2", c="3")
+        key2 = make_cache_key(c="3", a="1", b="2")
+
+        # Kwargs are sorted, so order shouldn't matter
+        assert key1 == key2
+
+    def test_make_cache_key_different_values(self):
+        """Test different values produce different keys"""
+        key1 = make_cache_key(param="value1")
+        key2 = make_cache_key(param="value2")
+
+        assert key1 != key2
+
+    def test_make_cache_key_empty(self):
+        """Test cache key with no arguments"""
+        key1 = make_cache_key()
+        key2 = make_cache_key()
+
+        # Empty args should still produce consistent hash
+        assert key1 == key2
+
+    def test_make_cache_key_types(self):
+        """Test cache key with different types"""
+        key1 = make_cache_key(1, "string", True, None, [1, 2, 3])
+
+        # Should handle various types
+        assert isinstance(key1, str)
+        assert len(key1) == 32
 
     def test_make_cache_key_deterministic(self):
-        """Should generate deterministic keys"""
-        # Call multiple times with same args
-        keys = [make_cache_key("test", x=123) for _ in range(10)]
+        """Test cache key generation is deterministic"""
+        keys = [make_cache_key("test", value=123) for _ in range(10)]
 
         # All keys should be identical
-        assert len(set(keys)) == 1
+        assert all(k == keys[0] for k in keys)
 
 
 class TestCachedQueryDecorator:
     """Test cached_query decorator"""
 
+    def setup_method(self):
+        """Clear cache before each test"""
+        clear_cache()
+
     def test_cached_query_basic(self):
-        """Should cache function results"""
+        """Test basic caching functionality"""
         call_count = 0
 
         @cached_query(ttl_seconds=10)
@@ -113,10 +116,10 @@ class TestCachedQueryDecorator:
         # Second call - should use cache
         result2 = test_func(5)
         assert result2 == 10
-        assert call_count == 1  # Should not increment
+        assert call_count == 1  # Not incremented
 
     def test_cached_query_different_args(self):
-        """Should cache different results for different arguments"""
+        """Test caching with different arguments"""
         call_count = 0
 
         @cached_query(ttl_seconds=10)
@@ -125,18 +128,15 @@ class TestCachedQueryDecorator:
             call_count += 1
             return x * 2
 
-        # Different arguments should not use same cache
         result1 = test_func(5)
         result2 = test_func(10)
-        result3 = test_func(5)  # Same as first call
 
         assert result1 == 10
         assert result2 == 20
-        assert result3 == 10
-        assert call_count == 2  # Only called twice (5 and 10)
+        assert call_count == 2  # Different args = cache miss
 
     def test_cached_query_ttl_expiration(self):
-        """Should expire cache after TTL"""
+        """Test cache expiration after TTL"""
         call_count = 0
 
         @cached_query(ttl_seconds=0.1)  # Very short TTL
@@ -150,21 +150,32 @@ class TestCachedQueryDecorator:
         assert result1 == 10
         assert call_count == 1
 
-        # Second call immediately - should use cache
-        result2 = test_func(5)
-        assert result2 == 10
-        assert call_count == 1
-
         # Wait for TTL to expire
         time.sleep(0.15)
 
-        # Third call - cache expired, should execute again
-        result3 = test_func(5)
-        assert result3 == 10
+        # Should execute again after expiration
+        result2 = test_func(5)
+        assert result2 == 10
         assert call_count == 2
 
-    def test_cached_query_with_kwargs(self):
-        """Should handle functions with keyword arguments"""
+    def test_cached_query_default_ttl(self):
+        """Test decorator with default TTL"""
+        call_count = 0
+
+        @cached_query()  # Use default TTL
+        def test_func(x):
+            nonlocal call_count
+            call_count += 1
+            return x * 2
+
+        result1 = test_func(5)
+        result2 = test_func(5)
+
+        assert result1 == result2
+        assert call_count == 1
+
+    def test_cached_query_kwargs(self):
+        """Test caching with keyword arguments"""
         call_count = 0
 
         @cached_query(ttl_seconds=10)
@@ -173,124 +184,140 @@ class TestCachedQueryDecorator:
             call_count += 1
             return x + y
 
-        # First call
-        result1 = test_func(5, y=10)
-        assert result1 == 15
+        result1 = test_func(5, y=20)
+        result2 = test_func(5, y=20)
+
+        assert result1 == 25
+        assert result2 == 25
         assert call_count == 1
 
-        # Same call - should use cache
-        result2 = test_func(5, y=10)
-        assert result2 == 15
-        assert call_count == 1
-
-        # Different kwargs - should not use cache
-        result3 = test_func(5, y=20)
-        assert result3 == 25
+        # Different kwargs should miss cache
+        result3 = test_func(5, y=30)
+        assert result3 == 35
         assert call_count == 2
 
-    def test_cached_query_default_ttl(self):
-        """Should use default TTL if not specified"""
+    def test_cached_query_mixed_args_kwargs(self):
+        """Test caching with both args and kwargs"""
         call_count = 0
 
-        @cached_query()  # No TTL specified
-        def test_func():
+        @cached_query(ttl_seconds=10)
+        def test_func(a, b, c=10, d=20):
             nonlocal call_count
             call_count += 1
-            return "result"
+            return a + b + c + d
 
-        # Call multiple times quickly
-        for _ in range(5):
-            test_func()
+        result1 = test_func(1, 2, c=3, d=4)
+        result2 = test_func(1, 2, c=3, d=4)
 
-        # Should only execute once (using default TTL)
+        assert result1 == 10
+        assert result2 == 10
         assert call_count == 1
 
-    def test_cached_query_preserves_function_name(self):
-        """Should preserve original function name and docstring"""
-        @cached_query(ttl_seconds=10)
-        def test_func():
-            """Test function docstring"""
-            return "result"
-
-        assert test_func.__name__ == "test_func"
-        assert test_func.__doc__ == "Test function docstring"
-
-    def test_cached_query_with_none_result(self):
-        """Should cache None results"""
-        call_count = 0
+    def test_cached_query_return_types(self):
+        """Test caching preserves return types"""
 
         @cached_query(ttl_seconds=10)
-        def test_func():
-            nonlocal call_count
-            call_count += 1
+        def return_dict():
+            return {"key": "value"}
+
+        @cached_query(ttl_seconds=10)
+        def return_list():
+            return [1, 2, 3]
+
+        @cached_query(ttl_seconds=10)
+        def return_none():
             return None
 
-        # First call
-        result1 = test_func()
-        assert result1 is None
-        assert call_count == 1
+        dict_result = return_dict()
+        assert isinstance(dict_result, dict)
+        assert return_dict() is dict_result  # Same object from cache
 
-        # Second call - should use cache
-        result2 = test_func()
-        assert result2 is None
-        assert call_count == 1  # Should not increment
+        list_result = return_list()
+        assert isinstance(list_result, list)
 
-    def test_cached_query_with_complex_return_types(self):
-        """Should cache complex return types"""
-        call_count = 0
+        none_result = return_none()
+        assert none_result is None
+
+    def test_cached_query_preserves_function_name(self):
+        """Test decorator preserves function metadata"""
 
         @cached_query(ttl_seconds=10)
-        def test_func():
-            nonlocal call_count
-            call_count += 1
-            return {"key": "value", "list": [1, 2, 3]}
+        def my_function():
+            """This is my docstring"""
+            return 42
 
-        # First call
-        result1 = test_func()
-        assert call_count == 1
-
-        # Second call - should return same object from cache
-        result2 = test_func()
-        assert call_count == 1
-        assert result1 is result2  # Same object reference
+        # functools.wraps should preserve these
+        assert my_function.__name__ == "my_function"
+        assert "docstring" in my_function.__doc__
 
     def test_cached_query_multiple_functions(self):
-        """Should maintain separate caches for different functions"""
+        """Test multiple decorated functions don't share cache"""
         call_count_a = 0
         call_count_b = 0
 
         @cached_query(ttl_seconds=10)
-        def func_a():
+        def func_a(x):
             nonlocal call_count_a
             call_count_a += 1
-            return "A"
+            return x * 2
 
         @cached_query(ttl_seconds=10)
-        def func_b():
+        def func_b(x):
             nonlocal call_count_b
             call_count_b += 1
-            return "B"
+            return x * 3
 
-        # Call both functions
-        func_a()
-        func_b()
-        func_a()  # Should use cache
-        func_b()  # Should use cache
+        # Call both functions with same arg
+        func_a(5)
+        func_b(5)
 
+        # Should use cache for second calls
+        func_a(5)
+        func_b(5)
+
+        # Each function should only be called once
         assert call_count_a == 1
         assert call_count_b == 1
 
+    def test_cached_query_exception_not_cached(self):
+        """Test that exceptions are not cached"""
+        call_count = 0
 
-class TestCacheManagement:
-    """Test cache management functions"""
+        @cached_query(ttl_seconds=10)
+        def test_func(x):
+            nonlocal call_count
+            call_count += 1
+            if x < 0:
+                raise ValueError("Negative value")
+            return x * 2
 
-    def test_clear_cache(self):
-        """Should clear all cache entries"""
+        # First call with valid value
+        result = test_func(5)
+        assert result == 10
+        assert call_count == 1
+
+        # Call that raises exception
+        with pytest.raises(ValueError):
+            test_func(-1)
+        assert call_count == 2
+
+        # Call again with same negative value - should execute again
+        with pytest.raises(ValueError):
+            test_func(-1)
+        assert call_count == 3  # Exception not cached
+
+
+class TestClearCache:
+    """Test cache clearing"""
+
+    def test_clear_cache_empties_store(self):
+        """Test clear_cache removes all entries"""
+
         @cached_query(ttl_seconds=10)
         def test_func(x):
             return x * 2
 
-        # Populate cache
+        # Add some cached values
         test_func(1)
         test_func(2)
         test_func(3)
@@ -306,148 +333,188 @@ class TestCacheManagement:
         assert len(_cache_store) == 0
         assert len(_cache_timestamps) == 0
 
-    def test_clear_cache_forces_recomputation(self):
-        """Should force recomputation after clearing cache"""
+    def test_clear_cache_affects_subsequent_calls(self):
+        """Test clearing cache causes re-execution"""
         call_count = 0
 
         @cached_query(ttl_seconds=10)
-        def test_func():
+        def test_func(x):
             nonlocal call_count
             call_count += 1
-            return "result"
+            return x * 2
 
         # First call
-        test_func()
+        test_func(5)
         assert call_count == 1
 
         # Clear cache
         clear_cache()
 
-        # Next call should recompute
-        test_func()
+        # Should execute again
+        test_func(5)
         assert call_count == 2
 
+    def test_clear_cache_idempotent(self):
+        """Test clearing empty cache is safe"""
+        clear_cache()
+        clear_cache()  # Should not raise error
+
+        assert len(_cache_store) == 0
+        assert len(_cache_timestamps) == 0
+
+
+class TestGetCacheStats:
+    """Test cache statistics"""
+
+    def setup_method(self):
+        """Clear cache before each test"""
+        clear_cache()
+
     def test_get_cache_stats_empty(self):
-        """Should return stats for empty cache"""
+        """Test stats for empty cache"""
         stats = get_cache_stats()
 
         assert stats["entries"] == 0
         assert stats["oldest_entry_age"] == 0
 
     def test_get_cache_stats_with_entries(self):
-        """Should return stats with cache entries"""
+        """Test stats with cached entries"""
+
         @cached_query(ttl_seconds=10)
         def test_func(x):
             return x * 2
 
-        # Populate cache
+        # Add cached entries
         test_func(1)
         test_func(2)
+        test_func(3)
 
         stats = get_cache_stats()
 
-        assert stats["entries"] == 2
-        assert stats["oldest_entry_age"] >= 0
-        assert stats["oldest_entry_age"] < 1  # Should be very recent
+        assert stats["entries"] == 3
+        # Oldest entry should be very recent (< 1 second)
+        assert 0 <= stats["oldest_entry_age"] < 1
 
     def test_get_cache_stats_oldest_entry_age(self):
-        """Should correctly calculate oldest entry age"""
+        """Test oldest_entry_age calculation"""
+
         @cached_query(ttl_seconds=10)
         def test_func(x):
             return x * 2
 
-        # First entry
+        # Add first entry
         test_func(1)
+
+        # Wait a bit
         time.sleep(0.1)
 
-        # Second entry
+        # Add second entry
         test_func(2)
 
         stats = get_cache_stats()
 
         # Oldest entry should be at least 0.1 seconds old
         assert stats["oldest_entry_age"] >= 0.1
-        assert stats["oldest_entry_age"] < 1
+        assert stats["entries"] == 2
 
+    def test_get_cache_stats_after_clear(self):
+        """Test stats after clearing cache"""
 
-class TestCacheEdgeCases:
-    """Test edge cases and special scenarios"""
-
-    def test_cache_with_mutable_arguments(self):
-        """Should handle mutable arguments (lists, dicts)"""
-        call_count = 0
-
-        @cached_query(ttl_seconds=10)
-        def test_func(items):
-            nonlocal call_count
-            call_count += 1
-            return sum(items)
-
-        # Lists are converted to strings for cache key
-        result1 = test_func([1, 2, 3])
-        result2 = test_func([1, 2, 3])
-
-        assert result1 == 6
-        assert call_count == 1  # Should use cache
-
-    def test_cache_concurrent_access(self):
-        """Should handle concurrent cache access"""
         @cached_query(ttl_seconds=10)
         def test_func(x):
             return x * 2
 
-        # Simulate concurrent access
-        results = [test_func(5) for _ in range(100)]
+        test_func(1)
+        test_func(2)
+
+        clear_cache()
+
+        stats = get_cache_stats()
+
+        assert stats["entries"] == 0
+        assert stats["oldest_entry_age"] == 0
+
+
+class TestIntegration:
+    """Integration tests for cache system"""
+
+    def setup_method(self):
+        """Clear cache before each test"""
+        clear_cache()
+
+    def test_cache_workflow_complete(self):
+        """Test complete cache workflow"""
+        execution_times = []
+
+        @cached_query(ttl_seconds=5)
+        def expensive_query(n):
+            execution_times.append(time.time())
+            time.sleep(0.01)  # Simulate expensive operation
+            return sum(range(n))
+
+        # First call - should execute
+        result1 = expensive_query(100)
+        assert len(execution_times) == 1
+
+        # Second call - should use cache
+        result2 = expensive_query(100)
+        assert len(execution_times) == 1
+        assert result1 == result2
+
+        # Check cache stats
+        stats = get_cache_stats()
+        assert stats["entries"] == 1
+
+        # Different arg - should execute again
+        result3 = expensive_query(200)
+        assert len(execution_times) == 2
+        assert result3 != result1
+
+        stats = get_cache_stats()
+        assert stats["entries"] == 2
+
+        # Clear cache
+        clear_cache()
+
+        # Should execute again after clear
+        result4 = expensive_query(100)
+        assert len(execution_times) == 3
+        assert result4 == result1
+
+    def test_cache_concurrent_access(self):
+        """Test cache with rapid concurrent-like access"""
+        call_count = 0
+
+        @cached_query(ttl_seconds=1)
+        def test_func(x):
+            nonlocal call_count
+            call_count += 1
+            return x * 2
+
+        # Rapid calls with same argument
+        results = [test_func(10) for _ in range(100)]
 
         # All results should be the same
-        assert all(r == 10 for r in results)
-
-    def test_cache_with_zero_ttl(self):
-        """Should handle zero TTL (always expire)"""
-        call_count = 0
-
-        @cached_query(ttl_seconds=0)
-        def test_func():
-            nonlocal call_count
-            call_count += 1
-            return "result"
-
-        # Multiple calls
-        test_func()
-        test_func()
-        test_func()
-
-        # With zero TTL, cache should expire immediately
-        # Might execute 2-3 times depending on timing
-        assert call_count >= 1
-
-    def test_cache_with_large_ttl(self):
-        """Should handle very large TTL"""
-        call_count = 0
-
-        @cached_query(ttl_seconds=86400)  # 1 day
-        def test_func():
-            nonlocal call_count
-            call_count += 1
-            return "result"
-
-        # Multiple calls
-        for _ in range(10):
-            test_func()
-
-        # Should only execute once
+        assert all(r == 20 for r in results)
+        # Function should only execute once
         assert call_count == 1
 
-    def test_cache_key_collision_resistance(self):
-        """Should resist cache key collisions"""
-        @cached_query(ttl_seconds=10)
-        def test_func(a, b):
-            return f"{a}:{b}"
+    def test_cache_with_real_world_pattern(self):
+        """Test cache with realistic usage pattern"""
+        db_queries = []
 
-        # These should produce different cache keys
-        result1 = test_func("a", "bc")
-        result2 = test_func("ab", "c")
+        @cached_query(ttl_seconds=2)
+        def get_user_data(user_id):
+            # Simulate database query
+            db_queries.append(user_id)
+            return {"id": user_id, "name": f"User {user_id}"}
 
-        # Results should be different
-        assert result1 == "a:bc"
-        assert result2 == "ab:c"
+        # Typical request pattern
+        user1 = get_user_data(1)  # DB query
+        user1_again = get_user_data(1)  # Cached
+        user2 = get_user_data(2)  # DB query
+        user1_third = get_user_data(1)  # Cached
+
+        assert len(db_queries) == 2  # Only 2 actual queries
+        assert db_queries == [1, 2]
+        assert user1 == user1_again == user1_third

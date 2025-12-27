@@ -1,12 +1,11 @@
 """
-Comprehensive tests for JWT utilities
-Tests token generation, verification, and extraction
+Tests for JWT utilities (utils/jwt_utils.py)
+Target: Increase coverage from 53% to 95%+
 """
 import pytest
-import jwt
+import jwt as pyjwt
 from datetime import datetime, timedelta
 from unittest.mock import patch
-
 from utils.jwt_utils import (
     generate_jwt_token,
     verify_jwt_token,
@@ -16,291 +15,317 @@ from utils.jwt_utils import (
 from config import SESSION_SECRET, JWT_EXPIRATION_DAYS
 
 
-class TestJWTTokenGeneration:
+class TestGenerateJwtToken:
     """Test JWT token generation"""
 
     def test_generate_jwt_token_basic(self):
-        """Should generate a valid JWT token"""
-        client_ip = "192.168.1.1"
+        """Test basic JWT token generation"""
+        client_ip = "192.168.1.100"
         token = generate_jwt_token(client_ip)
 
         # Token should be a non-empty string
-        assert token
         assert isinstance(token, str)
         assert len(token) > 0
 
-    def test_generate_jwt_token_contains_correct_payload(self):
-        """Should generate token with correct payload structure"""
-        client_ip = "10.0.0.1"
-        token = generate_jwt_token(client_ip)
-
-        # Decode token without verification to inspect payload
-        payload = jwt.decode(token, SESSION_SECRET, algorithms=[JWT_ALGORITHM])
-
-        # Verify payload structure
+        # Decode to verify structure
+        payload = pyjwt.decode(token, SESSION_SECRET, algorithms=[JWT_ALGORITHM])
         assert payload["sub"] == "admin"
         assert payload["ip"] == client_ip
         assert "iat" in payload
         assert "exp" in payload
 
-    def test_generate_jwt_token_has_correct_expiration(self):
-        """Should set token expiration to configured days"""
-        token = generate_jwt_token("127.0.0.1")
-        payload = jwt.decode(token, SESSION_SECRET, algorithms=[JWT_ALGORITHM])
+    def test_generate_jwt_token_expiration(self):
+        """Test JWT token has correct expiration"""
+        client_ip = "10.0.0.1"
+        token = generate_jwt_token(client_ip)
 
-        # Calculate expected expiration
-        issued_at = datetime.fromtimestamp(payload["iat"])
-        expires_at = datetime.fromtimestamp(payload["exp"])
-        token_lifetime = expires_at - issued_at
+        payload = pyjwt.decode(token, SESSION_SECRET, algorithms=[JWT_ALGORITHM])
 
-        # Should be approximately JWT_EXPIRATION_DAYS (within 1 second tolerance)
-        expected_lifetime = timedelta(days=JWT_EXPIRATION_DAYS)
-        assert abs(token_lifetime - expected_lifetime).total_seconds() < 1
+        # Check expiration is set correctly
+        iat = datetime.fromtimestamp(payload["iat"])
+        exp = datetime.fromtimestamp(payload["exp"])
+        expected_delta = timedelta(days=JWT_EXPIRATION_DAYS)
+
+        # Allow 1 second tolerance for test execution time
+        actual_delta = exp - iat
+        assert abs((actual_delta - expected_delta).total_seconds()) < 1
 
     def test_generate_jwt_token_different_ips(self):
-        """Should generate different tokens for different IPs"""
+        """Test tokens for different IPs are unique"""
         token1 = generate_jwt_token("192.168.1.1")
         token2 = generate_jwt_token("192.168.1.2")
 
-        # Tokens should be different
         assert token1 != token2
 
-        # But both should be valid
-        payload1 = verify_jwt_token(token1)
-        payload2 = verify_jwt_token(token2)
-        assert payload1 is not None
-        assert payload2 is not None
-        assert payload1["ip"] != payload2["ip"]
+        payload1 = pyjwt.decode(token1, SESSION_SECRET, algorithms=[JWT_ALGORITHM])
+        payload2 = pyjwt.decode(token2, SESSION_SECRET, algorithms=[JWT_ALGORITHM])
 
-    def test_generate_jwt_token_consistent_for_same_ip_at_same_time(self):
-        """Should generate same token for same IP at the same time"""
-        client_ip = "192.168.1.100"
+        assert payload1["ip"] == "192.168.1.1"
+        assert payload2["ip"] == "192.168.1.2"
 
-        # Mock datetime to ensure same timestamp
-        fixed_time = datetime(2025, 1, 1, 12, 0, 0)
-        with patch('utils.jwt_utils.datetime') as mock_dt:
-            mock_dt.utcnow.return_value = fixed_time
+    def test_generate_jwt_token_logging(self, caplog):
+        """Test JWT generation logs correctly"""
+        import logging
 
-            token1 = generate_jwt_token(client_ip)
-            token2 = generate_jwt_token(client_ip)
+        caplog.set_level(logging.INFO)
+        client_ip = "203.0.113.1"
+        generate_jwt_token(client_ip)
 
-            # Tokens should be identical
-            assert token1 == token2
+        # Check log message
+        assert any(
+            client_ip in record.message and "Generated JWT token" in record.message
+            for record in caplog.records
+        )
 
 
-class TestJWTTokenVerification:
+class TestVerifyJwtToken:
     """Test JWT token verification"""
 
-    def test_verify_valid_token(self):
-        """Should successfully verify a valid token"""
-        client_ip = "192.168.1.1"
+    def test_verify_jwt_token_valid(self):
+        """Test verification of valid JWT token"""
+        client_ip = "172.16.0.1"
         token = generate_jwt_token(client_ip)
+
         payload = verify_jwt_token(token)
 
         assert payload is not None
         assert payload["sub"] == "admin"
         assert payload["ip"] == client_ip
 
-    def test_verify_expired_token(self):
-        """Should return None for expired token"""
-        # Create a token that's already expired
-        past_time = datetime.utcnow() - timedelta(days=10)
-        expired_payload = {
+    def test_verify_jwt_token_expired(self):
+        """Test verification of expired JWT token"""
+        # Create an expired token
+        payload = {
             "sub": "admin",
-            "ip": "192.168.1.1",
-            "iat": past_time,
-            "exp": past_time + timedelta(seconds=1),  # Expired 10 days ago
+            "ip": "10.0.0.1",
+            "iat": datetime.utcnow() - timedelta(days=10),
+            "exp": datetime.utcnow() - timedelta(days=1),  # Expired yesterday
         }
-        expired_token = jwt.encode(expired_payload, SESSION_SECRET, algorithm=JWT_ALGORITHM)
+        expired_token = pyjwt.encode(payload, SESSION_SECRET, algorithm=JWT_ALGORITHM)
 
-        # Verification should return None
         result = verify_jwt_token(expired_token)
+
         assert result is None
 
-    def test_verify_invalid_token_format(self):
-        """Should return None for malformed token"""
-        invalid_token = "not.a.valid.jwt.token"
-        result = verify_jwt_token(invalid_token)
-        assert result is None
+    def test_verify_jwt_token_expired_logging(self, caplog):
+        """Test verification logs expired tokens"""
+        import logging
 
-    def test_verify_token_with_wrong_signature(self):
-        """Should return None for token with wrong signature"""
-        # Create token with different secret
-        wrong_secret_token = jwt.encode(
-            {"sub": "admin", "ip": "192.168.1.1", "exp": datetime.utcnow() + timedelta(days=1)},
-            "wrong_secret",
-            algorithm=JWT_ALGORITHM
-        )
+        caplog.set_level(logging.WARNING)
 
-        result = verify_jwt_token(wrong_secret_token)
-        assert result is None
-
-    def test_verify_empty_token(self):
-        """Should return None for empty token"""
-        result = verify_jwt_token("")
-        assert result is None
-
-    def test_verify_token_with_missing_fields(self):
-        """Should handle token with missing required fields"""
-        # Token without 'sub' field - still valid JWT but missing app-specific field
-        minimal_payload = {
-            "exp": datetime.utcnow() + timedelta(days=1),
-        }
-        minimal_token = jwt.encode(minimal_payload, SESSION_SECRET, algorithm=JWT_ALGORITHM)
-
-        # Should still decode successfully (JWT itself is valid)
-        result = verify_jwt_token(minimal_token)
-        assert result is not None
-        assert "sub" not in result
-
-    def test_verify_token_at_expiration_boundary(self):
-        """Should handle token at exact expiration time"""
-        # Create token expiring in 1 second
-        soon_to_expire = {
+        # Create expired token
+        payload = {
             "sub": "admin",
-            "ip": "192.168.1.1",
-            "exp": datetime.utcnow() + timedelta(seconds=1),
+            "ip": "10.0.0.1",
+            "iat": datetime.utcnow() - timedelta(days=10),
+            "exp": datetime.utcnow() - timedelta(days=1),
         }
-        token = jwt.encode(soon_to_expire, SESSION_SECRET, algorithm=JWT_ALGORITHM)
+        expired_token = pyjwt.encode(payload, SESSION_SECRET, algorithm=JWT_ALGORITHM)
 
-        # Should be valid immediately
-        result = verify_jwt_token(token)
-        assert result is not None
+        verify_jwt_token(expired_token)
+
+        # Check log message
+        assert any("JWT token expired" in record.message for record in caplog.records)
+
+    def test_verify_jwt_token_invalid_signature(self):
+        """Test verification of token with wrong signature"""
+        # Create token with different secret
+        payload = {
+            "sub": "admin",
+            "ip": "10.0.0.1",
+            "iat": datetime.utcnow(),
+            "exp": datetime.utcnow() + timedelta(days=7),
+        }
+        invalid_token = pyjwt.encode(payload, "wrong-secret", algorithm=JWT_ALGORITHM)
+
+        result = verify_jwt_token(invalid_token)
+
+        assert result is None
+
+    def test_verify_jwt_token_malformed(self):
+        """Test verification of malformed token"""
+        result = verify_jwt_token("not.a.valid.jwt.token")
+
+        assert result is None
+
+    def test_verify_jwt_token_invalid_logging(self, caplog):
+        """Test verification logs invalid tokens"""
+        import logging
+
+        caplog.set_level(logging.WARNING)
+
+        verify_jwt_token("invalid-token")
+
+        # Check log message
+        assert any("Invalid JWT token" in record.message for record in caplog.records)
+
+    def test_verify_jwt_token_empty_string(self):
+        """Test verification of empty token"""
+        result = verify_jwt_token("")
+
+        assert result is None
+
+    def test_verify_jwt_token_tampered(self):
+        """Test verification of tampered token"""
+        # Generate valid token
+        token = generate_jwt_token("10.0.0.1")
+
+        # Tamper with token by changing a character
+        tampered = token[:-5] + "XXXXX"
+
+        result = verify_jwt_token(tampered)
+
+        assert result is None
 
 
-class TestTokenExtraction:
+class TestExtractTokenFromHeader:
     """Test token extraction from Authorization header"""
 
-    def test_extract_valid_bearer_token(self):
-        """Should extract token from valid Bearer header"""
-        token = "abc123xyz789"
-        header = f"Bearer {token}"
-        extracted = extract_token_from_header(header)
-        assert extracted == token
-
-    def test_extract_case_insensitive_bearer(self):
-        """Should handle case-insensitive 'Bearer' keyword"""
-        token = "abc123xyz789"
-
-        # Try different cases
-        assert extract_token_from_header(f"Bearer {token}") == token
-        assert extract_token_from_header(f"bearer {token}") == token
-        assert extract_token_from_header(f"BEARER {token}") == token
-        assert extract_token_from_header(f"BeArEr {token}") == token
-
-    def test_extract_from_none_header(self):
-        """Should return None for None header"""
-        result = extract_token_from_header(None)
-        assert result is None
-
-    def test_extract_from_empty_header(self):
-        """Should return None for empty header"""
-        result = extract_token_from_header("")
-        assert result is None
-
-    def test_extract_from_malformed_header_no_bearer(self):
-        """Should return None for header without 'Bearer' keyword"""
-        result = extract_token_from_header("abc123xyz789")
-        assert result is None
-
-    def test_extract_from_malformed_header_wrong_keyword(self):
-        """Should return None for header with wrong keyword"""
-        result = extract_token_from_header("Basic abc123xyz789")
-        assert result is None
-
-    def test_extract_from_header_with_extra_spaces(self):
-        """Should return None for header with extra parts"""
-        # More than 2 parts - invalid format
-        result = extract_token_from_header("Bearer token extra_part")
-        assert result is None
-
-    def test_extract_bearer_only(self):
-        """Should return None for 'Bearer' without token"""
-        result = extract_token_from_header("Bearer")
-        assert result is None
-
-    def test_extract_real_jwt_token(self):
-        """Should extract real JWT token from header"""
-        real_token = generate_jwt_token("192.168.1.1")
-        header = f"Bearer {real_token}"
-        extracted = extract_token_from_header(header)
-
-        assert extracted == real_token
-
-        # Verify the extracted token is valid
-        payload = verify_jwt_token(extracted)
-        assert payload is not None
-
-
-class TestJWTIntegration:
-    """Integration tests for complete JWT workflow"""
-
-    def test_complete_token_lifecycle(self):
-        """Should handle complete token generation, extraction, and verification"""
-        client_ip = "192.168.1.50"
-
-        # Generate token
-        token = generate_jwt_token(client_ip)
-        assert token
-
-        # Create Authorization header
+    def test_extract_token_valid_bearer(self):
+        """Test extraction from valid Bearer header"""
+        token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.test.token"
         auth_header = f"Bearer {token}"
 
-        # Extract token from header
+        result = extract_token_from_header(auth_header)
+
+        assert result == token
+
+    def test_extract_token_case_insensitive(self):
+        """Test Bearer keyword is case insensitive"""
+        token = "test.jwt.token"
+
+        # Test different cases
+        for bearer in ["Bearer", "bearer", "BEARER", "BeArEr"]:
+            auth_header = f"{bearer} {token}"
+            result = extract_token_from_header(auth_header)
+            assert result == token
+
+    def test_extract_token_none_header(self):
+        """Test extraction from None header"""
+        result = extract_token_from_header(None)
+
+        assert result is None
+
+    def test_extract_token_empty_string(self):
+        """Test extraction from empty string"""
+        result = extract_token_from_header("")
+
+        assert result is None
+
+    def test_extract_token_missing_bearer(self):
+        """Test extraction from header without Bearer keyword"""
+        result = extract_token_from_header("just-a-token")
+
+        assert result is None
+
+    def test_extract_token_wrong_format(self):
+        """Test extraction from malformed header"""
+        # Too many parts
+        result = extract_token_from_header("Bearer token extra parts")
+        assert result is None
+
+        # Wrong keyword
+        result = extract_token_from_header("Basic token123")
+        assert result is None
+
+    def test_extract_token_logging_invalid(self, caplog):
+        """Test extraction logs invalid format"""
+        import logging
+
+        caplog.set_level(logging.WARNING)
+
+        extract_token_from_header("InvalidFormat token")
+
+        # Check log message
+        assert any(
+            "Invalid Authorization header format" in record.message
+            for record in caplog.records
+        )
+
+    def test_extract_token_with_whitespace(self):
+        """Test extraction handles extra whitespace"""
+        token = "test.jwt.token"
+        auth_header = f"  Bearer   {token}  "
+
+        # Should handle leading/trailing spaces in header
+        # but split() will handle internal spaces
+        result = extract_token_from_header(auth_header.strip())
+
+        assert result == token
+
+    def test_extract_token_truncated_logging(self, caplog):
+        """Test that long invalid headers are truncated in logs"""
+        import logging
+
+        caplog.set_level(logging.WARNING)
+
+        long_header = "Invalid " + ("x" * 100)
+        extract_token_from_header(long_header)
+
+        # Check that log message exists and is truncated
+        assert any(
+            "Invalid Authorization header format" in record.message
+            and "..." in record.message
+            for record in caplog.records
+        )
+
+
+class TestIntegration:
+    """Integration tests for JWT workflow"""
+
+    def test_full_jwt_workflow(self):
+        """Test complete JWT generation and verification workflow"""
+        # 1. Generate token for a client
+        client_ip = "192.168.100.50"
+        token = generate_jwt_token(client_ip)
+
+        # 2. Create Authorization header
+        auth_header = f"Bearer {token}"
+
+        # 3. Extract token from header
         extracted_token = extract_token_from_header(auth_header)
         assert extracted_token == token
 
-        # Verify extracted token
+        # 4. Verify token
         payload = verify_jwt_token(extracted_token)
         assert payload is not None
         assert payload["sub"] == "admin"
         assert payload["ip"] == client_ip
 
-    def test_invalid_token_workflow(self):
-        """Should reject invalid token through complete workflow"""
-        # Use an invalid token
-        invalid_token = "invalid.jwt.token"
-        auth_header = f"Bearer {invalid_token}"
-
-        # Extract token
-        extracted = extract_token_from_header(auth_header)
-        assert extracted == invalid_token
-
-        # Verification should fail
-        payload = verify_jwt_token(extracted)
-        assert payload is None
-
-    def test_expired_token_workflow(self):
-        """Should reject expired token through complete workflow"""
+    def test_jwt_workflow_with_expired_token(self):
+        """Test workflow with expired token"""
         # Create expired token
-        past_time = datetime.utcnow() - timedelta(days=10)
-        expired_payload = {
+        payload = {
             "sub": "admin",
-            "ip": "192.168.1.1",
-            "iat": past_time,
-            "exp": past_time + timedelta(seconds=1),
+            "ip": "10.0.0.1",
+            "iat": datetime.utcnow() - timedelta(days=10),
+            "exp": datetime.utcnow() - timedelta(seconds=1),
         }
-        expired_token = jwt.encode(expired_payload, SESSION_SECRET, algorithm=JWT_ALGORITHM)
-        auth_header = f"Bearer {expired_token}"
+        expired_token = pyjwt.encode(payload, SESSION_SECRET, algorithm=JWT_ALGORITHM)
 
-        # Extract token
-        extracted = extract_token_from_header(auth_header)
-        assert extracted == expired_token
+        # Try to verify
+        result = verify_jwt_token(expired_token)
+        assert result is None
 
-        # Verification should fail
-        payload = verify_jwt_token(extracted)
-        assert payload is None
+    def test_jwt_workflow_multiple_users(self):
+        """Test JWT workflow with multiple concurrent users"""
+        users = [
+            ("192.168.1.10", "user1"),
+            ("192.168.1.20", "user2"),
+            ("10.0.0.5", "user3"),
+        ]
 
-    def test_multiple_concurrent_tokens(self):
-        """Should handle multiple valid tokens simultaneously"""
-        ips = ["192.168.1.1", "192.168.1.2", "192.168.1.3"]
-        tokens = [generate_jwt_token(ip) for ip in ips]
+        tokens = {}
+        for ip, name in users:
+            tokens[name] = generate_jwt_token(ip)
 
-        # All tokens should be unique
-        assert len(tokens) == len(set(tokens))
+        # Verify all tokens work independently
+        for (ip, name) in users:
+            token = tokens[name]
+            auth_header = f"Bearer {token}"
+            extracted = extract_token_from_header(auth_header)
+            payload = verify_jwt_token(extracted)
 
-        # All tokens should verify correctly
-        for token, ip in zip(tokens, ips):
-            payload = verify_jwt_token(token)
             assert payload is not None
             assert payload["ip"] == ip
+            assert payload["sub"] == "admin"

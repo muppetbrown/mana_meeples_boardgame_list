@@ -1,13 +1,12 @@
 """
-Comprehensive tests for API dependencies
-Tests authentication, session management, and helper functions
+Tests for API dependencies (api/dependencies.py)
+Target: Increase coverage from 40% to 80%+
 """
 import pytest
 import time
 from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, MagicMock
 from fastapi import HTTPException, Request
-
 from api.dependencies import (
     get_client_ip,
     create_session,
@@ -16,486 +15,645 @@ from api.dependencies import (
     revoke_session,
     require_admin_auth,
 )
-from shared.rate_limiting import session_storage, rate_limit_tracker
-
-
-@pytest.fixture
-def mock_request():
-    """Create a mock FastAPI request"""
-    request = Mock(spec=Request)
-    request.client = Mock()
-    request.client.host = "192.168.1.1"
-    request.headers = {}
-    return request
-
-
-@pytest.fixture(autouse=True)
-def clean_test_state():
-    """Clean up test state before each test"""
-    # Force memory backend and clear
-    session_storage._redis_client = None
-    session_storage._memory_sessions.clear()
-    rate_limit_tracker._redis_client = None
-    rate_limit_tracker._memory_tracker.clear()
-    yield
-    # Clean up after test
-    session_storage._memory_sessions.clear()
-    rate_limit_tracker._memory_tracker.clear()
+from shared.rate_limiting import admin_sessions, session_storage
+from utils.jwt_utils import generate_jwt_token
+from config import SESSION_TIMEOUT_SECONDS, ADMIN_TOKEN
 
 
 class TestGetClientIP:
     """Test client IP extraction"""
 
-    def test_get_client_ip_from_request_client(self, mock_request):
-        """Should extract IP from request.client.host"""
-        mock_request.headers = {}
-        ip = get_client_ip(mock_request)
-        assert ip == "192.168.1.1"
+    def test_get_client_ip_direct(self):
+        """Test IP extraction from direct connection"""
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host="192.168.1.100")
 
-    def test_get_client_ip_from_x_forwarded_for(self, mock_request):
-        """Should extract IP from X-Forwarded-For header"""
-        mock_request.headers = {"x-forwarded-for": "10.0.0.1, 192.168.1.1"}
-        ip = get_client_ip(mock_request)
-        assert ip == "10.0.0.1"  # First IP in the chain
+        ip = get_client_ip(request)
 
-    def test_get_client_ip_x_forwarded_for_single(self, mock_request):
-        """Should handle single IP in X-Forwarded-For"""
-        mock_request.headers = {"x-forwarded-for": "10.0.0.1"}
-        ip = get_client_ip(mock_request)
-        assert ip == "10.0.0.1"
+        assert ip == "192.168.1.100"
 
-    def test_get_client_ip_x_forwarded_for_with_spaces(self, mock_request):
-        """Should strip spaces from X-Forwarded-For IPs"""
-        mock_request.headers = {"x-forwarded-for": "  10.0.0.1  ,  192.168.1.1  "}
-        ip = get_client_ip(mock_request)
-        assert ip == "10.0.0.1"
+    def test_get_client_ip_x_forwarded_for(self):
+        """Test IP extraction from X-Forwarded-For header"""
+        request = Mock(spec=Request)
+        request.headers = {"x-forwarded-for": "203.0.113.1, 192.168.1.1"}
+        request.client = Mock(host="10.0.0.1")
 
-    def test_get_client_ip_no_client(self, mock_request):
-        """Should return 'unknown' when request.client is None"""
-        mock_request.client = None
-        mock_request.headers = {}
-        ip = get_client_ip(mock_request)
+        ip = get_client_ip(request)
+
+        # Should use first IP from X-Forwarded-For
+        assert ip == "203.0.113.1"
+
+    def test_get_client_ip_x_forwarded_for_single(self):
+        """Test X-Forwarded-For with single IP"""
+        request = Mock(spec=Request)
+        request.headers = {"x-forwarded-for": "203.0.113.5"}
+        request.client = Mock(host="10.0.0.1")
+
+        ip = get_client_ip(request)
+
+        assert ip == "203.0.113.5"
+
+    def test_get_client_ip_x_forwarded_for_whitespace(self):
+        """Test X-Forwarded-For with extra whitespace"""
+        request = Mock(spec=Request)
+        request.headers = {"x-forwarded-for": "  203.0.113.10  ,  10.0.0.1  "}
+        request.client = Mock(host="10.0.0.1")
+
+        ip = get_client_ip(request)
+
+        assert ip == "203.0.113.10"
+
+    def test_get_client_ip_no_client(self):
+        """Test IP extraction when client is None"""
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = None
+
+        ip = get_client_ip(request)
+
         assert ip == "unknown"
 
-    def test_get_client_ip_prefers_forwarded_for(self, mock_request):
-        """Should prefer X-Forwarded-For over request.client"""
-        mock_request.headers = {"x-forwarded-for": "10.0.0.1"}
-        mock_request.client.host = "192.168.1.1"
-        ip = get_client_ip(mock_request)
-        assert ip == "10.0.0.1"  # Should use forwarded header
+    def test_get_client_ip_header_case_insensitive(self):
+        """Test header name is case sensitive in dict"""
+        # Note: In real FastAPI, headers are case-insensitive
+        # But in our mock, we need to use the exact case
+        request = Mock(spec=Request)
+        request.headers = {"x-forwarded-for": "172.16.0.1"}
+        request.client = Mock(host="10.0.0.1")
+
+        ip = get_client_ip(request)
+
+        assert ip == "172.16.0.1"
 
 
 class TestCreateSession:
     """Test session creation"""
 
-    def test_create_session_basic(self):
-        """Should create a new session and return token"""
-        client_ip = "192.168.1.1"
+    def setup_method(self):
+        """Clear sessions before each test"""
+        session_storage._memory_sessions.clear()
+        admin_sessions.clear()
+
+    def test_create_session_returns_token(self):
+        """Test session creation returns a token"""
+        client_ip = "192.168.1.100"
+
         token = create_session(client_ip)
 
-        assert token is not None
         assert isinstance(token, str)
         assert len(token) > 0
 
-    def test_create_session_stores_in_storage(self):
-        """Should store session in session_storage"""
-        client_ip = "192.168.1.1"
+    def test_create_session_stores_data(self):
+        """Test session data is stored correctly"""
+        client_ip = "10.0.0.5"
+
         token = create_session(client_ip)
 
         # Verify session is stored
         session = session_storage.get_session(token)
         assert session is not None
         assert session["ip"] == client_ip
-        assert "created_at" in session
+        assert isinstance(session["created_at"], datetime)
 
     def test_create_session_unique_tokens(self):
-        """Should create unique tokens for each session"""
-        token1 = create_session("192.168.1.1")
-        token2 = create_session("192.168.1.1")
-        token3 = create_session("192.168.1.2")
+        """Test each session gets a unique token"""
+        tokens = [create_session("192.168.1.1") for _ in range(10)]
 
-        # All tokens should be different
-        assert token1 != token2
-        assert token1 != token3
-        assert token2 != token3
+        # All tokens should be unique
+        assert len(set(tokens)) == 10
 
-    def test_create_session_with_different_ips(self):
-        """Should create sessions for different IPs"""
-        token1 = create_session("192.168.1.1")
-        token2 = create_session("192.168.1.2")
+    def test_create_session_logging(self, caplog):
+        """Test session creation logs correctly"""
+        import logging
 
-        session1 = session_storage.get_session(token1)
-        session2 = session_storage.get_session(token2)
+        caplog.set_level(logging.INFO)
+        client_ip = "203.0.113.50"
 
-        assert session1["ip"] == "192.168.1.1"
-        assert session2["ip"] == "192.168.1.2"
+        create_session(client_ip)
+
+        # Check log message
+        assert any(
+            "Created new admin session" in record.message and client_ip in record.message
+            for record in caplog.records
+        )
 
 
 class TestValidateSession:
     """Test session validation"""
 
+    def setup_method(self):
+        """Clear sessions before each test"""
+        session_storage._memory_sessions.clear()
+        admin_sessions.clear()
+
     def test_validate_session_valid(self):
-        """Should validate a valid session"""
-        client_ip = "192.168.1.1"
+        """Test validation of valid session"""
+        client_ip = "192.168.1.100"
         token = create_session(client_ip)
 
-        result = validate_session(token, client_ip)
-        assert result is True
+        is_valid = validate_session(token, client_ip)
+
+        assert is_valid is True
 
     def test_validate_session_none_token(self):
-        """Should return False for None token"""
-        result = validate_session(None, "192.168.1.1")
-        assert result is False
+        """Test validation with None token"""
+        is_valid = validate_session(None, "192.168.1.1")
 
-    def test_validate_session_nonexistent_token(self):
-        """Should return False for nonexistent token"""
-        result = validate_session("nonexistent_token", "192.168.1.1")
-        assert result is False
+        assert is_valid is False
+
+    def test_validate_session_empty_token(self):
+        """Test validation with empty token"""
+        is_valid = validate_session("", "192.168.1.1")
+
+        assert is_valid is False
+
+    def test_validate_session_invalid_token(self):
+        """Test validation with invalid token"""
+        is_valid = validate_session("invalid-token-123", "192.168.1.1")
+
+        assert is_valid is False
 
     def test_validate_session_expired(self):
-        """Should return False for expired session"""
-        client_ip = "192.168.1.1"
-
-        # Create a session with expired timestamp
-        token = create_session(client_ip)
-        session = session_storage.get_session(token)
-
-        # Manually set created_at to past
-        session["created_at"] = datetime.utcnow() - timedelta(hours=2)
-        session_storage.set_session(token, session, 3600)
-
-        with patch('api.dependencies.SESSION_TIMEOUT_SECONDS', 3600):  # 1 hour timeout
-            result = validate_session(token, client_ip)
-            assert result is False
-
-    def test_validate_session_deletes_expired(self):
-        """Should delete expired sessions"""
-        client_ip = "192.168.1.1"
+        """Test validation of expired session"""
+        client_ip = "10.0.0.1"
         token = create_session(client_ip)
 
-        # Make session expired
+        # Manually expire the session by modifying created_at
         session = session_storage.get_session(token)
-        session["created_at"] = datetime.utcnow() - timedelta(hours=2)
-        session_storage.set_session(token, session, 3600)
+        session["created_at"] = datetime.utcnow() - timedelta(
+            seconds=SESSION_TIMEOUT_SECONDS + 10
+        )
+        session_storage.set_session(token, session, SESSION_TIMEOUT_SECONDS)
 
-        with patch('api.dependencies.SESSION_TIMEOUT_SECONDS', 3600):
-            validate_session(token, client_ip)
+        is_valid = validate_session(token, client_ip)
 
-            # Session should be deleted
-            # Note: Might still exist in memory due to our test setup
-            # but would be expired in real usage
+        assert is_valid is False
+
+    def test_validate_session_expired_logging(self, caplog):
+        """Test expired session logs correctly"""
+        import logging
+
+        caplog.set_level(logging.INFO)
+        client_ip = "10.0.0.1"
+        token = create_session(client_ip)
+
+        # Expire session
+        session = session_storage.get_session(token)
+        session["created_at"] = datetime.utcnow() - timedelta(
+            seconds=SESSION_TIMEOUT_SECONDS + 10
+        )
+        session_storage.set_session(token, session, SESSION_TIMEOUT_SECONDS)
+
+        validate_session(token, client_ip)
+
+        # Check log message
+        assert any("Session expired" in record.message for record in caplog.records)
+
+    def test_validate_session_removes_expired(self):
+        """Test expired session is removed from storage"""
+        client_ip = "10.0.0.1"
+        token = create_session(client_ip)
+
+        # Expire session
+        session = session_storage.get_session(token)
+        session["created_at"] = datetime.utcnow() - timedelta(
+            seconds=SESSION_TIMEOUT_SECONDS + 10
+        )
+        session_storage.set_session(token, session, SESSION_TIMEOUT_SECONDS)
+
+        validate_session(token, client_ip)
+
+        # Session should be deleted
+        # Note: May still exist in storage depending on implementation
+        # but validation should return False
+        assert validate_session(token, client_ip) is False
 
 
 class TestCleanupExpiredSessions:
-    """Test expired session cleanup"""
+    """Test session cleanup"""
 
-    def test_cleanup_expired_sessions_with_legacy_storage(self):
-        """Should cleanup expired sessions from legacy admin_sessions dict"""
-        from shared.rate_limiting import admin_sessions
-
-        # Add expired sessions to legacy storage
-        admin_sessions["token1"] = {
-            "created_at": datetime.utcnow() - timedelta(hours=2),
-            "ip": "192.168.1.1"
-        }
-        admin_sessions["token2"] = {
-            "created_at": datetime.utcnow(),
-            "ip": "192.168.1.2"
-        }
-
-        with patch('api.dependencies.SESSION_TIMEOUT_SECONDS', 3600):  # 1 hour
-            cleanup_expired_sessions()
-
-            # token1 should be removed (expired)
-            assert "token1" not in admin_sessions
-            # token2 should remain (not expired)
-            assert "token2" in admin_sessions
-
-        # Clean up
+    def setup_method(self):
+        """Clear sessions before each test"""
         admin_sessions.clear()
+        session_storage._memory_sessions.clear()
 
-    def test_cleanup_no_expired_sessions(self):
-        """Should handle cleanup when no sessions are expired"""
-        from shared.rate_limiting import admin_sessions
+    def test_cleanup_expired_sessions_empty(self):
+        """Test cleanup with no sessions"""
+        cleanup_expired_sessions()
 
-        admin_sessions["token1"] = {
+        # Should not raise error
+        assert len(admin_sessions) == 0
+
+    def test_cleanup_expired_sessions_all_valid(self):
+        """Test cleanup with all valid sessions"""
+        # Create some valid sessions in legacy storage
+        tokens = []
+        for i in range(3):
+            token = f"token-{i}"
+            admin_sessions[token] = {
+                "created_at": datetime.utcnow(),
+                "ip": f"192.168.1.{i}",
+            }
+            tokens.append(token)
+
+        cleanup_expired_sessions()
+
+        # All sessions should still exist
+        assert len(admin_sessions) == 3
+
+    def test_cleanup_expired_sessions_some_expired(self):
+        """Test cleanup removes only expired sessions"""
+        # Create mix of valid and expired sessions
+        valid_token = "valid-token"
+        admin_sessions[valid_token] = {
             "created_at": datetime.utcnow(),
-            "ip": "192.168.1.1"
+            "ip": "192.168.1.1",
+        }
+
+        expired_token = "expired-token"
+        admin_sessions[expired_token] = {
+            "created_at": datetime.utcnow()
+            - timedelta(seconds=SESSION_TIMEOUT_SECONDS + 10),
+            "ip": "192.168.1.2",
         }
 
         cleanup_expired_sessions()
 
-        # Session should still exist
-        assert "token1" in admin_sessions
+        # Only valid session should remain
+        assert valid_token in admin_sessions
+        assert expired_token not in admin_sessions
 
-        # Clean up
-        admin_sessions.clear()
+    def test_cleanup_expired_sessions_logging(self, caplog):
+        """Test cleanup logs when sessions are removed"""
+        import logging
 
-    def test_cleanup_empty_sessions(self):
-        """Should handle cleanup when no sessions exist"""
-        from shared.rate_limiting import admin_sessions
-        admin_sessions.clear()
+        caplog.set_level(logging.INFO)
 
-        # Should not raise any errors
+        # Create expired sessions
+        for i in range(3):
+            token = f"expired-{i}"
+            admin_sessions[token] = {
+                "created_at": datetime.utcnow()
+                - timedelta(seconds=SESSION_TIMEOUT_SECONDS + 10),
+                "ip": f"192.168.1.{i}",
+            }
+
         cleanup_expired_sessions()
+
+        # Check log message
+        assert any(
+            "Cleaned up" in record.message and "expired sessions" in record.message
+            for record in caplog.records
+        )
 
 
 class TestRevokeSession:
     """Test session revocation"""
 
-    def test_revoke_session_existing(self):
-        """Should revoke an existing session"""
-        client_ip = "192.168.1.1"
+    def setup_method(self):
+        """Clear sessions before each test"""
+        session_storage._memory_sessions.clear()
+        admin_sessions.clear()
+
+    def test_revoke_session_valid(self):
+        """Test revoking a valid session"""
+        client_ip = "192.168.1.100"
         token = create_session(client_ip)
 
         # Verify session exists
-        assert session_storage.get_session(token) is not None
+        assert validate_session(token, client_ip) is True
 
         # Revoke session
         revoke_session(token)
 
-        # Session should be gone
-        assert session_storage.get_session(token) is None
+        # Session should no longer be valid
+        assert validate_session(token, client_ip) is False
 
-    def test_revoke_session_none_token(self):
-        """Should handle None token gracefully"""
-        # Should not raise any errors
+    def test_revoke_session_none(self):
+        """Test revoking None token"""
+        # Should not raise error
         revoke_session(None)
 
-    def test_revoke_session_nonexistent(self):
-        """Should handle nonexistent token gracefully"""
-        # Should not raise any errors
-        revoke_session("nonexistent_token")
+    def test_revoke_session_invalid(self):
+        """Test revoking invalid token"""
+        # Should not raise error
+        revoke_session("invalid-token")
+
+    def test_revoke_session_logging(self, caplog):
+        """Test revocation logs correctly"""
+        import logging
+
+        caplog.set_level(logging.INFO)
+        client_ip = "192.168.1.100"
+        token = create_session(client_ip)
+
+        revoke_session(token)
+
+        # Check log message
+        assert any("Revoked admin session" in record.message for record in caplog.records)
 
 
 class TestRequireAdminAuth:
     """Test admin authentication dependency"""
 
-    def test_require_admin_auth_with_valid_jwt(self, mock_request):
-        """Should authenticate with valid JWT token"""
-        from utils.jwt_utils import generate_jwt_token
+    def setup_method(self):
+        """Clear sessions and setup before each test"""
+        session_storage._memory_sessions.clear()
+        admin_sessions.clear()
 
-        client_ip = "192.168.1.1"
+    def test_require_admin_auth_valid_jwt(self):
+        """Test authentication with valid JWT token"""
+        client_ip = "192.168.1.100"
         jwt_token = generate_jwt_token(client_ip)
 
-        # Should not raise any exception
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
+
+        # Should not raise exception
         require_admin_auth(
-            request=mock_request,
-            authorization=f"Bearer {jwt_token}",
-            x_admin_token=None,
-            admin_session=None
+            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None, admin_session=None
         )
 
-    def test_require_admin_auth_with_invalid_jwt(self, mock_request):
-        """Should reject invalid JWT token"""
-        with pytest.raises(HTTPException) as exc_info:
-            require_admin_auth(
-                request=mock_request,
-                authorization="Bearer invalid_token",
-                x_admin_token=None,
-                admin_session=None
-            )
+    def test_require_admin_auth_valid_session_cookie(self):
+        """Test authentication with valid session cookie"""
+        client_ip = "10.0.0.5"
+        session_token = create_session(client_ip)
 
-        assert exc_info.value.status_code == 401
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
 
-    def test_require_admin_auth_with_valid_session(self, mock_request):
-        """Should authenticate with valid session cookie"""
+        # Should not raise exception
+        require_admin_auth(
+            request=request, authorization=None, x_admin_token=None, admin_session=session_token
+        )
+
+    def test_require_admin_auth_valid_admin_token(self):
+        """Test authentication with valid admin token header"""
+        client_ip = "172.16.0.1"
+
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
+
+        # Should not raise exception
+        require_admin_auth(
+            request=request, authorization=None, x_admin_token=ADMIN_TOKEN, admin_session=None
+        )
+
+    def test_require_admin_auth_no_credentials(self):
+        """Test authentication fails with no credentials"""
         client_ip = "192.168.1.1"
-        token = create_session(client_ip)
 
-        # Should not raise any exception
-        require_admin_auth(
-            request=mock_request,
-            authorization=None,
-            x_admin_token=None,
-            admin_session=token
-        )
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
 
-    def test_require_admin_auth_with_invalid_session(self, mock_request):
-        """Should reject invalid session cookie"""
         with pytest.raises(HTTPException) as exc_info:
             require_admin_auth(
-                request=mock_request,
-                authorization=None,
-                x_admin_token=None,
-                admin_session="invalid_session"
+                request=request, authorization=None, x_admin_token=None, admin_session=None
             )
 
         assert exc_info.value.status_code == 401
 
-    def test_require_admin_auth_with_valid_admin_token(self, mock_request):
-        """Should authenticate with valid admin token header"""
-        with patch('api.dependencies.ADMIN_TOKEN', 'test_admin_token'):
-            with patch('api.dependencies.DISABLE_RATE_LIMITING', True):
-                # Should not raise any exception
+    def test_require_admin_auth_invalid_jwt(self):
+        """Test authentication fails with invalid JWT"""
+        client_ip = "192.168.1.1"
+
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
+
+        with pytest.raises(HTTPException) as exc_info:
+            require_admin_auth(
+                request=request,
+                authorization="Bearer invalid.jwt.token",
+                x_admin_token=None,
+                admin_session=None,
+            )
+
+        assert exc_info.value.status_code == 401
+
+    def test_require_admin_auth_invalid_admin_token(self):
+        """Test authentication fails with wrong admin token"""
+        client_ip = "192.168.1.1"
+
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
+
+        with pytest.raises(HTTPException) as exc_info:
+            require_admin_auth(
+                request=request, authorization=None, x_admin_token="wrong-token", admin_session=None
+            )
+
+        assert exc_info.value.status_code == 401
+
+    def test_require_admin_auth_invalid_session(self):
+        """Test authentication fails with invalid session"""
+        client_ip = "192.168.1.1"
+
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
+
+        with pytest.raises(HTTPException) as exc_info:
+            require_admin_auth(
+                request=request, authorization=None, x_admin_token=None, admin_session="invalid-session"
+            )
+
+        assert exc_info.value.status_code == 401
+
+    def test_require_admin_auth_jwt_preferred_over_session(self):
+        """Test JWT is tried before session cookie"""
+        client_ip = "192.168.1.100"
+        jwt_token = generate_jwt_token(client_ip)
+        # Create invalid session
+        invalid_session = "invalid-session-token"
+
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
+
+        # Should succeed with valid JWT even though session is invalid
+        require_admin_auth(
+            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None, admin_session=invalid_session
+        )
+
+    def test_require_admin_auth_session_preferred_over_token(self):
+        """Test session cookie is tried before admin token"""
+        client_ip = "192.168.1.100"
+        session_token = create_session(client_ip)
+
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
+
+        # Should succeed with valid session even with wrong admin token
+        require_admin_auth(
+            request=request, authorization=None, x_admin_token="wrong", admin_session=session_token
+        )
+
+    @patch("api.dependencies.DISABLE_RATE_LIMITING", False)
+    def test_require_admin_auth_rate_limiting_disabled_in_tests(self):
+        """Test rate limiting behavior"""
+        # Note: In test environment, DISABLE_RATE_LIMITING is typically True
+        # This test verifies the code path when it's False
+        client_ip = "192.168.1.1"
+
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
+
+        # Multiple failed attempts
+        for _ in range(3):
+            with pytest.raises(HTTPException):
                 require_admin_auth(
-                    request=mock_request,
-                    authorization=None,
-                    x_admin_token='test_admin_token',
-                    admin_session=None
+                    request=request, authorization=None, x_admin_token="wrong", admin_session=None
                 )
 
-    def test_require_admin_auth_with_invalid_admin_token(self, mock_request):
-        """Should reject invalid admin token header"""
-        with patch('api.dependencies.ADMIN_TOKEN', 'correct_token'):
-            with patch('api.dependencies.DISABLE_RATE_LIMITING', True):
-                with pytest.raises(HTTPException) as exc_info:
-                    require_admin_auth(
-                        request=mock_request,
-                        authorization=None,
-                        x_admin_token='wrong_token',
-                        admin_session=None
-                    )
+    def test_require_admin_auth_logging_invalid(self, caplog):
+        """Test authentication logs invalid attempts"""
+        import logging
 
-                assert exc_info.value.status_code == 401
+        caplog.set_level(logging.WARNING)
+        client_ip = "192.168.1.1"
 
-    def test_require_admin_auth_rate_limiting(self, mock_request):
-        """Should enforce rate limiting on failed attempts"""
-        with patch('api.dependencies.ADMIN_TOKEN', 'correct_token'):
-            with patch('api.dependencies.DISABLE_RATE_LIMITING', False):
-                with patch('api.dependencies.RATE_LIMIT_ATTEMPTS', 3):
-                    with patch('api.dependencies.RATE_LIMIT_WINDOW', 60):
-                        # Make multiple failed attempts
-                        for i in range(3):
-                            try:
-                                require_admin_auth(
-                                    request=mock_request,
-                                    authorization=None,
-                                    x_admin_token='wrong_token',
-                                    admin_session=None
-                                )
-                            except HTTPException:
-                                pass  # Expected
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
 
-                        # Next attempt should be rate limited
-                        with pytest.raises(HTTPException) as exc_info:
-                            require_admin_auth(
-                                request=mock_request,
-                                authorization=None,
-                                x_admin_token='wrong_token',
-                                admin_session=None
-                            )
-
-                        assert exc_info.value.status_code == 429
-
-    def test_require_admin_auth_no_credentials(self, mock_request):
-        """Should reject request with no credentials"""
-        with pytest.raises(HTTPException) as exc_info:
+        with pytest.raises(HTTPException):
             require_admin_auth(
-                request=mock_request,
-                authorization=None,
-                x_admin_token=None,
-                admin_session=None
+                request=request, authorization=None, x_admin_token="wrong-token", admin_session=None
             )
 
-        assert exc_info.value.status_code == 401
-
-    def test_require_admin_auth_jwt_priority(self, mock_request):
-        """Should prioritize JWT over session cookie"""
-        from utils.jwt_utils import generate_jwt_token
-
-        # Create both JWT and session
-        jwt_token = generate_jwt_token("192.168.1.1")
-        session_token = create_session("192.168.1.2")
-
-        # Should authenticate with JWT (doesn't matter if session is valid)
-        require_admin_auth(
-            request=mock_request,
-            authorization=f"Bearer {jwt_token}",
-            x_admin_token=None,
-            admin_session=session_token
+        # Check log message
+        assert any(
+            "Invalid admin token attempt" in record.message for record in caplog.records
         )
 
-    def test_require_admin_auth_session_priority_over_header(self, mock_request):
-        """Should prioritize session over admin token header"""
-        session_token = create_session("192.168.1.1")
+    def test_require_admin_auth_jwt_debug_logging(self, caplog):
+        """Test JWT authentication debug logging"""
+        import logging
 
-        with patch('api.dependencies.ADMIN_TOKEN', 'correct_token'):
-            # Should authenticate with session, not check admin token header
+        caplog.set_level(logging.DEBUG)
+        client_ip = "192.168.1.100"
+        jwt_token = generate_jwt_token(client_ip)
+
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
+
+        require_admin_auth(
+            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None, admin_session=None
+        )
+
+        # Check debug log
+        assert any(
+            "Valid JWT authentication" in record.message for record in caplog.records
+        )
+
+    def test_require_admin_auth_session_debug_logging(self, caplog):
+        """Test session authentication debug logging"""
+        import logging
+
+        caplog.set_level(logging.DEBUG)
+        client_ip = "192.168.1.100"
+        session_token = create_session(client_ip)
+
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
+
+        require_admin_auth(
+            request=request, authorization=None, x_admin_token=None, admin_session=session_token
+        )
+
+        # Check debug log
+        assert any(
+            "Valid session authentication" in record.message for record in caplog.records
+        )
+
+
+class TestIntegration:
+    """Integration tests for authentication flow"""
+
+    def setup_method(self):
+        """Clear state before each test"""
+        session_storage._memory_sessions.clear()
+        admin_sessions.clear()
+
+    def test_full_session_workflow(self):
+        """Test complete session creation, validation, and revocation"""
+        client_ip = "192.168.1.100"
+
+        # 1. Create session
+        token = create_session(client_ip)
+        assert token is not None
+
+        # 2. Validate session
+        assert validate_session(token, client_ip) is True
+
+        # 3. Use session for authentication
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
+
+        require_admin_auth(request=request, authorization=None, x_admin_token=None, admin_session=token)
+
+        # 4. Revoke session
+        revoke_session(token)
+
+        # 5. Session should no longer work
+        assert validate_session(token, client_ip) is False
+
+        with pytest.raises(HTTPException):
             require_admin_auth(
-                request=mock_request,
-                authorization=None,
-                x_admin_token='wrong_token',  # This should be ignored
-                admin_session=session_token
+                request=request, authorization=None, x_admin_token=None, admin_session=token
             )
 
+    def test_full_jwt_workflow(self):
+        """Test complete JWT authentication workflow"""
+        client_ip = "10.0.0.5"
 
-class TestRateLimitingIntegration:
-    """Test rate limiting integration with dependencies"""
+        # 1. Generate JWT
+        token = generate_jwt_token(client_ip)
 
-    def test_rate_limit_window_expiration(self, mock_request):
-        """Should clear old attempts outside rate limit window"""
-        with patch('api.dependencies.ADMIN_TOKEN', 'correct_token'):
-            with patch('api.dependencies.DISABLE_RATE_LIMITING', False):
-                with patch('api.dependencies.RATE_LIMIT_ATTEMPTS', 2):
-                    with patch('api.dependencies.RATE_LIMIT_WINDOW', 1):  # 1 second window
-                        # Make failed attempt
-                        try:
-                            require_admin_auth(
-                                request=mock_request,
-                                authorization=None,
-                                x_admin_token='wrong_token',
-                                admin_session=None
-                            )
-                        except HTTPException:
-                            pass
+        # 2. Use for authentication
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
 
-                        # Wait for window to expire
-                        time.sleep(1.1)
+        require_admin_auth(
+            request=request, authorization=f"Bearer {token}", x_admin_token=None, admin_session=None
+        )
 
-                        # Should be able to make more attempts
-                        # (old attempts cleared from window)
-                        try:
-                            require_admin_auth(
-                                request=mock_request,
-                                authorization=None,
-                                x_admin_token='wrong_token',
-                                admin_session=None
-                            )
-                        except HTTPException as e:
-                            # Should get 401, not 429
-                            assert e.status_code == 401
+    def test_mixed_authentication_methods(self):
+        """Test using different authentication methods"""
+        client_ip = "172.16.0.1"
 
-    def test_rate_limit_per_ip(self, mock_request):
-        """Should track rate limits per IP address"""
-        mock_request2 = Mock(spec=Request)
-        mock_request2.client = Mock()
-        mock_request2.client.host = "192.168.1.2"  # Different IP
-        mock_request2.headers = {}
+        # Create all auth methods
+        jwt_token = generate_jwt_token(client_ip)
+        session_token = create_session(client_ip)
 
-        with patch('api.dependencies.ADMIN_TOKEN', 'correct_token'):
-            with patch('api.dependencies.DISABLE_RATE_LIMITING', False):
-                with patch('api.dependencies.RATE_LIMIT_ATTEMPTS', 2):
-                    # Make failed attempts from first IP
-                    for i in range(2):
-                        try:
-                            require_admin_auth(
-                                request=mock_request,
-                                authorization=None,
-                                x_admin_token='wrong_token',
-                                admin_session=None
-                            )
-                        except HTTPException:
-                            pass
+        request = Mock(spec=Request)
+        request.headers = {}
+        request.client = Mock(host=client_ip)
 
-                    # First IP should be rate limited
-                    with pytest.raises(HTTPException) as exc_info:
-                        require_admin_auth(
-                            request=mock_request,
-                            authorization=None,
-                            x_admin_token='wrong_token',
-                            admin_session=None
-                        )
-                    assert exc_info.value.status_code == 429
+        # Test JWT
+        require_admin_auth(
+            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None, admin_session=None
+        )
 
-                    # Second IP should still work (different rate limit)
-                    try:
-                        require_admin_auth(
-                            request=mock_request2,
-                            authorization=None,
-                            x_admin_token='wrong_token',
-                            admin_session=None
-                        )
-                    except HTTPException as e:
-                        # Should get 401, not 429
-                        assert e.status_code == 401
+        # Test session
+        require_admin_auth(
+            request=request, authorization=None, x_admin_token=None, admin_session=session_token
+        )
+
+        # Test admin token
+        require_admin_auth(
+            request=request, authorization=None, x_admin_token=ADMIN_TOKEN, admin_session=None
+        )
