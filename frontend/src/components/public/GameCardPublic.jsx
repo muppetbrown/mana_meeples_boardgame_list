@@ -112,17 +112,13 @@ export default function GameCardPublic({
       ref={cardRef}
       data-game-card
       className={`game-card-container scroll-mt-24 group bg-white rounded-2xl shadow-md hover:shadow-xl border-2 border-slate-200 ${transitionClass} hover:border-emerald-300 focus-within:ring-4 focus-within:ring-emerald-200 focus-within:ring-offset-2 ${
-        isExpanded ? 'flex flex-col' : 'relative w-full'
+        isExpanded ? 'flex flex-col' : 'w-full aspect-[2/1] overflow-hidden'
       }`}
-      style={!isExpanded ? {
-        paddingBottom: '50%', // Creates 2:1 aspect ratio (height = 50% of width)
-        overflow: 'hidden'
-      } : {}}
     >
       {!isExpanded && (
-        <div className="absolute inset-0" style={{ display: 'flex', flexDirection: 'row', width: '100%', height: '100%' }}>
+        <div className="w-full h-full flex flex-row">
           {/* Image Section - Minimized */}
-          <div style={{ width: '50%', height: '100%', flexShrink: 0, overflow: 'hidden' }}>
+          <div className="w-1/2 h-full flex-shrink-0 overflow-hidden">
             <Link
               to={href}
               className="block focus:outline-none w-full h-full"
@@ -177,7 +173,7 @@ export default function GameCardPublic({
           </div>
 
           {/* Content Section - Minimized */}
-          <div style={{ width: '50%', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '0.5rem' }}>
+          <div className="w-1/2 h-full overflow-hidden flex flex-col p-2">
 
         {/* Compact Info - Always Visible */}
         <div className="flex-1">
