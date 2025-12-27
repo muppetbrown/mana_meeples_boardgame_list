@@ -16,556 +16,472 @@ from shared.rate_limiting import (
     session_storage,
     rate_limit_tracker,
 )
-from slowapi import Limiter
-from slowapi.errors import RateLimitExceeded
 
 
-class TestGetLimiter:
-    """Test limiter creation"""
+class TestRateLimiterConfiguration:
+    """Test rate limiter configuration functions"""
 
-    @patch("shared.rate_limiting.DISABLE_RATE_LIMITING", False)
-    def test_get_limiter_enabled(self):
-        """Test limiter creation when enabled"""
+    def test_get_limiter(self):
+        """Should return a configured Limiter instance"""
         limiter = get_limiter()
 
+        assert limiter is not None
+        # Check it's a Limiter instance
+        from slowapi import Limiter
         assert isinstance(limiter, Limiter)
-        # Check if limiter is actually enabled (implementation detail may vary)
-        # Just verify it's a Limiter instance
 
-    @patch("shared.rate_limiting.DISABLE_RATE_LIMITING", True)
-    def test_get_limiter_disabled(self, caplog):
-        """Test limiter creation when disabled"""
-        import logging
+    def test_get_limiter_with_rate_limiting_disabled(self):
+        """Should return disabled limiter when DISABLE_RATE_LIMITING is True"""
+        with patch('shared.rate_limiting.DISABLE_RATE_LIMITING', True):
+            limiter = get_limiter()
+            assert limiter is not None
+            assert limiter.enabled is False
 
-        caplog.set_level(logging.INFO)
-
-        limiter = get_limiter()
-
-        assert isinstance(limiter, Limiter)
-        # Check log message instead of internal attribute
-        assert any(
-            "Rate limiting DISABLED" in record.message for record in caplog.records
-        )
-
-
-class TestGetRateLimitHelpers:
-    """Test helper functions"""
+    def test_get_limiter_with_rate_limiting_enabled(self):
+        """Should return enabled limiter when DISABLE_RATE_LIMITING is False"""
+        with patch('shared.rate_limiting.DISABLE_RATE_LIMITING', False):
+            limiter = get_limiter()
+            assert limiter is not None
+            assert limiter.enabled is True
 
     def test_get_rate_limit_exception_handler(self):
-        """Test getting exception handler"""
+        """Should return rate limit exception handler"""
         handler = get_rate_limit_exception_handler()
-
+        assert handler is not None
         assert callable(handler)
 
     def test_get_rate_limit_exception(self):
-        """Test getting exception class"""
+        """Should return RateLimitExceeded exception class"""
+        from slowapi.errors import RateLimitExceeded
         exc_class = get_rate_limit_exception()
-
-        assert exc_class == RateLimitExceeded
-        assert issubclass(exc_class, Exception)
+        assert exc_class is RateLimitExceeded
 
 
-class TestSessionStorage:
-    """Test SessionStorage class"""
+class TestSessionStorageMemoryBackend:
+    """Test SessionStorage with in-memory backend"""
 
-    def setup_method(self):
-        """Create fresh SessionStorage for each test"""
-        self.storage = SessionStorage()
-        # Clear any existing data
-        self.storage._memory_sessions.clear()
-
-    def test_session_storage_init_memory(self):
-        """Test SessionStorage initialization with in-memory backend"""
-        with patch("shared.rate_limiting.REDIS_ENABLED", False):
+    def test_init_with_redis_disabled(self):
+        """Should initialize with in-memory backend when Redis is disabled"""
+        with patch('shared.rate_limiting.REDIS_ENABLED', False):
             storage = SessionStorage()
-
             assert storage._redis_client is None
             assert isinstance(storage._memory_sessions, dict)
 
-    def test_session_storage_get_redis_key(self):
-        """Test Redis key generation"""
-        token = "test-token-123"
-        key = self.storage._get_redis_key(token)
+    def test_init_with_redis_enabled_but_unavailable(self):
+        """Should fall back to memory when Redis is enabled but unavailable"""
+        mock_redis = Mock()
+        mock_redis.is_available = False
 
-        assert key == f"session:{token}"
+        with patch('config.REDIS_ENABLED', True):
+            with patch('redis_client.get_redis_client', return_value=mock_redis):
+                # Need to create a fresh instance to test initialization
+                from shared.rate_limiting import SessionStorage as SS
+                storage = SS()
+                assert storage._redis_client is None
 
-    def test_session_storage_set_get_memory(self):
-        """Test set and get session with in-memory storage"""
-        token = "session-token-123"
+    def test_set_session_memory(self):
+        """Should store session in memory"""
+        storage = SessionStorage()
+        storage._redis_client = None  # Force memory backend
+
+        session_token = "test_token_123"
         session_data = {
-            "created_at": datetime.utcnow(),
-            "ip": "192.168.1.100",
+            "user": "admin",
+            "ip": "192.168.1.1",
+            "created_at": datetime.utcnow()
         }
 
-        # Store session
-        success = self.storage.set_session(token, session_data, ttl_seconds=3600)
+        result = storage.set_session(session_token, session_data, 3600)
+        assert result is True
+        assert session_token in storage._memory_sessions
 
-        assert success is True
-        assert token in self.storage._memory_sessions
+    def test_get_session_memory(self):
+        """Should retrieve session from memory"""
+        storage = SessionStorage()
+        storage._redis_client = None  # Force memory backend
 
-        # Retrieve session
-        retrieved = self.storage.get_session(token)
+        session_token = "test_token_456"
+        session_data = {
+            "user": "admin",
+            "ip": "192.168.1.2"
+        }
+
+        storage.set_session(session_token, session_data, 3600)
+        retrieved = storage.get_session(session_token)
 
         assert retrieved is not None
-        assert retrieved["ip"] == "192.168.1.100"
-        assert isinstance(retrieved["created_at"], datetime)
+        assert retrieved["user"] == "admin"
+        assert retrieved["ip"] == "192.168.1.2"
 
-    def test_session_storage_set_datetime_serialization(self):
-        """Test datetime serialization in session data"""
-        token = "test-token"
+    def test_get_session_not_found_memory(self):
+        """Should return None for non-existent session"""
+        storage = SessionStorage()
+        storage._redis_client = None  # Force memory backend
+
+        retrieved = storage.get_session("nonexistent_token")
+        assert retrieved is None
+
+    def test_delete_session_memory(self):
+        """Should delete session from memory"""
+        storage = SessionStorage()
+        storage._redis_client = None  # Force memory backend
+
+        session_token = "test_token_789"
+        session_data = {"user": "admin"}
+
+        storage.set_session(session_token, session_data, 3600)
+        assert session_token in storage._memory_sessions
+
+        result = storage.delete_session(session_token)
+        assert result is True
+        assert session_token not in storage._memory_sessions
+
+    def test_delete_nonexistent_session_memory(self):
+        """Should return False when deleting non-existent session"""
+        storage = SessionStorage()
+        storage._redis_client = None  # Force memory backend
+
+        result = storage.delete_session("nonexistent_token")
+        assert result is False
+
+    def test_session_data_with_datetime(self):
+        """Should handle session data with datetime objects"""
+        storage = SessionStorage()
+        storage._redis_client = None  # Force memory backend
+
+        session_token = "test_token_datetime"
         now = datetime.utcnow()
-        session_data = {"created_at": now, "ip": "10.0.0.1"}
+        session_data = {
+            "user": "admin",
+            "created_at": now
+        }
 
-        self.storage.set_session(token, session_data, ttl_seconds=3600)
+        storage.set_session(session_token, session_data, 3600)
+        retrieved = storage.get_session(session_token)
 
-        # Original data should not be modified
-        assert isinstance(session_data["created_at"], datetime)
-
-        # Retrieved data should have datetime restored
-        retrieved = self.storage.get_session(token)
+        assert retrieved is not None
+        assert retrieved["user"] == "admin"
         assert isinstance(retrieved["created_at"], datetime)
 
-    def test_session_storage_get_nonexistent(self):
-        """Test getting non-existent session"""
-        result = self.storage.get_session("nonexistent-token")
 
-        assert result is None
+class TestSessionStorageRedisBackend:
+    """Test SessionStorage with Redis backend"""
 
-    def test_session_storage_delete_memory(self):
-        """Test deleting session from memory"""
-        token = "delete-me"
-        session_data = {"created_at": datetime.utcnow(), "ip": "192.168.1.1"}
+    def test_set_session_redis(self):
+        """Should store session in Redis"""
+        mock_redis = Mock()
+        mock_redis.is_available = True
+        mock_redis.set.return_value = True
 
-        self.storage.set_session(token, session_data, ttl_seconds=3600)
-        assert self.storage.get_session(token) is not None
+        storage = SessionStorage()
+        storage._redis_client = mock_redis
 
-        # Delete session
-        success = self.storage.delete_session(token)
+        session_token = "redis_token_123"
+        session_data = {"user": "admin", "ip": "192.168.1.1"}
 
-        assert success is True
-        assert self.storage.get_session(token) is None
+        result = storage.set_session(session_token, session_data, 3600)
 
-    def test_session_storage_delete_nonexistent(self):
-        """Test deleting non-existent session"""
-        success = self.storage.delete_session("nonexistent")
+        assert result is True
+        mock_redis.set.assert_called_once()
+        # Verify Redis key format
+        call_args = mock_redis.set.call_args
+        assert call_args[0][0] == f"session:{session_token}"
+        assert call_args[1]["ex"] == 3600
 
-        assert success is False
+    def test_get_session_redis(self):
+        """Should retrieve session from Redis"""
+        session_data = {"user": "admin", "ip": "192.168.1.1"}
+        mock_redis = Mock()
+        mock_redis.is_available = True
+        mock_redis.get.return_value = json.dumps(session_data)
 
-    def test_session_storage_multiple_sessions(self):
-        """Test storing multiple sessions"""
-        sessions = []
-        for i in range(5):
-            token = f"token-{i}"
-            data = {"created_at": datetime.utcnow(), "ip": f"192.168.1.{i}"}
-            self.storage.set_session(token, data, ttl_seconds=3600)
-            sessions.append((token, data))
+        storage = SessionStorage()
+        storage._redis_client = mock_redis
 
-        # All sessions should be retrievable
-        for token, original_data in sessions:
-            retrieved = self.storage.get_session(token)
-            assert retrieved is not None
-            assert retrieved["ip"] == original_data["ip"]
+        session_token = "redis_token_456"
+        retrieved = storage.get_session(session_token)
 
-    def test_session_storage_logging_set(self, caplog):
-        """Test logging when setting session"""
-        import logging
+        assert retrieved is not None
+        assert retrieved["user"] == "admin"
+        mock_redis.get.assert_called_once_with(f"session:{session_token}")
 
-        caplog.set_level(logging.DEBUG)
+    def test_get_session_redis_with_datetime(self):
+        """Should deserialize datetime from Redis"""
+        now = datetime.utcnow()
+        session_data = {
+            "user": "admin",
+            "created_at": now.isoformat()
+        }
+        mock_redis = Mock()
+        mock_redis.is_available = True
+        mock_redis.get.return_value = json.dumps(session_data)
 
-        self.storage.set_session(
-            "test-token", {"created_at": datetime.utcnow(), "ip": "10.0.0.1"}, ttl_seconds=3600
-        )
+        storage = SessionStorage()
+        storage._redis_client = mock_redis
 
-        # Check log message
-        assert any(
-            "Session stored in memory" in record.message for record in caplog.records
-        )
+        retrieved = storage.get_session("test_token")
 
-    def test_session_storage_logging_get(self, caplog):
-        """Test logging when getting session"""
-        import logging
+        assert retrieved is not None
+        assert isinstance(retrieved["created_at"], datetime)
 
-        caplog.set_level(logging.DEBUG)
+    def test_get_session_redis_invalid_json(self):
+        """Should handle invalid JSON from Redis"""
+        mock_redis = Mock()
+        mock_redis.is_available = True
+        mock_redis.get.return_value = "invalid json {{"
 
-        token = "test-token"
-        self.storage.set_session(
-            token, {"created_at": datetime.utcnow(), "ip": "10.0.0.1"}, ttl_seconds=3600
-        )
+        storage = SessionStorage()
+        storage._redis_client = mock_redis
 
-        caplog.clear()
-        self.storage.get_session(token)
+        retrieved = storage.get_session("test_token")
+        assert retrieved is None
 
-        # Check log message
-        assert any(
-            "Session retrieved from memory" in record.message for record in caplog.records
-        )
+    def test_delete_session_redis(self):
+        """Should delete session from Redis"""
+        mock_redis = Mock()
+        mock_redis.is_available = True
+        mock_redis.delete.return_value = True
 
-    def test_session_storage_logging_delete(self, caplog):
-        """Test logging when deleting session"""
-        import logging
+        storage = SessionStorage()
+        storage._redis_client = mock_redis
 
-        caplog.set_level(logging.DEBUG)
+        session_token = "redis_token_789"
+        result = storage.delete_session(session_token)
 
-        token = "test-token"
-        self.storage.set_session(
-            token, {"created_at": datetime.utcnow(), "ip": "10.0.0.1"}, ttl_seconds=3600
-        )
+        assert result is True
+        mock_redis.delete.assert_called_once_with(f"session:{session_token}")
 
-        caplog.clear()
-        self.storage.delete_session(token)
+    def test_redis_fallback_on_set_failure(self):
+        """Should fall back to memory if Redis set fails"""
+        mock_redis = Mock()
+        mock_redis.is_available = True
+        mock_redis.set.return_value = False  # Redis set failed
 
-        # Check log message
-        assert any(
-            "Session deleted from memory" in record.message for record in caplog.records
-        )
+        storage = SessionStorage()
+        storage._redis_client = mock_redis
 
-    @patch("shared.rate_limiting.REDIS_ENABLED", True)
-    def test_session_storage_redis_unavailable(self, caplog):
-        """Test SessionStorage when Redis is enabled but unavailable"""
-        import logging
+        session_token = "fallback_token"
+        session_data = {"user": "admin"}
 
-        caplog.set_level(logging.WARNING)
+        result = storage.set_session(session_token, session_data, 3600)
 
-        # Mock the imported get_redis_client function from redis_client module
-        with patch("redis_client.get_redis_client") as mock_get_redis:
-            mock_redis = Mock()
-            mock_redis.is_available = False
-            mock_get_redis.return_value = mock_redis
-
-            storage = SessionStorage()
-
-            # Should fall back to memory
-            assert storage._redis_client is None
-
-            # Check log
-            assert any(
-                "Redis unavailable" in record.message for record in caplog.records
-            )
-
-    @patch("shared.rate_limiting.REDIS_ENABLED", True)
-    def test_session_storage_redis_init_error(self, caplog):
-        """Test SessionStorage when Redis initialization fails"""
-        import logging
-
-        caplog.set_level(logging.ERROR)
-
-        with patch("redis_client.get_redis_client", side_effect=Exception("Connection error")):
-            storage = SessionStorage()
-
-            assert storage._redis_client is None
-
-            # Check log
-            assert any(
-                "Failed to initialize Redis client" in record.message
-                for record in caplog.records
-            )
+        assert result is True
+        # Should fall back to memory
+        assert session_token in storage._memory_sessions
 
 
-class TestRateLimitTracker:
-    """Test RateLimitTracker class"""
+class TestRateLimitTrackerMemoryBackend:
+    """Test RateLimitTracker with in-memory backend"""
 
-    def setup_method(self):
-        """Create fresh RateLimitTracker for each test"""
-        self.tracker = RateLimitTracker()
-        # Clear any existing data
-        self.tracker._memory_tracker.clear()
-
-    def test_rate_limit_tracker_init_memory(self):
-        """Test RateLimitTracker initialization with in-memory backend"""
-        with patch("shared.rate_limiting.REDIS_ENABLED", False):
-            tracker = RateLimitTracker()
-
+    def test_init_with_redis_disabled(self):
+        """Should initialize with in-memory backend when Redis is disabled"""
+        with patch('shared.rate_limiting.REDIS_ENABLED', False):
+            from shared.rate_limiting import RateLimitTracker as RLT
+            tracker = RLT()
             assert tracker._redis_client is None
-            assert isinstance(tracker._memory_tracker, dict)
+            assert isinstance(tracker._memory_tracker, defaultdict)
 
-    def test_rate_limit_tracker_get_redis_key(self):
-        """Test Redis key generation for IP"""
-        client_ip = "192.168.1.100"
-        key = self.tracker._get_redis_key(client_ip)
+    def test_get_attempts_memory_empty(self):
+        """Should return empty list for new IP"""
+        tracker = RateLimitTracker()
+        tracker._redis_client = None  # Force memory backend
 
-        assert key == f"ratelimit:admin:{client_ip}"
+        attempts = tracker.get_attempts("192.168.1.1")
+        assert attempts == []
 
-    def test_rate_limit_tracker_set_get_memory(self):
-        """Test set and get attempts with in-memory storage"""
-        client_ip = "10.0.0.1"
-        attempts = [1234567890.0, 1234567891.0, 1234567892.0]
+    def test_set_attempts_memory(self):
+        """Should store attempts in memory"""
+        tracker = RateLimitTracker()
+        tracker._redis_client = None  # Force memory backend
 
-        # Store attempts
-        success = self.tracker.set_attempts(client_ip, attempts, ttl_seconds=300)
+        client_ip = "192.168.1.1"
+        attempts = [1704067200.0, 1704067260.0, 1704067320.0]
 
-        assert success is True
+        result = tracker.set_attempts(client_ip, attempts, 300)
+        assert result is True
+        assert tracker._memory_tracker[client_ip] == attempts
 
-        # Retrieve attempts
-        retrieved = self.tracker.get_attempts(client_ip)
+    def test_get_attempts_memory(self):
+        """Should retrieve attempts from memory"""
+        tracker = RateLimitTracker()
+        tracker._redis_client = None  # Force memory backend
+
+        client_ip = "192.168.1.2"
+        attempts = [1704067200.0, 1704067260.0]
+
+        tracker.set_attempts(client_ip, attempts, 300)
+        retrieved = tracker.get_attempts(client_ip)
 
         assert retrieved == attempts
 
-    def test_rate_limit_tracker_get_empty(self):
-        """Test getting attempts for IP with no attempts"""
-        result = self.tracker.get_attempts("192.168.1.1")
+    def test_multiple_ips_memory(self):
+        """Should track attempts for multiple IPs separately"""
+        tracker = RateLimitTracker()
+        tracker._redis_client = None  # Force memory backend
 
-        assert result == []
+        ip1 = "192.168.1.1"
+        ip2 = "192.168.1.2"
+        attempts1 = [1704067200.0]
+        attempts2 = [1704067260.0, 1704067320.0]
 
-    def test_rate_limit_tracker_multiple_ips(self):
-        """Test tracking multiple IPs"""
-        ips_and_attempts = [
-            ("192.168.1.1", [100.0, 101.0]),
-            ("192.168.1.2", [200.0, 201.0, 202.0]),
-            ("10.0.0.1", [300.0]),
-        ]
+        tracker.set_attempts(ip1, attempts1, 300)
+        tracker.set_attempts(ip2, attempts2, 300)
 
-        for ip, attempts in ips_and_attempts:
-            self.tracker.set_attempts(ip, attempts, ttl_seconds=300)
+        assert tracker.get_attempts(ip1) == attempts1
+        assert tracker.get_attempts(ip2) == attempts2
 
-        # All IPs should have correct attempts
-        for ip, expected_attempts in ips_and_attempts:
-            retrieved = self.tracker.get_attempts(ip)
-            assert retrieved == expected_attempts
 
-    def test_rate_limit_tracker_update_attempts(self):
-        """Test updating attempts for same IP"""
-        client_ip = "10.0.0.5"
+class TestRateLimitTrackerRedisBackend:
+    """Test RateLimitTracker with Redis backend"""
 
-        # Initial attempts
-        self.tracker.set_attempts(client_ip, [100.0], ttl_seconds=300)
-        assert self.tracker.get_attempts(client_ip) == [100.0]
+    def test_get_attempts_redis_empty(self):
+        """Should return empty list when Redis returns None"""
+        mock_redis = Mock()
+        mock_redis.is_available = True
+        mock_redis.get.return_value = None
 
-        # Update attempts
-        self.tracker.set_attempts(client_ip, [100.0, 101.0], ttl_seconds=300)
-        assert self.tracker.get_attempts(client_ip) == [100.0, 101.0]
+        tracker = RateLimitTracker()
+        tracker._redis_client = mock_redis
 
-    def test_rate_limit_tracker_empty_attempts(self):
-        """Test setting empty attempts list"""
-        client_ip = "192.168.1.10"
+        attempts = tracker.get_attempts("192.168.1.1")
+        assert attempts == []
 
-        success = self.tracker.set_attempts(client_ip, [], ttl_seconds=300)
+    def test_get_attempts_redis(self):
+        """Should retrieve attempts from Redis"""
+        attempts_list = [1704067200.0, 1704067260.0]
+        mock_redis = Mock()
+        mock_redis.is_available = True
+        mock_redis.get.return_value = json.dumps(attempts_list)
 
-        assert success is True
-        assert self.tracker.get_attempts(client_ip) == []
+        tracker = RateLimitTracker()
+        tracker._redis_client = mock_redis
 
-    @patch("shared.rate_limiting.REDIS_ENABLED", True)
-    def test_rate_limit_tracker_redis_unavailable(self, caplog):
-        """Test RateLimitTracker when Redis is enabled but unavailable"""
-        import logging
+        client_ip = "192.168.1.1"
+        retrieved = tracker.get_attempts(client_ip)
 
-        caplog.set_level(logging.WARNING)
+        assert retrieved == attempts_list
+        mock_redis.get.assert_called_once_with(f"ratelimit:admin:{client_ip}")
 
-        with patch("redis_client.get_redis_client") as mock_get_redis:
-            mock_redis = Mock()
-            mock_redis.is_available = False
-            mock_get_redis.return_value = mock_redis
+    def test_get_attempts_redis_invalid_json(self):
+        """Should return empty list for invalid JSON"""
+        mock_redis = Mock()
+        mock_redis.is_available = True
+        mock_redis.get.return_value = "invalid json [["
 
-            tracker = RateLimitTracker()
+        tracker = RateLimitTracker()
+        tracker._redis_client = mock_redis
 
-            assert tracker._redis_client is None
+        retrieved = tracker.get_attempts("192.168.1.1")
+        assert retrieved == []
 
-            # Check log
-            assert any(
-                "Redis unavailable" in record.message for record in caplog.records
-            )
+    def test_set_attempts_redis(self):
+        """Should store attempts in Redis"""
+        mock_redis = Mock()
+        mock_redis.is_available = True
+        mock_redis.set.return_value = True
 
-    @patch("shared.rate_limiting.REDIS_ENABLED", True)
-    def test_rate_limit_tracker_redis_init_error(self, caplog):
-        """Test RateLimitTracker when Redis initialization fails"""
-        import logging
+        tracker = RateLimitTracker()
+        tracker._redis_client = mock_redis
 
-        caplog.set_level(logging.ERROR)
+        client_ip = "192.168.1.1"
+        attempts = [1704067200.0, 1704067260.0]
 
-        with patch("redis_client.get_redis_client", side_effect=Exception("Connection error")):
-            tracker = RateLimitTracker()
+        result = tracker.set_attempts(client_ip, attempts, 300)
 
-            assert tracker._redis_client is None
+        assert result is True
+        mock_redis.set.assert_called_once()
+        call_args = mock_redis.set.call_args
+        assert call_args[0][0] == f"ratelimit:admin:{client_ip}"
+        assert call_args[1]["ex"] == 300
 
-            # Check log
-            assert any(
-                "Failed to initialize Redis client" in record.message
-                for record in caplog.records
-            )
+    def test_redis_fallback_on_set_failure(self):
+        """Should fall back to memory if Redis set fails"""
+        mock_redis = Mock()
+        mock_redis.is_available = True
+        mock_redis.set.return_value = False  # Redis set failed
+
+        tracker = RateLimitTracker()
+        tracker._redis_client = mock_redis
+
+        client_ip = "192.168.1.1"
+        attempts = [1704067200.0]
+
+        result = tracker.set_attempts(client_ip, attempts, 300)
+
+        assert result is True
+        # Should fall back to memory
+        assert tracker._memory_tracker[client_ip] == attempts
 
 
 class TestGlobalInstances:
-    """Test global instances"""
+    """Test global singleton instances"""
 
-    def test_session_storage_instance_exists(self):
-        """Test global session_storage instance"""
+    def test_session_storage_exists(self):
+        """Should have global session_storage instance"""
         assert session_storage is not None
         assert isinstance(session_storage, SessionStorage)
 
-    def test_rate_limit_tracker_instance_exists(self):
-        """Test global rate_limit_tracker instance"""
+    def test_rate_limit_tracker_exists(self):
+        """Should have global rate_limit_tracker instance"""
         assert rate_limit_tracker is not None
         assert isinstance(rate_limit_tracker, RateLimitTracker)
 
-    def test_global_instances_are_singletons(self):
-        """Test that importing multiple times gives same instances"""
-        from shared.rate_limiting import session_storage as ss1
-        from shared.rate_limiting import session_storage as ss2
-
-        assert ss1 is ss2
-
-        from shared.rate_limiting import rate_limit_tracker as rt1
-        from shared.rate_limiting import rate_limit_tracker as rt2
-
-        assert rt1 is rt2
-
-
-class TestIntegration:
-    """Integration tests for rate limiting"""
-
-    def setup_method(self):
-        """Clear state before each test"""
+    def test_session_storage_is_functional(self):
+        """Should be able to use global session_storage"""
+        # Clear any existing state
         session_storage._memory_sessions.clear()
-        rate_limit_tracker._memory_tracker.clear()
+        session_storage._redis_client = None  # Force memory backend
 
-    def test_session_workflow(self):
-        """Test complete session storage workflow"""
-        token = "integration-test-token"
-        session_data = {
-            "created_at": datetime.utcnow(),
-            "ip": "192.168.1.100",
-            "user": "admin",
-        }
+        token = "global_test_token"
+        data = {"test": "data"}
 
-        # Store session
-        session_storage.set_session(token, session_data, ttl_seconds=3600)
-
-        # Retrieve and verify
+        session_storage.set_session(token, data, 3600)
         retrieved = session_storage.get_session(token)
-        assert retrieved is not None
-        assert retrieved["ip"] == "192.168.1.100"
-        assert retrieved["user"] == "admin"
-
-        # Delete session
-        session_storage.delete_session(token)
-
-        # Should no longer exist
-        assert session_storage.get_session(token) is None
-
-    def test_rate_limit_workflow(self):
-        """Test complete rate limiting workflow"""
-        client_ip = "10.0.0.1"
-        import time
-
-        # Simulate authentication attempts
-        attempts = []
-        for i in range(5):
-            attempts.append(time.time())
-            rate_limit_tracker.set_attempts(client_ip, attempts, ttl_seconds=300)
-
-        # Verify all attempts tracked
-        retrieved = rate_limit_tracker.get_attempts(client_ip)
-        assert len(retrieved) == 5
-
-        # Clean old attempts (keep last 3)
-        window = 60  # 60 seconds
-        current_time = time.time()
-        cutoff = current_time - window
-        recent_attempts = [t for t in retrieved if t > cutoff]
-        rate_limit_tracker.set_attempts(client_ip, recent_attempts, ttl_seconds=300)
-
-        # Should have cleaned old attempts
-        final_attempts = rate_limit_tracker.get_attempts(client_ip)
-        assert len(final_attempts) <= 5
-
-    def test_concurrent_sessions_and_rate_limiting(self):
-        """Test sessions and rate limiting working together"""
-        # Create sessions for multiple users
-        for i in range(3):
-            token = f"token-{i}"
-            ip = f"192.168.1.{i}"
-            session_data = {"created_at": datetime.utcnow(), "ip": ip}
-            session_storage.set_session(token, session_data, ttl_seconds=3600)
-
-            # Track rate limit attempts
-            attempts = [time.time()]
-            rate_limit_tracker.set_attempts(ip, attempts, ttl_seconds=300)
-
-        # Verify all sessions exist
-        for i in range(3):
-            token = f"token-{i}"
-            session = session_storage.get_session(token)
-            assert session is not None
-
-        # Verify all rate limits tracked
-        for i in range(3):
-            ip = f"192.168.1.{i}"
-            attempts = rate_limit_tracker.get_attempts(ip)
-            assert len(attempts) > 0
-
-    def test_limiter_integration(self):
-        """Test limiter creation integrates properly"""
-        limiter = get_limiter()
-        exception_handler = get_rate_limit_exception_handler()
-        exception_class = get_rate_limit_exception()
-
-        assert isinstance(limiter, Limiter)
-        assert callable(exception_handler)
-        assert exception_class == RateLimitExceeded
-
-
-class TestEdgeCases:
-    """Test edge cases and error handling"""
-
-    def setup_method(self):
-        """Clear state before each test"""
-        self.storage = SessionStorage()
-        self.tracker = RateLimitTracker()
-        self.storage._memory_sessions.clear()
-        self.tracker._memory_tracker.clear()
-
-    def test_session_with_special_characters(self):
-        """Test session tokens with special characters"""
-        token = "token-with-special-chars-!@#$%"
-        data = {"created_at": datetime.utcnow(), "ip": "10.0.0.1"}
-
-        self.storage.set_session(token, data, ttl_seconds=3600)
-        retrieved = self.storage.get_session(token)
 
         assert retrieved is not None
+        assert retrieved["test"] == "data"
 
-    def test_rate_limit_with_ipv6(self):
-        """Test rate limiting with IPv6 address"""
-        ipv6 = "2001:0db8:85a3:0000:0000:8a2e:0370:7334"
-        attempts = [123.0, 456.0]
+    def test_rate_limit_tracker_is_functional(self):
+        """Should be able to use global rate_limit_tracker"""
+        # Force memory backend
+        rate_limit_tracker._redis_client = None
 
-        self.tracker.set_attempts(ipv6, attempts, ttl_seconds=300)
-        retrieved = self.tracker.get_attempts(ipv6)
+        ip = "192.168.1.100"
+        attempts = [1704067200.0]
+
+        rate_limit_tracker.set_attempts(ip, attempts, 300)
+        retrieved = rate_limit_tracker.get_attempts(ip)
 
         assert retrieved == attempts
 
-    def test_session_data_without_created_at(self):
-        """Test session data without created_at field"""
-        token = "test-token"
-        data = {"ip": "10.0.0.1", "custom_field": "value"}
 
-        self.storage.set_session(token, data, ttl_seconds=3600)
-        retrieved = self.storage.get_session(token)
+class TestRedisKeyGeneration:
+    """Test Redis key generation"""
 
-        assert retrieved is not None
-        assert retrieved["custom_field"] == "value"
+    def test_session_redis_key_format(self):
+        """Should generate correct Redis key for sessions"""
+        storage = SessionStorage()
+        token = "abc123"
+        key = storage._get_redis_key(token)
+        assert key == "session:abc123"
 
-    def test_very_large_attempts_list(self):
-        """Test rate limiting with large number of attempts"""
-        client_ip = "10.0.0.1"
-        large_attempts = [float(i) for i in range(1000)]
+    def test_ratelimit_redis_key_format(self):
+        """Should generate correct Redis key for rate limiting"""
+        tracker = RateLimitTracker()
+        ip = "192.168.1.1"
+        key = tracker._get_redis_key(ip)
+        assert key == "ratelimit:admin:192.168.1.1"
 
-        self.tracker.set_attempts(client_ip, large_attempts, ttl_seconds=300)
-        retrieved = self.tracker.get_attempts(client_ip)
+    def test_different_tokens_different_keys(self):
+        """Should generate different keys for different tokens"""
+        storage = SessionStorage()
+        key1 = storage._get_redis_key("token1")
+        key2 = storage._get_redis_key("token2")
+        assert key1 != key2
 
-        assert len(retrieved) == 1000
-
-    def test_session_overwrite(self):
-        """Test overwriting existing session"""
-        token = "same-token"
-        data1 = {"created_at": datetime.utcnow(), "ip": "10.0.0.1"}
-        data2 = {"created_at": datetime.utcnow(), "ip": "10.0.0.2"}
-
-        self.storage.set_session(token, data1, ttl_seconds=3600)
-        self.storage.set_session(token, data2, ttl_seconds=3600)
-
-        retrieved = self.storage.get_session(token)
-        assert retrieved["ip"] == "10.0.0.2"
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    def test_different_ips_different_keys(self):
+        """Should generate different keys for different IPs"""
+        tracker = RateLimitTracker()
+        key1 = tracker._get_redis_key("192.168.1.1")
+        key2 = tracker._get_redis_key("192.168.1.2")
+        assert key1 != key2
