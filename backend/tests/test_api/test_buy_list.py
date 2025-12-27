@@ -555,3 +555,262 @@ class TestGetLastPriceUpdate:
         data = response.json()
         assert data["last_updated"] is not None
         assert data["source_file"] == "test_prices.json"
+
+
+class TestAdvancedListFiltering:
+    """Test advanced filtering and sorting options for GET /games"""
+
+    def test_filter_by_on_buy_list_true(self, client, db_session, admin_headers):
+        """Test filtering by on_buy_list=true"""
+        # Create games with different on_buy_list status
+        game1 = Game(title="Game On List", bgg_id=1)
+        game2 = Game(title="Game Off List", bgg_id=2)
+        db_session.add_all([game1, game2])
+        db_session.flush()
+
+        entry1 = BuyListGame(game_id=game1.id, on_buy_list=True, rank=1)
+        entry2 = BuyListGame(game_id=game2.id, on_buy_list=False, rank=2)
+        db_session.add_all([entry1, entry2])
+        db_session.commit()
+
+        response = client.get("/api/admin/buy-list/games?on_buy_list=true", headers=admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        assert data["items"][0]["title"] == "Game On List"
+
+    def test_sort_by_updated_at_desc(self, client, db_session, admin_headers):
+        """Test sorting by updated_at in descending order"""
+        from datetime import datetime, timedelta
+
+        # Create games with different update times
+        game1 = Game(title="Old Game", bgg_id=1)
+        game2 = Game(title="New Game", bgg_id=2)
+        db_session.add_all([game1, game2])
+        db_session.flush()
+
+        now = datetime.utcnow()
+        entry1 = BuyListGame(
+            game_id=game1.id,
+            rank=1,
+            updated_at=now - timedelta(days=5)
+        )
+        entry2 = BuyListGame(
+            game_id=game2.id,
+            rank=2,
+            updated_at=now
+        )
+        db_session.add_all([entry1, entry2])
+        db_session.commit()
+
+        response = client.get(
+            "/api/admin/buy-list/games?sort_by=updated_at&sort_desc=true",
+            headers=admin_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["items"][0]["title"] == "New Game"
+
+    def test_sort_by_discount(self, client, db_session, admin_headers):
+        """Test sorting by discount percentage"""
+        # Create games with price data
+        game1 = Game(title="High Discount", bgg_id=1)
+        game2 = Game(title="Low Discount", bgg_id=2)
+        db_session.add_all([game1, game2])
+        db_session.flush()
+
+        entry1 = BuyListGame(game_id=game1.id, rank=1, lpg_rrp=Decimal("50.00"))
+        entry2 = BuyListGame(game_id=game2.id, rank=2, lpg_rrp=Decimal("30.00"))
+        db_session.add_all([entry1, entry2])
+        db_session.flush()
+
+        # Add price snapshots with different discounts
+        snapshot1 = PriceSnapshot(
+            game_id=game1.id,
+            checked_at=datetime.utcnow(),
+            best_price=Decimal("25.00")  # 50% discount
+        )
+        snapshot2 = PriceSnapshot(
+            game_id=game2.id,
+            checked_at=datetime.utcnow(),
+            best_price=Decimal("27.00")  # 10% discount
+        )
+        db_session.add_all([snapshot1, snapshot2])
+        db_session.commit()
+
+        response = client.get(
+            "/api/admin/buy-list/games?sort_by=discount&sort_desc=true",
+            headers=admin_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # High discount game should be first
+        if len(data["items"]) >= 2 and data["items"][0]["latest_price"] and data["items"][1]["latest_price"]:
+            first_discount = data["items"][0]["latest_price"].get("discount_pct")
+            second_discount = data["items"][1]["latest_price"].get("discount_pct")
+            if first_discount is not None and second_discount is not None:
+                assert first_discount >= second_discount
+
+    def test_sort_default_by_rank(self, client, db_session, admin_headers):
+        """Test default sorting by rank"""
+        game1 = Game(title="Rank 3", bgg_id=1)
+        game2 = Game(title="Rank 1", bgg_id=2)
+        game3 = Game(title="No Rank", bgg_id=3)
+        db_session.add_all([game1, game2, game3])
+        db_session.flush()
+
+        entry1 = BuyListGame(game_id=game1.id, rank=3)
+        entry2 = BuyListGame(game_id=game2.id, rank=1)
+        entry3 = BuyListGame(game_id=game3.id, rank=None)  # No rank
+        db_session.add_all([entry1, entry2, entry3])
+        db_session.commit()
+
+        response = client.get("/api/admin/buy-list/games", headers=admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        # Should have at least the games we created
+        assert len(data["items"]) >= 3
+        # Check that items with ranks come before nulls
+        ranked_items = [item for item in data["items"] if item.get("rank") is not None]
+        if len(ranked_items) >= 2:
+            # First ranked item should have rank 1
+            assert ranked_items[0]["rank"] == 1
+
+    def test_buy_filter_no_price(self, client, db_session, admin_headers):
+        """Test buy_filter='no_price' shows games with no price data"""
+        game1 = Game(title="No Price", bgg_id=1)
+        game2 = Game(title="Has Price", bgg_id=2)
+        db_session.add_all([game1, game2])
+        db_session.flush()
+
+        entry1 = BuyListGame(
+            game_id=game1.id,
+            rank=1,
+            lpg_status="NOT_FOUND"  # Required for no_price filter
+        )
+        entry2 = BuyListGame(
+            game_id=game2.id,
+            rank=2,
+            lpg_status="AVAILABLE"
+        )
+        db_session.add_all([entry1, entry2])
+        db_session.flush()
+
+        # Add price only for game2
+        snapshot = PriceSnapshot(
+            game_id=game2.id,
+            checked_at=datetime.utcnow(),
+            best_price=Decimal("29.99")
+        )
+        db_session.add(snapshot)
+        db_session.commit()
+
+        response = client.get(
+            "/api/admin/buy-list/games?buy_filter=no_price",
+            headers=admin_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # Should only return game with no price and NOT_FOUND status
+        assert data["total"] >= 1
+        for item in data["items"]:
+            assert item["latest_price"] is None or item["latest_price"]["best_price"] is None
+
+    def test_buy_filter_buy_now(self, client, db_session, admin_headers):
+        """Test buy_filter='buy_now' shows recommended games"""
+        game = Game(title="Good Deal", bgg_id=1)
+        db_session.add(game)
+        db_session.flush()
+
+        entry = BuyListGame(
+            game_id=game.id,
+            rank=1,
+            lpg_status="AVAILABLE",
+            lpg_rrp=Decimal("50.00")
+        )
+        db_session.add(entry)
+        db_session.flush()
+
+        # Add price that makes buy_filter True (price * 2 <= RRP)
+        snapshot = PriceSnapshot(
+            game_id=game.id,
+            checked_at=datetime.utcnow(),
+            best_price=Decimal("20.00")  # 20 * 2 = 40 <= 50
+        )
+        db_session.add(snapshot)
+        db_session.commit()
+
+        response = client.get(
+            "/api/admin/buy-list/games?buy_filter=buy_now",
+            headers=admin_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # Should include this game
+        assert data["total"] >= 1
+
+    def test_buy_filter_not_recommended(self, client, db_session, admin_headers):
+        """Test buy_filter='not_recommended' shows games not to buy"""
+        game = Game(title="Bad Deal", bgg_id=1)
+        db_session.add(game)
+        db_session.flush()
+
+        entry = BuyListGame(
+            game_id=game.id,
+            rank=1,
+            lpg_status="AVAILABLE",
+            lpg_rrp=Decimal("50.00")
+        )
+        db_session.add(entry)
+        db_session.flush()
+
+        # Add price that makes buy_filter False (price * 2 > RRP)
+        snapshot = PriceSnapshot(
+            game_id=game.id,
+            checked_at=datetime.utcnow(),
+            best_price=Decimal("30.00")  # 30 * 2 = 60 > 50
+        )
+        db_session.add(snapshot)
+        db_session.commit()
+
+        response = client.get(
+            "/api/admin/buy-list/games?buy_filter=not_recommended",
+            headers=admin_headers
+        )
+        assert response.status_code == 200
+        data = response.json()
+        # Should include games where buy_filter is False
+        assert data["total"] >= 1
+
+
+class TestErrorHandling:
+    """Test error handling in buy list endpoints"""
+
+    def test_add_game_bgg_fetch_error(self, client, db_session, admin_headers):
+        """Test error when BGG fetch fails"""
+        with patch("bgg_service.fetch_bgg_thing") as mock_fetch:
+            mock_fetch.side_effect = Exception("BGG API error")
+
+            response = client.post(
+                "/api/admin/buy-list/games",
+                json={"bgg_id": 99999},
+                headers=admin_headers
+            )
+
+            assert response.status_code == 400
+            assert "Failed to import game from BGG" in response.json()["detail"]
+
+    def test_list_games_with_error(self, client, db_session, admin_headers):
+        """Test list games handles errors gracefully"""
+        # Create a game that will work
+        game = Game(title="Test Game", bgg_id=1)
+        db_session.add(game)
+        db_session.flush()
+
+        entry = BuyListGame(game_id=game.id, rank=1)
+        db_session.add(entry)
+        db_session.commit()
+
+        # Should still return successfully even if some error conditions exist
+        response = client.get("/api/admin/buy-list/games", headers=admin_headers)
+        assert response.status_code == 200

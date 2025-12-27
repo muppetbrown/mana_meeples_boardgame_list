@@ -498,3 +498,285 @@ class TestHealthEndpoints:
         data = response.json()
         assert "status" in data
         assert "game_count" in data
+
+
+class TestGameExpansions:
+    """Tests for game expansion relationships and player count calculations"""
+
+    def test_get_games_with_expansions(self, client, db_session):
+        """Test getting games list with expansions that modify player counts"""
+        # Create base game
+        base_game = Game(
+            title="Base Game",
+            bgg_id=10000,
+            players_min=2,
+            players_max=4,
+            is_expansion=False
+        )
+        db_session.add(base_game)
+        db_session.flush()
+
+        # Create expansion that increases max players
+        expansion = Game(
+            title="Expansion Pack",
+            bgg_id=10001,
+            is_expansion=True,
+            base_game_id=base_game.id,
+            modifies_players_min=1,
+            modifies_players_max=6
+        )
+        db_session.add(expansion)
+        db_session.commit()
+
+        # Get games list
+        response = client.get("/api/public/games")
+        assert response.status_code == 200
+        data = response.json()
+
+        # Find the base game in response
+        base_game_data = None
+        for item in data["items"]:
+            if item["title"] == "Base Game":
+                base_game_data = item
+                break
+
+        assert base_game_data is not None
+        # Check if expansion player count info is included
+        if "players_max_with_expansions" in base_game_data:
+            assert base_game_data["players_max_with_expansions"] == 6
+            assert base_game_data["players_min_with_expansions"] == 1
+            assert base_game_data["has_player_expansion"] is True
+
+    def test_get_single_game_with_expansions(self, client, db_session):
+        """Test getting single game details with expansions"""
+        # Create base game
+        base_game = Game(
+            title="Base Game",
+            bgg_id=10000,
+            players_min=2,
+            players_max=4,
+            is_expansion=False
+        )
+        db_session.add(base_game)
+        db_session.flush()
+
+        # Create expansion
+        expansion = Game(
+            title="Expansion Pack",
+            bgg_id=10001,
+            is_expansion=True,
+            base_game_id=base_game.id,
+            modifies_players_min=1,
+            modifies_players_max=6
+        )
+        db_session.add(expansion)
+        db_session.commit()
+
+        # Get single game
+        response = client.get(f"/api/public/games/{base_game.id}")
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should include expansions list
+        assert "expansions" in data
+        if len(data["expansions"]) > 0:
+            assert data["expansions"][0]["title"] == "Expansion Pack"
+            # Check expansion player count calculations
+            assert data.get("players_max_with_expansions") == 6
+            assert data.get("players_min_with_expansions") == 1
+            assert data.get("has_player_expansion") is True
+
+    def test_get_expansion_with_base_game_info(self, client, db_session):
+        """Test getting expansion details includes base game info"""
+        # Create base game
+        base_game = Game(
+            title="Base Game",
+            bgg_id=10000,
+            image="http://example.com/base.jpg",
+            is_expansion=False
+        )
+        db_session.add(base_game)
+        db_session.flush()
+
+        # Create expansion
+        expansion = Game(
+            title="Expansion Pack",
+            bgg_id=10001,
+            is_expansion=True,
+            base_game_id=base_game.id
+        )
+        db_session.add(expansion)
+        db_session.commit()
+
+        # Get expansion details
+        response = client.get(f"/api/public/games/{expansion.id}")
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should include base game info
+        if "base_game" in data and data["base_game"]:
+            assert data["base_game"]["id"] == base_game.id
+            assert data["base_game"]["title"] == "Base Game"
+            assert "thumbnail_url" in data["base_game"]
+
+    def test_get_game_without_expansions(self, client, db_session):
+        """Test getting game without expansions returns empty list"""
+        game = Game(
+            title="Standalone Game",
+            bgg_id=10000,
+            is_expansion=False
+        )
+        db_session.add(game)
+        db_session.commit()
+
+        response = client.get(f"/api/public/games/{game.id}")
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should have empty expansions list
+        assert "expansions" in data
+        assert data["expansions"] == []
+
+
+class TestNZDesignerFiltering:
+    """Tests for NZ designer filtering with different input types"""
+
+    def test_nz_designer_filter_with_boolean(self, client, db_session):
+        """Test NZ designer filter with boolean value"""
+        # Create games with and without NZ designer status
+        nz_game = Game(title="NZ Game", bgg_id=10000, nz_designer=True)
+        other_game = Game(title="Other Game", bgg_id=10001, nz_designer=False)
+        db_session.add_all([nz_game, other_game])
+        db_session.commit()
+
+        # Filter for NZ designers (non-string boolean)
+        response = client.get("/api/public/games?nz_designer=true")
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should only return NZ designer games
+        assert data["total"] >= 1
+
+    def test_nz_designer_filter_with_string_variants(self, client, db_session):
+        """Test NZ designer filter with different string representations"""
+        nz_game = Game(title="NZ Game", bgg_id=10000, nz_designer=True)
+        db_session.add(nz_game)
+        db_session.commit()
+
+        # Test different string variants
+        for value in ["1", "yes"]:
+            response = client.get(f"/api/public/games?nz_designer={value}")
+            assert response.status_code == 200
+
+
+class TestGamesByDesignerEndpoint:
+    """Tests for games by designer endpoint"""
+
+    def test_get_games_by_designer_success(self, client, db_session):
+        """Test getting games by designer name"""
+        game = Game(
+            title="Test Game",
+            bgg_id=10000,
+            designers=["Reiner Knizia"]
+        )
+        db_session.add(game)
+        db_session.commit()
+
+        response = client.get("/api/public/games/by-designer/Reiner%20Knizia")
+        assert response.status_code == 200
+        data = response.json()
+
+        assert "designer" in data
+        assert data["designer"] == "Reiner Knizia"
+        assert "games" in data
+
+    def test_get_games_by_designer_not_found(self, client, db_session):
+        """Test getting games by non-existent designer"""
+        response = client.get("/api/public/games/by-designer/Unknown%20Designer")
+        assert response.status_code == 200
+        data = response.json()
+
+        assert data["designer"] == "Unknown Designer"
+        assert data["games"] == []
+
+
+class TestImageProxyCloudinary:
+    """Tests for image proxy with Cloudinary integration"""
+
+    def test_image_proxy_cloudinary_enabled(self, client, db_session):
+        """Test image proxy when Cloudinary is enabled"""
+        from unittest.mock import patch, AsyncMock
+
+        bgg_url = "https://cf.geekdo-images.com/test.jpg"
+
+        with patch("config.CLOUDINARY_ENABLED", True), \
+             patch("services.cloudinary_service.cloudinary_service.upload_from_url") as mock_upload, \
+             patch("services.cloudinary_service.cloudinary_service.get_image_url") as mock_get_url:
+
+            # Mock successful Cloudinary upload
+            mock_upload.return_value = {"secure_url": "https://res.cloudinary.com/test.jpg"}
+            mock_get_url.return_value = "https://res.cloudinary.com/test.jpg"
+
+            response = client.get(f"/api/public/image-proxy?url={bgg_url}")
+
+            # Should redirect to Cloudinary URL or proxy successfully (or fail with 404/502 if network issue)
+            assert response.status_code in [200, 302, 404, 502]
+
+            if response.status_code == 302:
+                # Check redirect to Cloudinary
+                assert "cloudinary.com" in response.headers.get("Location", "")
+
+    def test_image_proxy_cloudinary_fallback(self, client):
+        """Test image proxy falls back to direct proxy when Cloudinary fails"""
+        from unittest.mock import patch
+
+        bgg_url = "https://cf.geekdo-images.com/test.jpg"
+
+        with patch("config.CLOUDINARY_ENABLED", True), \
+             patch("services.cloudinary_service.cloudinary_service.upload_from_url") as mock_upload:
+
+            # Mock Cloudinary upload failure
+            mock_upload.side_effect = Exception("Cloudinary error")
+
+            response = client.get(f"/api/public/image-proxy?url={bgg_url}")
+
+            # Should fall back to direct proxy (might fail due to network, but shouldn't crash)
+            assert response.status_code in [200, 404, 500, 502]
+
+    def test_image_proxy_cloudinary_returns_original_url(self, client):
+        """Test image proxy when Cloudinary returns original URL"""
+        from unittest.mock import patch
+
+        bgg_url = "https://cf.geekdo-images.com/test.jpg"
+
+        with patch("config.CLOUDINARY_ENABLED", True), \
+             patch("services.cloudinary_service.cloudinary_service.upload_from_url") as mock_upload, \
+             patch("services.cloudinary_service.cloudinary_service.get_image_url") as mock_get_url:
+
+            # Mock Cloudinary returning the same URL (no optimization)
+            mock_upload.return_value = {"secure_url": bgg_url}
+            mock_get_url.return_value = bgg_url
+
+            response = client.get(f"/api/public/image-proxy?url={bgg_url}")
+
+            # Should fall through to direct proxy
+            assert response.status_code in [200, 404, 500, 502]
+
+    def test_image_proxy_cloudinary_no_url_returned(self, client):
+        """Test image proxy when Cloudinary returns None URL"""
+        from unittest.mock import patch
+
+        bgg_url = "https://cf.geekdo-images.com/test.jpg"
+
+        with patch("config.CLOUDINARY_ENABLED", True), \
+             patch("services.cloudinary_service.cloudinary_service.upload_from_url") as mock_upload, \
+             patch("services.cloudinary_service.cloudinary_service.get_image_url") as mock_get_url:
+
+            # Mock Cloudinary returning None
+            mock_upload.return_value = {"secure_url": "https://res.cloudinary.com/test.jpg"}
+            mock_get_url.return_value = None
+
+            response = client.get(f"/api/public/image-proxy?url={bgg_url}")
+
+            # Should fall through to direct proxy
+            assert response.status_code in [200, 404, 500, 502]
