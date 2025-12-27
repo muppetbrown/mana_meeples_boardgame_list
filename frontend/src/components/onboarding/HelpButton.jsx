@@ -11,7 +11,7 @@ export function HelpButton({ onClick, showPulse = false }) {
       className={`
         fixed z-40
         bottom-4 left-1/2 -translate-x-1/2
-        md:left-auto md:right-6 md:bottom-6 md:translate-x-0
+        md:left-6 md:bottom-6 md:translate-x-0
         flex items-center gap-2
         px-4 py-3 md:px-5 md:py-3
         bg-gradient-to-r from-emerald-600 to-teal-600
