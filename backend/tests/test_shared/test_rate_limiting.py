@@ -5,6 +5,7 @@ Target: Increase coverage from 43% to 80%+
 import pytest
 import json
 import time
+from collections import defaultdict
 from datetime import datetime
 from unittest.mock import Mock, patch, MagicMock
 from shared.rate_limiting import (
