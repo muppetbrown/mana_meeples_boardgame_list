@@ -138,7 +138,6 @@ export default function GameCardPublic({
             fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-gradient-to-br from-slate-100 to-slate-200"
             loading={lazy ? "lazy" : "eager"}
             fetchPriority={priority ? "high" : "auto"}
-            aspectRatio="1/1"
           />
           
           {/* Category Badge */}
@@ -424,7 +423,6 @@ export default function GameCardPublic({
             fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-gradient-to-br from-slate-100 to-slate-200"
             loading={lazy ? "lazy" : "eager"}
             fetchPriority={priority ? "high" : "auto"}
-            aspectRatio="1/1"
           />
 
           {/* Category Badge */}
