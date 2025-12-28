@@ -4,7 +4,7 @@ Target: Increase coverage from 40% to 80%+
 """
 import pytest
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch, MagicMock
 from fastapi import HTTPException, Request
 from api.dependencies import (
@@ -181,7 +181,7 @@ class TestValidateSession:
 
         # Manually expire the session by modifying created_at
         session = session_storage.get_session(token)
-        session["created_at"] = datetime.utcnow() - timedelta(
+        session["created_at"] = datetime.now(timezone.utc) - timedelta(
             seconds=SESSION_TIMEOUT_SECONDS + 10
         )
         session_storage.set_session(token, session, SESSION_TIMEOUT_SECONDS)
@@ -200,7 +200,7 @@ class TestValidateSession:
 
         # Expire session
         session = session_storage.get_session(token)
-        session["created_at"] = datetime.utcnow() - timedelta(
+        session["created_at"] = datetime.now(timezone.utc) - timedelta(
             seconds=SESSION_TIMEOUT_SECONDS + 10
         )
         session_storage.set_session(token, session, SESSION_TIMEOUT_SECONDS)
@@ -217,7 +217,7 @@ class TestValidateSession:
 
         # Expire session
         session = session_storage.get_session(token)
-        session["created_at"] = datetime.utcnow() - timedelta(
+        session["created_at"] = datetime.now(timezone.utc) - timedelta(
             seconds=SESSION_TIMEOUT_SECONDS + 10
         )
         session_storage.set_session(token, session, SESSION_TIMEOUT_SECONDS)
@@ -252,7 +252,7 @@ class TestCleanupExpiredSessions:
         for i in range(3):
             token = f"token-{i}"
             admin_sessions[token] = {
-                "created_at": datetime.utcnow(),
+                "created_at": datetime.now(timezone.utc),
                 "ip": f"192.168.1.{i}",
             }
             tokens.append(token)
@@ -267,13 +267,13 @@ class TestCleanupExpiredSessions:
         # Create mix of valid and expired sessions
         valid_token = "valid-token"
         admin_sessions[valid_token] = {
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
             "ip": "192.168.1.1",
         }
 
         expired_token = "expired-token"
         admin_sessions[expired_token] = {
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
             - timedelta(seconds=SESSION_TIMEOUT_SECONDS + 10),
             "ip": "192.168.1.2",
         }
@@ -294,7 +294,7 @@ class TestCleanupExpiredSessions:
         for i in range(3):
             token = f"expired-{i}"
             admin_sessions[token] = {
-                "created_at": datetime.utcnow()
+                "created_at": datetime.now(timezone.utc)
                 - timedelta(seconds=SESSION_TIMEOUT_SECONDS + 10),
                 "ip": f"192.168.1.{i}",
             }
