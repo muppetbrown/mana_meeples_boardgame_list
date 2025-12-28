@@ -15,7 +15,7 @@ Tests all buy list management endpoints including:
 import csv
 import io
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -127,8 +127,8 @@ class TestBuildBuyListResponse:
             lpg_rrp=Decimal("49.99"),
             lpg_status="AVAILABLE",
             on_buy_list=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         buy_list.game = game
 
@@ -165,8 +165,8 @@ class TestBuildBuyListResponse:
             lpg_rrp=Decimal("50.00"),
             lpg_status="AVAILABLE",
             on_buy_list=True,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
         buy_list.game = game
 
@@ -174,7 +174,7 @@ class TestBuildBuyListResponse:
         price = PriceSnapshot(
             id=1,
             game_id=game.id,
-            checked_at=datetime.utcnow(),
+            checked_at=datetime.now(timezone.utc),
             low_price=Decimal("20.00"),
             mean_price=Decimal("30.00"),
             best_price=Decimal("22.00"),
@@ -539,7 +539,7 @@ class TestGetLastPriceUpdate:
         db_session.flush()
 
         # Create price snapshot
-        checked_time = datetime.utcnow()
+        checked_time = datetime.now(timezone.utc)
         price = PriceSnapshot(
             game_id=game.id,
             checked_at=checked_time,
@@ -581,7 +581,7 @@ class TestAdvancedListFiltering:
 
     def test_sort_by_updated_at_desc(self, client, db_session, admin_headers):
         """Test sorting by updated_at in descending order"""
-        from datetime import datetime, timedelta
+        from datetime import datetime, timedelta, timezone
 
         # Create games with different update times
         game1 = Game(title="Old Game", bgg_id=1)
@@ -589,7 +589,7 @@ class TestAdvancedListFiltering:
         db_session.add_all([game1, game2])
         db_session.flush()
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         entry1 = BuyListGame(
             game_id=game1.id,
             rank=1,
@@ -627,12 +627,12 @@ class TestAdvancedListFiltering:
         # Add price snapshots with different discounts
         snapshot1 = PriceSnapshot(
             game_id=game1.id,
-            checked_at=datetime.utcnow(),
+            checked_at=datetime.now(timezone.utc),
             best_price=Decimal("25.00")  # 50% discount
         )
         snapshot2 = PriceSnapshot(
             game_id=game2.id,
-            checked_at=datetime.utcnow(),
+            checked_at=datetime.now(timezone.utc),
             best_price=Decimal("27.00")  # 10% discount
         )
         db_session.add_all([snapshot1, snapshot2])
@@ -699,7 +699,7 @@ class TestAdvancedListFiltering:
         # Add price only for game2
         snapshot = PriceSnapshot(
             game_id=game2.id,
-            checked_at=datetime.utcnow(),
+            checked_at=datetime.now(timezone.utc),
             best_price=Decimal("29.99")
         )
         db_session.add(snapshot)
@@ -734,7 +734,7 @@ class TestAdvancedListFiltering:
         # Add price that makes buy_filter True (price * 2 <= RRP)
         snapshot = PriceSnapshot(
             game_id=game.id,
-            checked_at=datetime.utcnow(),
+            checked_at=datetime.now(timezone.utc),
             best_price=Decimal("20.00")  # 20 * 2 = 40 <= 50
         )
         db_session.add(snapshot)
@@ -767,7 +767,7 @@ class TestAdvancedListFiltering:
         # Add price that makes buy_filter False (price * 2 > RRP)
         snapshot = PriceSnapshot(
             game_id=game.id,
-            checked_at=datetime.utcnow(),
+            checked_at=datetime.now(timezone.utc),
             best_price=Decimal("30.00")  # 30 * 2 = 60 > 50
         )
         db_session.add(snapshot)

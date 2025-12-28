@@ -6,7 +6,7 @@ import pytest
 import json
 import time
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import Mock, patch, MagicMock
 from shared.rate_limiting import (
     get_limiter,
@@ -89,7 +89,7 @@ class TestSessionStorageMemoryBackend:
         session_data = {
             "user": "admin",
             "ip": "192.168.1.1",
-            "created_at": datetime.utcnow()
+            "created_at": datetime.now(timezone.utc)
         }
 
         result = storage.set_session(session_token, session_data, 3600)
@@ -151,7 +151,7 @@ class TestSessionStorageMemoryBackend:
         storage._redis_client = None  # Force memory backend
 
         session_token = "test_token_datetime"
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         session_data = {
             "user": "admin",
             "created_at": now
@@ -208,7 +208,7 @@ class TestSessionStorageRedisBackend:
 
     def test_get_session_redis_with_datetime(self):
         """Should deserialize datetime from Redis"""
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         session_data = {
             "user": "admin",
             "created_at": now.isoformat()

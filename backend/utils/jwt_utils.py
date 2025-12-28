@@ -5,7 +5,7 @@ Provides stateless authentication that persists across server restarts.
 """
 import jwt
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
 from config import SESSION_SECRET, JWT_EXPIRATION_DAYS
@@ -30,8 +30,8 @@ def generate_jwt_token(client_ip: str) -> str:
     payload = {
         "sub": "admin",  # Subject (admin user)
         "ip": client_ip,  # Client IP for auditing
-        "iat": datetime.utcnow(),  # Issued at
-        "exp": datetime.utcnow() + timedelta(days=JWT_EXPIRATION_DAYS),  # Expiration
+        "iat": datetime.now(timezone.utc),  # Issued at
+        "exp": datetime.now(timezone.utc) + timedelta(days=JWT_EXPIRATION_DAYS),  # Expiration
     }
 
     # Generate token

@@ -351,14 +351,14 @@ class TestAdminGameManagementIntegration:
 
     def test_update_game_status(self, client, sample_game):
         """Should update game status from BUY_LIST to OWNED"""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         # Set initial status to BUY_LIST
         sample_game.status = "BUY_LIST"
 
         update_data = {
             'status': 'OWNED',
-            'date_added': datetime.utcnow().isoformat()
+            'date_added': datetime.now(timezone.utc).isoformat()
         }
 
         response = client.put(

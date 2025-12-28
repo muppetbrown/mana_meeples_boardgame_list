@@ -4,7 +4,7 @@ Target: Increase coverage from 53% to 95%+
 """
 import pytest
 import jwt as pyjwt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 from utils.jwt_utils import (
     generate_jwt_token,
@@ -98,8 +98,8 @@ class TestVerifyJwtToken:
         payload = {
             "sub": "admin",
             "ip": "10.0.0.1",
-            "iat": datetime.utcnow() - timedelta(days=10),
-            "exp": datetime.utcnow() - timedelta(days=1),  # Expired yesterday
+            "iat": datetime.now(timezone.utc) - timedelta(days=10),
+            "exp": datetime.now(timezone.utc) - timedelta(days=1),  # Expired yesterday
         }
         expired_token = pyjwt.encode(payload, SESSION_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -117,8 +117,8 @@ class TestVerifyJwtToken:
         payload = {
             "sub": "admin",
             "ip": "10.0.0.1",
-            "iat": datetime.utcnow() - timedelta(days=10),
-            "exp": datetime.utcnow() - timedelta(days=1),
+            "iat": datetime.now(timezone.utc) - timedelta(days=10),
+            "exp": datetime.now(timezone.utc) - timedelta(days=1),
         }
         expired_token = pyjwt.encode(payload, SESSION_SECRET, algorithm=JWT_ALGORITHM)
 
@@ -133,8 +133,8 @@ class TestVerifyJwtToken:
         payload = {
             "sub": "admin",
             "ip": "10.0.0.1",
-            "iat": datetime.utcnow(),
-            "exp": datetime.utcnow() + timedelta(days=7),
+            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(days=7),
         }
         invalid_token = pyjwt.encode(payload, "wrong-secret", algorithm=JWT_ALGORITHM)
 
@@ -298,8 +298,8 @@ class TestIntegration:
         payload = {
             "sub": "admin",
             "ip": "10.0.0.1",
-            "iat": datetime.utcnow() - timedelta(days=10),
-            "exp": datetime.utcnow() - timedelta(seconds=1),
+            "iat": datetime.now(timezone.utc) - timedelta(days=10),
+            "exp": datetime.now(timezone.utc) - timedelta(seconds=1),
         }
         expired_token = pyjwt.encode(payload, SESSION_SECRET, algorithm=JWT_ALGORITHM)
 

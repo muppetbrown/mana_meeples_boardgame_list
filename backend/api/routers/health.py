@@ -5,7 +5,7 @@ Includes database health checks, category debugging, and performance metrics.
 """
 import logging
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import select, func
@@ -33,7 +33,7 @@ debug_router = APIRouter(prefix="/api/debug", tags=["debug"])
 @health_router.get("")
 async def health_check():
     """Basic health check"""
-    return {"status": "healthy", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "healthy", "timestamp": datetime.now(timezone.utc).isoformat()}
 
 
 @health_router.get("/db")

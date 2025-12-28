@@ -5,7 +5,7 @@ and response formatting.
 """
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import Request
@@ -464,7 +464,7 @@ def success_response(
     response = {
         "success": True,
         "message": message,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
     }
     if data is not None:
         response["data"] = data
@@ -495,7 +495,7 @@ def error_response(
     response = {
         "success": False,
         "error": {"code": error_code, "message": message},
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
     }
     if details is not None:
         response["error"]["details"] = details
