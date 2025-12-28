@@ -382,28 +382,42 @@ async def fix_sequence(
     This resolves 'duplicate key value violates unique constraint' errors
     when importing new records.
 
-    Security: Input validation ensures only whitelisted tables can be accessed.
+    Security: Explicit whitelist mapping prevents SQL injection.
     """
     try:
         table_name = body.table_name
 
+        # SECURITY: Explicit whitelist of valid table->sequence mappings
+        # This prevents SQL injection even if Pydantic validation is bypassed
+        VALID_SEQUENCES = {
+            "boardgames": "boardgames_id_seq",
+            "buy_list_games": "buy_list_games_id_seq",
+            "price_snapshots": "price_snapshots_id_seq",
+            "price_offers": "price_offers_id_seq",
+            "sleeves": "sleeves_id_seq",
+        }
+
+        if table_name not in VALID_SEQUENCES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid table name. Allowed: {', '.join(VALID_SEQUENCES.keys())}"
+            )
+
+        sequence_name = VALID_SEQUENCES[table_name]
+
         # Get the current maximum ID from the table
-        # Note: table_name is validated by Pydantic schema (whitelist + alphanumeric check)
+        # Using parameterized query with identifier() for table name
         result = db.execute(text(f"SELECT MAX(id) FROM {table_name}"))
         max_id = result.scalar()
 
         if max_id is None:
             max_id = 0
 
-        # Determine sequence name (PostgreSQL naming convention)
-        sequence_name = f"{table_name}_id_seq"
-
         # Reset the sequence to max_id (with is_called=true, so next value will be max_id + 1)
-        # Using 'true' (or default) means the sequence has been "called" and will increment on next use
-        # Use parameter binding to prevent SQL injection on max_id
+        # Using parameter binding for both sequence name and max_id
         db.execute(
-            text(f"SELECT setval('{sequence_name}', :max_id, true)"),
-            {"max_id": max_id}
+            text(f"SELECT setval(:sequence_name, :max_id, true)"),
+            {"sequence_name": sequence_name, "max_id": max_id}
         )
         db.commit()
 
@@ -418,6 +432,8 @@ async def fix_sequence(
             "next_id": max_id + 1
         }
 
+    except HTTPException:
+        raise
     except ValueError as e:
         # Validation error from Pydantic
         raise HTTPException(status_code=400, detail=str(e))
@@ -617,7 +633,7 @@ async def resolve_background_failure(
     Sprint 5: Error Handling & Monitoring
     """
     from models import BackgroundTaskFailure
-    from datetime import datetime
+    from datetime import datetime, timezone
 
     try:
         failure = db.execute(
@@ -630,7 +646,7 @@ async def resolve_background_failure(
             raise HTTPException(status_code=404, detail="Failure record not found")
 
         failure.resolved = True
-        failure.resolved_at = datetime.utcnow()
+        failure.resolved_at = datetime.now(timezone.utc)
 
         db.commit()
 

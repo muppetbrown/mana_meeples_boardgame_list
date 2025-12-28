@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column,
     Integer,
@@ -14,6 +14,14 @@ from sqlalchemy import (
     CheckConstraint,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship, backref
+
+
+def utc_now():
+    """
+    Return current UTC time using timezone-aware datetime.
+    Replaces deprecated datetime.utcnow() for Python 3.12+ compatibility.
+    """
+    return datetime.now(timezone.utc)
 
 
 class Base(DeclarativeBase):
@@ -34,9 +42,9 @@ class Game(Base):
     playtime_max = Column(Integer, nullable=True)
     thumbnail_url = Column(String(512), nullable=True)
     image = Column(String(512), nullable=True)  # Full-size image URL from BGG
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
     date_added = Column(
-        DateTime, default=datetime.utcnow, nullable=True, index=True
+        DateTime, default=utc_now, nullable=True, index=True
     )  # Date game was added to physical collection
     bgg_id = Column(Integer, unique=True, nullable=True, index=True)
     thumbnail_file = Column(String(256), nullable=True)
@@ -161,8 +169,8 @@ class BuyListGame(Base):
     lpg_rrp = Column(Numeric(10, 2), nullable=True)  # Lets Play Games RRP
     lpg_status = Column(String(50), nullable=True, index=True)  # AVAILABLE, BACK_ORDER, NOT_FOUND, BACK_ORDER_OOS
     on_buy_list = Column(Boolean, default=True, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
 
     # Relationship
     game = relationship("Game", back_populates="buy_list_entry")
@@ -192,7 +200,7 @@ class PriceSnapshot(Base):
     disc_mean_pct = Column(Numeric(5, 2), nullable=True)  # BGO's disc-mean percentage from their API/page
     delta = Column(Numeric(5, 2), nullable=True)  # Delta: discount_pct - disc_mean_pct
     source_file = Column(Text, nullable=True)  # Which JSON/CSV file this came from
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
     # Relationship
     game = relationship("Game", back_populates="price_snapshots")
@@ -219,7 +227,7 @@ class PriceOffer(Base):
     availability = Column(Text, nullable=True)  # Stock status text
     store_link = Column(Text, nullable=True)  # Direct link to product at retailer
     in_stock = Column(Boolean, nullable=True)  # Parsed stock status
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
 
     # Relationship
     game = relationship("Game", back_populates="price_offers")
@@ -277,7 +285,7 @@ class BackgroundTaskFailure(Base):
     url = Column(String(512), nullable=True)  # Associated URL if applicable
     resolved = Column(Boolean, default=False, nullable=False, index=True)
     resolved_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at = Column(DateTime, default=utc_now, nullable=False, index=True)
 
     __table_args__ = (
         Index("idx_task_failure_type_date", "task_type", "created_at"),

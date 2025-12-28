@@ -7,7 +7,7 @@ import os
 import json
 import logging
 from typing import Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import defaultdict
 from contextlib import asynccontextmanager
 
@@ -143,7 +143,7 @@ class StructuredFormatter(logging.Formatter):
 
     def format(self, record):
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "message": record.getMessage(),
             "module": record.module,
