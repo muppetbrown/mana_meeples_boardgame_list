@@ -900,5 +900,103 @@ class TestBuyListErrorHandling:
         assert data["on_buy_list"] is False
 
 
+class TestBuyListErrorHandling:
+    """Test error handling in buy list endpoints"""
+
+    def test_update_buy_list_game_database_error(
+        self, client, db_session, admin_headers
+    ):
+        """Test update_buy_list_game handles database errors gracefully"""
+        # Create game and buy list entry
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.flush()
+
+        entry = BuyListGame(game_id=game.id, rank=1)
+        db_session.add(entry)
+        db_session.commit()
+
+        # Mock database to raise exception
+        with patch("api.routers.buy_list.select") as mock_select:
+            mock_select.side_effect = Exception("Database error")
+
+            response = client.put(
+                f"/api/admin/buy-list/games/{entry.id}",
+                json={"rank": 5},
+                headers=admin_headers,
+            )
+
+            assert response.status_code == 500
+            assert "Failed to update buy list game" in response.json()["detail"]
+
+    def test_remove_from_buy_list_database_error(
+        self, client, db_session, admin_headers
+    ):
+        """Test remove_from_buy_list handles database errors gracefully"""
+        # Create game and buy list entry
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.flush()
+
+        entry = BuyListGame(game_id=game.id, rank=1)
+        db_session.add(entry)
+        db_session.commit()
+
+        # Mock database to raise exception
+        with patch("api.routers.buy_list.select") as mock_select:
+            mock_select.side_effect = Exception("Database error")
+
+            response = client.delete(
+                f"/api/admin/buy-list/games/{entry.id}", headers=admin_headers
+            )
+
+            assert response.status_code == 500
+            assert "Failed to remove game from buy list" in response.json()["detail"]
+
+    def test_bulk_import_csv_invalid_file(self, client, admin_headers):
+        """Test bulk import with invalid CSV file (missing bgg_id column)"""
+        # Create invalid CSV content (missing required bgg_id column)
+        csv_content = "invalid,csv,content\n"
+
+        response = client.post(
+            "/api/admin/buy-list/bulk-import-csv",
+            files={"file": ("test.csv", io.BytesIO(csv_content.encode()), "text/csv")},
+            headers=admin_headers,
+        )
+
+        # Should return 400 for missing required column
+        assert response.status_code == 400
+        assert "bgg_id" in response.json()["detail"]
+
+    def test_bulk_import_csv_with_bgg_import_failure(
+        self, client, db_session, admin_headers
+    ):
+        """Test bulk import when BGG import fails"""
+        # Create CSV with game not in database
+        csv_content = "bgg_id,rank\n999999,1\n"
+
+        # Mock BGG service to fail
+        with patch("bgg_service.fetch_bgg_thing") as mock_fetch:
+            mock_fetch.side_effect = Exception("BGG API error")
+
+            response = client.post(
+                "/api/admin/buy-list/bulk-import-csv",
+                files={
+                    "file": ("test.csv", io.BytesIO(csv_content.encode()), "text/csv")
+                },
+                headers=admin_headers,
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            # Game import should result in error due to BGG failure
+            assert data["errors"] >= 1
+
+
+# Note: Price import endpoint tests are complex due to specific directory structure
+# requirements (backend/price_data/). Testing is covered by integration tests.
+# Focus is on error handling and bulk import tests above.
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
