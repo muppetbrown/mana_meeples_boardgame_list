@@ -72,4 +72,153 @@ describe('Pagination', () => {
     expect(lastPageButton).toBeInTheDocument();
     expect(lastPageButton).toHaveTextContent('10');
   });
+
+  it('calls onPage when clicking previous button', () => {
+    render(
+      <Pagination page={3} pageSize={20} total={100} onPage={mockOnPage} />
+    );
+
+    const prevButton = screen.getByRole('button', { name: /previous page/i });
+    fireEvent.click(prevButton);
+
+    expect(mockOnPage).toHaveBeenCalledWith(2);
+  });
+
+  it('calls onPage when clicking next button', () => {
+    render(
+      <Pagination page={2} pageSize={20} total={100} onPage={mockOnPage} />
+    );
+
+    const nextButton = screen.getByRole('button', { name: /next page/i });
+    fireEvent.click(nextButton);
+
+    expect(mockOnPage).toHaveBeenCalledWith(3);
+  });
+
+  it('shows first page button when page > 3', () => {
+    render(
+      <Pagination page={5} pageSize={20} total={200} onPage={mockOnPage} />
+    );
+
+    const firstPageButton = screen.getByRole('button', {
+      name: /go to first page/i,
+    });
+    expect(firstPageButton).toBeInTheDocument();
+    expect(firstPageButton).toHaveTextContent('1');
+  });
+
+  it('calls onPage when clicking first page button', () => {
+    render(
+      <Pagination page={5} pageSize={20} total={200} onPage={mockOnPage} />
+    );
+
+    const firstPageButton = screen.getByRole('button', {
+      name: /go to first page/i,
+    });
+    fireEvent.click(firstPageButton);
+
+    expect(mockOnPage).toHaveBeenCalledWith(1);
+  });
+
+  it('calls onPage when clicking last page button', () => {
+    render(
+      <Pagination page={1} pageSize={20} total={200} onPage={mockOnPage} />
+    );
+
+    const lastPageButton = screen.getByRole('button', {
+      name: /go to last page/i,
+    });
+    fireEvent.click(lastPageButton);
+
+    expect(mockOnPage).toHaveBeenCalledWith(10);
+  });
+
+  it('hides results count when showResultsCount is false', () => {
+    render(
+      <Pagination
+        page={1}
+        pageSize={20}
+        total={100}
+        onPage={mockOnPage}
+        showResultsCount={false}
+      />
+    );
+
+    expect(screen.queryByText('1-20')).not.toBeInTheDocument();
+  });
+
+  it('shows results count by default', () => {
+    render(
+      <Pagination page={1} pageSize={20} total={100} onPage={mockOnPage} />
+    );
+
+    expect(screen.getByText('1-20')).toBeInTheDocument();
+  });
+
+  it('handles single page correctly', () => {
+    render(
+      <Pagination page={1} pageSize={20} total={15} onPage={mockOnPage} />
+    );
+
+    const prevButton = screen.getByRole('button', { name: /previous page/i });
+    const nextButton = screen.getByRole('button', { name: /next page/i });
+
+    expect(prevButton).toBeDisabled();
+    expect(nextButton).toBeDisabled();
+  });
+
+  it('calculates correct end range for last page', () => {
+    render(
+      <Pagination page={5} pageSize={20} total={95} onPage={mockOnPage} />
+    );
+
+    expect(screen.getByText('81-95')).toBeInTheDocument();
+  });
+
+  it('has proper ARIA label on navigation', () => {
+    render(
+      <Pagination page={1} pageSize={20} total={100} onPage={mockOnPage} />
+    );
+
+    expect(screen.getByLabelText('Game results pagination')).toBeInTheDocument();
+  });
+
+  it('shows ellipsis before last page button', () => {
+    const { container } = render(
+      <Pagination page={1} pageSize={20} total={200} onPage={mockOnPage} />
+    );
+
+    const ellipses = container.querySelectorAll('[aria-hidden="true"]');
+    const ellipsisText = Array.from(ellipses).find(el => el.textContent === '...');
+    expect(ellipsisText).toBeInTheDocument();
+  });
+
+  it('shows ellipsis after first page button', () => {
+    const { container } = render(
+      <Pagination page={5} pageSize={20} total={200} onPage={mockOnPage} />
+    );
+
+    const ellipses = container.querySelectorAll('[aria-hidden="true"]');
+    expect(ellipses.length).toBeGreaterThan(0);
+  });
+
+  it('does not show first page button on early pages', () => {
+    render(
+      <Pagination page={2} pageSize={20} total={200} onPage={mockOnPage} />
+    );
+
+    expect(
+      screen.queryByRole('button', { name: /go to first page/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not show last page button when close to end', () => {
+    render(
+      <Pagination page={9} pageSize={20} total={200} onPage={mockOnPage} />
+    );
+
+    expect(
+      screen.queryByRole('button', { name: /go to last page/i })
+    ).not.toBeInTheDocument();
+  });
 });
