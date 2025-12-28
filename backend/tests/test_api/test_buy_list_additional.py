@@ -7,7 +7,7 @@ Target: Increase coverage from 73.8% to 90%+
 import csv
 import io
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -397,7 +397,7 @@ class TestImportPricesFromJSON:
         try:
             # Create valid JSON price data
             price_data = {
-                "checked_at": datetime.utcnow().isoformat(),
+                "checked_at": datetime.now(timezone.utc).isoformat(),
                 "games": [
                     {
                         "bgg_id": 12357,
@@ -483,7 +483,7 @@ class TestImportPricesFromJSON:
         try:
             # Create JSON with unknown game
             price_data = {
-                "checked_at": datetime.utcnow().isoformat(),
+                "checked_at": datetime.now(timezone.utc).isoformat(),
                 "games": [
                     {
                         "bgg_id": 999999,  # Non-existent game
@@ -534,7 +534,7 @@ class TestSortByDiscount:
         # Add price with discount only for game2
         snapshot = PriceSnapshot(
             game_id=game2.id,
-            checked_at=datetime.utcnow(),
+            checked_at=datetime.now(timezone.utc),
             best_price=Decimal("25.00"),
             discount_pct=Decimal("20.00"),
         )

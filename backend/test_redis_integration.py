@@ -13,7 +13,7 @@ Usage:
 import sys
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Add backend to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -105,7 +105,7 @@ def test_session_storage():
         # Create test session
         session_token = secrets.token_urlsafe(32)
         session_data = {
-            "created_at": datetime.utcnow(),
+            "created_at": datetime.now(timezone.utc),
             "ip": "127.0.0.1",
             "test_data": "Sprint 8 test",
         }

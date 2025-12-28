@@ -8,7 +8,7 @@ import io
 import json
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -410,7 +410,7 @@ async def update_buy_list_game(
         if data.on_buy_list is not None:
             buy_list_entry.on_buy_list = data.on_buy_list
 
-        buy_list_entry.updated_at = datetime.utcnow()
+        buy_list_entry.updated_at = datetime.now(timezone.utc)
 
         db.commit()
         db.refresh(buy_list_entry)
@@ -603,7 +603,7 @@ async def bulk_import_buy_list_csv(
                         existing.lpg_rrp = lpg_rrp
                     if lpg_status:
                         existing.lpg_status = lpg_status
-                    existing.updated_at = datetime.utcnow()
+                    existing.updated_at = datetime.now(timezone.utc)
                     updated_count += 1
                 else:
                     # Create new buy list entry

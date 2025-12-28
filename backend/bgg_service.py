@@ -424,7 +424,9 @@ def _extract_comprehensive_game_data(item: Element, bgg_id: int) -> Dict[str, An
     data["is_expansion"] = item_type == "boardgameexpansion"
 
     # Basic information
-    name_elem = item.find("name[@type='primary']") or item.find("name")
+    name_elem = item.find("name[@type='primary']")
+    if name_elem is None:
+        name_elem = item.find("name")
     data["title"] = (
         name_elem.attrib.get("value", "") if name_elem is not None else ""
     )

@@ -12,7 +12,7 @@ Tests cover:
 - Default values and auto-generated fields
 """
 import pytest
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
@@ -265,7 +265,7 @@ class TestPriceSnapshotModel:
 
         snapshot = PriceSnapshot(
             game_id=game.id,
-            checked_at=datetime.utcnow(),
+            checked_at=datetime.now(timezone.utc),
             low_price=Decimal("89.99"),
             mean_price=Decimal("95.00"),
             best_price=Decimal("85.00"),
@@ -287,8 +287,8 @@ class TestPriceSnapshotModel:
         session.add(game)
         session.commit()
 
-        snapshot1 = PriceSnapshot(game_id=game.id, checked_at=datetime.utcnow())
-        snapshot2 = PriceSnapshot(game_id=game.id, checked_at=datetime.utcnow())
+        snapshot1 = PriceSnapshot(game_id=game.id, checked_at=datetime.now(timezone.utc))
+        snapshot2 = PriceSnapshot(game_id=game.id, checked_at=datetime.now(timezone.utc))
         session.add_all([snapshot1, snapshot2])
         session.commit()
 
@@ -303,7 +303,7 @@ class TestPriceSnapshotModel:
         session.add(game)
         session.commit()
 
-        snapshot = PriceSnapshot(game_id=game.id, checked_at=datetime.utcnow())
+        snapshot = PriceSnapshot(game_id=game.id, checked_at=datetime.now(timezone.utc))
         session.add(snapshot)
         session.commit()
 
@@ -328,7 +328,7 @@ class TestPriceOfferModel:
 
         offer = PriceOffer(
             game_id=game.id,
-            checked_at=datetime.utcnow(),
+            checked_at=datetime.now(timezone.utc),
             store="Game Store",
             price_nzd=Decimal("99.99"),
             availability="In Stock",
@@ -351,10 +351,10 @@ class TestPriceOfferModel:
         session.commit()
 
         offer1 = PriceOffer(
-            game_id=game.id, checked_at=datetime.utcnow(), store="Store A"
+            game_id=game.id, checked_at=datetime.now(timezone.utc), store="Store A"
         )
         offer2 = PriceOffer(
-            game_id=game.id, checked_at=datetime.utcnow(), store="Store B"
+            game_id=game.id, checked_at=datetime.now(timezone.utc), store="Store B"
         )
         session.add_all([offer1, offer2])
         session.commit()
@@ -370,7 +370,7 @@ class TestPriceOfferModel:
         session.add(game)
         session.commit()
 
-        offer = PriceOffer(game_id=game.id, checked_at=datetime.utcnow())
+        offer = PriceOffer(game_id=game.id, checked_at=datetime.now(timezone.utc))
         session.add(offer)
         session.commit()
 
@@ -560,7 +560,7 @@ class TestBackgroundTaskFailureModel:
 
         # Mark as resolved
         failure.resolved = True
-        failure.resolved_at = datetime.utcnow()
+        failure.resolved_at = datetime.now(timezone.utc)
         session.commit()
 
         loaded = session.query(BackgroundTaskFailure).filter_by(id=failure.id).first()
@@ -589,7 +589,7 @@ class TestModelConstraints:
 
     def test_price_snapshot_game_id_not_null(self, session):
         """Test game_id is required for PriceSnapshot"""
-        snapshot = PriceSnapshot(checked_at=datetime.utcnow())  # Missing game_id
+        snapshot = PriceSnapshot(checked_at=datetime.now(timezone.utc))  # Missing game_id
         session.add(snapshot)
 
         with pytest.raises(IntegrityError):
