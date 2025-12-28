@@ -738,6 +738,206 @@ class TestErrorResponseHandling:
 
             assert "connection" in str(exc_info.value).lower() or "failed" in str(exc_info.value).lower()
 
+    @pytest.mark.asyncio
+    async def test_handles_whitespace_only_response(self):
+        """Should handle whitespace-only responses from BGG"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = "   \n\t  "  # Whitespace only
+        mock_response.headers = {"content-type": "application/xml"}
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(BGGServiceError) as exc_info:
+                await fetch_bgg_thing(12345)
+
+            assert "empty response" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_handles_suspiciously_short_response(self):
+        """Should handle suspiciously short responses from BGG"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = "error"  # Very short response
+        mock_response.headers = {"content-type": "application/xml"}
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(BGGServiceError) as exc_info:
+                await fetch_bgg_thing(12345)
+
+            assert "does not exist" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_handles_short_invalid_response(self):
+        """Should handle short invalid responses from BGG"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = "xyz"  # Short but not a known error keyword
+        mock_response.headers = {"content-type": "application/xml"}
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(BGGServiceError) as exc_info:
+                await fetch_bgg_thing(12345)
+
+            assert "invalid response" in str(exc_info.value)
+
+
+class TestExpansionHandling:
+    """Test handling of game expansions and base games"""
+
+    def test_extract_base_game_link(self):
+        """Should extract base game information from expansion"""
+        xml_with_base_game = """<?xml version="1.0" encoding="utf-8"?>
+        <items>
+            <item type="boardgameexpansion" id="254640">
+                <name type="primary" value="Test Expansion" />
+                <link type="boardgameexpansion" id="174430" value="Base Game Name" inbound="true" />
+            </item>
+        </items>
+        """
+
+        root = ET.fromstring(xml_with_base_game)
+        item = root.find("item")
+        data = _extract_comprehensive_game_data(item, 254640)
+
+        assert data["is_expansion"] is True
+        assert data["base_game_bgg_id"] == 174430
+        assert data["base_game_name"] == "Base Game Name"
+
+    def test_extract_base_game_invalid_id(self):
+        """Should handle invalid base game ID gracefully"""
+        xml_with_invalid_id = """<?xml version="1.0" encoding="utf-8"?>
+        <items>
+            <item type="boardgameexpansion" id="254640">
+                <name type="primary" value="Test Expansion" />
+                <link type="boardgameexpansion" id="invalid" value="Base Game" inbound="true" />
+            </item>
+        </items>
+        """
+
+        root = ET.fromstring(xml_with_invalid_id)
+        item = root.find("item")
+        data = _extract_comprehensive_game_data(item, 254640)
+
+        assert data["is_expansion"] is True
+        assert data["base_game_bgg_id"] is None
+        assert data["base_game_name"] is None
+
+    def test_extract_expansion_links(self):
+        """Should extract expansion links from base game"""
+        xml_with_expansions = """<?xml version="1.0" encoding="utf-8"?>
+        <items>
+            <item type="boardgame" id="174430">
+                <name type="primary" value="Base Game" />
+                <link type="boardgameexpansion" id="254640" value="Expansion 1" />
+                <link type="boardgameexpansion" id="254641" value="Expansion 2" />
+                <link type="boardgameexpansion" id="174430" value="Base Game" inbound="true" />
+            </item>
+        </items>
+        """
+
+        root = ET.fromstring(xml_with_expansions)
+        item = root.find("item")
+        data = _extract_comprehensive_game_data(item, 174430)
+
+        assert data["is_expansion"] is False
+        assert len(data["expansion_bgg_ids"]) == 2
+        assert any(exp["bgg_id"] == 254640 for exp in data["expansion_bgg_ids"])
+        assert any(exp["name"] == "Expansion 2" for exp in data["expansion_bgg_ids"])
+
+    def test_extract_expansion_links_invalid_id(self):
+        """Should skip expansion links with invalid IDs"""
+        xml_with_invalid_expansion = """<?xml version="1.0" encoding="utf-8"?>
+        <items>
+            <item type="boardgame" id="174430">
+                <name type="primary" value="Base Game" />
+                <link type="boardgameexpansion" id="invalid" value="Bad Expansion" />
+                <link type="boardgameexpansion" id="254641" value="Good Expansion" />
+            </item>
+        </items>
+        """
+
+        root = ET.fromstring(xml_with_invalid_expansion)
+        item = root.find("item")
+        data = _extract_comprehensive_game_data(item, 174430)
+
+        # Should only include the valid expansion
+        assert len(data["expansion_bgg_ids"]) == 1
+        assert data["expansion_bgg_ids"][0]["bgg_id"] == 254641
+
+
+class TestGameTypeClassification:
+    """Test game type classification with multiple categories"""
+
+    def test_multiple_ranked_categories(self):
+        """Should combine multiple ranked categories into game type"""
+        xml_multi_category = """<?xml version="1.0" encoding="utf-8"?>
+        <items>
+            <item type="boardgame" id="12345">
+                <name type="primary" value="Test Game" />
+                <statistics>
+                    <ratings>
+                        <ranks>
+                            <rank type="subtype" id="1" name="boardgame" value="100" />
+                            <rank type="family" id="5497" name="strategygames" value="50" />
+                            <rank type="family" id="5499" name="familygames" value="75" />
+                        </ranks>
+                    </ratings>
+                </statistics>
+            </item>
+        </items>
+        """
+
+        root = ET.fromstring(xml_multi_category)
+        item = root.find("item")
+        data = _extract_comprehensive_game_data(item, 12345)
+
+        # Should combine Strategy and Family categories
+        assert data["game_type"] is not None
+        assert "Strategy" in data["game_type"] or "Family" in data["game_type"]
+
+    def test_not_ranked_category_fallback(self):
+        """Should handle 'Not Ranked' categories appropriately"""
+        xml_not_ranked = """<?xml version="1.0" encoding="utf-8"?>
+        <items>
+            <item type="boardgame" id="12345">
+                <name type="primary" value="Test Game" />
+                <statistics>
+                    <ratings>
+                        <ranks>
+                            <rank type="subtype" id="1" name="boardgame" value="100" />
+                            <rank type="family" id="5497" name="strategygames" value="Not Ranked" />
+                        </ranks>
+                    </ratings>
+                </statistics>
+            </item>
+        </items>
+        """
+
+        root = ET.fromstring(xml_not_ranked)
+        item = root.find("item")
+        data = _extract_comprehensive_game_data(item, 12345)
+
+        # Should still set some game type even if not ranked
+        assert data.get("game_type") is not None or data.get("game_type") == ""
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
