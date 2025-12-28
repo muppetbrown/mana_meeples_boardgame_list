@@ -464,7 +464,7 @@ def success_response(
     response = {
         "success": True,
         "message": message,
-        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
     }
     if data is not None:
         response["data"] = data
@@ -495,7 +495,7 @@ def error_response(
     response = {
         "success": False,
         "error": {"code": error_code, "message": message},
-        "timestamp": datetime.now(timezone.utc).isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
     }
     if details is not None:
         response["error"]["details"] = details
