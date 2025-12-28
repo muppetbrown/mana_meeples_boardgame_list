@@ -111,11 +111,11 @@ def client(db_engine):
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_read_db] = override_get_db
 
-    # Mock the db_ping and run_migrations to prevent startup issues
+    # Mock the db_ping to prevent startup issues
     # Patch them where they're imported (in main.py), not where they're defined
     # Also patch os.makedirs and httpx_client.aclose for lifespan events
+    # Note: run_migrations removed - now using Alembic migrations
     with patch('main.db_ping', return_value=True), \
-         patch('main.run_migrations', return_value=None), \
          patch('main.os.makedirs', return_value=None), \
          patch('main.httpx_client.aclose', new_callable=AsyncMock):
         with TestClient(app, raise_server_exceptions=False) as test_client:
