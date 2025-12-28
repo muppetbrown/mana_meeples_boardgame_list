@@ -461,3 +461,86 @@ class TestDebugConfiguration:
                 importlib.reload(config)
 
                 assert config.SAVE_DEBUG_INFO is False
+
+
+class TestDatabaseURLValidation:
+    """Test database URL validation and edge cases"""
+
+    def test_empty_database_url_raises_error(self):
+        """Test that empty DATABASE_URL raises ValueError"""
+        with patch.dict(os.environ, {"DATABASE_URL": ""}, clear=False):
+            with pytest.raises(ValueError, match="DATABASE_URL environment variable is required"):
+                import importlib
+                import config
+                importlib.reload(config)
+
+    def test_postgresql_with_read_replica_prints_info(self, capsys):
+        """Test PostgreSQL with read replica prints configuration info"""
+        pg_url = "postgresql://user:pass@primary-db:5432/dbname"
+        replica_url = "postgresql://user:pass@replica-db:5432/dbname"
+
+        with patch.dict(os.environ, {
+            "DATABASE_URL": pg_url,
+            "READ_REPLICA_URL": replica_url
+        }):
+            import importlib
+            import config
+            importlib.reload(config)
+
+            captured = capsys.readouterr()
+            # Should print read replica info (line 36-38)
+            assert "Read replica enabled" in captured.err
+            assert "replica-db:5432" in captured.err
+
+    def test_unrecognized_database_url_format_prints_warning(self, capsys):
+        """Test unrecognized database URL format prints warning"""
+        weird_url = "mongodb://localhost:27017/mydb"
+
+        with patch.dict(os.environ, {"DATABASE_URL": weird_url}):
+            import importlib
+            import config
+            importlib.reload(config)
+
+            captured = capsys.readouterr()
+            # Should print warning for unrecognized format (line 48-50)
+            assert "WARNING: Unrecognized database URL format" in captured.err
+
+
+class TestRedisURLParsing:
+    """Test Redis URL parsing and error handling"""
+
+    def test_redis_url_parsing_success(self, capsys):
+        """Test successful Redis URL parsing"""
+        redis_url = "redis://user:pass@redis-server:6380/1"
+
+        with patch.dict(os.environ, {
+            "REDIS_URL": redis_url,
+            "REDIS_ENABLED": "true"
+        }):
+            import importlib
+            import config
+            importlib.reload(config)
+
+            captured = capsys.readouterr()
+            assert "Redis enabled: redis-server:6380" in captured.err
+
+    def test_redis_url_parsing_failure_fallback(self, capsys):
+        """Test Redis URL parsing failure falls back to generic message"""
+        # Create a URL that will fail parsing
+        invalid_url = "not-a-valid://url-format"
+
+        with patch.dict(os.environ, {
+            "REDIS_URL": invalid_url,
+            "REDIS_ENABLED": "true"
+        }):
+            # Mock urlparse to raise an exception
+            with patch('urllib.parse.urlparse') as mock_urlparse:
+                mock_urlparse.side_effect = Exception("Parse error")
+
+                import importlib
+                import config
+                importlib.reload(config)
+
+                captured = capsys.readouterr()
+                # Should print fallback message (lines 147-148)
+                assert "Redis enabled: configuration loaded" in captured.err
