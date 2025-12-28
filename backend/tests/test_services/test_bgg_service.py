@@ -540,5 +540,204 @@ class TestEdgeCases:
         assert result["players_min"] == 0
 
 
+# ============================================================================
+# Test: Additional Coverage for Error Paths
+# ============================================================================
+
+
+class TestCircuitBreakerAndAuth:
+    """Test circuit breaker and authentication scenarios"""
+
+    @pytest.mark.asyncio
+    async def test_circuit_breaker_open_rejects_request(self):
+        """Should reject request when circuit breaker is open"""
+        from pybreaker import CircuitBreakerError
+
+        with patch("bgg_service.bgg_circuit_breaker.call", side_effect=CircuitBreakerError("Circuit open")):
+            with pytest.raises(BGGServiceError) as exc_info:
+                await fetch_bgg_thing(12345)
+
+            assert "circuit breaker open" in str(exc_info.value).lower()
+
+    @pytest.mark.asyncio
+    async def test_uses_bgg_api_key_when_configured(self):
+        """Should use BGG API key in headers when configured"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = SAMPLE_GAME_XML
+        mock_response.raise_for_status = Mock()
+        mock_response.headers = {"content-type": "application/xml"}
+
+        with patch("bgg_service.config.BGG_API_KEY", "test_api_key"), \
+             patch("httpx.AsyncClient") as mock_client_cls:
+
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            await fetch_bgg_thing(12345)
+
+            # Check that API key was included in headers
+            call_args = mock_client.get.call_args
+            headers = call_args[1].get("headers", {})
+            assert "Authorization" in headers
+            assert headers["Authorization"] == "Bearer test_api_key"
+
+    @pytest.mark.asyncio
+    async def test_debug_logging_for_special_ids(self):
+        """Should execute debug logging for special BGG IDs"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = SAMPLE_GAME_XML
+        mock_response.headers = {"content-type": "application/xml"}
+        mock_response.encoding = "utf-8"
+        mock_response.content = SAMPLE_GAME_XML.encode("utf-8")
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            # Test with special debug ID (13 = Catan)
+            result = await fetch_bgg_thing(13)
+
+            # Should successfully process the request
+            assert result is not None
+            assert "title" in result
+
+    @pytest.mark.asyncio
+    async def test_debug_logging_for_problematic_id(self):
+        """Should execute debug logging for problematic BGG ID"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = SAMPLE_GAME_XML
+        mock_response.headers = {"content-type": "application/xml"}
+        mock_response.encoding = "utf-8"
+        mock_response.content = SAMPLE_GAME_XML.encode("utf-8")
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            # Test with problematic ID (314421)
+            result = await fetch_bgg_thing(314421)
+
+            # Should successfully process the request
+            assert result is not None
+            assert "title" in result
+
+
+class TestErrorResponseHandling:
+    """Test various error response scenarios"""
+
+    @pytest.mark.asyncio
+    async def test_handles_202_accepted_response(self):
+        """Should retry on 202 Accepted response (BGG processing request)"""
+        mock_response_202 = Mock()
+        mock_response_202.status_code = 202
+        mock_response_202.text = "Request queued"
+        mock_response_202.raise_for_status = Mock()
+        mock_response_202.headers = {"content-type": "text/plain"}
+
+        mock_response_200 = Mock()
+        mock_response_200.status_code = 200
+        mock_response_200.text = SAMPLE_GAME_XML
+        mock_response_200.raise_for_status = Mock()
+        mock_response_200.headers = {"content-type": "application/xml"}
+
+        with patch("httpx.AsyncClient") as mock_client_cls, \
+             patch("asyncio.sleep"):
+
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            # First call returns 202, second returns 200
+            mock_client.get = AsyncMock(side_effect=[mock_response_202, mock_response_200])
+            mock_client_cls.return_value = mock_client
+
+            result = await fetch_bgg_thing(12345, retries=3)
+
+            # Should retry and eventually succeed
+            assert result is not None
+            assert mock_client.get.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_handles_empty_xml_response(self):
+        """Should handle empty XML response"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = '<?xml version="1.0"?><items></items>'
+        mock_response.raise_for_status = Mock()
+        mock_response.headers = {"content-type": "application/xml"}
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(BGGServiceError) as exc_info:
+                await fetch_bgg_thing(12345)
+
+            assert "No game" in str(exc_info.value) and "found" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_handles_malformed_xml(self):
+        """Should handle malformed XML response"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = 'This is not valid XML <<>>'
+        mock_response.raise_for_status = Mock()
+        mock_response.headers = {"content-type": "application/xml"}
+
+        with patch("httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(BGGServiceError) as exc_info:
+                await fetch_bgg_thing(12345)
+
+            assert "Failed to parse" in str(exc_info.value) or "XML" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_handles_network_timeout(self):
+        """Should handle network timeout errors"""
+        with patch("httpx.AsyncClient") as mock_client_cls, \
+             patch("asyncio.sleep"):
+
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.get = AsyncMock(side_effect=httpx.TimeoutException("Request timeout"))
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(BGGServiceError) as exc_info:
+                await fetch_bgg_thing(12345, retries=2)
+
+            assert "timeout" in str(exc_info.value).lower() or "failed" in str(exc_info.value).lower()
+
+    @pytest.mark.asyncio
+    async def test_handles_connection_error(self):
+        """Should handle connection errors"""
+        with patch("httpx.AsyncClient") as mock_client_cls, \
+             patch("asyncio.sleep"):
+
+            mock_client = AsyncMock()
+            mock_client.__aenter__.return_value = mock_client
+            mock_client.get = AsyncMock(side_effect=httpx.ConnectError("Connection failed"))
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(BGGServiceError) as exc_info:
+                await fetch_bgg_thing(12345, retries=2)
+
+            assert "connection" in str(exc_info.value).lower() or "failed" in str(exc_info.value).lower()
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

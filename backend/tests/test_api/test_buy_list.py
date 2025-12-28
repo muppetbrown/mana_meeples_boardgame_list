@@ -814,3 +814,91 @@ class TestErrorHandling:
         # Should still return successfully even if some error conditions exist
         response = client.get("/api/admin/buy-list/games", headers=admin_headers)
         assert response.status_code == 200
+
+
+# ==============================================================================
+# Additional Error Handling and Edge Case Tests
+# ==============================================================================
+
+
+class TestBuyListErrorHandling:
+    """Test error handling and edge cases in buy list endpoints"""
+
+    def test_list_with_database_error(self, client, db_session, admin_headers):
+        """Test list endpoint handles database errors gracefully"""
+        with patch("api.routers.buy_list.select", side_effect=Exception("Database error")):
+            response = client.get("/api/admin/buy-list/games", headers=admin_headers)
+            assert response.status_code == 500
+            assert "Failed to retrieve buy list" in response.json()["detail"]
+
+    def test_add_game_with_general_exception(self, client, db_session, admin_headers):
+        """Test add endpoint handles unexpected errors"""
+        # Create a game first
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.commit()
+
+        with patch("api.routers.buy_list.BuyListGame", side_effect=Exception("Unexpected error")):
+            response = client.post(
+                "/api/admin/buy-list/games",
+                json={"bgg_id": 12345, "rank": 1},
+                headers=admin_headers
+            )
+            assert response.status_code == 500
+            assert "Failed to add game to buy list" in response.json()["detail"]
+
+    def test_update_with_optional_fields(self, client, db_session, admin_headers):
+        """Test updating buy list entry with all optional fields"""
+        # Create game and buy list entry
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.flush()
+
+        entry = BuyListGame(game_id=game.id, rank=1)
+        db_session.add(entry)
+        db_session.commit()
+
+        # Update with all optional fields
+        response = client.put(
+            f"/api/admin/buy-list/games/{entry.id}",
+            json={
+                "rank": 5,
+                "bgo_link": "https://example.com",
+                "lpg_rrp": 49.99,
+                "lpg_status": "AVAILABLE",
+                "on_buy_list": True
+            },
+            headers=admin_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["rank"] == 5
+        assert data["bgo_link"] == "https://example.com"
+
+
+    def test_update_with_on_buy_list_flag(self, client, db_session, admin_headers):
+        """Test updating on_buy_list flag specifically"""
+        # Create game and buy list entry
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.flush()
+
+        entry = BuyListGame(game_id=game.id, rank=1, on_buy_list=True)
+        db_session.add(entry)
+        db_session.commit()
+
+        # Update on_buy_list to False
+        response = client.put(
+            f"/api/admin/buy-list/games/{entry.id}",
+            json={"on_buy_list": False},
+            headers=admin_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["on_buy_list"] is False
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
