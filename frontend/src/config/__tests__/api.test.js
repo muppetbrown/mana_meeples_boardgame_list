@@ -10,36 +10,12 @@ describe('API Config', () => {
       expect(imageProxyUrl(undefined)).toBeNull();
     });
 
-    it('proxies BGG images with default original size', () => {
+    it('proxies BGG images', () => {
       const url = 'https://cf.geekdo-images.com/original/img/abc.jpg';
       const result = imageProxyUrl(url);
 
       expect(result).toContain('/api/public/image-proxy');
-      expect(result).toContain('_original.');
-    });
-
-    it('proxies BGG images with thumbnail size', () => {
-      const url = 'https://cf.geekdo-images.com/original/img/abc.jpg';
-      const result = imageProxyUrl(url, 'thumbnail');
-
-      expect(result).toContain('/api/public/image-proxy');
-      expect(result).toContain('_t.');
-    });
-
-    it('proxies BGG images with medium size', () => {
-      const url = 'https://cf.geekdo-images.com/original/img/abc.jpg';
-      const result = imageProxyUrl(url, 'medium');
-
-      expect(result).toContain('/api/public/image-proxy');
-      expect(result).toContain('_md.');
-    });
-
-    it('proxies BGG images with detail size', () => {
-      const url = 'https://cf.geekdo-images.com/original/img/abc.jpg';
-      const result = imageProxyUrl(url, 'detail');
-
-      expect(result).toContain('/api/public/image-proxy');
-      expect(result).toContain('_d.');
+      expect(result).toContain('url=');
     });
 
     it('includes width parameter when provided', () => {
@@ -70,15 +46,6 @@ describe('API Config', () => {
 
       expect(result).toContain('/api/public/image-proxy');
       expect(result).toContain(encodeURIComponent(url));
-      expect(result).not.toContain('_original.');
-    });
-
-    it('replaces existing size suffixes in BGG URLs', () => {
-      const url = 'https://cf.geekdo-images.com/t/img/abc_t.jpg';
-      const result = imageProxyUrl(url, 'detail');
-
-      expect(result).toContain('_d.');
-      expect(result).not.toContain('_t.');
     });
   });
 

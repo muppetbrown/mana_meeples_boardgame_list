@@ -1,7 +1,7 @@
 // frontend/src/pages/__tests__/GameDetails.test.jsx
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import GameDetails from '../GameDetails';
 import * as apiClient from '../../api/client';
 
@@ -17,6 +17,7 @@ const mockGame = {
   players_min: 3,
   players_max: 4,
   designers: ['Klaus Teuber'],
+  mana_meeple_category: 'GATEWAY_STRATEGY',
 };
 
 const mockNavigate = vi.fn();
@@ -37,11 +38,11 @@ describe('GameDetails Page', () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
     render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
         </Routes>
-      </BrowserRouter>
+      </MemoryRouter>
     );
 
     await waitFor(() => {
@@ -55,11 +56,11 @@ describe('GameDetails Page', () => {
     });
 
     render(
-      <BrowserRouter>
+      <MemoryRouter initialEntries={['/game/999']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
         </Routes>
-      </BrowserRouter>
+      </MemoryRouter>
     );
 
     await waitFor(() => {

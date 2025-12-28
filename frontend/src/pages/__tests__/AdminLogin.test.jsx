@@ -36,8 +36,6 @@ describe('AdminLogin Page', () => {
   });
 
   test('validates minimum token length', async () => {
-    const user = userEvent.setup();
-
     render(
       <BrowserRouter>
         <AdminLogin />
@@ -45,10 +43,10 @@ describe('AdminLogin Page', () => {
     );
 
     const tokenInput = screen.getByLabelText(/admin token/i);
-    const submitButton = screen.getByRole('button', { name: /login/i });
+    const submitButton = screen.getByRole('button', { name: /sign in/i });
 
-    await user.type(tokenInput, 'short');
-    await user.click(submitButton);
+    userEvent.type(tokenInput, 'short');
+    userEvent.click(submitButton);
 
     await waitFor(() => {
       expect(screen.getByText(/token must be at least 10 characters/i)).toBeInTheDocument();
@@ -58,7 +56,6 @@ describe('AdminLogin Page', () => {
   });
 
   test('logs in successfully with valid token', async () => {
-    const user = userEvent.setup();
     apiClient.adminLogin.mockResolvedValue({ success: true, token: 'jwt-token' });
 
     render(
@@ -68,10 +65,10 @@ describe('AdminLogin Page', () => {
     );
 
     const tokenInput = screen.getByLabelText(/admin token/i);
-    const submitButton = screen.getByRole('button', { name: /login/i });
+    const submitButton = screen.getByRole('button', { name: /sign in/i });
 
-    await user.type(tokenInput, 'valid-admin-token-123');
-    await user.click(submitButton);
+    userEvent.type(tokenInput, 'valid-admin-token-123');
+    userEvent.click(submitButton);
 
     await waitFor(() => {
       expect(apiClient.adminLogin).toHaveBeenCalledWith('valid-admin-token-123');
@@ -80,7 +77,6 @@ describe('AdminLogin Page', () => {
   });
 
   test('displays error for invalid token', async () => {
-    const user = userEvent.setup();
     apiClient.adminLogin.mockRejectedValue({
       response: { status: 401, data: { detail: 'Invalid credentials' } },
     });
@@ -92,10 +88,10 @@ describe('AdminLogin Page', () => {
     );
 
     const tokenInput = screen.getByLabelText(/admin token/i);
-    const submitButton = screen.getByRole('button', { name: /login/i });
+    const submitButton = screen.getByRole('button', { name: /sign in/i });
 
-    await user.type(tokenInput, 'invalid-token-123');
-    await user.click(submitButton);
+    userEvent.type(tokenInput, 'invalid-token-123');
+    userEvent.click(submitButton);
 
     await waitFor(() => {
       expect(screen.getByText(/invalid admin token/i)).toBeInTheDocument();
