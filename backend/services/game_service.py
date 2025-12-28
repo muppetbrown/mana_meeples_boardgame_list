@@ -5,7 +5,7 @@ Separates business logic from HTTP routing concerns.
 """
 import logging
 from typing import Any, Dict, List, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, func, or_, and_, case, inspect, cast, String
 from sqlalchemy.orm import Session
@@ -190,7 +190,7 @@ class GameService:
 
         # Apply recently added filter
         if recently_added_days is not None:
-            cutoff_date = datetime.utcnow() - timedelta(
+            cutoff_date = datetime.now(timezone.utc) - timedelta(
                 days=recently_added_days
             )
             if hasattr(Game, "date_added"):

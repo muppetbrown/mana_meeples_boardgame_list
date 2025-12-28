@@ -6,7 +6,7 @@ session management, and helper functions.
 import logging
 import secrets
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import Cookie, Header, HTTPException, Request
@@ -44,7 +44,7 @@ def create_session(client_ip: str) -> str:
     """
     session_token = secrets.token_urlsafe(32)
     session_data = {
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.now(timezone.utc),
         "ip": client_ip,
     }
 
@@ -68,7 +68,7 @@ def validate_session(session_token: Optional[str], client_ip: str) -> bool:
         return False
 
     # Check if session has expired (should be handled by Redis TTL, but double-check)
-    session_age = (datetime.utcnow() - session["created_at"]).total_seconds()
+    session_age = (datetime.now(timezone.utc) - session["created_at"]).total_seconds()
     if session_age > SESSION_TIMEOUT_SECONDS:
         logger.info(f"Session expired for {client_ip} (age: {session_age}s)")
         session_storage.delete_session(session_token)
@@ -86,7 +86,7 @@ def cleanup_expired_sessions():
     # Redis handles this automatically via TTL
     # Only needed for in-memory fallback (legacy admin_sessions dict)
     if admin_sessions:
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         expired_tokens = [
             token
             for token, session in admin_sessions.items()

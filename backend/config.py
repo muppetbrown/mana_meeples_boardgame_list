@@ -85,9 +85,16 @@ SAVE_DEBUG_INFO = os.getenv("SAVE_DEBUG_INFO", "false").lower() in (
 # In production, set SESSION_SECRET to a secure random value
 # Generate with: python -c "import secrets; print(secrets.token_hex(32))"
 SESSION_SECRET = os.getenv("SESSION_SECRET", "")
-if not SESSION_SECRET:
-    import secrets
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
+if not SESSION_SECRET:
+    if ENVIRONMENT == "production":
+        raise ValueError(
+            "SESSION_SECRET environment variable is required in production. "
+            "Generate with: python -c \"import secrets; print(secrets.token_hex(32))\""
+        )
+    # Development: Generate temporary secret
+    import secrets
     SESSION_SECRET = secrets.token_hex(32)
     print(
         "WARNING: SESSION_SECRET not set - generated temporary secret (not suitable for multi-instance deployment)",
