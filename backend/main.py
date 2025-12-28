@@ -26,7 +26,7 @@ from shared.rate_limiting import (
     admin_sessions,
 )
 
-from database import SessionLocal, db_ping, run_migrations
+from database import SessionLocal, db_ping
 from models import Game
 from bgg_service import fetch_bgg_thing
 from exceptions import (
@@ -293,8 +293,9 @@ async def lifespan(app: FastAPI):
 
     logger.info("Database connection verified")
 
-    # Run migrations to update schema
-    run_migrations()
+    # Database migrations are now handled by Alembic
+    # Run `alembic upgrade head` before starting the application
+    # See: backend/alembic/ for migration files
 
     os.makedirs(THUMBS_DIR, exist_ok=True)
     logger.info(f"Thumbnails directory: {THUMBS_DIR}")
