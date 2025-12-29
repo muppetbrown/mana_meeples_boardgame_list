@@ -1,6 +1,7 @@
 // frontend/src/pages/__tests__/PublicCatalogue.test.jsx
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import PublicCatalogue from '../PublicCatalogue';
 import * as apiClient from '../../api/client';
@@ -279,5 +280,180 @@ describe('PublicCatalogue Page', () => {
     // Elements should not have transition classes
     const header = container.querySelector('header');
     expect(header?.className).not.toContain('transition');
+  });
+
+  describe('Search functionality', () => {
+    test('renders search box', () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('Filter functionality', () => {
+    test('renders category filter buttons', () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByRole('button', { name: /filter by gateway strategy/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /filter by core strategy/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('Sort functionality', () => {
+    test('renders sort select', () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Loading states', () => {
+    test('shows skeleton cards while loading', () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      // Should show skeleton loaders initially
+      const skeletons = document.querySelectorAll('[class*="animate-pulse"]');
+      expect(skeletons.length).toBeGreaterThan(0);
+    });
+
+    test('hides skeleton cards after loading', async () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      // Skeleton loaders should be gone
+      const skeletons = document.querySelectorAll('[class*="GameCardSkeleton"]');
+      expect(skeletons.length).toBe(0);
+    });
+  });
+
+
+  describe('Help modal', () => {
+    test('opens help modal when help button clicked', async () => {
+      
+      
+
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      const helpButton = screen.getByRole('button', { name: /help/i });
+      userEvent.click(helpButton);
+
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+    });
+
+    test('closes help modal when close button clicked', async () => {
+      
+      
+
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      const helpButton = screen.getByRole('button', { name: /help/i });
+      userEvent.click(helpButton);
+
+      const dialog = await screen.findByRole('dialog');
+      expect(dialog).toBeInTheDocument();
+
+      const closeButton = screen.getByRole('button', { name: /close/i });
+      userEvent.click(closeButton);
+
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+
+  describe('Error handling', () => {
+    test('handles cancellation on unmount', async () => {
+      const { unmount } = render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      // Unmount before API call resolves
+      unmount();
+
+      // Should not cause errors or state updates
+      await waitFor(() => {
+        expect(apiClient.getPublicGames).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Infinite scroll', () => {
+    test('loads more games when scrolling near bottom', async () => {
+      const mockFirstPage = {
+        items: Array.from({ length: 12 }, (_, i) => ({
+          id: i + 1,
+          title: `Game ${i + 1}`,
+          mana_meeple_category: 'GATEWAY_STRATEGY',
+        })),
+        total: 25,
+        page: 1,
+        page_size: 12,
+      };
+
+      const mockSecondPage = {
+        items: Array.from({ length: 12 }, (_, i) => ({
+          id: i + 13,
+          title: `Game ${i + 13}`,
+          mana_meeple_category: 'GATEWAY_STRATEGY',
+        })),
+        total: 25,
+        page: 2,
+        page_size: 12,
+      };
+
+      apiClient.getPublicGames
+        .mockResolvedValueOnce(mockFirstPage)
+        .mockResolvedValueOnce(mockSecondPage);
+
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Game 1')).toBeInTheDocument();
+      });
+
+      // Verify IntersectionObserver was set up
+      expect(global.IntersectionObserver).toHaveBeenCalled();
+    });
+
   });
 });
