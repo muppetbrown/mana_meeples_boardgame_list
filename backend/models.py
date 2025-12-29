@@ -12,6 +12,7 @@ from sqlalchemy import (
     Numeric,
     ForeignKey,
     CheckConstraint,
+    text,
 )
 from sqlalchemy.orm import DeclarativeBase, relationship, backref
 
@@ -109,19 +110,19 @@ class Game(Base):
 
         # Sprint 4 Performance Indexes - for filtered queries
         # Recently added filter (date_added DESC with status)
-        Index("idx_date_added_status", "date_added", "status", postgresql_where=Column("status") == "OWNED"),
+        Index("idx_date_added_status", "date_added", "status", postgresql_where=text("status = 'OWNED'")),
 
         # NZ designer + category combination filter
         Index("idx_nz_designer_category", "nz_designer", "mana_meeple_category",
-              postgresql_where=Column("nz_designer") == True),
+              postgresql_where=text("nz_designer = true")),
 
         # Player count range queries (for filtering by player count)
         Index("idx_player_range", "players_min", "players_max",
-              postgresql_where=Column("status") == "OWNED"),
+              postgresql_where=text("status = 'OWNED'")),
 
         # Complex filtering (category + year + rating for sorting)
         Index("idx_category_year_rating", "mana_meeple_category", "year", "average_rating",
-              postgresql_where=Column("status") == "OWNED"),
+              postgresql_where=text("status = 'OWNED'")),
 
         # Sprint 4 Data Integrity Constraints
         # NOTE: All constraints must allow NULL values since fields are nullable
