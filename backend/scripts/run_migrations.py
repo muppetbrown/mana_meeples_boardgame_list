@@ -11,16 +11,38 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import logging
-from database import db_ping
+from database import db_ping, SessionLocal
+from sqlalchemy import text
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def check_table_exists(table_name: str) -> bool:
+    """Check if a table exists in the database"""
+    try:
+        db = SessionLocal()
+        result = db.execute(
+            text(
+                "SELECT EXISTS (SELECT FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_name = :table_name)"
+            ),
+            {"table_name": table_name}
+        )
+        exists = result.scalar()
+        db.close()
+        return exists
+    except Exception as e:
+        logger.warning(f"Error checking if table exists: {e}")
+        return False
 
 def main():
     """
     Run Alembic database migrations.
 
-    This script runs `alembic upgrade head` to apply all pending migrations.
+    This script intelligently handles migrations:
+    - If tables already exist, uses `alembic stamp head` to mark them
+    - Otherwise, runs `alembic upgrade head` to create tables
+
     Database migrations are now managed by Alembic instead of in-code migrations.
 
     See: backend/alembic/ for migration files
@@ -35,19 +57,32 @@ def main():
             sys.exit(1)
 
         logger.info("Database connection verified")
-        logger.info("Running Alembic migrations...")
 
         # Change to backend directory where alembic.ini is located
         backend_dir = Path(__file__).parent.parent
         os.chdir(backend_dir)
 
-        # Run alembic upgrade head
-        result = subprocess.run(
-            ["alembic", "upgrade", "head"],
-            capture_output=True,
-            text=True,
-            check=False
-        )
+        # Check if main table already exists
+        tables_exist = check_table_exists("boardgames")
+
+        if tables_exist:
+            logger.info("Database tables already exist - stamping Alembic version...")
+            # Use stamp to mark the current version without running migrations
+            result = subprocess.run(
+                ["alembic", "stamp", "head"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
+        else:
+            logger.info("Running Alembic migrations...")
+            # Run normal upgrade to create tables
+            result = subprocess.run(
+                ["alembic", "upgrade", "head"],
+                capture_output=True,
+                text=True,
+                check=False
+            )
 
         # Print output
         if result.stdout:
@@ -56,6 +91,20 @@ def main():
             print(result.stderr, file=sys.stderr)
 
         if result.returncode != 0:
+            # Check if error is due to duplicate table (handle gracefully)
+            if "already exists" in (result.stderr or ""):
+                logger.warning("Tables already exist - attempting to stamp version...")
+                # Try stamping as fallback
+                stamp_result = subprocess.run(
+                    ["alembic", "stamp", "head"],
+                    capture_output=True,
+                    text=True,
+                    check=False
+                )
+                if stamp_result.returncode == 0:
+                    logger.info("Successfully stamped Alembic version")
+                    return
+
             logger.error("Alembic migration failed!")
             sys.exit(1)
 
