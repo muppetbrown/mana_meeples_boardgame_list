@@ -1,6 +1,6 @@
 // frontend/src/components/__tests__/GameImage.test.jsx
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import GameImage from '../GameImage';
 
 // Mock the config/api module
@@ -104,7 +104,9 @@ describe('GameImage Component', () => {
       expect(img).toBeInTheDocument();
 
       // Simulate image load error
-      img?.dispatchEvent(new Event('error'));
+      await act(async () => {
+        img?.dispatchEvent(new Event('error'));
+      });
 
       await waitFor(() => {
         expect(screen.getByText('No Image')).toBeInTheDocument();
@@ -147,7 +149,9 @@ describe('GameImage Component', () => {
       expect(img?.className).toContain('opacity-0');
 
       // Simulate image load
-      img?.dispatchEvent(new Event('load'));
+      await act(async () => {
+        img?.dispatchEvent(new Event('load'));
+      });
 
       await waitFor(() => {
         expect(img?.className).toContain('opacity-100');

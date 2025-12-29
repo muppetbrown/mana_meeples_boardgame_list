@@ -113,7 +113,7 @@ export default function GameImage({
           alt={alt || "Game cover image"}
           className={`${className} ${imageLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500 ease-out`}
           loading={effectiveLoading}
-          fetchpriority={fetchPriority}
+          fetchPriority={fetchPriority}
           onError={handleImageError}
           onLoad={handleImageLoad}
           decoding="async"
