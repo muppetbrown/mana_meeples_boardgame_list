@@ -66,7 +66,7 @@ describe('ErrorMessage', () => {
       const onRetry = vi.fn();
       render(<ErrorMessage error="Error" onRetry={onRetry} />);
 
-      await userEvent.click(screen.getByText('Try again'));
+      userEvent.click(screen.getByText('Try again'));
       expect(onRetry).toHaveBeenCalledOnce();
     });
 

@@ -296,7 +296,7 @@ describe('PublicCatalogue Page', () => {
       const searchInput = screen.getByPlaceholderText(/search/i);
 
       // Type rapidly
-      await userEvent.type(searchInput, 'catan');
+      userEvent.type(searchInput, 'catan');
 
       // Should not call API immediately
       expect(apiClient.getPublicGames).toHaveBeenCalledTimes(1); // Initial load only
@@ -320,13 +320,13 @@ describe('PublicCatalogue Page', () => {
       );
 
       const searchInput = screen.getByPlaceholderText(/search/i);
-      await userEvent.type(searchInput, 'test');
+      userEvent.type(searchInput, 'test');
 
       expect(searchInput.value).toBe('test');
 
       // Clear button appears when there's text
       const clearButton = await screen.findByRole('button', { name: /clear search/i });
-      await userEvent.click(clearButton);
+      userEvent.click(clearButton);
 
       expect(searchInput.value).toBe('');
     });
@@ -348,7 +348,7 @@ describe('PublicCatalogue Page', () => {
       });
 
       const gatewayButton = screen.getByRole('button', { name: /filter by gateway strategy/i });
-      await userEvent.click(gatewayButton);
+      userEvent.click(gatewayButton);
 
       await waitFor(() => {
         expect(apiClient.getPublicGames).toHaveBeenCalledWith(
@@ -372,7 +372,7 @@ describe('PublicCatalogue Page', () => {
       });
 
       const nzButton = screen.getByRole('button', { name: /nz designers/i });
-      await userEvent.click(nzButton);
+      userEvent.click(nzButton);
 
       await waitFor(() => {
         expect(apiClient.getPublicGames).toHaveBeenCalledWith(
@@ -397,7 +397,7 @@ describe('PublicCatalogue Page', () => {
       );
 
       const clearButton = await screen.findByRole('button', { name: /clear filters/i });
-      await userEvent.click(clearButton);
+      userEvent.click(clearButton);
 
       await waitFor(() => {
         expect(apiClient.getPublicGames).toHaveBeenCalledWith(
@@ -427,7 +427,7 @@ describe('PublicCatalogue Page', () => {
       });
 
       const sortSelect = screen.getByRole('combobox', { name: /sort/i });
-      await userEvent.selectOptions(sortSelect, 'title_asc');
+      userEvent.selectOptions(sortSelect, 'title_asc');
 
       await waitFor(() => {
         expect(apiClient.getPublicGames).toHaveBeenCalledWith(
@@ -551,7 +551,7 @@ describe('PublicCatalogue Page', () => {
       );
 
       const helpButton = screen.getByRole('button', { name: /help/i });
-      await userEvent.click(helpButton);
+      userEvent.click(helpButton);
 
       await waitFor(() => {
         expect(screen.getByRole('dialog')).toBeInTheDocument();
@@ -569,13 +569,13 @@ describe('PublicCatalogue Page', () => {
       );
 
       const helpButton = screen.getByRole('button', { name: /help/i });
-      await userEvent.click(helpButton);
+      userEvent.click(helpButton);
 
       const dialog = await screen.findByRole('dialog');
       expect(dialog).toBeInTheDocument();
 
       const closeButton = screen.getByRole('button', { name: /close/i });
-      await userEvent.click(closeButton);
+      userEvent.click(closeButton);
 
       await waitFor(() => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
@@ -624,7 +624,7 @@ describe('PublicCatalogue Page', () => {
       );
 
       const retryButton = await screen.findByRole('button', { name: /retry/i });
-      await userEvent.click(retryButton);
+      userEvent.click(retryButton);
 
       await waitFor(() => {
         expect(screen.getByText('Catan')).toBeInTheDocument();

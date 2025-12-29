@@ -7,6 +7,16 @@ import StaffView from '../StaffView';
 
 vi.mock('../../api/client');
 
+// Mock navigate
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
 const mockStaffContext = {
   isValidating: false,
   toast: { message: '', type: 'info' },
@@ -133,7 +143,7 @@ describe('StaffView Page', () => {
       );
 
       const addGamesTab = screen.getByRole('button', { name: /add games/i });
-      await userEvent.click(addGamesTab);
+      userEvent.click(addGamesTab);
 
       expect(screen.getByText('Add Games Tab')).toBeInTheDocument();
     });
@@ -149,7 +159,7 @@ describe('StaffView Page', () => {
       );
 
       const manageTab = screen.getByRole('button', { name: /manage library/i });
-      await userEvent.click(manageTab);
+      userEvent.click(manageTab);
 
       expect(screen.getByText('Manage Library Tab')).toBeInTheDocument();
     });
@@ -165,7 +175,7 @@ describe('StaffView Page', () => {
       );
 
       const categoriesTab = screen.getByRole('button', { name: /categories/i });
-      await userEvent.click(categoriesTab);
+      userEvent.click(categoriesTab);
 
       expect(screen.getByText('Categories Tab')).toBeInTheDocument();
     });
@@ -181,7 +191,7 @@ describe('StaffView Page', () => {
       );
 
       const buyListTab = screen.getByRole('button', { name: /buy list/i });
-      await userEvent.click(buyListTab);
+      userEvent.click(buyListTab);
 
       expect(screen.getByText('Buy List Tab')).toBeInTheDocument();
     });
@@ -197,7 +207,7 @@ describe('StaffView Page', () => {
       );
 
       const advancedTab = screen.getByRole('button', { name: /advanced tools/i });
-      await userEvent.click(advancedTab);
+      userEvent.click(advancedTab);
 
       expect(screen.getByText('Advanced Tools Tab')).toBeInTheDocument();
     });
@@ -238,27 +248,16 @@ describe('StaffView Page', () => {
       );
 
       const logoutButton = screen.getByRole('button', { name: /logout/i });
-      await userEvent.click(logoutButton);
+      userEvent.click(logoutButton);
 
       expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to logout?');
     });
 
     test('navigates to login when logout confirmed', async () => {
-      
-      
-      const mockNavigate = vi.fn();
       window.confirm = vi.fn(() => true);
 
       const { adminLogout: mockAdminLogout } = await import('../../api/client');
       mockAdminLogout.mockResolvedValue({});
-
-      vi.mock('react-router-dom', async () => {
-        const actual = await vi.importActual('react-router-dom');
-        return {
-          ...actual,
-          useNavigate: () => mockNavigate,
-        };
-      });
 
       render(
         <BrowserRouter>
@@ -267,7 +266,7 @@ describe('StaffView Page', () => {
       );
 
       const logoutButton = screen.getByRole('button', { name: /logout/i });
-      await userEvent.click(logoutButton);
+      userEvent.click(logoutButton);
 
       // Note: Navigation testing is limited in this setup
       // Real navigation would be tested in E2E tests
