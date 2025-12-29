@@ -211,4 +211,130 @@ describe('CategorySelectModal', () => {
       expect(document.activeElement).toBe(firstButton);
     });
   });
+
+  describe('Keyboard Focus Trapping', () => {
+    it('traps focus on Tab from last element to first', () => {
+      render(
+        <CategorySelectModal
+          open={true}
+          gameTitle={gameTitle}
+          onSelect={mockOnSelect}
+          onClose={mockOnClose}
+        />
+      );
+
+      const cancelButton = screen.getByRole('button', {
+        name: /Cancel and close dialog/i,
+      });
+      cancelButton.focus();
+      expect(document.activeElement).toBe(cancelButton);
+
+      // Press Tab on last element
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: false });
+
+      // Should focus first button
+      const firstButton = screen.getByRole('button', {
+        name: /Assign to Co-op & Adventure category/i,
+      });
+      expect(document.activeElement).toBe(firstButton);
+    });
+
+    it('traps focus on Shift+Tab from first element to last', () => {
+      render(
+        <CategorySelectModal
+          open={true}
+          gameTitle={gameTitle}
+          onSelect={mockOnSelect}
+          onClose={mockOnClose}
+        />
+      );
+
+      const firstButton = screen.getByRole('button', {
+        name: /Assign to Co-op & Adventure category/i,
+      });
+      firstButton.focus();
+      expect(document.activeElement).toBe(firstButton);
+
+      // Press Shift+Tab on first element
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+
+      // Should focus last button (Cancel)
+      const cancelButton = screen.getByRole('button', {
+        name: /Cancel and close dialog/i,
+      });
+      expect(document.activeElement).toBe(cancelButton);
+    });
+
+    it('allows normal Tab navigation between elements', () => {
+      render(
+        <CategorySelectModal
+          open={true}
+          gameTitle={gameTitle}
+          onSelect={mockOnSelect}
+          onClose={mockOnClose}
+        />
+      );
+
+      const firstButton = screen.getByRole('button', {
+        name: /Assign to Co-op & Adventure category/i,
+      });
+      firstButton.focus();
+
+      // Press Tab on first element (not last)
+      fireEvent.keyDown(document, { key: 'Tab', shiftKey: false });
+
+      // Should not prevent default, allowing natural focus
+      // (We can't easily test natural browser focus, but we can verify Tab doesn't trap)
+      expect(mockOnClose).not.toHaveBeenCalled();
+    });
+
+    it('ignores other keys', () => {
+      render(
+        <CategorySelectModal
+          open={true}
+          gameTitle={gameTitle}
+          onSelect={mockOnSelect}
+          onClose={mockOnClose}
+        />
+      );
+
+      fireEvent.keyDown(document, { key: 'Enter' });
+      fireEvent.keyDown(document, { key: 'Space' });
+      fireEvent.keyDown(document, { key: 'ArrowDown' });
+
+      expect(mockOnClose).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Event Cleanup', () => {
+    it('removes event listeners when modal closes', () => {
+      const { rerender } = render(
+        <CategorySelectModal
+          open={true}
+          gameTitle={gameTitle}
+          onSelect={mockOnSelect}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Modal is open, should respond to Escape
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(mockOnClose).toHaveBeenCalledTimes(1);
+
+      // Close modal
+      rerender(
+        <CategorySelectModal
+          open={false}
+          gameTitle={gameTitle}
+          onSelect={mockOnSelect}
+          onClose={mockOnClose}
+        />
+      );
+
+      // Modal is closed, should not respond to Escape
+      mockOnClose.mockClear();
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(mockOnClose).not.toHaveBeenCalled();
+    });
+  });
 });
