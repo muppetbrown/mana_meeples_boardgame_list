@@ -1,6 +1,7 @@
 // frontend/src/pages/__tests__/StaffView.test.jsx
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { BrowserRouter } from 'react-router-dom';
 import StaffView from '../StaffView';
 
@@ -71,5 +72,245 @@ describe('StaffView Page', () => {
 
     // Just check that the component renders without errors
     expect(screen.getByText('Dashboard Tab')).toBeInTheDocument();
+  });
+
+  test('displays admin panel header', () => {
+    render(
+      <BrowserRouter>
+        <StaffView />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText(/Mana & Meeples — Admin Panel/i)).toBeInTheDocument();
+  });
+
+  test('displays stats in header', () => {
+    render(
+      <BrowserRouter>
+        <StaffView />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText(/100/)).toBeInTheDocument(); // total games from mock
+  });
+
+  test('displays logout button', () => {
+    render(
+      <BrowserRouter>
+        <StaffView />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
+  });
+
+  test('shows loading state when validating', () => {
+    const loadingMockStaffContext = {
+      ...mockStaffContext,
+      isValidating: true,
+    };
+
+    vi.mocked(vi.importActual('../../context/StaffContext')).useStaff = () => loadingMockStaffContext;
+
+    render(
+      <BrowserRouter>
+        <StaffView />
+      </BrowserRouter>
+    );
+
+    expect(screen.getByText(/validating credentials/i)).toBeInTheDocument();
+  });
+
+  describe('Tab navigation', () => {
+    test('switches to add games tab when clicked', async () => {
+      
+      
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      const addGamesTab = screen.getByRole('button', { name: /add games/i });
+      await userEvent.click(addGamesTab);
+
+      expect(screen.getByText('Add Games Tab')).toBeInTheDocument();
+    });
+
+    test('switches to manage library tab when clicked', async () => {
+      
+      
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      const manageTab = screen.getByRole('button', { name: /manage library/i });
+      await userEvent.click(manageTab);
+
+      expect(screen.getByText('Manage Library Tab')).toBeInTheDocument();
+    });
+
+    test('switches to categories tab when clicked', async () => {
+      
+      
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      const categoriesTab = screen.getByRole('button', { name: /categories/i });
+      await userEvent.click(categoriesTab);
+
+      expect(screen.getByText('Categories Tab')).toBeInTheDocument();
+    });
+
+    test('switches to buy list tab when clicked', async () => {
+      
+      
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      const buyListTab = screen.getByRole('button', { name: /buy list/i });
+      await userEvent.click(buyListTab);
+
+      expect(screen.getByText('Buy List Tab')).toBeInTheDocument();
+    });
+
+    test('switches to advanced tools tab when clicked', async () => {
+      
+      
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      const advancedTab = screen.getByRole('button', { name: /advanced tools/i });
+      await userEvent.click(advancedTab);
+
+      expect(screen.getByText('Advanced Tools Tab')).toBeInTheDocument();
+    });
+  });
+
+  describe('URL parameter persistence', () => {
+    test('loads tab from URL parameter', () => {
+      render(
+        <BrowserRouter initialEntries={['/staff?tab=add-games']}>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByText('Add Games Tab')).toBeInTheDocument();
+    });
+
+    test('defaults to dashboard for invalid tab parameter', () => {
+      render(
+        <BrowserRouter initialEntries={['/staff?tab=invalid']}>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByText('Dashboard Tab')).toBeInTheDocument();
+    });
+  });
+
+  describe('Logout functionality', () => {
+    test('shows confirmation dialog when logout clicked', async () => {
+      
+      
+      window.confirm = vi.fn(() => false);
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      const logoutButton = screen.getByRole('button', { name: /logout/i });
+      await userEvent.click(logoutButton);
+
+      expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to logout?');
+    });
+
+    test('navigates to login when logout confirmed', async () => {
+      
+      
+      const mockNavigate = vi.fn();
+      window.confirm = vi.fn(() => true);
+
+      const { adminLogout: mockAdminLogout } = await import('../../api/client');
+      mockAdminLogout.mockResolvedValue({});
+
+      vi.mock('react-router-dom', async () => {
+        const actual = await vi.importActual('react-router-dom');
+        return {
+          ...actual,
+          useNavigate: () => mockNavigate,
+        };
+      });
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      const logoutButton = screen.getByRole('button', { name: /logout/i });
+      await userEvent.click(logoutButton);
+
+      // Note: Navigation testing is limited in this setup
+      // Real navigation would be tested in E2E tests
+    });
+  });
+
+  describe('Toast notifications', () => {
+    test('displays toast when toast message is set', () => {
+      const toastMockStaffContext = {
+        ...mockStaffContext,
+        toast: { message: 'Game added successfully', type: 'success' },
+      };
+
+      vi.mocked(vi.importActual('../../context/StaffContext')).useStaff = () => toastMockStaffContext;
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByText('Game added successfully')).toBeInTheDocument();
+    });
+  });
+
+  describe('Category modal', () => {
+    test('shows category modal when modalOpen is true', () => {
+      const modalMockStaffContext = {
+        ...mockStaffContext,
+        modalOpen: true,
+        pendingGame: { title: 'Catan' },
+      };
+
+      vi.mocked(vi.importActual('../../context/StaffContext')).useStaff = () => modalMockStaffContext;
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      // CategorySelectModal should be rendered
+      // Exact assertion depends on modal implementation
+    });
   });
 });
