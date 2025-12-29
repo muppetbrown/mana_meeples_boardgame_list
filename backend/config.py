@@ -8,7 +8,9 @@ CORS_ORIGINS = [
 
 # Admin token for protected endpoints
 ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
-if not ADMIN_TOKEN:
+# Only warn about missing ADMIN_TOKEN if not in CI/CD environment
+# and not in a migration-only context
+if not ADMIN_TOKEN and not os.getenv("CI") and os.getenv("SKIP_ADMIN_WARNING", "").lower() != "true":
     print(
         "WARNING: ADMIN_TOKEN not set - admin endpoints will be unavailable",
         file=sys.stderr,

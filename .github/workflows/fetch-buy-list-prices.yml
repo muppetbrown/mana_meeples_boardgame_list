@@ -38,7 +38,7 @@ jobs:
         run: |
           cd backend
           pip install --upgrade pip
-          pip install playwright beautifulsoup4 lxml pandas python-dateutil psycopg2-binary sqlalchemy python-dotenv
+          pip install alembic playwright beautifulsoup4 lxml pandas python-dateutil psycopg2-binary sqlalchemy python-dotenv
 
       - name: Install Playwright browsers
         run: |
@@ -52,6 +52,7 @@ jobs:
       - name: Run database migrations
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SKIP_ADMIN_WARNING: 'true'
         run: |
           cd backend
           python scripts/run_migrations.py
@@ -59,6 +60,7 @@ jobs:
       - name: Export buy list from database
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SKIP_ADMIN_WARNING: 'true'
         run: |
           cd backend
           python scripts/export_buy_list.py
