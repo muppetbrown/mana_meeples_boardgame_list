@@ -33,10 +33,11 @@ export function useOnboarding() {
     }
 
     // First visit
+    const now = new Date().toISOString();
     return {
       ...defaultState,
-      firstVisit: new Date().toISOString(),
-      lastVisit: new Date().toISOString(),
+      firstVisit: now,
+      lastVisit: now,
     };
   });
 
@@ -82,10 +83,11 @@ export function useOnboarding() {
 
   // Reset all onboarding state (useful for testing)
   const reset = useCallback(() => {
+    const now = new Date().toISOString();
     setState({
       ...defaultState,
-      firstVisit: new Date().toISOString(),
-      lastVisit: new Date().toISOString(),
+      firstVisit: now,
+      lastVisit: now,
     });
   }, []);
 
