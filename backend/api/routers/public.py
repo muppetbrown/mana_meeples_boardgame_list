@@ -112,6 +112,10 @@ def _get_games_from_db(
     _cache_store[cache_key] = result
     _cache_timestamps[cache_key] = current_time
 
+    # Periodic cleanup to prevent unbounded growth (Phase 1 Performance)
+    from utils.cache import cleanup_expired_entries
+    cleanup_expired_entries(force=False)
+
     return result
 
 

@@ -2,10 +2,28 @@
 /**
  * API client with axios instance and all API methods
  * Uses centralized configuration from config/api.js
+ * Phase 1 Performance: Added request deduplication
  */
 import axios from "axios";
 import { API_BASE, getApiUrl, imageProxyUrl as proxyUrl, generateSrcSet } from "../config/api";
 import { safeStorage } from "../utils/storage";
+
+/**
+ * Request deduplication cache
+ * Phase 1 Performance: Prevents duplicate identical requests
+ *
+ * When a request is in-flight, subsequent identical requests will wait for
+ * the original request to complete rather than making duplicate calls.
+ */
+const pendingRequests = new Map();
+
+/**
+ * Generate a cache key from request config
+ */
+function getRequestKey(config) {
+  const { method, url, params, data } = config;
+  return `${method}:${url}:${JSON.stringify(params)}:${JSON.stringify(data)}`;
+}
 
 /**
  * Axios instance configured for API communication
@@ -14,6 +32,7 @@ import { safeStorage } from "../utils/storage";
  * - Automatically adds JWT token to Authorization header
  * - Has error interceptor for debugging and error handling
  * - 5 minute timeout for long-running operations (price imports, bulk operations)
+ * - Request deduplication for identical concurrent requests
  *
  * All API paths are automatically prefixed with the version (e.g., /api/v1)
  */
@@ -22,6 +41,38 @@ export const api = axios.create({
   withCredentials: true, // Enable cookie-based authentication (legacy support)
   timeout: 300000, // 5 minutes (300,000ms) - handles long imports without freezing
 });
+
+/**
+ * Create deduplicating wrapper around axios instance
+ * Phase 1 Performance: Wraps GET requests to prevent duplicates
+ */
+const originalGet = api.get.bind(api);
+api.get = function deduplicatedGet(url, config = {}) {
+  const requestKey = getRequestKey({ method: 'get', url, params: config.params });
+
+  // Check if identical request is already in-flight
+  if (pendingRequests.has(requestKey)) {
+    return pendingRequests.get(requestKey);
+  }
+
+  // Make the request and store the promise
+  const requestPromise = originalGet(url, config)
+    .then(response => {
+      // Clean up cache on success
+      pendingRequests.delete(requestKey);
+      return response;
+    })
+    .catch(error => {
+      // Clean up cache on error
+      pendingRequests.delete(requestKey);
+      throw error;
+    });
+
+  // Store promise for deduplication
+  pendingRequests.set(requestKey, requestPromise);
+
+  return requestPromise;
+};
 
 /**
  * Request interceptor to add JWT token to all requests
