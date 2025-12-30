@@ -212,26 +212,26 @@ describe('GameImage Component', () => {
   });
 
   describe('Responsive Images', () => {
-    test('does not use srcset by default', () => {
+    test('uses srcset by default for mobile optimization', () => {
       const { container } = render(
         <GameImage url="https://example.com/image.jpg" alt="Test" />
       );
 
       const img = container.querySelector('img');
-      expect(img).not.toHaveAttribute('srcset');
+      expect(img).toHaveAttribute('srcset');
     });
 
-    test('generates srcset when useResponsive is true', () => {
+    test('can disable srcset when useResponsive is false', () => {
       const { container } = render(
         <GameImage
           url="https://example.com/image.jpg"
           alt="Test"
-          useResponsive={true}
+          useResponsive={false}
         />
       );
 
       const img = container.querySelector('img');
-      expect(img).toHaveAttribute('srcset');
+      expect(img).not.toHaveAttribute('srcset');
     });
 
     test('includes sizes attribute when using responsive images', () => {
