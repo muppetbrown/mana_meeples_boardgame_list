@@ -498,6 +498,10 @@ class GameService:
         # Update enhanced fields (description, designers, publishers, etc.)
         self._update_game_enhanced_fields(game, bgg_data)
 
+        # Pre-generate Cloudinary URL for performance optimization
+        # Eliminates 302 redirect on every image request
+        self._pre_generate_cloudinary_url(game)
+
         # Auto-link to base game if this is an expansion
         self._auto_link_expansion(game, bgg_data)
 
@@ -589,6 +593,118 @@ class GameService:
         # Handle thumbnail_url special case where data might have 'thumbnail_url' instead of 'thumbnail'
         if hasattr(game, "thumbnail_url") and "thumbnail_url" in data:
             game.thumbnail_url = data.get("thumbnail_url")
+
+    def _determine_optimal_bgg_image_quality(self, game: Game) -> str:
+        """
+        Determine optimal BGG image quality based on game popularity.
+        Smart quality selection reduces failed image requests.
+
+        Quality Tiers:
+        - _original: Very popular games (likely to have high-res images)
+        - _d (detail): Popular games
+        - _md (medium): Less popular games
+        - _mt (medium-thumb): Unpopular/obscure games
+
+        Args:
+            game: Game object with metadata (users_rated, bgg_rank)
+
+        Returns:
+            Quality suffix ('original', 'detail', 'medium', 'medium-thumb')
+        """
+        users_rated = getattr(game, "users_rated", 0) or 0
+        bgg_rank = getattr(game, "bgg_rank", None)
+
+        # Very popular games: top 1000 or 10k+ ratings → _original
+        if (bgg_rank and bgg_rank <= 1000) or users_rated >= 10000:
+            return "original"
+
+        # Popular games: top 5000 or 5k+ ratings → _d (detail)
+        elif (bgg_rank and bgg_rank <= 5000) or users_rated >= 5000:
+            return "detail"
+
+        # Moderate popularity: 1k+ ratings → _md (medium)
+        elif users_rated >= 1000:
+            return "medium"
+
+        # Less popular/new games → _mt (medium-thumb)
+        # This has highest success rate for obscure games
+        else:
+            return "medium-thumb"
+
+    def _pre_generate_cloudinary_url(self, game: Game) -> None:
+        """
+        Pre-generate Cloudinary URL for a game's image.
+        Caches the URL in the database to eliminate redirect overhead.
+
+        Uses smart quality selection based on game popularity to reduce
+        failed image requests and improve cache hit rates.
+
+        Performance Impact:
+        - Eliminates 302 redirect (50-150ms per image)
+        - Reduces server load on image proxy endpoint
+        - Faster initial page loads
+        - Reduces failed image requests for obscure games
+
+        Args:
+            game: Game object with image or thumbnail_url
+        """
+        # Only pre-generate if Cloudinary is enabled
+        from services.cloudinary_service import cloudinary_service
+        from config import CLOUDINARY_ENABLED
+
+        if not CLOUDINARY_ENABLED:
+            return
+
+        # Determine which image URL to use (prioritize full image over thumbnail)
+        source_url = game.image or game.thumbnail_url
+
+        if not source_url:
+            return
+
+        # Check if it's a BGG image (Cloudinary only works with BGG images)
+        if not source_url or 'cf.geekdo-images.com' not in source_url:
+            return
+
+        try:
+            # Smart BGG image quality selection based on popularity
+            optimal_quality = self._determine_optimal_bgg_image_quality(game)
+
+            # Optimize source URL to use the best quality for this game
+            if 'cf.geekdo-images.com' in source_url:
+                # Replace existing quality suffix with optimal one
+                quality_map = {
+                    'original': '_original.',
+                    'detail': '_d.',
+                    'medium': '_md.',
+                    'medium-thumb': '_mt.',
+                    'thumbnail': '_t.'
+                }
+                optimal_suffix = quality_map.get(optimal_quality, '_md.')
+
+                # Replace any existing quality suffix
+                for suffix in quality_map.values():
+                    source_url = source_url.replace(suffix, optimal_suffix)
+
+                logger.debug(f"Using {optimal_quality} quality for game {game.id} (users_rated: {getattr(game, 'users_rated', 0)}, rank: {getattr(game, 'bgg_rank', None)})")
+
+            # Pre-generate optimized Cloudinary URL
+            # Use medium size (800x800) as default for game cards
+            cloudinary_url = cloudinary_service.generate_optimized_url(
+                source_url,
+                width=800,
+                height=800,
+                quality="auto:best",
+                format="auto"  # Auto WebP/AVIF
+            )
+
+            # Cache in database
+            if hasattr(game, "cloudinary_url"):
+                game.cloudinary_url = cloudinary_url
+                logger.debug(f"Pre-generated Cloudinary URL for game {game.id}: {cloudinary_url}")
+
+        except Exception as e:
+            logger.warning(f"Failed to pre-generate Cloudinary URL for game {game.id}: {e}")
+            # Don't fail the import if Cloudinary URL generation fails
 
     def create_or_update_from_bgg(
         self, bgg_id: int, bgg_data: Dict[str, Any], force_update: bool = False

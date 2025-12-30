@@ -167,6 +167,64 @@ class CloudinaryService:
             self._failed_uploads.add(url)
             return None
 
+    def generate_optimized_url(
+        self,
+        url: str,
+        width: Optional[int] = None,
+        height: Optional[int] = None,
+        quality: str = "auto:best",
+        format: str = "auto"
+    ) -> str:
+        """
+        Pre-generate an optimized Cloudinary URL without uploading.
+        Used for caching URLs in the database during game import.
+
+        This assumes the image will be uploaded on first request via
+        the image proxy endpoint, but we can pre-generate the URL
+        deterministically based on the source URL hash.
+
+        Args:
+            url: Original image URL (from BGG)
+            width: Target width for optimal display (optional)
+            height: Target height for optimal display (optional)
+            quality: Quality setting (default: auto:best)
+            format: Output format (default: auto for WebP/AVIF)
+
+        Returns:
+            Pre-generated Cloudinary URL with transformations
+        """
+        if not self.enabled or not url:
+            return url
+
+        try:
+            public_id = self._get_public_id(url)
+
+            # Build transformation for optimal display
+            # For game cards, we typically want medium-sized images
+            transformation = {
+                "quality": quality,
+                "fetch_format": format,
+                "crop": "limit",  # Maintain aspect ratio
+            }
+
+            # Add responsive sizing if specified
+            if width:
+                transformation["width"] = width
+            if height:
+                transformation["height"] = height
+
+            # Generate URL deterministically
+            cloudinary_url = CloudinaryImage(public_id).build_url(
+                **transformation
+            )
+
+            logger.debug(f"Pre-generated Cloudinary URL: {cloudinary_url}")
+            return cloudinary_url
+
+        except Exception as e:
+            logger.warning(f"Failed to pre-generate Cloudinary URL for {url}: {e}")
+            return url  # Fallback to original URL
+
     def get_image_url(
         self,
         url: str,
