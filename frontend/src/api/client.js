@@ -13,12 +13,14 @@ import { safeStorage } from "../utils/storage";
  * - Includes credentials for cookie-based authentication (legacy)
  * - Automatically adds JWT token to Authorization header
  * - Has error interceptor for debugging and error handling
+ * - 5 minute timeout for long-running operations (price imports, bulk operations)
  *
  * All API paths are automatically prefixed with the version (e.g., /api/v1)
  */
 export const api = axios.create({
   baseURL: getApiUrl(''), // Use empty string to get versioned base: /api/v1
   withCredentials: true, // Enable cookie-based authentication (legacy support)
+  timeout: 300000, // 5 minutes (300,000ms) - handles long imports without freezing
 });
 
 /**
@@ -77,6 +79,18 @@ api.interceptors.response.use(
       typeof err.response?.data === "string"
         ? err.response.data.slice(0, 400)
         : JSON.stringify(err.response?.data, null, 2);
+
+    // Handle timeout errors with clearer messaging
+    if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
+      const timeoutMsg = `API REQUEST TIMEOUT
+URL: ${cfg.url}
+The operation took too long (>5 minutes) and was cancelled.
+This may happen with large imports or slow operations.
+Try refreshing the page and checking if the operation completed.`;
+      console.error(timeoutMsg);
+      showOverlay(timeoutMsg);
+      return Promise.reject(new Error('Request timeout - operation may still be processing. Please refresh and check results.'));
+    }
 
     const msg = `API ERROR
 URL: ${cfg.url}
