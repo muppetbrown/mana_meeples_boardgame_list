@@ -15,7 +15,7 @@ from services.game_service import GameService
 class TestPublicEndpointsIntegration:
     """Integration tests for public API endpoints"""
 
-    async def test_games_list_to_detail_workflow(self, async_client: AsyncClient, db_session):
+    async def test_games_list_to_detail_workflow(self, async_client, db_session):
         """
         Test workflow: List games → Get single game detail → Verify consistency
         """

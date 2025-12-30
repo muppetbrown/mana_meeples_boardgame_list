@@ -46,11 +46,10 @@ class TestGameImportWorkflow:
             "game_type": "Strategy • Thematic",
         }
 
+        # Step 1: Fetch from BGG (mocked)
         with patch("bgg_service.fetch_bgg_thing", new_callable=AsyncMock) as mock_fetch:
             mock_fetch.return_value = mock_bgg_data
-
-            # Step 1: Fetch from BGG
-            bgg_data = await fetch_bgg_thing(174430)
+            bgg_data = await mock_fetch(174430)
             assert bgg_data["title"] == "Gloomhaven"
             assert bgg_data["bgg_id"] == 174430
 
