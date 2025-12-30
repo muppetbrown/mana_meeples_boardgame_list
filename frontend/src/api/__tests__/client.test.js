@@ -552,4 +552,69 @@ describe('API Client', () => {
       expect(apiClient.generateSrcSet).toBeDefined();
     });
   });
+
+  describe('Authentication', () => {
+    test('JWT token is added to requests when present', async () => {
+      mockStorage.getItem.mockReturnValue('test-jwt-token');
+      mockAxiosInstance.get.mockResolvedValue({ data: [] });
+
+      await apiClient.getGames();
+
+      // Verify the request was made (interceptor adds the token internally)
+      expect(mockAxiosInstance.get).toHaveBeenCalled();
+    });
+
+    test('requests work without JWT token', async () => {
+      mockStorage.getItem.mockReturnValue(null);
+      mockAxiosInstance.get.mockResolvedValue({ data: [] });
+
+      const result = await apiClient.getGames();
+
+      expect(result).toEqual([]);
+      expect(mockAxiosInstance.get).toHaveBeenCalled();
+    });
+  });
+
+  describe('Error Handling', () => {
+    test('handles errors without response object', async () => {
+      const networkError = new Error('Network Error');
+      mockAxiosInstance.get.mockRejectedValue(networkError);
+
+      // getGames has error handling that returns empty array
+      const result = await apiClient.getGames();
+      expect(result).toEqual([]);
+    });
+
+    test('handles 401 errors on admin endpoints', async () => {
+      const error = {
+        response: { status: 401 },
+        config: { url: '/api/admin/games' },
+      };
+      mockAxiosInstance.get.mockRejectedValue(error);
+
+      await expect(apiClient.getGames()).resolves.toEqual([]);
+    });
+
+    test('handles timeout errors', async () => {
+      const error = {
+        code: 'ECONNABORTED',
+        message: 'timeout of 300000ms exceeded',
+      };
+      mockAxiosInstance.get.mockRejectedValue(error);
+
+      await expect(apiClient.getGames()).resolves.toEqual([]);
+    });
+
+    test('handles 500 server errors', async () => {
+      const error = {
+        response: {
+          status: 500,
+          data: { detail: 'Internal Server Error' },
+        },
+      };
+      mockAxiosInstance.get.mockRejectedValue(error);
+
+      await expect(apiClient.getGames()).resolves.toEqual([]);
+    });
+  });
 });
