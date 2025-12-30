@@ -85,10 +85,10 @@ def _get_games_from_db(
     )
     cache_key = f"games_query:{cache_params}"
 
-    # Check cache (5 second TTL)
+    # Check cache (30 second TTL - optimized for performance at scale)
     current_time = time.time()
     if cache_key in _cache_store and cache_key in _cache_timestamps:
-        if current_time - _cache_timestamps[cache_key] < 5:
+        if current_time - _cache_timestamps[cache_key] < 30:
             return _cache_store[cache_key]
 
     # Cache miss - query database

@@ -224,6 +224,7 @@ class ImageService:
     ) -> tuple[bytes, str, str]:
         """
         Proxy an external image with caching headers.
+        Requests modern image formats (WebP/AVIF) for better compression.
 
         Args:
             url: URL of the image to proxy
@@ -235,7 +236,13 @@ class ImageService:
         Raises:
             httpx.HTTPError: If image fetch fails
         """
-        response = await self.http_client.get(url)
+        # Request modern image formats for better compression and performance
+        # Priority: AVIF (best compression) > WebP (good compression) > any image format
+        headers = {
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+        }
+
+        response = await self.http_client.get(url, headers=headers)
         response.raise_for_status()
 
         content_type = response.headers.get(
