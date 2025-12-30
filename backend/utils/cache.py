@@ -2,12 +2,16 @@
 """
 Simple TTL-based caching for database query results.
 Sprint 12: Performance Optimization
+Phase 1 Performance: Added automatic cache cleanup to prevent memory leaks
 """
 import time
 import hashlib
 import json
+import logging
 from typing import Any, Optional, Callable
 from functools import wraps
+
+logger = logging.getLogger(__name__)
 
 # Simple in-memory cache with TTL
 _cache_store = {}
@@ -15,6 +19,13 @@ _cache_timestamps = {}
 
 # Default TTL: 5 seconds (good for load tests, prevents stale data in production)
 DEFAULT_TTL_SECONDS = 5
+
+# Cache cleanup configuration
+# Maximum number of entries before forcing cleanup
+MAX_CACHE_ENTRIES = 10000
+# Cleanup check interval (only cleanup every N cache operations to reduce overhead)
+_cleanup_counter = 0
+CLEANUP_CHECK_INTERVAL = 100
 
 
 def make_cache_key(*args, **kwargs) -> str:
@@ -69,16 +80,70 @@ def cached_query(ttl_seconds: int = DEFAULT_TTL_SECONDS):
             _cache_store[cache_key] = result
             _cache_timestamps[cache_key] = current_time
 
+            # Periodic cleanup to prevent unbounded growth (Phase 1 Performance)
+            cleanup_expired_entries(force=False)
+
             return result
 
         return wrapper
     return decorator
 
 
+def cleanup_expired_entries(force: bool = False):
+    """
+    Remove expired cache entries to prevent unbounded growth.
+    Phase 1 Performance: Prevents memory leak from unbounded cache dictionary.
+
+    Args:
+        force: If True, cleanup regardless of counter. If False, only cleanup periodically.
+    """
+    global _cleanup_counter
+
+    # Only run cleanup periodically to reduce overhead
+    if not force:
+        _cleanup_counter += 1
+        if _cleanup_counter < CLEANUP_CHECK_INTERVAL:
+            return
+        _cleanup_counter = 0
+
+    current_time = time.time()
+    expired_keys = []
+
+    # Find all expired keys
+    for key, timestamp in _cache_timestamps.items():
+        # Use a conservative TTL of 60 seconds for cleanup (2x the max expected TTL)
+        # This ensures we don't delete entries that might still be valid
+        if current_time - timestamp > 60:
+            expired_keys.append(key)
+
+    # Remove expired entries
+    if expired_keys:
+        for key in expired_keys:
+            _cache_store.pop(key, None)
+            _cache_timestamps.pop(key, None)
+        logger.debug(f"Cache cleanup: removed {len(expired_keys)} expired entries")
+
+    # If cache is still too large, remove oldest entries (LRU eviction)
+    if len(_cache_store) > MAX_CACHE_ENTRIES:
+        # Sort by timestamp and remove oldest entries
+        sorted_keys = sorted(_cache_timestamps.items(), key=lambda x: x[1])
+        num_to_remove = len(_cache_store) - (MAX_CACHE_ENTRIES // 2)  # Remove half
+
+        for key, _ in sorted_keys[:num_to_remove]:
+            _cache_store.pop(key, None)
+            _cache_timestamps.pop(key, None)
+
+        logger.warning(
+            f"Cache size exceeded {MAX_CACHE_ENTRIES} entries, "
+            f"evicted {num_to_remove} oldest entries"
+        )
+
+
 def clear_cache():
     """Clear all cached entries"""
     _cache_store.clear()
     _cache_timestamps.clear()
+    logger.info("Cache cleared manually")
 
 
 def get_cache_stats() -> dict:

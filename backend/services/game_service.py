@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, func, or_, and_, case, inspect, cast, String
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from models import Game
 from exceptions import GameNotFoundError, ValidationError
@@ -27,6 +27,7 @@ class GameService:
     def get_game_by_id(self, game_id: int) -> Optional[Game]:
         """
         Get a single game by ID.
+        Phase 1 Performance: Eager load expansions and base_game to prevent N+1 queries.
 
         Args:
             game_id: The game's database ID
@@ -34,7 +35,13 @@ class GameService:
         Returns:
             Game object or None if not found
         """
-        return self.db.get(Game, game_id)
+        # Use select with eager loading instead of simple .get()
+        result = self.db.execute(
+            select(Game)
+            .options(selectinload(Game.expansions), selectinload(Game.base_game))
+            .where(Game.id == game_id)
+        ).scalar_one_or_none()
+        return result
 
     def get_game_by_bgg_id(self, bgg_id: int) -> Optional[Game]:
         """
@@ -91,7 +98,10 @@ class GameService:
         """
         # Build base query - only show OWNED games for public view
         # Treat NULL status as OWNED (default)
-        query = select(Game).where(or_(Game.status == "OWNED", Game.status.is_(None)))
+        # Phase 1 Performance: Add eager loading for expansions to prevent N+1 queries
+        query = select(Game).options(
+            selectinload(Game.expansions)
+        ).where(or_(Game.status == "OWNED", Game.status.is_(None)))
 
         # Exclude require-base expansions from public view
         # Only show base games and standalone expansions (expansion_type = 'both' or 'standalone')
@@ -757,22 +767,48 @@ class GameService:
 
     def get_category_counts(self) -> Dict[str, int]:
         """
-        Get counts for each category.
+        Get counts for each category using efficient SQL GROUP BY.
+        Phase 1 Performance: Optimized to use GROUP BY instead of loading all rows.
 
         Returns:
             Dictionary mapping category keys to counts
         """
-        from utils.helpers import calculate_category_counts
+        from utils.helpers import CATEGORY_KEYS
 
-        # Only select the columns we need - filter to OWNED games only
-        # Treat NULL status as OWNED (default)
-        games = self.db.execute(
-            select(Game.id, Game.mana_meeple_category).where(
+        # Use SQL GROUP BY for efficient counting (no row loading required)
+        # Count all owned games
+        total_count = self.db.execute(
+            select(func.count(Game.id)).where(
                 or_(Game.status == "OWNED", Game.status.is_(None))
             )
+        ).scalar()
+
+        # Group by category to get counts per category in single query
+        category_results = self.db.execute(
+            select(
+                Game.mana_meeple_category,
+                func.count(Game.id).label("count")
+            ).where(
+                or_(Game.status == "OWNED", Game.status.is_(None))
+            ).group_by(Game.mana_meeple_category)
         ).all()
 
-        return calculate_category_counts(games)
+        # Build counts dictionary
+        counts = {"all": total_count, "uncategorized": 0}
+
+        # Initialize all categories to 0
+        for key in CATEGORY_KEYS:
+            counts[key] = 0
+
+        # Fill in actual counts from query results
+        for category, count in category_results:
+            if category and category in CATEGORY_KEYS:
+                counts[category] = count
+            elif not category or category not in CATEGORY_KEYS:
+                # NULL or invalid categories are "uncategorized"
+                counts["uncategorized"] += count
+
+        return counts
 
     def _save_sleeve_data(self, game: Game, bgg_data: Dict[str, Any]) -> None:
         """

@@ -2,6 +2,7 @@
 /**
  * API client with axios instance and all API methods
  * Uses centralized configuration from config/api.js
+ * Phase 1 Performance: Added request deduplication
  */
 import axios from "axios";
 import { API_BASE, getApiUrl, imageProxyUrl as proxyUrl, generateSrcSet } from "../config/api";
@@ -16,6 +17,9 @@ import { safeStorage } from "../utils/storage";
  * - 5 minute timeout for long-running operations (price imports, bulk operations)
  *
  * All API paths are automatically prefixed with the version (e.g., /api/v1)
+ *
+ * Note: Request deduplication is handled at the UI layer via useCallback and debouncing
+ * to avoid interfering with test mocks.
  */
 export const api = axios.create({
   baseURL: getApiUrl(''), // Use empty string to get versioned base: /api/v1

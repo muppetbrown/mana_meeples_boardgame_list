@@ -308,7 +308,8 @@ export default function PublicCatalogue() {
   }, [loadMore]); // Re-setup when loadMore changes (filter changes)
 
   // Helper functions with accessibility announcements
-  const updateCategory = (newCategory) => {
+  // Phase 1 Performance: Wrapped in useCallback to prevent unnecessary re-renders
+  const updateCategory = useCallback((newCategory) => {
     setCategory(newCategory);
     setExpandedCards(new Set()); // Collapse all cards on filter change
 
@@ -319,9 +320,9 @@ export default function PublicCatalogue() {
       ? "Uncategorized"
       : CATEGORY_LABELS[newCategory];
     setAnnouncement(`Filtering by ${categoryName}`);
-  };
+  }, []);
 
-  const updateSort = (newSort) => {
+  const updateSort = useCallback((newSort) => {
     setSort(newSort);
     const sortLabels = {
       "title_asc": "Title A to Z",
@@ -334,16 +335,16 @@ export default function PublicCatalogue() {
       "time_desc": "Longest play time first"
     };
     setAnnouncement(`Sorting by ${sortLabels[newSort] || newSort}`);
-  };
+  }, []);
 
-  const updateSearch = (newSearch) => {
+  const updateSearch = useCallback((newSearch) => {
     setQ(newSearch);
     if (newSearch) {
       setAnnouncement(`Searching for ${newSearch}`);
     }
-  };
+  }, []);
 
-  const clearAllFilters = () => {
+  const clearAllFilters = useCallback(() => {
     setQ("");
     setCategory("all");
     setDesigner("");
@@ -354,28 +355,32 @@ export default function PublicCatalogue() {
     setSort("year_desc");
     setExpandedCards(new Set());
     setAnnouncement("All filters cleared. Showing all games.");
-  };
+  }, []);
 
-  const toggleNzDesigner = () => {
-    const newValue = !nzDesigner;
-    setNzDesigner(newValue);
-    setAnnouncement(newValue ? "Filtering by New Zealand designers" : "New Zealand designer filter removed");
-  };
+  const toggleNzDesigner = useCallback(() => {
+    setNzDesigner(prev => {
+      const newValue = !prev;
+      setAnnouncement(newValue ? "Filtering by New Zealand designers" : "New Zealand designer filter removed");
+      return newValue;
+    });
+  }, []);
 
-  const toggleRecentlyAdded = () => {
-    const newValue = !recentlyAdded;
-    setRecentlyAdded(newValue);
-    setAnnouncement(newValue ? "Showing recently added games" : "Recently added filter removed");
-  };
+  const toggleRecentlyAdded = useCallback(() => {
+    setRecentlyAdded(prev => {
+      const newValue = !prev;
+      setAnnouncement(newValue ? "Showing recently added games" : "Recently added filter removed");
+      return newValue;
+    });
+  }, []);
 
-  const updatePlayers = (newPlayers) => {
+  const updatePlayers = useCallback((newPlayers) => {
     setPlayers(newPlayers);
     if (newPlayers) {
       setAnnouncement(`Filtering by ${newPlayers} players`);
     }
-  };
+  }, []);
 
-  const updateComplexity = (newComplexity) => {
+  const updateComplexity = useCallback((newComplexity) => {
     setComplexityRange(newComplexity);
     if (newComplexity) {
       const labels = {
@@ -387,10 +392,10 @@ export default function PublicCatalogue() {
       };
       setAnnouncement(`Filtering by ${labels[newComplexity] || newComplexity} complexity`);
     }
-  };
+  }, []);
 
   // NEW: Toggle card expansion
-  const toggleCardExpansion = (gameId) => {
+  const toggleCardExpansion = useCallback((gameId) => {
     setExpandedCards(prev => {
       const next = new Set(prev);
       if (next.has(gameId)) {
@@ -401,7 +406,7 @@ export default function PublicCatalogue() {
       }
       return next;
     });
-  };
+  }, []);
 
   // Scroll to top
   const scrollToTop = () => {
