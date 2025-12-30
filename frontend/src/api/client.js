@@ -134,7 +134,7 @@ export async function getPublicGames(params = {}) {
  * @returns {Promise<Object>} Game data
  */
 export async function getPublicGame(id) {
-  const r = await api.get(`/api/public/games/${id}`);
+  const r = await api.get(`/public/games/${id}`);
   return r.data;
 }
 
@@ -181,7 +181,7 @@ export const addGame = (payload) =>
  */
 export async function updateGame(gameId, patch) {
   try {
-    const r = await api.post(`/api/admin/games/${gameId}/update`, patch);
+    const r = await api.post(`/admin/games/${gameId}/update`, patch);
     return r.data;
   } catch (error) {
     console.warn("Update game API returned error but operation might have succeeded:", error);
@@ -198,7 +198,7 @@ export async function updateGame(gameId, patch) {
  * @returns {Promise<Object>} Deletion confirmation
  */
 export async function deleteGame(gameId) {
-  const r = await api.delete(`/api/admin/games/${gameId}`);
+  const r = await api.delete(`/admin/games/${gameId}`);
   return r.data;
 }
 
@@ -426,7 +426,7 @@ export async function addToBuyList(data) {
  * @returns {Promise<Object>} Updated buy list entry
  */
 export async function updateBuyListGame(buyListId, data) {
-  const r = await api.put(`/api/admin/buy-list/games/${buyListId}`, data);
+  const r = await api.put(`/admin/buy-list/games/${buyListId}`, data);
   return r.data;
 }
 
@@ -436,7 +436,7 @@ export async function updateBuyListGame(buyListId, data) {
  * @returns {Promise<Object>} Success message
  */
 export async function removeFromBuyList(buyListId) {
-  const r = await api.delete(`/api/admin/buy-list/games/${buyListId}`);
+  const r = await api.delete(`/admin/buy-list/games/${buyListId}`);
   return r.data;
 }
 
@@ -507,6 +507,6 @@ export async function triggerSleeveFetch(gameIds) {
  * @returns {Promise<Array>} Array of sleeve objects
  */
 export async function getGameSleeves(gameId) {
-  const r = await api.get(`/api/admin/sleeves/game/${gameId}`);
+  const r = await api.get(`/admin/sleeves/game/${gameId}`);
   return r.data;
 }
