@@ -268,3 +268,53 @@ def large_game_dataset(db_session):
 
     db_session.commit()
     return games
+
+
+@pytest.fixture
+async def async_client(db_engine):
+    """
+    Create an async test client for integration tests.
+    Required for testing async endpoints with @pytest.mark.asyncio.
+    """
+    from httpx import AsyncClient
+    from database import get_db, get_read_db
+    import database as db_module
+    from unittest.mock import AsyncMock
+    from sqlalchemy.pool import StaticPool
+    from sqlalchemy.orm import sessionmaker
+
+    # Store originals
+    original_engine = db_module.engine
+    original_SessionLocal = db_module.SessionLocal
+    original_ReadSessionLocal = db_module.ReadSessionLocal
+
+    # Override with test engine
+    db_module.engine = db_engine
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
+    db_module.SessionLocal = TestSessionLocal
+    db_module.ReadSessionLocal = TestSessionLocal
+
+    def override_get_db():
+        """Create a new session for each request"""
+        session = TestSessionLocal()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    # Override dependencies
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_read_db] = override_get_db
+
+    # Mock startup/shutdown events
+    with patch('main.db_ping', return_value=True), \
+         patch('main.os.makedirs', return_value=None), \
+         patch('main.httpx_client.aclose', new_callable=AsyncMock):
+        async with AsyncClient(app=app, base_url="http://test") as ac:
+            yield ac
+
+    # Restore originals
+    db_module.engine = original_engine
+    db_module.SessionLocal = original_SessionLocal
+    db_module.ReadSessionLocal = original_ReadSessionLocal
+    app.dependency_overrides.clear()

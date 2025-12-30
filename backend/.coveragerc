@@ -1,0 +1,76 @@
+# Coverage configuration for backend tests
+# Run with: pytest --cov=. --cov-report=html --cov-report=term
+
+[run]
+source = .
+omit =
+    # Test files
+    */tests/*
+    */test_*
+    *_test.py
+    # Migration files
+    */alembic/*
+    # Virtual environment
+    */venv/*
+    */.venv/*
+    */site-packages/*
+    # Temporary/cache files
+    */__pycache__/*
+    */.pytest_cache/*
+    # Configuration files
+    */conftest.py
+    # Deprecated or temporary folders
+    */boardgame_tracker_temp_folder/*
+
+[report]
+# Precision for coverage percentages
+precision = 2
+
+# Show missing lines
+show_missing = True
+
+# Skip covered files
+skip_covered = False
+
+# Exclude lines from coverage
+exclude_lines =
+    # Standard pragma
+    pragma: no cover
+
+    # Debug-only code
+    def __repr__
+    if self\.debug
+    if settings\.DEBUG
+
+    # Defensive programming
+    raise AssertionError
+    raise NotImplementedError
+
+    # Type checking
+    if TYPE_CHECKING:
+    @overload
+
+    # Abstract methods
+    @abstractmethod
+
+    # Main guards
+    if __name__ == .__main__.:
+
+    # Pass statements
+    pass
+
+    # Ellipsis
+    \.\.\.
+
+[html]
+directory = htmlcov
+title = Backend Test Coverage Report
+
+[term]
+# Terminal output options
+skip_covered = False
+
+[paths]
+source =
+    .
+    */site-packages

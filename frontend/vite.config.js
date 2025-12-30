@@ -92,5 +92,42 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: './src/test/setup.js',
     css: true,
+    // Coverage configuration
+    coverage: {
+      provider: 'v8', // Use V8 coverage provider (faster than istanbul)
+      reporter: ['text', 'json', 'html', 'lcov'],
+      reportsDirectory: './coverage',
+      exclude: [
+        'node_modules/',
+        'src/test/',
+        '**/*.test.{js,jsx,ts,tsx}',
+        '**/__tests__/**',
+        '**/__mocks__/**',
+        'src/reportWebVitals.js',
+        'src/setupTests.js',
+        'vite.config.js',
+        'postcss.config.cjs',
+        'tailwind.config.cjs',
+        'build/',
+        'dist/',
+        'coverage/',
+      ],
+      include: [
+        'src/**/*.{js,jsx,ts,tsx}'
+      ],
+      all: true, // Include all files, not just tested ones
+      // Coverage thresholds
+      statements: 80,
+      branches: 75,
+      functions: 80,
+      lines: 80,
+      // Fail build if coverage is below thresholds
+      thresholds: {
+        statements: 80,
+        branches: 75,
+        functions: 80,
+        lines: 80,
+      },
+    },
   }
 });
