@@ -8,6 +8,10 @@
 
 # production
 /frontend/node_modules
+/frontend/build
+
+# Build artifacts - auto-generated
+/frontend/public/version.json
 
 # misc
 .DS_Store
