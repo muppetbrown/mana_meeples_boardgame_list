@@ -349,6 +349,7 @@ class GameService:
             bgg_id=bgg_id,
             mana_meeple_category=mana_category,
             status=game_data.get("status", "OWNED"),  # Default to OWNED if not provided
+            nz_designer=game_data.get("nz_designer", False),  # Include nz_designer flag
         )
 
         # Add enhanced fields if they exist in the model
