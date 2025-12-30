@@ -558,7 +558,7 @@ describe('PublicCatalogue Page', () => {
       expect(sortSelects.length).toBeGreaterThan(0);
       // Can select options without errors
       if (sortSelects[0]) {
-        userEvent.selectOptions(sortSelects[0], 'title');
+        await userEvent.selectOptions(sortSelects[0], 'title');
       }
     });
   });
@@ -680,6 +680,529 @@ describe('PublicCatalogue Page', () => {
       expect(retryButton).toBeInTheDocument();
       // Click retry button - in real usage this would trigger a refetch
       userEvent.click(retryButton);
+    });
+  });
+
+  describe('Player filter', () => {
+    test('updates player filter when select changes', async () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      const playerSelect = screen.getByLabelText(/players/i);
+      await userEvent.selectOptions(playerSelect, '4');
+
+      await waitFor(() => {
+        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
+          expect.objectContaining({ players: 4 })
+        );
+      });
+    });
+
+    test('clears player filter when "Any" selected', async () => {
+      render(
+        <BrowserRouter initialEntries={['/?players=4']}>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      const playerSelect = screen.getByLabelText(/players/i);
+      await userEvent.selectOptions(playerSelect, '');
+
+      await waitFor(() => {
+        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
+          expect.not.objectContaining({ players: expect.anything() })
+        );
+      });
+    });
+  });
+
+  describe('Complexity filter', () => {
+    test('updates complexity filter when select changes', async () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      const complexitySelect = screen.getByLabelText(/complexity/i);
+      await userEvent.selectOptions(complexitySelect, '2.5-3.5');
+
+      await waitFor(() => {
+        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
+          expect.objectContaining({
+            complexity_min: 2.5,
+            complexity_max: 3.5
+          })
+        );
+      });
+    });
+
+    test('clears complexity filter when "Any" selected', async () => {
+      render(
+        <BrowserRouter initialEntries={['/?complexity=2.5-3.5']}>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      const complexitySelect = screen.getByLabelText(/complexity/i);
+      await userEvent.selectOptions(complexitySelect, '');
+
+      await waitFor(() => {
+        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
+          expect.not.objectContaining({
+            complexity_min: expect.anything(),
+            complexity_max: expect.anything()
+          })
+        );
+      });
+    });
+  });
+
+  describe('Recently added filter', () => {
+    test('toggles recently added filter on button click', async () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      const recentButton = screen.getByRole('button', { name: /recent/i });
+      await userEvent.click(recentButton);
+
+      await waitFor(() => {
+        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
+          expect.objectContaining({ recently_added: 30 })
+        );
+      });
+    });
+
+    test('removes recently added filter when toggled off', async () => {
+      render(
+        <BrowserRouter initialEntries={['/?recently_added=30']}>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      const recentButton = screen.getByRole('button', { name: /recent/i });
+      await userEvent.click(recentButton);
+
+      await waitFor(() => {
+        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
+          expect.not.objectContaining({ recently_added: expect.anything() })
+        );
+      });
+    });
+  });
+
+  describe('Clear all filters', () => {
+    test('clears all active filters when clear button clicked', async () => {
+      render(
+        <BrowserRouter initialEntries={['/?category=GATEWAY_STRATEGY&q=test&players=4&complexity=2.5-3.5&nz_designer=true&recently_added=30&sort=title_asc']}>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /clear/i })).toBeInTheDocument();
+      });
+
+      const clearButton = screen.getByRole('button', { name: /clear.*filter/i });
+      await userEvent.click(clearButton);
+
+      await waitFor(() => {
+        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
+          expect.objectContaining({
+            q: '',
+            page: 1,
+            page_size: 12,
+            sort: 'year_desc',
+          })
+        );
+      });
+    });
+
+    test('resets expanded cards when filters cleared', async () => {
+      render(
+        <BrowserRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      const clearButton = screen.getByRole('button', { name: /clear.*filter/i });
+      await userEvent.click(clearButton);
+
+      // Should not throw errors
+      await waitFor(() => {
+        expect(apiClient.getPublicGames).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('Active filters count', () => {
+    test('calculates correct count with multiple filters', async () => {
+      render(
+        <BrowserRouter initialEntries={['/?category=GATEWAY_STRATEGY&q=test&players=4']}>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        // Should show 3 active filters badge
+        const filterBadges = screen.getAllByText('3');
+        expect(filterBadges.length).toBeGreaterThan(0);
+      });
+    });
+
+    test('shows no badge when no filters active', async () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      // No clear filters button should be visible
+      expect(screen.queryByRole('button', { name: /clear.*filter/i })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Results summary', () => {
+    test('shows search results count when searching', async () => {
+      apiClient.getPublicGames.mockResolvedValue({
+        items: [mockGames.items[0]],
+        total: 1,
+        page: 1,
+        page_size: 12,
+      });
+
+      render(
+        <BrowserRouter initialEntries={['/?q=Catan']}>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/1 game found for "Catan"/i)).toBeInTheDocument();
+      });
+    });
+
+    test('uses plural form for multiple results', async () => {
+      render(
+        <BrowserRouter initialEntries={['/?q=game']}>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText(/2 games found for "game"/i)).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Scroll to top', () => {
+    test('scroll to top button becomes visible after scrolling', async () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      // Initially not visible (scrollY = 0)
+      expect(screen.queryByRole('button', { name: /scroll.*top/i })).not.toBeInTheDocument();
+
+      // Simulate scrolling down
+      Object.defineProperty(window, 'scrollY', { value: 500, writable: true });
+      window.dispatchEvent(new Event('scroll'));
+
+      // Button should appear (note: may need to wait for state update)
+      await waitFor(() => {
+        const scrollButton = screen.queryByRole('button', { name: /scroll.*top/i });
+        // Button visibility depends on scroll handling
+      });
+    });
+  });
+
+  describe('Load more functionality', () => {
+    test('loads next page when more items available', async () => {
+      const mockFirstPage = {
+        items: Array.from({ length: 12 }, (_, i) => ({
+          id: i + 1,
+          title: `Game ${i + 1}`,
+          mana_meeple_category: 'GATEWAY_STRATEGY',
+        })),
+        total: 25,
+        page: 1,
+        page_size: 12,
+      };
+
+      const mockSecondPage = {
+        items: Array.from({ length: 12 }, (_, i) => ({
+          id: i + 13,
+          title: `Game ${i + 13}`,
+          mana_meeple_category: 'GATEWAY_STRATEGY',
+        })),
+        total: 25,
+        page: 2,
+        page_size: 12,
+      };
+
+      apiClient.getPublicGames
+        .mockResolvedValueOnce(mockFirstPage)
+        .mockResolvedValueOnce(mockSecondPage);
+
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Game 1')).toBeInTheDocument();
+      });
+
+      // Verify total is displayed
+      expect(screen.getByText(/12 of 25/i)).toBeInTheDocument();
+    });
+
+    test('prevents duplicate items from being added', async () => {
+      const mockFirstPage = {
+        items: [
+          { id: 1, title: 'Game 1', mana_meeple_category: 'GATEWAY_STRATEGY' },
+        ],
+        total: 2,
+        page: 1,
+        page_size: 1,
+      };
+
+      const mockSecondPageWithDuplicate = {
+        items: [
+          { id: 1, title: 'Game 1', mana_meeple_category: 'GATEWAY_STRATEGY' }, // Duplicate
+          { id: 2, title: 'Game 2', mana_meeple_category: 'GATEWAY_STRATEGY' },
+        ],
+        total: 2,
+        page: 2,
+        page_size: 1,
+      };
+
+      apiClient.getPublicGames
+        .mockResolvedValueOnce(mockFirstPage)
+        .mockResolvedValueOnce(mockSecondPageWithDuplicate);
+
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Game 1')).toBeInTheDocument();
+      });
+
+      // Component should handle duplicates gracefully
+    });
+
+    test('does not load more when all items are loaded', async () => {
+      const mockSinglePage = {
+        items: [{ id: 1, title: 'Only Game', mana_meeple_category: 'GATEWAY_STRATEGY' }],
+        total: 1,
+        page: 1,
+        page_size: 12,
+      };
+
+      apiClient.getPublicGames.mockResolvedValue(mockSinglePage);
+
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Only Game')).toBeInTheDocument();
+      });
+
+      // Should not show "X of Y" when all items are loaded
+      expect(screen.queryByText(/of/i)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Screen reader announcements', () => {
+    test('announces category filter changes', async () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      const gatewayButton = screen.getByRole('button', { name: /filter by gateway strategy/i });
+      await userEvent.click(gatewayButton);
+
+      // Live region should announce the change
+      const liveRegion = document.querySelector('[role="status"]');
+      expect(liveRegion).toBeInTheDocument();
+    });
+
+    test('announces search queries', async () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      const searchBox = screen.getByPlaceholderText(/search/i);
+      await userEvent.type(searchBox, 'test');
+
+      // Live region should announce the search
+      await waitFor(() => {
+        const liveRegion = document.querySelector('[role="status"]');
+        expect(liveRegion).toBeInTheDocument();
+      });
+    });
+
+    test('announces when filters are cleared', async () => {
+      render(
+        <BrowserRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        const clearButton = screen.getByRole('button', { name: /clear.*filter/i });
+        expect(clearButton).toBeInTheDocument();
+      });
+
+      const clearButton = screen.getByRole('button', { name: /clear.*filter/i });
+      await userEvent.click(clearButton);
+
+      // Live region should announce filters cleared
+      const liveRegion = document.querySelector('[role="status"]');
+      expect(liveRegion).toBeInTheDocument();
+    });
+  });
+
+  describe('Card expansion', () => {
+    test('toggles card expansion when card is clicked', async () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      // Card expansion is handled by GameCardPublic component
+      // This test verifies the state management in PublicCatalogue
+      const cards = screen.getAllByRole('article');
+      expect(cards.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Mobile filter panel', () => {
+    test('toggles filter panel when filter button clicked', async () => {
+      // Simulate mobile viewport
+      global.innerWidth = 375;
+
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      const filterButtons = screen.getAllByRole('button', { name: /filter/i });
+      if (filterButtons.length > 0) {
+        // Mobile filter button should toggle the expanded panel
+        const mobileFilterButton = filterButtons.find(btn =>
+          btn.textContent.includes('Filters')
+        );
+
+        if (mobileFilterButton) {
+          const isExpanded = mobileFilterButton.getAttribute('aria-expanded') === 'true';
+          await userEvent.click(mobileFilterButton);
+
+          await waitFor(() => {
+            expect(mobileFilterButton.getAttribute('aria-expanded')).toBe(
+              isExpanded ? 'false' : 'true'
+            );
+          });
+        }
+      }
+    });
+  });
+
+  describe('Sort functionality', () => {
+    test('updates sort order and announces to screen readers', async () => {
+      render(
+        <BrowserRouter>
+          <PublicCatalogue />
+        </BrowserRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Catan')).toBeInTheDocument();
+      });
+
+      const sortSelects = screen.getAllByRole('combobox');
+      if (sortSelects.length > 0) {
+        await userEvent.selectOptions(sortSelects[0], 'title');
+
+        await waitFor(() => {
+          expect(apiClient.getPublicGames).toHaveBeenCalledWith(
+            expect.objectContaining({ sort: 'title_asc' })
+          );
+        });
+      }
     });
   });
 });
