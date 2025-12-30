@@ -57,6 +57,41 @@ function resolveApiBase() {
 export const API_BASE = resolveApiBase().replace(/\/+$/, "");
 
 /**
+ * API version to use
+ * Set to null or empty string to use legacy (unversioned) endpoints
+ * @type {string}
+ */
+export const API_VERSION = "v1";
+
+/**
+ * Get versioned API endpoint URL
+ * @param {string} path - API path (with or without leading slash)
+ * @returns {string} - Full versioned API URL
+ * @example
+ * getApiUrl('/public/games') -> 'http://api.example.com/api/v1/public/games'
+ * getApiUrl('public/games') -> 'http://api.example.com/api/v1/public/games'
+ */
+export function getApiUrl(path) {
+  // Remove leading slash if present
+  const cleanPath = path.replace(/^\/+/, "");
+
+  // If using versioned API
+  if (API_VERSION) {
+    return `${API_BASE}/api/${API_VERSION}/${cleanPath}`;
+  }
+
+  // Legacy (unversioned) API
+  return `${API_BASE}/api/${cleanPath}`;
+}
+
+/**
+ * Legacy API_BASE for backward compatibility
+ * This will be deprecated in future versions
+ * @deprecated Use getApiUrl() instead
+ */
+export const LEGACY_API_BASE = API_BASE;
+
+/**
  * Generate BGG image URL at specific size
  *
  * @param {string} url - The original image URL

@@ -478,7 +478,7 @@ os.makedirs(THUMBS_DIR, exist_ok=True)
 app.mount("/thumbs", StaticFiles(directory=THUMBS_DIR), name="thumbs")
 
 # ------------------------------------------------------------------------------
-# Router registration
+# Router registration with API versioning
 # ------------------------------------------------------------------------------
 
 from api.routers.public import router as public_router
@@ -487,8 +487,24 @@ from api.routers.bulk import router as bulk_router
 from api.routers.health import health_router, debug_router
 from api.routers.buy_list import router as buy_list_router
 from api.routers.sleeves import router as sleeves_router
+from api.versioning import version_info
 
-# Register all routers
+# Register v1 routers (current version with /api/v1 prefix)
+# Create a parent router for v1 to group all endpoints
+v1_router = FastAPI(title="API v1")
+v1_router.include_router(public_router)
+v1_router.include_router(admin_router)
+v1_router.include_router(bulk_router)
+v1_router.include_router(buy_list_router)
+v1_router.include_router(sleeves_router)
+v1_router.include_router(health_router)
+v1_router.include_router(debug_router)
+
+# Mount v1 as sub-application
+app.mount("/api/v1", v1_router)
+
+# Register legacy routers (backward compatibility - no version prefix)
+# These map to the same handlers as v1
 app.include_router(public_router)
 app.include_router(admin_router)
 app.include_router(bulk_router)
@@ -504,12 +520,22 @@ app.include_router(debug_router)
 
 @app.get("/")
 async def root():
-    """Root endpoint - API information"""
+    """
+    Root endpoint - API information and version discovery.
+
+    Returns API version information and available endpoints.
+    """
     return {
-        "message": "Mana & Meeples API",
-        "version": "2.0.0",
-        "docs": "/docs",
-        "health": "/api/health",
+        "message": "Mana & Meeples Board Game Library API",
+        "app_version": "2.0.0",
+        "api_versioning": version_info.to_dict(),
+        "endpoints": {
+            "documentation": "/docs",
+            "health_check": "/api/health",
+            "api_v1": "/api/v1",
+            "legacy_api": "/api (maps to v1)",
+        },
+        "recommended_base_url": "/api/v1",
     }
 
 

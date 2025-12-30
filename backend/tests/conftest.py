@@ -3,6 +3,7 @@ Pytest configuration and fixtures for backend tests
 """
 import os
 import pytest
+import pytest_asyncio
 from unittest.mock import patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -12,7 +13,8 @@ from fastapi.testclient import TestClient
 # Use in-memory SQLite with StaticPool for thread-safe testing
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["ADMIN_TOKEN"] = "test_admin_token"
-os.environ["CORS_ORIGINS"] = "http://localhost:3000"
+# Allow test client origin for CORS (http://test is used by async_client)
+os.environ["CORS_ORIGINS"] = "http://localhost:3000,http://test"
 # Disable rate limiting during tests to prevent test failures
 os.environ["DISABLE_RATE_LIMITING"] = "true"
 
@@ -22,12 +24,19 @@ from main import app
 
 @pytest.fixture(autouse=True)
 def clear_cache():
-    """Clear the cache before each test to prevent test pollution"""
+    """Clear the cache and rate limiters before each test to prevent test pollution"""
     from utils.cache import clear_cache as clear_cache_func
+    from shared.rate_limiting import admin_attempt_tracker
+
     clear_cache_func()
+    # Clear admin rate limit tracker to prevent 429 errors in tests
+    admin_attempt_tracker.clear()
+
     yield
+
     # Clear again after test to ensure clean state
     clear_cache_func()
+    admin_attempt_tracker.clear()
 
 
 @pytest.fixture(scope="function")
@@ -268,3 +277,58 @@ def large_game_dataset(db_session):
 
     db_session.commit()
     return games
+
+
+@pytest_asyncio.fixture
+async def async_client(db_engine):
+    """
+    Create an async test client for integration tests.
+    Required for testing async endpoints with @pytest.mark.asyncio.
+    """
+    from httpx import AsyncClient, ASGITransport
+    from database import get_db, get_read_db
+    import database as db_module
+    from unittest.mock import AsyncMock
+    from sqlalchemy.pool import StaticPool
+    from sqlalchemy.orm import sessionmaker
+
+    # Store originals
+    original_engine = db_module.engine
+    original_SessionLocal = db_module.SessionLocal
+    original_ReadSessionLocal = db_module.ReadSessionLocal
+
+    # Override with test engine
+    db_module.engine = db_engine
+    TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=db_engine)
+    db_module.SessionLocal = TestSessionLocal
+    db_module.ReadSessionLocal = TestSessionLocal
+
+    def override_get_db():
+        """Create a new session for each request"""
+        session = TestSessionLocal()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    # Override dependencies
+    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_read_db] = override_get_db
+
+    # Mock startup/shutdown events
+    with patch('main.db_ping', return_value=True), \
+         patch('main.os.makedirs', return_value=None), \
+         patch('main.httpx_client.aclose', new_callable=AsyncMock):
+        # Use ASGITransport to test the ASGI app directly (not real HTTP)
+        # This is the proper way to test FastAPI apps with AsyncClient
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test"
+        ) as ac:
+            yield ac
+
+    # Restore originals
+    db_module.engine = original_engine
+    db_module.SessionLocal = original_SessionLocal
+    db_module.ReadSessionLocal = original_ReadSessionLocal
+    app.dependency_overrides.clear()

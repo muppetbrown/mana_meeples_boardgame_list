@@ -4,17 +4,20 @@
  * Uses centralized configuration from config/api.js
  */
 import axios from "axios";
-import { API_BASE, imageProxyUrl as proxyUrl, generateSrcSet } from "../config/api";
+import { API_BASE, getApiUrl, imageProxyUrl as proxyUrl, generateSrcSet } from "../config/api";
 import { safeStorage } from "../utils/storage";
 
 /**
  * Axios instance configured for API communication
+ * - Uses versioned API base URL (/api/v1)
  * - Includes credentials for cookie-based authentication (legacy)
  * - Automatically adds JWT token to Authorization header
  * - Has error interceptor for debugging and error handling
+ *
+ * All API paths are automatically prefixed with the version (e.g., /api/v1)
  */
 export const api = axios.create({
-  baseURL: API_BASE,
+  baseURL: getApiUrl(''), // Use empty string to get versioned base: /api/v1
   withCredentials: true, // Enable cookie-based authentication (legacy support)
 });
 
@@ -121,7 +124,7 @@ function getAdminHeaders() {
  * @returns {Promise<Object>} Response with total, page, page_size, items
  */
 export async function getPublicGames(params = {}) {
-  const r = await api.get("/api/public/games", { params });
+  const r = await api.get("/public/games", { params });
   return r.data;
 }
 
@@ -131,7 +134,7 @@ export async function getPublicGames(params = {}) {
  * @returns {Promise<Object>} Game data
  */
 export async function getPublicGame(id) {
-  const r = await api.get(`/api/public/games/${id}`);
+  const r = await api.get(`/public/games/${id}`);
   return r.data;
 }
 
@@ -140,7 +143,7 @@ export async function getPublicGame(id) {
  * @returns {Promise<Object>} Category counts object
  */
 export async function getPublicCategoryCounts() {
-  const r = await api.get("/api/public/category-counts");
+  const r = await api.get("/public/category-counts");
   return r.data;
 }
 
@@ -154,7 +157,7 @@ export async function getPublicCategoryCounts() {
  */
 export const getGames = async () => {
   try {
-    const response = await api.get("/api/admin/games");
+    const response = await api.get("/admin/games");
     return response.data || [];
   } catch (error) {
     console.error("Failed to load games:", error);
@@ -168,7 +171,7 @@ export const getGames = async () => {
  * @returns {Promise<Object>} Created game data
  */
 export const addGame = (payload) =>
-  api.post("/api/admin/games", payload).then(r => r.data);
+  api.post("/admin/games", payload).then(r => r.data);
 
 /**
  * Update game by ID
@@ -178,7 +181,7 @@ export const addGame = (payload) =>
  */
 export async function updateGame(gameId, patch) {
   try {
-    const r = await api.post(`/api/admin/games/${gameId}/update`, patch);
+    const r = await api.post(`/admin/games/${gameId}/update`, patch);
     return r.data;
   } catch (error) {
     console.warn("Update game API returned error but operation might have succeeded:", error);
@@ -195,7 +198,7 @@ export async function updateGame(gameId, patch) {
  * @returns {Promise<Object>} Deletion confirmation
  */
 export async function deleteGame(gameId) {
-  const r = await api.delete(`/api/admin/games/${gameId}`);
+  const r = await api.delete(`/admin/games/${gameId}`);
   return r.data;
 }
 
@@ -209,7 +212,7 @@ export async function deleteGame(gameId) {
  * @returns {Promise<Object>} Import results
  */
 export const bulkImportCsv = (csv_data) =>
-  api.post("/api/admin/bulk-import-csv", { csv_data }).then(r => r.data);
+  api.post("/admin/bulk-import-csv", { csv_data }).then(r => r.data);
 
 /**
  * Bulk categorize games from CSV
@@ -217,7 +220,7 @@ export const bulkImportCsv = (csv_data) =>
  * @returns {Promise<Object>} Categorization results
  */
 export const bulkCategorizeCsv = (csv_data) =>
-  api.post("/api/admin/bulk-categorize-csv", { csv_data }).then(r => r.data);
+  api.post("/admin/bulk-categorize-csv", { csv_data }).then(r => r.data);
 
 /**
  * Bulk update NZ designer flags from CSV
@@ -225,7 +228,7 @@ export const bulkCategorizeCsv = (csv_data) =>
  * @returns {Promise<Object>} Update results
  */
 export async function bulkUpdateNZDesigners(csv_data) {
-  const r = await api.post("/api/admin/bulk-update-nz-designers", { csv_data });
+  const r = await api.post("/admin/bulk-update-nz-designers", { csv_data });
   return r.data;
 }
 
@@ -235,7 +238,7 @@ export async function bulkUpdateNZDesigners(csv_data) {
  * @returns {Promise<Object>} Update results
  */
 export async function bulkUpdateAfterGameIDs(csv_data) {
-  const r = await api.post("/api/admin/bulk-update-aftergame-ids", { csv_data });
+  const r = await api.post("/admin/bulk-update-aftergame-ids", { csv_data });
   return r.data;
 }
 
@@ -244,7 +247,7 @@ export async function bulkUpdateAfterGameIDs(csv_data) {
  * @returns {Promise<Object>} Re-import initiation confirmation
  */
 export async function reimportAllGames() {
-  const r = await api.post("/api/admin/reimport-all-games", {});
+  const r = await api.post("/admin/reimport-all-games", {});
   return r.data;
 }
 
@@ -253,7 +256,7 @@ export async function reimportAllGames() {
  * @returns {Promise<Object>} Sleeve fetch initiation confirmation
  */
 export async function fetchAllSleeveData() {
-  const r = await api.post("/api/admin/fetch-all-sleeve-data", {});
+  const r = await api.post("/admin/fetch-all-sleeve-data", {});
   return r.data;
 }
 
@@ -263,7 +266,7 @@ export async function fetchAllSleeveData() {
  * @returns {Promise<Object>} Sequence fix result with max_id and next_id
  */
 export async function fixDatabaseSequence() {
-  const r = await api.post("/api/admin/fix-sequence", {});
+  const r = await api.post("/admin/fix-sequence", {});
   return r.data;
 }
 
@@ -277,7 +280,7 @@ export async function fixDatabaseSequence() {
  * @returns {Promise<Object>} Login response with JWT
  */
 export async function adminLogin(token) {
-  const r = await api.post("/api/admin/login", { token });
+  const r = await api.post("/admin/login", { token });
 
   // Store JWT token in safe storage (handles tracking prevention)
   if (r.data.token) {
@@ -292,7 +295,7 @@ export async function adminLogin(token) {
  * @returns {Promise<Object>} Logout confirmation
  */
 export async function adminLogout() {
-  const r = await api.post("/api/admin/logout");
+  const r = await api.post("/admin/logout");
 
   // Clear JWT token from safe storage (handles tracking prevention)
   safeStorage.removeItem("JWT_TOKEN");
@@ -305,7 +308,7 @@ export async function adminLogout() {
  * @returns {Promise<Object>} Validation response
  */
 export async function validateAdminToken() {
-  const r = await api.get("/api/admin/validate");
+  const r = await api.get("/admin/validate");
   return r.data;
 }
 
@@ -318,7 +321,7 @@ export async function validateAdminToken() {
  * @returns {Promise<Object>} Categories data
  */
 export async function getDebugCategories() {
-  const r = await api.get("/api/debug/categories");
+  const r = await api.get("/debug/categories");
   return r.data;
 }
 
@@ -328,7 +331,7 @@ export async function getDebugCategories() {
  * @returns {Promise<Object>} Database info
  */
 export async function getDebugDatabaseInfo(limit = 50) {
-  const r = await api.get("/api/debug/database-info", { params: { limit } });
+  const r = await api.get("/debug/database-info", { params: { limit } });
   return r.data;
 }
 
@@ -337,7 +340,7 @@ export async function getDebugDatabaseInfo(limit = 50) {
  * @returns {Promise<Object>} Performance stats
  */
 export async function getDebugPerformance() {
-  const r = await api.get("/api/debug/performance");
+  const r = await api.get("/debug/performance");
   return r.data;
 }
 
@@ -348,7 +351,7 @@ export async function getDebugPerformance() {
  */
 export async function exportGamesCSV(limit = null) {
   const params = limit ? { limit } : {};
-  const r = await api.get("/api/debug/export-games-csv", { params });
+  const r = await api.get("/debug/export-games-csv", { params });
   return r.data;
 }
 
@@ -361,7 +364,7 @@ export async function exportGamesCSV(limit = null) {
  * @returns {Promise<Object>} Health status
  */
 export async function getHealthCheck() {
-  const r = await api.get("/api/health");
+  const r = await api.get("/health");
   return r.data;
 }
 
@@ -370,7 +373,7 @@ export async function getHealthCheck() {
  * @returns {Promise<Object>} Database health status
  */
 export async function getDbHealthCheck() {
-  const r = await api.get("/api/health/db");
+  const r = await api.get("/health/db");
   return r.data;
 }
 
@@ -386,7 +389,7 @@ export { generateSrcSet };
 
 // Import game from BoardGameGeek by BGG ID
 export async function importFromBGG(bggId, force = false) {
-  const r = await api.post("/api/admin/import/bgg", null, {
+  const r = await api.post("/admin/import/bgg", null, {
     params: { bgg_id: bggId, force }
   });
   return r.data;
@@ -402,7 +405,7 @@ export async function importFromBGG(bggId, force = false) {
  * @returns {Promise<Object>} Response with total and items array
  */
 export async function getBuyListGames(params = {}) {
-  const r = await api.get("/api/admin/buy-list/games", { params });
+  const r = await api.get("/admin/buy-list/games", { params });
   return r.data;
 }
 
@@ -412,7 +415,7 @@ export async function getBuyListGames(params = {}) {
  * @returns {Promise<Object>} Created buy list entry
  */
 export async function addToBuyList(data) {
-  const r = await api.post("/api/admin/buy-list/games", data);
+  const r = await api.post("/admin/buy-list/games", data);
   return r.data;
 }
 
@@ -423,7 +426,7 @@ export async function addToBuyList(data) {
  * @returns {Promise<Object>} Updated buy list entry
  */
 export async function updateBuyListGame(buyListId, data) {
-  const r = await api.put(`/api/admin/buy-list/games/${buyListId}`, data);
+  const r = await api.put(`/admin/buy-list/games/${buyListId}`, data);
   return r.data;
 }
 
@@ -433,7 +436,7 @@ export async function updateBuyListGame(buyListId, data) {
  * @returns {Promise<Object>} Success message
  */
 export async function removeFromBuyList(buyListId) {
-  const r = await api.delete(`/api/admin/buy-list/games/${buyListId}`);
+  const r = await api.delete(`/admin/buy-list/games/${buyListId}`);
   return r.data;
 }
 
@@ -443,7 +446,7 @@ export async function removeFromBuyList(buyListId) {
  * @returns {Promise<Object>} Import result with counts
  */
 export async function importPrices(sourceFile) {
-  const r = await api.post("/api/admin/buy-list/import-prices", null, {
+  const r = await api.post("/admin/buy-list/import-prices", null, {
     params: { source_file: sourceFile }
   });
   return r.data;
@@ -454,7 +457,7 @@ export async function importPrices(sourceFile) {
  * @returns {Promise<Object>} Last update info (last_updated, source_file)
  */
 export async function getLastPriceUpdate() {
-  const r = await api.get("/api/admin/buy-list/last-updated");
+  const r = await api.get("/admin/buy-list/last-updated");
   return r.data;
 }
 
@@ -466,7 +469,7 @@ export async function getLastPriceUpdate() {
 export async function bulkImportBuyListCSV(file) {
   const formData = new FormData();
   formData.append("file", file);
-  const r = await api.post("/api/admin/buy-list/bulk-import-csv", formData, {
+  const r = await api.post("/admin/buy-list/bulk-import-csv", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -484,7 +487,7 @@ export async function bulkImportBuyListCSV(file) {
  * @returns {Promise<Array>} Shopping list items
  */
 export async function generateSleeveShoppingList(gameIds) {
-  const r = await api.post("/api/admin/sleeves/shopping-list", { game_ids: gameIds });
+  const r = await api.post("/admin/sleeves/shopping-list", { game_ids: gameIds });
   return r.data;
 }
 
@@ -494,7 +497,7 @@ export async function generateSleeveShoppingList(gameIds) {
  * @returns {Promise<Object>} Workflow trigger confirmation
  */
 export async function triggerSleeveFetch(gameIds) {
-  const r = await api.post("/api/admin/trigger-sleeve-fetch", gameIds);
+  const r = await api.post("/admin/trigger-sleeve-fetch", gameIds);
   return r.data;
 }
 
@@ -504,6 +507,6 @@ export async function triggerSleeveFetch(gameIds) {
  * @returns {Promise<Array>} Array of sleeve objects
  */
 export async function getGameSleeves(gameId) {
-  const r = await api.get(`/api/admin/sleeves/game/${gameId}`);
+  const r = await api.get(`/admin/sleeves/game/${gameId}`);
   return r.data;
 }

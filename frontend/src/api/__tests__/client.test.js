@@ -53,7 +53,7 @@ describe('API Client', () => {
       const params = { q: 'Catan', category: 'GATEWAY_STRATEGY' };
       const result = await apiClient.getPublicGames(params);
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/public/games', { params });
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/public/games', { params });
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -63,7 +63,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getPublicGames();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/public/games', { params: {} });
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/public/games', { params: {} });
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -73,7 +73,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getPublicGame(1);
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/public/games/1');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/public/games/1');
       expect(result).toEqual(mockGame);
     });
 
@@ -83,7 +83,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getPublicCategoryCounts();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/public/category-counts');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/public/category-counts');
       expect(result).toEqual(mockCounts);
     });
   });
@@ -95,7 +95,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getGames();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/admin/games');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/admin/games');
       expect(result).toEqual(mockGames);
     });
 
@@ -114,7 +114,7 @@ describe('API Client', () => {
 
       const result = await apiClient.addGame(newGame);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/games', newGame);
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/games', newGame);
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -125,7 +125,7 @@ describe('API Client', () => {
 
       const result = await apiClient.updateGame(1, patch);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/games/1/update', patch);
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/games/1/update', patch);
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -148,7 +148,7 @@ describe('API Client', () => {
 
       const result = await apiClient.deleteGame(1);
 
-      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/api/admin/games/1');
+      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/admin/games/1');
       expect(result).toEqual(mockResponse.data);
     });
   });
@@ -162,7 +162,7 @@ describe('API Client', () => {
       const result = await apiClient.bulkImportCsv(csvData);
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/api/admin/bulk-import-csv',
+        '/admin/bulk-import-csv',
         { csv_data: csvData }
       );
       expect(result).toEqual(mockResponse.data);
@@ -176,7 +176,7 @@ describe('API Client', () => {
       const result = await apiClient.bulkCategorizeCsv(csvData);
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/api/admin/bulk-categorize-csv',
+        '/admin/bulk-categorize-csv',
         { csv_data: csvData }
       );
       expect(result).toEqual(mockResponse.data);
@@ -190,7 +190,7 @@ describe('API Client', () => {
       const result = await apiClient.bulkUpdateNZDesigners(csvData);
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/api/admin/bulk-update-nz-designers',
+        '/admin/bulk-update-nz-designers',
         { csv_data: csvData }
       );
       expect(result).toEqual(mockResponse.data);
@@ -204,7 +204,7 @@ describe('API Client', () => {
       const result = await apiClient.bulkUpdateAfterGameIDs(csvData);
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/api/admin/bulk-update-aftergame-ids',
+        '/admin/bulk-update-aftergame-ids',
         { csv_data: csvData }
       );
       expect(result).toEqual(mockResponse.data);
@@ -216,7 +216,7 @@ describe('API Client', () => {
 
       const result = await apiClient.reimportAllGames();
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/reimport-all-games', {});
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/reimport-all-games', {});
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -226,7 +226,7 @@ describe('API Client', () => {
 
       const result = await apiClient.fetchAllSleeveData();
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/fetch-all-sleeve-data', {});
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/fetch-all-sleeve-data', {});
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -236,7 +236,7 @@ describe('API Client', () => {
 
       const result = await apiClient.fixDatabaseSequence();
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/fix-sequence', {});
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/fix-sequence', {});
       expect(result).toEqual(mockResponse.data);
     });
   });
@@ -250,7 +250,7 @@ describe('API Client', () => {
 
       const result = await apiClient.adminLogin('admin-token');
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/login', {
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/login', {
         token: 'admin-token',
       });
       expect(mockStorage.setItem).toHaveBeenCalledWith('JWT_TOKEN', 'jwt-token-123');
@@ -273,7 +273,7 @@ describe('API Client', () => {
 
       const result = await apiClient.adminLogout();
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/logout');
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/logout');
       expect(mockStorage.removeItem).toHaveBeenCalledWith('JWT_TOKEN');
       expect(result).toEqual(mockResponse.data);
     });
@@ -284,7 +284,7 @@ describe('API Client', () => {
 
       const result = await apiClient.validateAdminToken();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/admin/validate');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/admin/validate');
       expect(result).toEqual(mockResponse.data);
     });
   });
@@ -296,7 +296,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getDebugCategories();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/debug/categories');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/debug/categories');
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -306,7 +306,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getDebugDatabaseInfo();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/debug/database-info', {
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/debug/database-info', {
         params: { limit: 50 },
       });
       expect(result).toEqual(mockResponse.data);
@@ -318,7 +318,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getDebugDatabaseInfo(100);
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/debug/database-info', {
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/debug/database-info', {
         params: { limit: 100 },
       });
       expect(result).toEqual(mockResponse.data);
@@ -330,7 +330,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getDebugPerformance();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/debug/performance');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/debug/performance');
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -340,7 +340,7 @@ describe('API Client', () => {
 
       const result = await apiClient.exportGamesCSV();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/debug/export-games-csv', {
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/debug/export-games-csv', {
         params: {},
       });
       expect(result).toEqual(mockResponse.data);
@@ -352,7 +352,7 @@ describe('API Client', () => {
 
       const result = await apiClient.exportGamesCSV(10);
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/debug/export-games-csv', {
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/debug/export-games-csv', {
         params: { limit: 10 },
       });
       expect(result).toEqual(mockResponse.data);
@@ -366,7 +366,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getHealthCheck();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/health');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/health');
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -376,7 +376,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getDbHealthCheck();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/health/db');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/health/db');
       expect(result).toEqual(mockResponse.data);
     });
   });
@@ -388,7 +388,7 @@ describe('API Client', () => {
 
       const result = await apiClient.importFromBGG(1234);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/import/bgg', null, {
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/import/bgg', null, {
         params: { bgg_id: 1234, force: false },
       });
       expect(result).toEqual(mockResponse.data);
@@ -400,7 +400,7 @@ describe('API Client', () => {
 
       const result = await apiClient.importFromBGG(1234, true);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/import/bgg', null, {
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/import/bgg', null, {
         params: { bgg_id: 1234, force: true },
       });
       expect(result).toEqual(mockResponse.data);
@@ -415,7 +415,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getBuyListGames(params);
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/admin/buy-list/games', { params });
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/admin/buy-list/games', { params });
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -425,7 +425,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getBuyListGames();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/admin/buy-list/games', {
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/admin/buy-list/games', {
         params: {},
       });
       expect(result).toEqual(mockResponse.data);
@@ -438,7 +438,7 @@ describe('API Client', () => {
 
       const result = await apiClient.addToBuyList(data);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/buy-list/games', data);
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/buy-list/games', data);
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -449,7 +449,7 @@ describe('API Client', () => {
 
       const result = await apiClient.updateBuyListGame(1, data);
 
-      expect(mockAxiosInstance.put).toHaveBeenCalledWith('/api/admin/buy-list/games/1', data);
+      expect(mockAxiosInstance.put).toHaveBeenCalledWith('/admin/buy-list/games/1', data);
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -459,7 +459,7 @@ describe('API Client', () => {
 
       const result = await apiClient.removeFromBuyList(1);
 
-      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/api/admin/buy-list/games/1');
+      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/admin/buy-list/games/1');
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -470,7 +470,7 @@ describe('API Client', () => {
       const result = await apiClient.importPrices('prices.json');
 
       expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/api/admin/buy-list/import-prices',
+        '/admin/buy-list/import-prices',
         null,
         {
           params: { source_file: 'prices.json' },
@@ -485,7 +485,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getLastPriceUpdate();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/admin/buy-list/last-updated');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/admin/buy-list/last-updated');
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -498,7 +498,7 @@ describe('API Client', () => {
 
       expect(mockAxiosInstance.post).toHaveBeenCalled();
       const callArgs = mockAxiosInstance.post.mock.calls[0];
-      expect(callArgs[0]).toBe('/api/admin/buy-list/bulk-import-csv');
+      expect(callArgs[0]).toBe('/admin/buy-list/bulk-import-csv');
       expect(callArgs[1]).toBeInstanceOf(FormData);
       expect(callArgs[2]).toEqual({
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -515,7 +515,7 @@ describe('API Client', () => {
 
       const result = await apiClient.generateSleeveShoppingList(gameIds);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/sleeves/shopping-list', {
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/sleeves/shopping-list', {
         game_ids: gameIds,
       });
       expect(result).toEqual(mockResponse.data);
@@ -528,7 +528,7 @@ describe('API Client', () => {
 
       const result = await apiClient.triggerSleeveFetch(gameIds);
 
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/api/admin/trigger-sleeve-fetch', gameIds);
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/trigger-sleeve-fetch', gameIds);
       expect(result).toEqual(mockResponse.data);
     });
 
@@ -538,7 +538,7 @@ describe('API Client', () => {
 
       const result = await apiClient.getGameSleeves(1);
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/api/admin/sleeves/game/1');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/admin/sleeves/game/1');
       expect(result).toEqual(mockResponse.data);
     });
   });
