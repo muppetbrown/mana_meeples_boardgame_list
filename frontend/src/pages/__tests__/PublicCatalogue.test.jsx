@@ -207,8 +207,10 @@ describe('PublicCatalogue Page', () => {
       expect(screen.getByText('Game 1')).toBeInTheDocument();
     });
 
-    // Verify IntersectionObserver was created
-    expect(global.IntersectionObserver).toHaveBeenCalled();
+    // Verify IntersectionObserver was created (wait for useEffect to complete)
+    await waitFor(() => {
+      expect(global.IntersectionObserver).toHaveBeenCalled();
+    });
   });
 
   test('displays load more indicator when more pages available', async () => {
