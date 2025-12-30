@@ -661,6 +661,8 @@ async def import_prices_from_json(
     """
     Import price data from GitHub Actions JSON output.
     Expected file location: backend/price_data/{source_file}
+
+    Uses batch processing to prevent blocking and improve performance.
     """
     try:
         # Load JSON file
@@ -685,11 +687,18 @@ async def import_prices_from_json(
 
         checked_at = datetime.fromisoformat(data["checked_at"])
         games_data = data["games"]
+        total_games = len(games_data)
 
         imported_count = 0
         skipped_count = 0
 
-        for game_data in games_data:
+        # Batch size for commits to prevent large transactions from blocking
+        BATCH_SIZE = 50
+        batch_count = 0
+
+        logger.info(f"Starting price import for {total_games} games from {source_file}")
+
+        for idx, game_data in enumerate(games_data, 1):
             try:
                 # Find game by BGG ID or title
                 game = None
@@ -706,8 +715,8 @@ async def import_prices_from_json(
                     ).scalar_one_or_none()
 
                 if not game:
-                    logger.warning(
-                        f"Game not found for price import: {game_data.get('name')}"
+                    logger.debug(
+                        f"Game not found for price import ({idx}/{total_games}): {game_data.get('name')}"
                     )
                     skipped_count += 1
                     continue
@@ -742,22 +751,33 @@ async def import_prices_from_json(
                         db.add(price_offer)
 
                 imported_count += 1
+                batch_count += 1
+
+                # Commit in batches to prevent large transactions from blocking
+                if batch_count >= BATCH_SIZE:
+                    db.commit()
+                    batch_count = 0
+                    logger.info(f"Progress: {idx}/{total_games} games processed ({imported_count} imported, {skipped_count} skipped)")
 
             except Exception as e:
-                logger.error(f"Error importing price for game: {e}")
+                logger.error(f"Error importing price for game ({idx}/{total_games}): {e}")
                 skipped_count += 1
+                # Don't let one error stop the entire import
                 continue
 
-        db.commit()
+        # Final commit for remaining items
+        if batch_count > 0:
+            db.commit()
 
         logger.info(
-            f"Imported {imported_count} price snapshots, skipped {skipped_count}"
+            f"Price import completed: {imported_count} imported, {skipped_count} skipped out of {total_games} total"
         )
 
         return {
             "message": "Price data imported successfully",
             "imported": imported_count,
             "skipped": skipped_count,
+            "total": total_games,
             "checked_at": checked_at.isoformat(),
         }
 

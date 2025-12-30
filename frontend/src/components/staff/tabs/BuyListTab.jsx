@@ -84,15 +84,31 @@ export function BuyListTab() {
     try {
       setError(null);
       setSuccess(null);
+      setLoading(true);
+
+      // Show immediate feedback that import is starting
+      setSuccess("⏳ Import started... This may take several minutes for large datasets. Please wait...");
+
       const result = await importPrices("latest_prices.json");
-      setSuccess(
-        `Imported ${result.imported} prices, skipped ${result.skipped}`
-      );
+
+      // Show detailed results
+      const message = `✅ Import completed! ${result.imported} prices imported, ${result.skipped} skipped${result.total ? ` (out of ${result.total} total)` : ''}`;
+      setSuccess(message);
+
+      // Reload data
       await loadBuyList();
       await loadLastUpdate();
     } catch (err) {
       console.error("Failed to import prices:", err);
-      setError("Failed to import prices");
+
+      // Provide helpful error message
+      if (err.message?.includes('timeout')) {
+        setError("⚠️ Import timed out (>5 min). The operation may still be processing. Please refresh in a moment and check if prices were updated.");
+      } else {
+        setError(`Failed to import prices: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
