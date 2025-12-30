@@ -358,6 +358,7 @@ def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         or game.playtime_max,  # Alias for frontend
         "thumbnail_url": thumbnail_url,
         "image_url": thumbnail_url,  # Alias for frontend
+        "cloudinary_url": getattr(game, "cloudinary_url", None),  # Pre-generated Cloudinary URL (cached)
         "mana_meeple_category": getattr(game, "mana_meeple_category", None),
         "description": getattr(game, "description", None),
         "designers": designers,

@@ -15,6 +15,7 @@ from fastapi import (
     Request,
     Response,
 )
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from database import get_db, get_read_db
@@ -323,6 +324,38 @@ async def image_proxy(
                 status_code=400,
                 detail="Image proxy only supports BoardGameGeek images"
             )
+
+        # FAST PATH: Check if we have a pre-generated Cloudinary URL cached in database
+        # This eliminates the upload check and redirect latency (50-150ms savings)
+        if CLOUDINARY_ENABLED and 'cf.geekdo-images.com' in url:
+            from models import Game  # noqa: E402
+            from sqlalchemy import or_  # noqa: E402
+
+            try:
+                # Quick database lookup for cached Cloudinary URL
+                # Check both image and thumbnail_url fields
+                cached_game = db.execute(
+                    select(Game).where(
+                        or_(
+                            Game.image == url,
+                            Game.thumbnail_url == url
+                        )
+                    ).where(
+                        Game.cloudinary_url.isnot(None)
+                    )
+                ).scalar_one_or_none()
+
+                if cached_game and cached_game.cloudinary_url:
+                    logger.debug(f"Using cached Cloudinary URL for game {cached_game.id}")
+                    return Response(
+                        status_code=302,
+                        headers={
+                            "Location": cached_game.cloudinary_url,
+                            "Cache-Control": "public, max-age=31536000, immutable"
+                        }
+                    )
+            except Exception as e:
+                logger.debug(f"Cached Cloudinary URL lookup failed: {e}, continuing to upload path")
 
         # If Cloudinary is enabled, try to upload and return Cloudinary URL
         if CLOUDINARY_ENABLED and 'cf.geekdo-images.com' in url:

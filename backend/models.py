@@ -43,6 +43,7 @@ class Game(Base):
     playtime_max = Column(Integer, nullable=True)
     thumbnail_url = Column(String(512), nullable=True)
     image = Column(String(512), nullable=True)  # Full-size image URL from BGG
+    cloudinary_url = Column(String(512), nullable=True)  # Pre-generated Cloudinary CDN URL (cached)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     date_added = Column(
         DateTime, default=utc_now, nullable=True, index=True
