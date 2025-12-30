@@ -2,7 +2,7 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import PublicCatalogue from '../PublicCatalogue';
 import * as apiClient from '../../api/client';
 
@@ -41,11 +41,14 @@ describe('PublicCatalogue Page', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     });
-    // Mock IntersectionObserver as a class
-    global.IntersectionObserver = vi.fn(function() {
+    // Mock IntersectionObserver as a constructor function
+    global.IntersectionObserver = vi.fn().mockImplementation(function(callback, options) {
       this.observe = vi.fn();
       this.disconnect = vi.fn();
       this.unobserve = vi.fn();
+      this.callback = callback;
+      this.options = options;
+      return this;
     });
   });
 
@@ -516,9 +519,9 @@ describe('PublicCatalogue Page', () => {
 
     test('clears all filters when clear button clicked', async () => {
       render(
-        <BrowserRouter initialEntries={['/?category=GATEWAY_STRATEGY&q=test']}>
+        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY&q=test']}>
           <PublicCatalogue />
-        </BrowserRouter>
+        </MemoryRouter>
       );
 
       await waitFor(() => {
@@ -566,9 +569,9 @@ describe('PublicCatalogue Page', () => {
   describe('URL synchronization', () => {
     test('reads initial state from URL params', async () => {
       render(
-        <BrowserRouter initialEntries={['/?category=GATEWAY_STRATEGY&sort=title_asc']}>
+        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY&sort=title_asc']}>
           <PublicCatalogue />
-        </BrowserRouter>
+        </MemoryRouter>
       );
 
       await waitFor(() => {
@@ -707,9 +710,9 @@ describe('PublicCatalogue Page', () => {
 
     test('clears player filter when "Any" selected', async () => {
       render(
-        <BrowserRouter initialEntries={['/?players=4']}>
+        <MemoryRouter initialEntries={['/?players=4']}>
           <PublicCatalogue />
-        </BrowserRouter>
+        </MemoryRouter>
       );
 
       await waitFor(() => {
@@ -739,7 +742,11 @@ describe('PublicCatalogue Page', () => {
         expect(screen.getByText('Catan')).toBeInTheDocument();
       });
 
-      const complexitySelect = screen.getByLabelText(/complexity/i);
+      // Use getByRole with name to be specific about which select element
+      const complexitySelect = screen.getAllByRole('combobox').find(
+        select => select.id.includes('complexity')
+      );
+      expect(complexitySelect).toBeDefined();
       await userEvent.selectOptions(complexitySelect, '2.5-3.5');
 
       await waitFor(() => {
@@ -754,16 +761,19 @@ describe('PublicCatalogue Page', () => {
 
     test('clears complexity filter when "Any" selected', async () => {
       render(
-        <BrowserRouter initialEntries={['/?complexity=2.5-3.5']}>
+        <MemoryRouter initialEntries={['/?complexity=2.5-3.5']}>
           <PublicCatalogue />
-        </BrowserRouter>
+        </MemoryRouter>
       );
 
       await waitFor(() => {
         expect(screen.getByText('Catan')).toBeInTheDocument();
       });
 
-      const complexitySelect = screen.getByLabelText(/complexity/i);
+      const complexitySelect = screen.getAllByRole('combobox').find(
+        select => select.id.includes('complexity')
+      );
+      expect(complexitySelect).toBeDefined();
       await userEvent.selectOptions(complexitySelect, '');
 
       await waitFor(() => {
@@ -801,9 +811,9 @@ describe('PublicCatalogue Page', () => {
 
     test('removes recently added filter when toggled off', async () => {
       render(
-        <BrowserRouter initialEntries={['/?recently_added=30']}>
+        <MemoryRouter initialEntries={['/?recently_added=30']}>
           <PublicCatalogue />
-        </BrowserRouter>
+        </MemoryRouter>
       );
 
       await waitFor(() => {
@@ -824,9 +834,9 @@ describe('PublicCatalogue Page', () => {
   describe('Clear all filters', () => {
     test('clears all active filters when clear button clicked', async () => {
       render(
-        <BrowserRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
+        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
           <PublicCatalogue />
-        </BrowserRouter>
+        </MemoryRouter>
       );
 
       await waitFor(() => {
@@ -846,9 +856,9 @@ describe('PublicCatalogue Page', () => {
 
     test('resets expanded cards when filters cleared', async () => {
       render(
-        <BrowserRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
+        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
           <PublicCatalogue />
-        </BrowserRouter>
+        </MemoryRouter>
       );
 
       await waitFor(() => {
@@ -871,9 +881,9 @@ describe('PublicCatalogue Page', () => {
   describe('Active filters count', () => {
     test('calculates correct count with multiple filters', async () => {
       render(
-        <BrowserRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
+        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
           <PublicCatalogue />
-        </BrowserRouter>
+        </MemoryRouter>
       );
 
       await waitFor(() => {
@@ -913,9 +923,9 @@ describe('PublicCatalogue Page', () => {
       });
 
       render(
-        <BrowserRouter initialEntries={['/?q=Catan']}>
+        <MemoryRouter initialEntries={['/?q=Catan']}>
           <PublicCatalogue />
-        </BrowserRouter>
+        </MemoryRouter>
       );
 
       await waitFor(() => {
@@ -927,9 +937,9 @@ describe('PublicCatalogue Page', () => {
 
     test('uses plural form for multiple results', async () => {
       render(
-        <BrowserRouter initialEntries={['/?q=game']}>
+        <MemoryRouter initialEntries={['/?q=game']}>
           <PublicCatalogue />
-        </BrowserRouter>
+        </MemoryRouter>
       );
 
       await waitFor(() => {
@@ -1095,9 +1105,9 @@ describe('PublicCatalogue Page', () => {
 
     test('announces when filters are cleared', async () => {
       render(
-        <BrowserRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
+        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
           <PublicCatalogue />
-        </BrowserRouter>
+        </MemoryRouter>
       );
 
       await waitFor(() => {
