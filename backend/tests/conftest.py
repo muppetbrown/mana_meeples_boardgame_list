@@ -13,7 +13,8 @@ from fastapi.testclient import TestClient
 # Use in-memory SQLite with StaticPool for thread-safe testing
 os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ["ADMIN_TOKEN"] = "test_admin_token"
-os.environ["CORS_ORIGINS"] = "http://localhost:3000"
+# Allow test client origin for CORS (http://test is used by async_client)
+os.environ["CORS_ORIGINS"] = "http://localhost:3000,http://test"
 # Disable rate limiting during tests to prevent test failures
 os.environ["DISABLE_RATE_LIMITING"] = "true"
 
@@ -277,7 +278,7 @@ async def async_client(db_engine):
     Create an async test client for integration tests.
     Required for testing async endpoints with @pytest.mark.asyncio.
     """
-    from httpx import AsyncClient
+    from httpx import AsyncClient, ASGITransport
     from database import get_db, get_read_db
     import database as db_module
     from unittest.mock import AsyncMock
@@ -311,7 +312,12 @@ async def async_client(db_engine):
     with patch('main.db_ping', return_value=True), \
          patch('main.os.makedirs', return_value=None), \
          patch('main.httpx_client.aclose', new_callable=AsyncMock):
-        async with AsyncClient(app=app, base_url="http://test") as ac:
+        # Use ASGITransport to test the ASGI app directly (not real HTTP)
+        # This is the proper way to test FastAPI apps with AsyncClient
+        async with AsyncClient(
+            transport=ASGITransport(app=app),
+            base_url="http://test"
+        ) as ac:
             yield ac
 
     # Restore originals
