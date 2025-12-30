@@ -3,6 +3,7 @@ Pytest configuration and fixtures for backend tests
 """
 import os
 import pytest
+import pytest_asyncio
 from unittest.mock import patch
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
@@ -270,7 +271,7 @@ def large_game_dataset(db_session):
     return games
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def async_client(db_engine):
     """
     Create an async test client for integration tests.
