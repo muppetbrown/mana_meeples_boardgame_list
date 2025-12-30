@@ -69,4 +69,165 @@ describe('useOnboarding Hook', () => {
 
     expect(result.current.hasExpandedCard).toBe(false);
   });
+
+  test('marks AfterGame as clicked', () => {
+    const { result } = renderHook(() => useOnboarding());
+
+    expect(result.current.hasClickedAfterGame).toBe(false);
+    expect(result.current.shouldShowAfterGameHint).toBe(true);
+
+    act(() => {
+      result.current.markAfterGameClicked();
+    });
+
+    expect(result.current.hasClickedAfterGame).toBe(true);
+    expect(result.current.shouldShowAfterGameHint).toBe(false);
+  });
+
+  test('marks help as opened', () => {
+    const { result } = renderHook(() => useOnboarding());
+
+    expect(result.current.hasOpenedHelp).toBe(false);
+
+    act(() => {
+      result.current.markHelpOpened();
+    });
+
+    expect(result.current.hasOpenedHelp).toBe(true);
+  });
+
+  test('loads existing state from localStorage', () => {
+    // Pre-populate localStorage
+    const existingState = {
+      version: '1.0',
+      firstVisit: '2024-01-01T00:00:00.000Z',
+      lastVisit: '2024-01-01T00:00:00.000Z',
+      hasExpandedCard: true,
+      hasClickedAfterGame: true,
+      hasOpenedHelp: true,
+      dismissedHints: ['card-expand'],
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(existingState));
+
+    const { result } = renderHook(() => useOnboarding());
+
+    expect(result.current.hasExpandedCard).toBe(true);
+    expect(result.current.hasClickedAfterGame).toBe(true);
+    expect(result.current.hasOpenedHelp).toBe(true);
+    expect(result.current.isHintDismissed('card-expand')).toBe(true);
+  });
+
+  test('handles corrupted localStorage data gracefully', () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    // Put invalid JSON in localStorage
+    localStorage.setItem(STORAGE_KEY, 'invalid json');
+
+    const { result } = renderHook(() => useOnboarding());
+
+    // Should initialize with default state
+    expect(result.current.isFirstVisit).toBe(true);
+    expect(result.current.hasExpandedCard).toBe(false);
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Failed to load onboarding state:',
+      expect.any(Error)
+    );
+
+    consoleSpy.mockRestore();
+  });
+
+  test('handles localStorage save errors gracefully', () => {
+    // Clear any existing data first
+    localStorage.clear();
+
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const originalSetItem = localStorage.setItem;
+
+    // Mock localStorage.setItem to always throw an error
+    localStorage.setItem = vi.fn(() => {
+      throw new Error('Storage full');
+    });
+
+    // Hook should still work even if saves fail
+    const { result } = renderHook(() => useOnboarding());
+
+    // State changes should still work even though saves fail
+    act(() => {
+      result.current.markCardExpanded();
+    });
+
+    // Hook should still function despite errors
+    expect(result.current.hasExpandedCard).toBe(true);
+
+    // Restore
+    localStorage.setItem = originalSetItem;
+    consoleSpy.mockRestore();
+  });
+
+  test('handles version mismatch by resetting state', () => {
+    // Pre-populate localStorage with wrong version
+    const oldState = {
+      version: '0.5',
+      firstVisit: '2024-01-01T00:00:00.000Z',
+      lastVisit: '2024-01-01T00:00:00.000Z',
+      hasExpandedCard: true,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(oldState));
+
+    const { result } = renderHook(() => useOnboarding());
+
+    // Should reset to defaults despite old data
+    expect(result.current.hasExpandedCard).toBe(false);
+    expect(result.current.isFirstVisit).toBe(true);
+  });
+
+  test('shouldShowCardHint is false after card expanded', () => {
+    const { result } = renderHook(() => useOnboarding());
+
+    expect(result.current.shouldShowCardHint).toBe(true);
+
+    act(() => {
+      result.current.markCardExpanded();
+    });
+
+    expect(result.current.shouldShowCardHint).toBe(false);
+  });
+
+  test('shouldShowCardHint is false after hint dismissed', () => {
+    const { result } = renderHook(() => useOnboarding());
+
+    expect(result.current.shouldShowCardHint).toBe(true);
+
+    act(() => {
+      result.current.dismissHint('card-expand');
+    });
+
+    expect(result.current.shouldShowCardHint).toBe(false);
+  });
+
+  test('shouldShowAfterGameHint is false after hint dismissed', () => {
+    const { result } = renderHook(() => useOnboarding());
+
+    expect(result.current.shouldShowAfterGameHint).toBe(true);
+
+    act(() => {
+      result.current.dismissHint('aftergame');
+    });
+
+    expect(result.current.shouldShowAfterGameHint).toBe(false);
+  });
+
+  test('dismissHint prevents duplicates', () => {
+    const { result } = renderHook(() => useOnboarding());
+
+    act(() => {
+      result.current.dismissHint('test');
+      result.current.dismissHint('test');
+      result.current.dismissHint('test');
+    });
+
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const testCount = stored.dismissedHints.filter(h => h === 'test').length;
+    expect(testCount).toBe(1);
+  });
 });

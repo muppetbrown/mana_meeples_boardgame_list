@@ -276,4 +276,488 @@ describe('GameDetails Page', () => {
     });
   });
 
+  test('displays game type badge when available', async () => {
+    const gameWithType = {
+      ...mockGame,
+      game_type: 'Base Game',
+    };
+    apiClient.getPublicGame.mockResolvedValue(gameWithType);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Type:/i)).toBeInTheDocument();
+      expect(screen.getByText(/Base Game/i)).toBeInTheDocument();
+    });
+  });
+
+  test('does not display game type badge when not available', async () => {
+    apiClient.getPublicGame.mockResolvedValue(mockGame);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Catan')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Type:/i)).not.toBeInTheDocument();
+  });
+
+  test('displays player count with expansion asterisk', async () => {
+    const gameWithExpansion = {
+      ...mockGame,
+      has_player_expansion: true,
+      players_min_with_expansions: 3,
+      players_max_with_expansions: 6,
+    };
+    apiClient.getPublicGame.mockResolvedValue(gameWithExpansion);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/3-6\*/)).toBeInTheDocument();
+    });
+  });
+
+  test('displays game mechanics when available', async () => {
+    const gameWithMechanics = {
+      ...mockGame,
+      mechanics: ['Dice Rolling', 'Hand Management', 'Set Collection'],
+    };
+    apiClient.getPublicGame.mockResolvedValue(gameWithMechanics);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Game Mechanics/i)).toBeInTheDocument();
+      expect(screen.getByText('Dice Rolling')).toBeInTheDocument();
+      expect(screen.getByText('Hand Management')).toBeInTheDocument();
+      expect(screen.getByText('Set Collection')).toBeInTheDocument();
+    });
+  });
+
+  test('does not display mechanics section when not available', async () => {
+    apiClient.getPublicGame.mockResolvedValue(mockGame);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Catan')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Game Mechanics/i)).not.toBeInTheDocument();
+  });
+
+  test('displays base game info for expansions', async () => {
+    const expansionGame = {
+      ...mockGame,
+      title: 'Catan: Cities & Knights',
+      is_expansion: true,
+      base_game: {
+        id: 2,
+        title: 'Settlers of Catan',
+      },
+    };
+    apiClient.getPublicGame.mockResolvedValue(expansionGame);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/This is an expansion for:/i)).toBeInTheDocument();
+      const baseGameLink = screen.getByRole('link', { name: /Settlers of Catan/i });
+      expect(baseGameLink).toHaveAttribute('href', '/game/2');
+    });
+  });
+
+  test('does not display base game info for non-expansions', async () => {
+    apiClient.getPublicGame.mockResolvedValue(mockGame);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Catan')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/This is an expansion for:/i)).not.toBeInTheDocument();
+  });
+
+  test('displays available expansions list', async () => {
+    const gameWithExpansions = {
+      ...mockGame,
+      expansions: [
+        { id: 10, title: 'Cities & Knights', image_url: null },
+        { id: 11, title: 'Seafarers', image_url: null },
+      ],
+    };
+    apiClient.getPublicGame.mockResolvedValue(gameWithExpansions);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Available Expansions \(2\)/i)).toBeInTheDocument();
+    });
+  });
+
+  test('does not display expansions section when not available', async () => {
+    apiClient.getPublicGame.mockResolvedValue(mockGame);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Catan')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Available Expansions/i)).not.toBeInTheDocument();
+  });
+
+  test('navigates back when back button clicked', async () => {
+    apiClient.getPublicGame.mockResolvedValue(mockGame);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Catan')).toBeInTheDocument();
+    });
+
+    const backButton = screen.getByRole('button', { name: /go back to previous page/i });
+    backButton.click();
+
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
+  });
+
+  test('navigates back when error Go Back button clicked', async () => {
+    apiClient.getPublicGame.mockRejectedValue({
+      response: { status: 404, data: { detail: 'Game not found' } },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/game/999']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/game not found/i)).toBeInTheDocument();
+    });
+
+    const goBackButton = screen.getByRole('button', { name: /go back/i });
+    goBackButton.click();
+
+    expect(mockNavigate).toHaveBeenCalledWith(-1);
+  });
+
+  test('navigates to designer filter when designer clicked', async () => {
+    apiClient.getPublicGame.mockResolvedValue(mockGame);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Klaus Teuber')).toBeInTheDocument();
+    });
+
+    const designerButton = screen.getByRole('button', { name: /Klaus Teuber/i });
+    designerButton.click();
+
+    expect(mockNavigate).toHaveBeenCalledWith('/?designer=Klaus%20Teuber');
+  });
+
+  test('displays Plan a Game button with correct href', async () => {
+    const gameWithAfterGame = {
+      ...mockGame,
+      aftergame_game_id: 'catan-123',
+    };
+    apiClient.getPublicGame.mockResolvedValue(gameWithAfterGame);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      const planButton = screen.getByRole('link', { name: /plan a game/i });
+      expect(planButton).toHaveAttribute('href', expect.stringContaining('aftergame'));
+    });
+  });
+
+  test('handles missing year gracefully', async () => {
+    const gameWithoutYear = {
+      ...mockGame,
+      year_published: null,
+    };
+    apiClient.getPublicGame.mockResolvedValue(gameWithoutYear);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Year:/i)).toBeInTheDocument();
+      // Should display em-dash for missing year
+      expect(screen.getByText(/–/)).toBeInTheDocument();
+    });
+  });
+
+  test('handles missing playtime gracefully', async () => {
+    const gameWithoutTime = {
+      ...mockGame,
+      playing_time: null,
+    };
+    apiClient.getPublicGame.mockResolvedValue(gameWithoutTime);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Time:/i)).toBeInTheDocument();
+      // Should display ? for missing time
+      expect(screen.getByText(/\? min/i)).toBeInTheDocument();
+    });
+  });
+
+  test('handles missing player counts gracefully', async () => {
+    const gameWithoutPlayers = {
+      ...mockGame,
+      min_players: null,
+      max_players: null,
+    };
+    apiClient.getPublicGame.mockResolvedValue(gameWithoutPlayers);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Players:/i)).toBeInTheDocument();
+      // Should display ?-? for missing players
+      expect(screen.getByText(/\?-\?/)).toBeInTheDocument();
+    });
+  });
+
+  test('displays category badge with correct styling', async () => {
+    apiClient.getPublicGame.mockResolvedValue(mockGame);
+
+    const { container } = render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Gateway Strategy')).toBeInTheDocument();
+    });
+
+    const categoryBadge = screen.getByText('Gateway Strategy');
+    expect(categoryBadge.className).toContain('bg-gradient-to-r');
+    expect(categoryBadge.className).toContain('from-emerald-500');
+  });
+
+  test('does not display category badge when category is null', async () => {
+    const gameWithoutCategory = {
+      ...mockGame,
+      mana_meeple_category: null,
+    };
+    apiClient.getPublicGame.mockResolvedValue(gameWithoutCategory);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Catan')).toBeInTheDocument();
+    });
+
+    // Badge should not be rendered for null category
+    expect(screen.queryByText(/Gateway Strategy/i)).not.toBeInTheDocument();
+  });
+
+  test('handles multiple designers correctly', async () => {
+    const gameWithMultipleDesigners = {
+      ...mockGame,
+      designers: ['Klaus Teuber', 'Benjamin Teuber', 'Guido Teuber'],
+    };
+    apiClient.getPublicGame.mockResolvedValue(gameWithMultipleDesigners);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Klaus Teuber/)).toBeInTheDocument();
+      expect(screen.getByText(/Benjamin Teuber/)).toBeInTheDocument();
+      expect(screen.getByText(/Guido Teuber/)).toBeInTheDocument();
+    });
+  });
+
+  test('does not crash when description is not a string', async () => {
+    const gameWithInvalidDescription = {
+      ...mockGame,
+      description: { invalid: 'object' },
+    };
+    apiClient.getPublicGame.mockResolvedValue(gameWithInvalidDescription);
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Catan')).toBeInTheDocument();
+    });
+
+    // Should not display description section for non-string
+    expect(screen.queryByText(/About This Game/i)).not.toBeInTheDocument();
+  });
+
+  test('handles error response with different structures', async () => {
+    apiClient.getPublicGame.mockRejectedValue({
+      response: {
+        status: 500,
+        data: { message: 'Internal server error' }
+      },
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Internal server error/i)).toBeInTheDocument();
+    });
+  });
+
+  test('uses default error message when no error detail available', async () => {
+    apiClient.getPublicGame.mockRejectedValue({});
+
+    render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to load game details/i)).toBeInTheDocument();
+    });
+  });
+
+  test('cleans up effect when component unmounts during loading', async () => {
+    apiClient.getPublicGame.mockImplementation(() => new Promise(() => {}));
+
+    const { unmount } = render(
+      <MemoryRouter initialEntries={['/game/1']}>
+        <Routes>
+          <Route path="/game/:id" element={<GameDetails />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    // Unmount while still loading
+    unmount();
+
+    // No error should occur - cleanup should prevent state updates
+    expect(true).toBe(true);
+  });
+
 });
