@@ -17,10 +17,14 @@ describe('useScrollBehavior Hook', () => {
     // Mock window.scrollTo
     window.scrollTo = vi.fn();
 
-    // Mock requestAnimationFrame
+    // Mock requestAnimationFrame - use setTimeout to properly handle async state updates
     global.requestAnimationFrame = vi.fn((cb) => {
-      cb();
-      return 1;
+      const id = setTimeout(() => cb(), 0);
+      return id;
+    });
+
+    global.cancelAnimationFrame = vi.fn((id) => {
+      clearTimeout(id);
     });
   });
 
@@ -270,14 +274,11 @@ describe('useScrollBehavior Hook', () => {
       expect(rafCallsAfter).toBeGreaterThan(rafCallsBefore);
     });
 
-    test('prevents duplicate animation frames while ticking', () => {
+    test('prevents duplicate animation frames while ticking', async () => {
       renderHook(() => useScrollBehavior());
 
-      // Mock requestAnimationFrame to not execute immediately
-      global.requestAnimationFrame = vi.fn((cb) => {
-        setTimeout(cb, 16); // Simulate 60fps frame time
-        return 1;
-      });
+      // Reset the mock to track only calls from this test
+      global.requestAnimationFrame.mockClear();
 
       act(() => {
         scrollYValue = 100;
@@ -286,8 +287,13 @@ describe('useScrollBehavior Hook', () => {
         window.dispatchEvent(new Event('scroll'));
       });
 
-      // Should only call rAF once despite multiple scroll events
+      // Should only call rAF once despite multiple scroll events (while ticking is true)
       expect(global.requestAnimationFrame).toHaveBeenCalledTimes(1);
+
+      // Wait for the frame to complete
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 10));
+      });
     });
   });
 
