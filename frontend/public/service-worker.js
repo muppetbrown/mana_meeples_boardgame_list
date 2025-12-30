@@ -1,15 +1,47 @@
 // Mana & Meeples Board Game Library - Service Worker
 // Handles caching for offline support and improved performance
+// Auto-updates when new version is deployed
 
-const CACHE_VERSION = 'v1';
-const CACHE_NAME = `mana-meeples-${CACHE_VERSION}`;
+// Dynamic version fetching for automatic cache invalidation
+let CACHE_VERSION = 'v1'; // Fallback if version fetch fails
+let versionFetched = false;
 
-// Cache different types of resources with different strategies
-const CACHES = {
-  APP_SHELL: `${CACHE_NAME}-app-shell`,
-  API_DATA: `${CACHE_NAME}-api-data`,
-  IMAGES: `${CACHE_NAME}-images`,
-};
+// Fetch version from version.json (generated at build time)
+async function fetchCacheVersion() {
+  if (versionFetched) {
+    return CACHE_VERSION;
+  }
+
+  try {
+    const response = await fetch('/version.json');
+    if (response.ok) {
+      const versionData = await response.json();
+      CACHE_VERSION = versionData.version || versionData.timestamp.toString();
+      console.log('[Service Worker] Using cache version:', CACHE_VERSION);
+    }
+  } catch (error) {
+    console.warn('[Service Worker] Failed to fetch version, using fallback:', error.message);
+  }
+
+  versionFetched = true;
+  return CACHE_VERSION;
+}
+
+// Get cache name (async to support dynamic versioning)
+async function getCacheName() {
+  await fetchCacheVersion();
+  return `mana-meeples-${CACHE_VERSION}`;
+}
+
+// Get cache names for different resource types
+async function getCacheNames() {
+  const baseName = await getCacheName();
+  return {
+    APP_SHELL: `${baseName}-app-shell`,
+    API_DATA: `${baseName}-api-data`,
+    IMAGES: `${baseName}-images`,
+  };
+}
 
 // Resources to cache immediately on install (app shell)
 const APP_SHELL_URLS = [
@@ -17,6 +49,7 @@ const APP_SHELL_URLS = [
   '/index.html',
   '/mana_meeples_logo.ico',
   '/manifest.json',
+  '/version.json', // Include version file in cache
 ];
 
 // Cache duration settings
@@ -77,27 +110,29 @@ self.addEventListener('install', (event) => {
   console.log('[Service Worker] Installing...');
 
   event.waitUntil(
-    checkStorageAvailability()
-      .then((available) => {
+    (async () => {
+      try {
+        const available = await checkStorageAvailability();
         if (!available) {
           console.warn('[Service Worker] Storage unavailable, skipping cache');
           return self.skipWaiting();
         }
 
-        return safeOpenCache(CACHES.APP_SHELL)
-          .then((cache) => {
-            console.log('[Service Worker] Caching app shell');
-            return cache.addAll(APP_SHELL_URLS);
-          })
-          .then(() => {
-            console.log('[Service Worker] App shell cached');
-            return self.skipWaiting();
-          });
-      })
-      .catch(() => {
+        // Fetch and use dynamic cache version
+        const cacheNames = await getCacheNames();
+        const cache = await safeOpenCache(cacheNames.APP_SHELL);
+
+        console.log('[Service Worker] Caching app shell');
+        await cache.addAll(APP_SHELL_URLS);
+
+        console.log('[Service Worker] App shell cached');
+        return self.skipWaiting();
+      } catch (error) {
+        console.warn('[Service Worker] Install failed:', error.message);
         // Silently continue without cache if setup fails
         return self.skipWaiting();
-      })
+      }
+    })()
   );
 });
 
@@ -113,13 +148,18 @@ self.addEventListener('activate', (event) => {
           return self.clients.claim();
         }
 
-        const cacheNames = await caches.keys();
+        // Get current cache names for this version
+        const currentCacheNames = await getCacheNames();
+        const currentCacheValues = Object.values(currentCacheNames);
+
+        // Get all cache names and delete old ones
+        const allCacheNames = await caches.keys();
         await Promise.all(
-          cacheNames
+          allCacheNames
             .filter((cacheName) => {
               // Remove caches from different versions
               return cacheName.startsWith('mana-meeples-') &&
-                     !Object.values(CACHES).includes(cacheName);
+                     !currentCacheValues.includes(cacheName);
             })
             .map((cacheName) => {
               console.log('[Service Worker] Deleting old cache:', cacheName);
@@ -127,9 +167,10 @@ self.addEventListener('activate', (event) => {
             })
         );
 
-        console.log('[Service Worker] Activated');
+        console.log('[Service Worker] Activated with cache version:', CACHE_VERSION);
         return self.clients.claim();
       } catch (error) {
+        console.warn('[Service Worker] Activation error:', error.message);
         // Silently continue activation even if cache cleanup fails
         return self.clients.claim();
       }
@@ -168,15 +209,28 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Determine caching strategy based on request type
+  // Use async handlers to get cache names dynamically
   if (isAPIRequest(url)) {
-    event.respondWith(networkFirstStrategy(request, CACHES.API_DATA));
+    event.respondWith((async () => {
+      const cacheNames = await getCacheNames();
+      return networkFirstStrategy(request, cacheNames.API_DATA);
+    })());
   } else if (isImageRequest(url)) {
-    event.respondWith(cacheFirstStrategy(request, CACHES.IMAGES));
+    event.respondWith((async () => {
+      const cacheNames = await getCacheNames();
+      return cacheFirstStrategy(request, cacheNames.IMAGES);
+    })());
   } else if (isAppShellRequest(url)) {
-    event.respondWith(cacheFirstStrategy(request, CACHES.APP_SHELL));
+    event.respondWith((async () => {
+      const cacheNames = await getCacheNames();
+      return cacheFirstStrategy(request, cacheNames.APP_SHELL);
+    })());
   } else {
     // Default: network first with cache fallback
-    event.respondWith(networkFirstStrategy(request, CACHES.APP_SHELL));
+    event.respondWith((async () => {
+      const cacheNames = await getCacheNames();
+      return networkFirstStrategy(request, cacheNames.APP_SHELL);
+    })());
   }
 });
 

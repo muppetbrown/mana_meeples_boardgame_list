@@ -5,6 +5,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 // ---- UI components ----
 import ErrorBoundary from "./components/ErrorBoundary";
 import { FullPageLoader } from "./components/common/LoadingSpinner";
+import UpdateNotification from "./components/UpdateNotification";
 
 // ---- Code Splitting with React.lazy ----
 // Load pages on-demand for better performance
@@ -21,6 +22,9 @@ const StaffView = lazy(() => import("./pages/StaffView"));
 export default function App() {
   return (
     <ErrorBoundary>
+      {/* Update notification banner - shows when new version is deployed */}
+      <UpdateNotification />
+
       <Suspense fallback={<FullPageLoader text="Loading page..." />}>
         <Routes>
           {/* Fixed: Remove leading slashes for nested routing */}
