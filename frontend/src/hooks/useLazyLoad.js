@@ -60,15 +60,56 @@ export function useLazyLoad({
 }
 
 /**
+ * Detect network connection quality and return appropriate rootMargin
+ * Uses Network Information API with fallback to default values
+ *
+ * @returns {string} - rootMargin value based on connection quality
+ */
+function getNetworkAwareMargin() {
+  // Check if Network Information API is available
+  if (typeof navigator === 'undefined' || !navigator.connection) {
+    return '400px'; // Default for browsers without Network Information API
+  }
+
+  const connection = navigator.connection;
+
+  // Check for Save Data mode (user has enabled data saving)
+  if (connection.saveData) {
+    return '100px'; // Minimal pre-loading for data saver mode
+  }
+
+  // Check effective connection type
+  const effectiveType = connection.effectiveType;
+
+  // Adjust margin based on connection speed
+  // slow-2g, 2g: 100px (very conservative)
+  // 3g: 200px (moderate pre-loading)
+  // 4g: 400px (aggressive pre-loading for smooth UX)
+  switch (effectiveType) {
+    case 'slow-2g':
+    case '2g':
+      return '100px';
+    case '3g':
+      return '200px';
+    case '4g':
+    default:
+      return '400px';
+  }
+}
+
+/**
  * Hook specifically for image lazy loading
  * Returns whether the image should be loaded (once visible, always true)
+ * Network-aware: adjusts pre-loading distance based on connection quality
  *
  * @param {Object} options - Configuration options
  * @returns {Object} - { ref, shouldLoad }
  */
 export function useImageLazyLoad(options = {}) {
+  const networkAwareMargin = getNetworkAwareMargin();
+
   const { ref, hasBeenVisible } = useLazyLoad({
-    rootMargin: '400px', // Load images 400px before visible for smooth scrolling
+    rootMargin: networkAwareMargin, // Network-aware pre-loading distance
     threshold: 0.01,
     ...options
   });
