@@ -24,12 +24,19 @@ from main import app
 
 @pytest.fixture(autouse=True)
 def clear_cache():
-    """Clear the cache before each test to prevent test pollution"""
+    """Clear the cache and rate limiters before each test to prevent test pollution"""
     from utils.cache import clear_cache as clear_cache_func
+    from shared.rate_limiting import admin_attempt_tracker
+
     clear_cache_func()
+    # Clear admin rate limit tracker to prevent 429 errors in tests
+    admin_attempt_tracker.clear()
+
     yield
+
     # Clear again after test to ensure clean state
     clear_cache_func()
+    admin_attempt_tracker.clear()
 
 
 @pytest.fixture(scope="function")
