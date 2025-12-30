@@ -61,7 +61,7 @@ export const API_BASE = resolveApiBase().replace(/\/+$/, "");
  * Set to null or empty string to use legacy (unversioned) endpoints
  * @type {string}
  */
-export const API_VERSION = "v1";
+export const API_VERSION = null;
 
 /**
  * Get versioned API endpoint URL
