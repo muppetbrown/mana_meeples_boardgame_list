@@ -100,8 +100,26 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "chore: Update buy list prices [skip ci]"
-            # Use GITHUB_TOKEN for authentication
-            git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}
+
+            # Pull latest changes and rebase before pushing
+            git pull --rebase https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git ${{ github.ref }}
+
+            # Push with retry logic for network failures
+            for i in 1 2 3 4; do
+              if git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref }}; then
+                echo "✓ Successfully pushed changes"
+                break
+              else
+                if [ $i -lt 4 ]; then
+                  WAIT=$((2 ** $i))
+                  echo "Push failed, retrying in ${WAIT}s..."
+                  sleep $WAIT
+                else
+                  echo "✗ Failed to push after 4 attempts"
+                  exit 1
+                fi
+              fi
+            done
           fi
 
       - name: Upload price data as artifact
