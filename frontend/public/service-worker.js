@@ -328,7 +328,7 @@ async function cacheFirstStrategy(request, cacheName) {
 
   if (cachedResponse) {
     // Check if cache is still fresh for images
-    if (cacheName === CACHES.IMAGES) {
+    if (cacheName.includes('-images')) {
       if (isCacheFresh(cachedResponse, CACHE_DURATION.IMAGES)) {
         return cachedResponse;
       }
