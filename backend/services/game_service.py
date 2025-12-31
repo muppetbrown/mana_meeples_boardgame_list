@@ -103,13 +103,13 @@ class GameService:
             selectinload(Game.expansions)
         ).where(or_(Game.status == "OWNED", Game.status.is_(None)))
 
-        # Exclude require-base expansions from public view
-        # Only show base games and standalone expansions (expansion_type = 'both' or 'standalone')
-        # Note: Use isnot(True) to include both False and NULL values (for backward compatibility)
+        # Exclude only require-base expansions from public view
+        # Include: base games, standalone expansions, and expansions with no type set
+        # Only exclude games explicitly marked as is_expansion=True AND expansion_type='require-base'
         query = query.where(
-            or_(
-                Game.is_expansion.isnot(True),  # Base games (False or NULL)
-                Game.expansion_type.in_(["both", "standalone"]),  # Standalone expansions
+            ~and_(
+                Game.is_expansion == True,
+                Game.expansion_type == 'require-base'
             )
         )
 
@@ -222,9 +222,9 @@ class GameService:
         count_query = select(func.count(Game.id)).where(
             or_(Game.status == "OWNED", Game.status.is_(None))
         ).where(
-            or_(
-                Game.is_expansion.isnot(True),
-                Game.expansion_type.in_(["both", "standalone"]),
+            ~and_(
+                Game.is_expansion == True,
+                Game.expansion_type == 'require-base'
             )
         )
 
