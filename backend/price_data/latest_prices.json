@@ -1,5 +1,5 @@
 {
-  "checked_at": "2025-12-31T07:22:13+00:00",
+  "checked_at": "2025-12-31T13:12:12+00:00",
   "games": [
     {
       "bgg_id": 167791,
@@ -193,13 +193,6 @@
           "in_stock": true
         },
         {
-          "store": "Bea DnD Games",
-          "price_nzd": 156.0,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6893545d6d95a7750ea9ae7d&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
-          "in_stock": true
-        },
-        {
           "store": "Escape Board-Em with Solve It & Escape",
           "price_nzd": 159.0,
           "availability": "In stock",
@@ -246,6 +239,13 @@
           "price_nzd": 193.49,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=663b7c39aea5640008694bd3&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
+          "in_stock": true
+        },
+        {
+          "store": "Bea DnD Games",
+          "price_nzd": 195.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6893545d6d95a7750ea9ae7d&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FK2tNPgSWOC%2Fbrass-birmingham",
           "in_stock": true
         }
       ]
@@ -607,19 +607,12 @@
       "name": "Clank!: A Deck-Building Adventure",
       "low_price": 104.0,
       "mean_price": 120.16,
-      "best_price": 104.0,
-      "best_store": "Bea DnD Games",
-      "discount_pct": 13.45,
+      "best_price": 106.03,
+      "best_store": "Gameology",
+      "discount_pct": 11.76,
       "disc_mean_pct": null,
-      "delta": 0.0,
+      "delta": -1.69,
       "offers": [
-        {
-          "store": "Bea DnD Games",
-          "price_nzd": 104.0,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68c0268799cb97adeddc25ce&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F455SQydqa0%2Fclank-a-deck-building-adventure",
-          "in_stock": true
-        },
         {
           "store": "Gameology",
           "price_nzd": 106.03,
@@ -660,6 +653,13 @@
           "price_nzd": 129.99,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=683965fedb2ea8ba4b5680a7&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F455SQydqa0%2Fclank-a-deck-building-adventure",
+          "in_stock": true
+        },
+        {
+          "store": "Bea DnD Games",
+          "price_nzd": 130.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68c0268799cb97adeddc25ce&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F455SQydqa0%2Fclank-a-deck-building-adventure",
           "in_stock": true
         },
         {
@@ -746,7 +746,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 92.83,
+          "price_nzd": 93.04,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f7c5ee51af69ea4b762952&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fkpase6kheF%2Froot",
           "in_stock": true
@@ -1027,12 +1027,62 @@
       "name": "Draftosaurus",
       "low_price": 46.0,
       "mean_price": 50.38,
-      "best_price": null,
-      "best_store": null,
-      "discount_pct": null,
+      "best_price": 46.0,
+      "best_store": "Escape Board-Em with Solve It & Escape",
+      "discount_pct": 8.69,
       "disc_mean_pct": null,
-      "delta": null,
-      "offers": []
+      "delta": 0.0,
+      "offers": [
+        {
+          "store": "Gameology",
+          "price_nzd": 42.61,
+          "availability": "Out of stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6560c69b93887500092e5ab6&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F1fceNlC8dC%2Fdraftosaurus",
+          "in_stock": false
+        },
+        {
+          "store": "Escape Board-Em with Solve It & Escape",
+          "price_nzd": 46.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=64d23d66922b2900086c969d&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F1fceNlC8dC%2Fdraftosaurus",
+          "in_stock": true
+        },
+        {
+          "store": "Game Centre",
+          "price_nzd": 49.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6940351aea3b561f8d460f10&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F1fceNlC8dC%2Fdraftosaurus",
+          "in_stock": true
+        },
+        {
+          "store": "MK1",
+          "price_nzd": 49.9,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=623b1b732423720009bb3b38&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F1fceNlC8dC%2Fdraftosaurus",
+          "in_stock": true
+        },
+        {
+          "store": "Ironhorse Hobbies",
+          "price_nzd": 49.95,
+          "availability": "Out of stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=65be3ad519dcfb000867ecd3&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F1fceNlC8dC%2Fdraftosaurus",
+          "in_stock": false
+        },
+        {
+          "store": "Spellbound Games",
+          "price_nzd": 52.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=66056b3e1a26b300085c6941&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F1fceNlC8dC%2Fdraftosaurus",
+          "in_stock": true
+        },
+        {
+          "store": "Card Merchant",
+          "price_nzd": 54.99,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=66e839c92ed3e94ad00a6f57&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F1fceNlC8dC%2Fdraftosaurus",
+          "in_stock": true
+        }
+      ]
     },
     {
       "bgg_id": 160477,
@@ -1259,13 +1309,6 @@
           "in_stock": true
         },
         {
-          "store": "Bea DnD Games",
-          "price_nzd": 187.99,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68c56fbdf640ce8cbd23675f&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fh_e-3bcNat%2Fbarrage",
-          "in_stock": true
-        },
-        {
           "store": "The Nile NZ",
           "price_nzd": 196.47,
           "availability": "In stock",
@@ -1284,6 +1327,13 @@
           "price_nzd": 225.0,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=689de6a94dd41db4e8a6580e&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fh_e-3bcNat%2Fbarrage",
+          "in_stock": true
+        },
+        {
+          "store": "Bea DnD Games",
+          "price_nzd": 234.99,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68c56fbdf640ce8cbd23675f&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fh_e-3bcNat%2Fbarrage",
           "in_stock": true
         },
         {
@@ -1737,7 +1787,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 50.62,
+          "price_nzd": 50.74,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=69454e26949eff2aff33da65&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F_EYQLtWuZC%2Fa-fake-artist-goes-to-new-york",
           "in_stock": true
@@ -2557,6 +2607,13 @@
           "in_stock": true
         },
         {
+          "store": "Gamersphere",
+          "price_nzd": 49.99,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=69551edce06886d1182071a9&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FG63OMeI2S7%2Farboretum",
+          "in_stock": true
+        },
+        {
           "store": "Scorpio Books",
           "price_nzd": 50.0,
           "availability": "In stock",
@@ -2957,19 +3014,12 @@
       "name": "MicroMacro: Crime City",
       "low_price": 56.0,
       "mean_price": 68.26,
-      "best_price": 56.0,
-      "best_store": "Bea DnD Games",
-      "discount_pct": 17.96,
+      "best_price": 59.99,
+      "best_store": "Card Merchant",
+      "discount_pct": 12.11,
       "disc_mean_pct": null,
-      "delta": 0.0,
+      "delta": -5.85,
       "offers": [
-        {
-          "store": "Bea DnD Games",
-          "price_nzd": 56.0,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68c2cb4099cb97aded239173&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FVQqEhpax9D%2Fmicromacro-crime-city",
-          "in_stock": true
-        },
         {
           "store": "Card Merchant",
           "price_nzd": 59.99,
@@ -2999,6 +3049,13 @@
           "in_stock": true
         },
         {
+          "store": "Bea DnD Games",
+          "price_nzd": 70.0,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68c2cb4099cb97aded239173&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FVQqEhpax9D%2Fmicromacro-crime-city",
+          "in_stock": true
+        },
+        {
           "store": "Cerberus Games",
           "price_nzd": 74.99,
           "availability": "In stock",
@@ -3008,9 +3065,9 @@
         {
           "store": "NZGameShop",
           "price_nzd": 76.99,
-          "availability": "In stock",
+          "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=663b81aab9cd8f0008913089&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FVQqEhpax9D%2Fmicromacro-crime-city",
-          "in_stock": true
+          "in_stock": false
         },
         {
           "store": "Escape Board-Em with Solve It & Escape",
@@ -3136,7 +3193,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 54.99,
+          "price_nzd": 54.07,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=693c146106b28fef30c0cbe5&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fkgox9xGtaa%2Fpoint-city",
           "in_stock": true
@@ -3385,7 +3442,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 31.33,
+          "price_nzd": 31.4,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=691c709306b28fef3074109b&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FCFfHoVQzHu%2Fsimilo",
           "in_stock": true
@@ -3586,7 +3643,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 43.35,
+          "price_nzd": 43.5,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=676442b23cdf8a95a0c7a6ca&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FnWQ3P8Ufah%2Fskull-king",
           "in_stock": true
@@ -3605,15 +3662,15 @@
       "name": "L.L.A.M.A.",
       "low_price": 15.56,
       "mean_price": 24.85,
-      "best_price": 15.61,
+      "best_price": 15.65,
       "best_store": "Amazon AU",
-      "discount_pct": 37.17,
+      "discount_pct": 37.01,
       "disc_mean_pct": null,
-      "delta": -0.22,
+      "delta": -0.38,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 15.61,
+          "price_nzd": 15.65,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=692ee4f5ea3b561f8d156157&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FoTEHQNhsaG%2Flama",
           "in_stock": true
@@ -3628,9 +3685,9 @@
         {
           "store": "NZGameShop",
           "price_nzd": 31.49,
-          "availability": "In stock",
+          "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=663b77abd7614000088ee391&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FoTEHQNhsaG%2Flama",
-          "in_stock": true
+          "in_stock": false
         },
         {
           "store": "The Nile NZ",
@@ -4564,7 +4621,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 71.07,
+          "price_nzd": 71.23,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6928568eea3b561f8dd9c066&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fz-UXtOXfR5%2Fbomb-busters",
           "in_stock": true
