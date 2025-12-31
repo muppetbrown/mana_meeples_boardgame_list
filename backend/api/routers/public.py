@@ -335,17 +335,43 @@ async def image_proxy(
                 }
             )
 
-        # CRITICAL FIX: Detect if URL has Cloudinary transformation parameters embedded
-        # This indicates data corruption - BGG URLs should never have these params
+        # CRITICAL FIX: Clean malformed BGG URLs that have Cloudinary transformation parameters
+        # This can happen if URLs were corrupted during import/storage
         if '/fit-in/' in url or '/filters:' in url or '/c_limit' in url:
-            logger.error(
-                f"MALFORMED URL DETECTED: BGG URL contains Cloudinary transformation parameters. "
-                f"This indicates database corruption. URL: {url[:150]}"
+            logger.warning(
+                f"MALFORMED URL DETECTED: BGG URL contains transformation parameters. "
+                f"Attempting to clean URL: {url[:150]}"
             )
-            raise HTTPException(
-                status_code=400,
-                detail="Malformed image URL (contains invalid transformation parameters)"
-            )
+            # Clean the URL by removing Cloudinary transformation parameters
+            # Pattern: https://cf.geekdo-images.com/HASH__SIZE/img/JUNK=/0x0/filters:format(ext)/picID.ext
+            # Should be: https://cf.geekdo-images.com/HASH__SIZE/picID.ext
+            import re
+
+            # Extract the pic filename (e.g., pic8894992.jpg)
+            pic_match = re.search(r'/(pic\d+\.[a-z]+)$', url)
+            if pic_match:
+                pic_filename = pic_match.group(1)
+
+                # Extract the base URL with hash and size (e.g., https://cf.geekdo-images.com/HASH__original)
+                base_match = re.match(r'(https://cf\.geekdo-images\.com/[^/]+__[^/]+)', url)
+                if base_match:
+                    base_url = base_match.group(1)
+                    # Reconstruct clean URL
+                    cleaned_url = f"{base_url}/{pic_filename}"
+                    logger.info(f"URL cleaned successfully: {url[:100]} -> {cleaned_url}")
+                    url = cleaned_url
+                else:
+                    logger.error(f"Failed to extract base URL from malformed URL: {url[:150]}")
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Malformed image URL (could not clean)"
+                    )
+            else:
+                logger.error(f"Failed to extract pic filename from malformed URL: {url[:150]}")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Malformed image URL (could not clean)"
+                )
 
         # Validate URL - only allow trusted sources
         trusted_domains = [
