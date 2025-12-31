@@ -470,13 +470,32 @@ app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS middleware MUST be added last to wrap all other middleware
 # This ensures preflight OPTIONS requests are handled correctly
+# NOTE: When allow_credentials=True, we must use explicit headers (not wildcards)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
-    expose_headers=["*"],  # Expose all headers
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
+    allow_headers=[
+        "content-type",
+        "authorization",
+        "accept",
+        "origin",
+        "user-agent",
+        "dnt",
+        "cache-control",
+        "x-requested-with",
+        "x-admin-token",
+        "accept-language",
+        "accept-encoding",
+    ],
+    expose_headers=[
+        "content-length",
+        "content-type",
+        "x-total-count",
+        "access-control-allow-origin",
+        "access-control-allow-credentials",
+    ],
     max_age=3600,  # Cache preflight requests for 1 hour
 )
 logger.info("CORS middleware configured and added to application")
