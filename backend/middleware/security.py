@@ -36,39 +36,46 @@ class SecurityHeadersMiddleware:
 
         async def send_wrapper(message: dict) -> None:
             if message["type"] == "http.response.start":
-                headers = dict(message.get("headers", []))
+                # Work with headers as a list to avoid interfering with CORS middleware
+                headers_list = list(message.get("headers", []))
+                headers_dict = dict(headers_list)
                 path = scope.get("path", "")
 
                 # Determine if this is an API endpoint (returns JSON)
                 is_api_endpoint = path.startswith("/api/")
 
+                # Only add headers that don't already exist
+                # This prevents overwriting CORS headers added by CORSMiddleware
+                new_headers = []
+
                 # X-Frame-Options: Prevent clickjacking
                 # DENY = Never allow framing
-                if b"x-frame-options" not in headers:
-                    headers[b"x-frame-options"] = b"DENY"
+                if b"x-frame-options" not in headers_dict:
+                    new_headers.append((b"x-frame-options", b"DENY"))
 
                 # X-Content-Type-Options: Prevent MIME type sniffing
                 # nosniff = Browsers must respect Content-Type
-                if b"x-content-type-options" not in headers:
-                    headers[b"x-content-type-options"] = b"nosniff"
+                if b"x-content-type-options" not in headers_dict:
+                    new_headers.append((b"x-content-type-options", b"nosniff"))
 
                 # X-XSS-Protection: DEPRECATED and only for HTML pages
                 # NOTE: This header is deprecated and can create security vulnerabilities.
                 # Modern browsers use CSP instead. Only add to non-API responses.
-                if not is_api_endpoint and b"x-xss-protection" not in headers:
-                    headers[b"x-xss-protection"] = b"1; mode=block"
+                if not is_api_endpoint and b"x-xss-protection" not in headers_dict:
+                    new_headers.append((b"x-xss-protection", b"1; mode=block"))
 
                 # Strict-Transport-Security (HSTS): Force HTTPS
                 # max-age=31536000 = Remember for 1 year
                 # includeSubDomains = Apply to all subdomains
-                if b"strict-transport-security" not in headers:
-                    headers[b"strict-transport-security"] = (
+                if b"strict-transport-security" not in headers_dict:
+                    new_headers.append((
+                        b"strict-transport-security",
                         b"max-age=31536000; includeSubDomains"
-                    )
+                    ))
 
                 # Content-Security-Policy: Only for HTML pages, not API JSON responses
                 # This is a moderate policy that allows same-origin and trusted CDNs
-                if not is_api_endpoint and b"content-security-policy" not in headers:
+                if not is_api_endpoint and b"content-security-policy" not in headers_dict:
                     csp_policy = "; ".join([
                         "default-src 'self'",
                         "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  # Allow inline scripts for React
@@ -80,16 +87,16 @@ class SecurityHeadersMiddleware:
                         "base-uri 'self'",
                         "form-action 'self'",
                     ])
-                    headers[b"content-security-policy"] = csp_policy.encode()
+                    new_headers.append((b"content-security-policy", csp_policy.encode()))
 
                 # Referrer-Policy: Control referrer information
                 # strict-origin-when-cross-origin = Send full URL for same-origin, only origin for cross-origin
-                if b"referrer-policy" not in headers:
-                    headers[b"referrer-policy"] = b"strict-origin-when-cross-origin"
+                if b"referrer-policy" not in headers_dict:
+                    new_headers.append((b"referrer-policy", b"strict-origin-when-cross-origin"))
 
                 # Permissions-Policy: Control browser features
                 # Disable potentially risky features
-                if b"permissions-policy" not in headers:
+                if b"permissions-policy" not in headers_dict:
                     permissions = ", ".join([
                         "geolocation=()",  # No geolocation
                         "microphone=()",   # No microphone
@@ -97,10 +104,10 @@ class SecurityHeadersMiddleware:
                         "payment=()",      # No payment API
                         "usb=()",          # No USB access
                     ])
-                    headers[b"permissions-policy"] = permissions.encode()
+                    new_headers.append((b"permissions-policy", permissions.encode()))
 
-                # Update message headers
-                message["headers"] = list(headers.items())
+                # Append new headers to existing list (preserves CORS headers)
+                message["headers"] = headers_list + new_headers
 
                 logger.debug("Security headers added to response")
 
