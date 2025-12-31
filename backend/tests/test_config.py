@@ -112,7 +112,7 @@ class TestAPIConfiguration:
             importlib.reload(config)
 
             assert config.PUBLIC_BASE_URL == ""
-            assert config.API_BASE == "https://mana-meeples-boardgame-list.onrender.com"
+            assert config.API_BASE == "https://mana-meeples-boardgame-list-opgf.onrender.com"
 
     def test_public_base_url_custom(self):
         """Test custom PUBLIC_BASE_URL"""
