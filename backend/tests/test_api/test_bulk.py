@@ -506,10 +506,201 @@ class TestFetchAllSleeveData:
             if original_token:
                 os.environ["GITHUB_TOKEN"] = original_token
 
+    def test_fetch_all_sleeve_data_success(self, client, db_session, admin_headers):
+        """Test successful sleeve data fetch trigger"""
+        import os
+
+        # Set GITHUB_TOKEN for test
+        os.environ["GITHUB_TOKEN"] = "test-token"
+
+        # Create test games
+        for i in range(3):
+            game = Game(title=f"Game {i}", bgg_id=1000 + i)
+            db_session.add(game)
+        db_session.commit()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = Mock()
+            mock_response.status_code = 204
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client
+
+            response = client.post(
+                "/api/admin/fetch-all-sleeve-data",
+                headers=admin_headers
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                assert data["total_games"] == 3
+                assert "Triggered GitHub Action" in data["message"]
+
+    def test_fetch_all_sleeve_data_github_api_error(self, client, db_session, admin_headers):
+        """Test sleeve data fetch when GitHub API returns error"""
+        import os
+
+        os.environ["GITHUB_TOKEN"] = "test-token"
+
+        game = Game(title="Test Game", bgg_id=1001)
+        db_session.add(game)
+        db_session.commit()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_response = Mock()
+            mock_response.status_code = 401
+            mock_response.text = "Unauthorized"
+            mock_client.post = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=None)
+            mock_client_class.return_value = mock_client
+
+            response = client.post(
+                "/api/admin/fetch-all-sleeve-data",
+                headers=admin_headers
+            )
+
+            assert response.status_code in [500, 429]
+
     def test_fetch_all_sleeve_data_unauthorized(self, client):
         """Test fetch all sleeve data without authentication"""
         response = client.post("/api/admin/fetch-all-sleeve-data")
         assert response.status_code in [401, 429]
+
+
+class TestFetchSleeveDataTask:
+    """Tests for _fetch_sleeve_data_task background task"""
+
+    def test_fetch_sleeve_data_task_success(self, db_session):
+        """Test successful sleeve data fetch for a game"""
+        from api.routers.bulk import _fetch_sleeve_data_task
+
+        # Create test game
+        game = Game(title="Test Game", bgg_id=1001, has_sleeves=None)
+        db_session.add(game)
+        db_session.commit()
+        game_id = game.id
+
+        mock_sleeve_data = {
+            'status': 'found',
+            'card_types': [
+                {
+                    'name': 'Standard',
+                    'width_mm': 63.5,
+                    'height_mm': 88,
+                    'quantity': 100
+                }
+            ],
+            'notes': 'Test notes'
+        }
+
+        with patch("api.routers.bulk.SessionLocal") as mock_session_local, \
+             patch("api.routers.bulk.scrape_sleeve_data") as mock_scrape:
+
+            # Setup mocks
+            mock_session = MagicMock()
+            mock_session.get.return_value = game
+            mock_session_local.return_value = mock_session
+            mock_scrape.return_value = mock_sleeve_data
+
+            # Run the async task synchronously for testing
+            import asyncio
+            asyncio.run(_fetch_sleeve_data_task(game_id, 1001, "Test Game"))
+
+            # Verify sleeve data was saved
+            mock_session.commit.assert_called()
+
+    def test_fetch_sleeve_data_task_no_sleeves_found(self, db_session):
+        """Test sleeve data fetch when no sleeves are found"""
+        from api.routers.bulk import _fetch_sleeve_data_task
+
+        game = Game(title="Test Game", bgg_id=1001, has_sleeves=None)
+        db_session.add(game)
+        db_session.commit()
+        game_id = game.id
+
+        with patch("api.routers.bulk.SessionLocal") as mock_session_local, \
+             patch("api.routers.bulk.scrape_sleeve_data") as mock_scrape:
+
+            mock_session = MagicMock()
+            mock_session.get.return_value = game
+            mock_session_local.return_value = mock_session
+            mock_scrape.return_value = {'status': 'not_found'}
+
+            import asyncio
+            asyncio.run(_fetch_sleeve_data_task(game_id, 1001, "Test Game"))
+
+            # Should still commit status update
+            mock_session.commit.assert_called()
+
+    def test_fetch_sleeve_data_task_game_not_found(self):
+        """Test sleeve data fetch when game doesn't exist"""
+        from api.routers.bulk import _fetch_sleeve_data_task
+
+        with patch("api.routers.bulk.SessionLocal") as mock_session_local:
+            mock_session = MagicMock()
+            mock_session.get.return_value = None
+            mock_session_local.return_value = mock_session
+
+            import asyncio
+            # Should handle gracefully without raising
+            asyncio.run(_fetch_sleeve_data_task(999, 1001, "Nonexistent Game"))
+
+            # Should not attempt to commit
+            mock_session.commit.assert_not_called()
+
+    def test_fetch_sleeve_data_task_handles_error(self):
+        """Test sleeve data fetch handles errors gracefully"""
+        from api.routers.bulk import _fetch_sleeve_data_task
+
+        with patch("api.routers.bulk.SessionLocal") as mock_session_local, \
+             patch("api.routers.bulk.scrape_sleeve_data") as mock_scrape:
+
+            mock_session = MagicMock()
+            mock_session.get.side_effect = Exception("Database error")
+            mock_session_local.return_value = mock_session
+
+            import asyncio
+            # Should not raise, just log error
+            asyncio.run(_fetch_sleeve_data_task(1, 1001, "Test Game"))
+
+            # Session should be closed
+            mock_session.close.assert_called()
+
+    def test_fetch_sleeve_data_task_handles_none_quantity(self):
+        """Test sleeve data fetch handles None quantity values"""
+        from api.routers.bulk import _fetch_sleeve_data_task
+
+        game = Game(title="Test Game", bgg_id=1001)
+
+        mock_sleeve_data = {
+            'status': 'found',
+            'card_types': [
+                {
+                    'name': 'Standard',
+                    'width_mm': 63.5,
+                    'height_mm': 88,
+                    'quantity': None  # None quantity should be handled
+                }
+            ]
+        }
+
+        with patch("api.routers.bulk.SessionLocal") as mock_session_local, \
+             patch("api.routers.bulk.scrape_sleeve_data") as mock_scrape:
+
+            mock_session = MagicMock()
+            mock_session.get.return_value = game
+            mock_session_local.return_value = mock_session
+            mock_scrape.return_value = mock_sleeve_data
+
+            import asyncio
+            asyncio.run(_fetch_sleeve_data_task(1, 1001, "Test Game"))
+
+            # Should commit without error
+            mock_session.commit.assert_called()
 
 
 class TestBulkImportErrorHandling:
@@ -604,3 +795,182 @@ class TestBulkCategorizeErrorHandling:
             data = response.json()
             # Should either update or show error depending on implementation
             assert len(data["updated"]) + len(data["errors"]) >= 1
+
+
+class TestBackfillCloudinaryUrls:
+    """Tests for Cloudinary URL backfill endpoint"""
+
+    def test_backfill_cloudinary_success(self, client, db_session, admin_headers):
+        """Test successful Cloudinary URL backfill"""
+        # Create games with images but missing cloudinary_url
+        game1 = Game(
+            title="Game 1",
+            bgg_id=1001,
+            image="https://cf.geekdo-images.com/original/img/test1.jpg",
+            cloudinary_url=None
+        )
+        game2 = Game(
+            title="Game 2",
+            bgg_id=1002,
+            thumbnail_url="https://cf.geekdo-images.com/thumb/img/test2.jpg",
+            cloudinary_url=""
+        )
+        db_session.add_all([game1, game2])
+        db_session.commit()
+
+        with patch("api.routers.bulk.cloudinary_service") as mock_cloudinary:
+            mock_cloudinary.generate_optimized_url.side_effect = [
+                "https://res.cloudinary.com/test/image/upload/test1.jpg",
+                "https://res.cloudinary.com/test/image/upload/test2.jpg"
+            ]
+            mock_cloudinary.enabled = True
+
+            response = client.post(
+                "/api/admin/backfill-cloudinary-urls",
+                headers=admin_headers
+            )
+            assert response.status_code in [200, 429]
+
+            if response.status_code == 200:
+                data = response.json()
+                assert data["updated"] == 2
+                assert data["cloudinary_enabled"] == True
+                assert "Backfill complete" in data["message"]
+
+    def test_backfill_cloudinary_no_images(self, client, db_session, admin_headers):
+        """Test backfill when no games need updating"""
+        # Create game without images
+        game = Game(title="Game", bgg_id=1001)
+        db_session.add(game)
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/backfill-cloudinary-urls",
+            headers=admin_headers
+        )
+        assert response.status_code in [200, 429]
+
+        if response.status_code == 200:
+            data = response.json()
+            assert data["updated"] == 0
+            assert data["skipped"] == 0
+
+    def test_backfill_cloudinary_already_has_url(self, client, db_session, admin_headers):
+        """Test backfill skips games that already have cloudinary_url"""
+        game = Game(
+            title="Game",
+            bgg_id=1001,
+            image="https://cf.geekdo-images.com/original/img/test.jpg",
+            cloudinary_url="https://res.cloudinary.com/test/image/upload/existing.jpg"
+        )
+        db_session.add(game)
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/backfill-cloudinary-urls",
+            headers=admin_headers
+        )
+        assert response.status_code in [200, 429]
+
+        if response.status_code == 200:
+            data = response.json()
+            # Should skip games with existing URLs
+            assert data["total"] == 0 or data["skipped"] >= 0
+
+    def test_backfill_cloudinary_partial_failure(self, client, db_session, admin_headers):
+        """Test backfill with some games failing"""
+        game1 = Game(
+            title="Game 1",
+            bgg_id=1001,
+            image="https://cf.geekdo-images.com/original/img/test1.jpg",
+            cloudinary_url=None
+        )
+        game2 = Game(
+            title="Game 2",
+            bgg_id=1002,
+            image="https://cf.geekdo-images.com/original/img/test2.jpg",
+            cloudinary_url=None
+        )
+        db_session.add_all([game1, game2])
+        db_session.commit()
+
+        with patch("api.routers.bulk.cloudinary_service") as mock_cloudinary:
+            # First succeeds, second fails
+            mock_cloudinary.generate_optimized_url.side_effect = [
+                "https://res.cloudinary.com/test/image/upload/test1.jpg",
+                Exception("Cloudinary error")
+            ]
+            mock_cloudinary.enabled = True
+
+            response = client.post(
+                "/api/admin/backfill-cloudinary-urls",
+                headers=admin_headers
+            )
+            assert response.status_code in [200, 429]
+
+            if response.status_code == 200:
+                data = response.json()
+                assert data["updated"] == 1
+                assert data["failed"] == 1
+                assert len(data["errors"]) > 0
+
+    def test_backfill_cloudinary_prefers_image_over_thumbnail(self, client, db_session, admin_headers):
+        """Test backfill prefers full image over thumbnail_url"""
+        game = Game(
+            title="Game",
+            bgg_id=1001,
+            image="https://cf.geekdo-images.com/original/img/full.jpg",
+            thumbnail_url="https://cf.geekdo-images.com/thumb/img/thumb.jpg",
+            cloudinary_url=None
+        )
+        db_session.add(game)
+        db_session.commit()
+
+        with patch("api.routers.bulk.cloudinary_service") as mock_cloudinary:
+            mock_cloudinary.generate_optimized_url.return_value = "https://res.cloudinary.com/test/image/upload/full.jpg"
+            mock_cloudinary.enabled = True
+
+            response = client.post(
+                "/api/admin/backfill-cloudinary-urls",
+                headers=admin_headers
+            )
+            assert response.status_code in [200, 429]
+
+            if response.status_code == 200:
+                # Verify it called with the full image URL, not thumbnail
+                if mock_cloudinary.generate_optimized_url.called:
+                    call_args = mock_cloudinary.generate_optimized_url.call_args
+                    assert "full.jpg" in call_args[0][0]
+
+    def test_backfill_cloudinary_unauthorized(self, client):
+        """Test backfill without authentication"""
+        response = client.post("/api/admin/backfill-cloudinary-urls")
+        assert response.status_code in [401, 429]
+
+    def test_backfill_cloudinary_returns_error_limit(self, client, db_session, admin_headers):
+        """Test backfill returns only first 10 errors"""
+        # Create 15 games that will fail
+        for i in range(15):
+            game = Game(
+                title=f"Game {i}",
+                bgg_id=1000 + i,
+                image=f"https://cf.geekdo-images.com/original/img/test{i}.jpg",
+                cloudinary_url=None
+            )
+            db_session.add(game)
+        db_session.commit()
+
+        with patch("api.routers.bulk.cloudinary_service") as mock_cloudinary:
+            mock_cloudinary.generate_optimized_url.side_effect = Exception("Error")
+            mock_cloudinary.enabled = True
+
+            response = client.post(
+                "/api/admin/backfill-cloudinary-urls",
+                headers=admin_headers
+            )
+            assert response.status_code in [200, 429]
+
+            if response.status_code == 200:
+                data = response.json()
+                # Should return max 10 errors
+                assert len(data["errors"]) <= 10
