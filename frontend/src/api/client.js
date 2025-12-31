@@ -279,6 +279,16 @@ export async function fetchAllSleeveData() {
 }
 
 /**
+ * Backfill Cloudinary URLs for all games with images
+ * Pre-generates optimized Cloudinary URLs to eliminate redirect overhead
+ * @returns {Promise<Object>} Backfill results with counts and errors
+ */
+export async function backfillCloudinaryUrls() {
+  const r = await api.post("/admin/backfill-cloudinary-urls", {});
+  return r.data;
+}
+
+/**
  * Fix PostgreSQL sequence for boardgames table
  * Resolves "duplicate key value violates unique constraint" errors
  * @returns {Promise<Object>} Sequence fix result with max_id and next_id
