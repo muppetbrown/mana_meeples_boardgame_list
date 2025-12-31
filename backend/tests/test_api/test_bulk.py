@@ -598,7 +598,7 @@ class TestFetchSleeveDataTask:
         }
 
         with patch("api.routers.bulk.SessionLocal") as mock_session_local, \
-             patch("api.routers.bulk.scrape_sleeve_data") as mock_scrape:
+             patch("services.sleeve_scraper.scrape_sleeve_data") as mock_scrape:
 
             # Setup mocks
             mock_session = MagicMock()
@@ -623,7 +623,7 @@ class TestFetchSleeveDataTask:
         game_id = game.id
 
         with patch("api.routers.bulk.SessionLocal") as mock_session_local, \
-             patch("api.routers.bulk.scrape_sleeve_data") as mock_scrape:
+             patch("services.sleeve_scraper.scrape_sleeve_data") as mock_scrape:
 
             mock_session = MagicMock()
             mock_session.get.return_value = game
@@ -657,7 +657,7 @@ class TestFetchSleeveDataTask:
         from api.routers.bulk import _fetch_sleeve_data_task
 
         with patch("api.routers.bulk.SessionLocal") as mock_session_local, \
-             patch("api.routers.bulk.scrape_sleeve_data") as mock_scrape:
+             patch("services.sleeve_scraper.scrape_sleeve_data") as mock_scrape:
 
             mock_session = MagicMock()
             mock_session.get.side_effect = Exception("Database error")
@@ -689,7 +689,7 @@ class TestFetchSleeveDataTask:
         }
 
         with patch("api.routers.bulk.SessionLocal") as mock_session_local, \
-             patch("api.routers.bulk.scrape_sleeve_data") as mock_scrape:
+             patch("services.sleeve_scraper.scrape_sleeve_data") as mock_scrape:
 
             mock_session = MagicMock()
             mock_session.get.return_value = game
@@ -818,7 +818,7 @@ class TestBackfillCloudinaryUrls:
         db_session.add_all([game1, game2])
         db_session.commit()
 
-        with patch("api.routers.bulk.cloudinary_service") as mock_cloudinary:
+        with patch("services.cloudinary_service.cloudinary_service") as mock_cloudinary:
             mock_cloudinary.generate_optimized_url.side_effect = [
                 "https://res.cloudinary.com/test/image/upload/test1.jpg",
                 "https://res.cloudinary.com/test/image/upload/test2.jpg"
@@ -894,7 +894,7 @@ class TestBackfillCloudinaryUrls:
         db_session.add_all([game1, game2])
         db_session.commit()
 
-        with patch("api.routers.bulk.cloudinary_service") as mock_cloudinary:
+        with patch("services.cloudinary_service.cloudinary_service") as mock_cloudinary:
             # First succeeds, second fails
             mock_cloudinary.generate_optimized_url.side_effect = [
                 "https://res.cloudinary.com/test/image/upload/test1.jpg",
@@ -926,7 +926,7 @@ class TestBackfillCloudinaryUrls:
         db_session.add(game)
         db_session.commit()
 
-        with patch("api.routers.bulk.cloudinary_service") as mock_cloudinary:
+        with patch("services.cloudinary_service.cloudinary_service") as mock_cloudinary:
             mock_cloudinary.generate_optimized_url.return_value = "https://res.cloudinary.com/test/image/upload/full.jpg"
             mock_cloudinary.enabled = True
 
@@ -960,7 +960,7 @@ class TestBackfillCloudinaryUrls:
             db_session.add(game)
         db_session.commit()
 
-        with patch("api.routers.bulk.cloudinary_service") as mock_cloudinary:
+        with patch("services.cloudinary_service.cloudinary_service") as mock_cloudinary:
             mock_cloudinary.generate_optimized_url.side_effect = Exception("Error")
             mock_cloudinary.enabled = True
 
