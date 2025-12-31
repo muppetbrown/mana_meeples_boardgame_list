@@ -239,6 +239,26 @@ describe('API Client', () => {
       expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/fix-sequence', {});
       expect(result).toEqual(mockResponse.data);
     });
+
+    test('backfillCloudinaryUrls backfills Cloudinary URLs', async () => {
+      const mockResponse = {
+        data: {
+          message: 'Backfill complete: 50 games updated',
+          total: 50,
+          updated: 50,
+          skipped: 0,
+          failed: 0,
+          errors: [],
+          cloudinary_enabled: true
+        }
+      };
+      mockAxiosInstance.post.mockResolvedValue(mockResponse);
+
+      const result = await apiClient.backfillCloudinaryUrls();
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/backfill-cloudinary-urls', {});
+      expect(result).toEqual(mockResponse.data);
+    });
   });
 
   describe('Admin Authentication Methods', () => {
