@@ -441,7 +441,8 @@ class CacheThumbsMiddleware:
 
 # CORS configuration - Must be set up BEFORE adding middleware
 # Parse CORS origins from environment or use defaults
-cors_origins = CORS_ORIGINS or [
+cors_origins_from_env = CORS_ORIGINS
+cors_origins = cors_origins_from_env if cors_origins_from_env else [
     "https://manaandmeeples.co.nz",
     "https://www.manaandmeeples.co.nz",
     "https://library.manaandmeeples.co.nz",
@@ -453,8 +454,11 @@ if "http://localhost:3000" not in cors_origins:
     cors_origins = cors_origins + [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:5173",  # Vite default port
+        "http://127.0.0.1:5173",  # Vite default port
     ]
 
+logger.info(f"CORS origins from environment: {cors_origins_from_env}")
 logger.info(f"CORS origins configured: {cors_origins}")
 
 # Add middleware in reverse order (last added = first executed)
@@ -470,11 +474,12 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-    max_age=600,  # Cache preflight requests for 10 minutes
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
+    expose_headers=["*"],  # Expose all headers
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
+logger.info("CORS middleware configured and added to application")
 
 # ------------------------------------------------------------------------------
 # Static files
