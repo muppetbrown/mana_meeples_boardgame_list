@@ -42,13 +42,12 @@ describe('AdminToolsPanel', () => {
   });
 
   describe('Bulk NZ Designers Update', () => {
-    test('shows error when CSV is empty', async () => {
+    test('button is disabled when CSV is empty', async () => {
       render(<AdminToolsPanel onToast={mockToast} onLibraryReload={mockLibraryReload} />);
 
       const button = screen.getByRole('button', { name: /Update NZ Designers/i });
-      fireEvent.click(button);
 
-      expect(mockToast).toHaveBeenCalledWith('Please enter CSV data', 'error');
+      expect(button).toBeDisabled();
     });
 
     test('handles successful bulk NZ designers update', async () => {
@@ -94,13 +93,12 @@ describe('AdminToolsPanel', () => {
   });
 
   describe('Bulk AfterGame IDs Update', () => {
-    test('shows error when CSV is empty', async () => {
+    test('button is disabled when CSV is empty', async () => {
       render(<AdminToolsPanel onToast={mockToast} onLibraryReload={mockLibraryReload} />);
 
       const button = screen.getByRole('button', { name: /Update AfterGame IDs/i });
-      fireEvent.click(button);
 
-      expect(mockToast).toHaveBeenCalledWith('Please enter CSV data', 'error');
+      expect(button).toBeDisabled();
     });
 
     test('handles successful bulk AfterGame IDs update', async () => {
