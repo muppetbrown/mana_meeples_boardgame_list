@@ -2,7 +2,7 @@
 Tests for bulk operations API endpoints
 """
 import pytest
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from models import Game
 
 
