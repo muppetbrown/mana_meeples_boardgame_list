@@ -4,6 +4,19 @@ This directory contains historical documentation that provides valuable context 
 
 ## Archive Contents
 
+### Implementation Summaries (`implementations/`)
+
+Completed feature implementation documentation (archived December 2025):
+
+- **ALEMBIC_MIGRATION_COMPLETE.md**: Alembic database migration system setup completion
+- **CODE_QUALITY_IMPROVEMENTS.md**: Code quality and security improvements summary
+- **ACCESSIBILITY_IMPROVEMENTS.md**: WCAG 2.1 AA compliance implementation details
+- **TRACKING_PREVENTION_FIX.md**: Browser tracking prevention storage fixes
+- **PRIORITY_1_ENHANCEMENTS.md**: Priority 1 enhancement implementations
+- **AUTO_REFRESH_SYSTEM.md**: Mobile auto-refresh system for deployments
+
+These documents describe completed implementations and serve as historical reference for why certain features were built and how they were implemented.
+
 ### Sprint Summaries (`sprints/`)
 
 Historical sprint summaries documenting the iterative development process:

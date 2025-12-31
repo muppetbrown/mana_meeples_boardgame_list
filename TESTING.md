@@ -140,6 +140,16 @@ render(
 4. **Mock external dependencies**: API calls, browser APIs
 5. **Descriptive test names**: Clear, behavior-focused descriptions
 
+### Detailed Frontend Test Templates
+
+For comprehensive frontend test templates with complete code examples, see:
+**[Frontend Test Guide](FRONTEND_TEST_GUIDE.md)** - Detailed templates for:
+- Custom hooks (useAuth, useGameFilters, etc.)
+- Page components (PublicCatalogue, GameDetails, etc.)
+- API client testing
+- Configuration testing
+- Complete working examples
+
 ---
 
 ## Backend Testing

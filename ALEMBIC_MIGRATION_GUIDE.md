@@ -1,8 +1,12 @@
 # Alembic Migration Guide
 
+> **Status**: ✅ Migration Complete (December 2025)
+> **For Production Usage**: See [Alembic Deployment Guide](docs/deployment/ALEMBIC.md)
+> **This Guide**: Reference for understanding Alembic setup and workflow
+
 ## Overview
 
-This guide walks through migrating from in-code migrations to Alembic for proper database version control and migration management.
+This guide documents the migration from in-code migrations to Alembic for proper database version control and migration management. The migration has been completed, and this serves as a reference for understanding the setup and ongoing workflow.
 
 ## Why Alembic?
 

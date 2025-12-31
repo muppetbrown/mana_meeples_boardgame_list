@@ -34,6 +34,8 @@ New to the project? Start here:
 - [Redis Setup](../REDIS_SETUP.md) - Session management and caching configuration
 - [Cloudinary Setup](../CLOUDINARY_SETUP.md) - Image hosting setup
 - [Sleeve Fetch Setup](../SLEEVE_FETCH_SETUP.md) - Card sleeve data integration
+- [Alembic Migration Guide](../ALEMBIC_MIGRATION_GUIDE.md) - Database migration setup and workflow
+- [Frontend Test Guide](../FRONTEND_TEST_GUIDE.md) - Comprehensive frontend testing templates
 
 ### For Café Staff & Admins
 
@@ -46,6 +48,7 @@ New to the project? Start here:
 
 **Deployment & Infrastructure:**
 - [Deployment Guide](./deployment/DEPLOYMENT_GUIDE.md) - Production deployment on Render
+- [Alembic Deployment Guide](./deployment/ALEMBIC.md) - Database migration deployment
 - [Health & Monitoring](./deployment/DEPLOYMENT_GUIDE.md#monitoring--debugging) - Health checks and monitoring
 - [Rollback Procedures](./deployment/DEPLOYMENT_GUIDE.md#rollback-procedures) - How to rollback deployments
 - [Scaling Guide](./deployment/DEPLOYMENT_GUIDE.md#scaling--performance) - Horizontal and vertical scaling
@@ -163,6 +166,13 @@ Individual component README files:
 Archive of historical documentation (for context and reference):
 
 - **[Archive Index](./archive/README.md)** - Overview of archived documentation
+- **[Implementation Summaries](./archive/implementations/)** - Completed feature implementations
+  - Alembic Migration Complete
+  - Code Quality Improvements
+  - Accessibility Improvements
+  - Tracking Prevention Fix
+  - Priority 1 Enhancements
+  - Auto-Refresh System
 - **[Sprint Summaries](./archive/sprints/)** - Historical sprint development summaries
   - Sprint 1: Initial development
   - Sprint 4: Performance optimization
