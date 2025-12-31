@@ -313,6 +313,40 @@ async def image_proxy(
     from services.cloudinary_service import cloudinary_service  # noqa: E402
 
     try:
+        # Basic URL validation
+        if not url or not url.startswith(('http://', 'https://')):
+            logger.warning(f"Invalid URL format: {url[:100] if url else 'None'}")
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid image URL format"
+            )
+
+        # CRITICAL FIX: Detect if we're being asked to proxy a Cloudinary URL
+        # This happens when cloudinary_url is used instead of the original BGG URL
+        # Redirect directly to Cloudinary instead of double-proxying
+        if 'res.cloudinary.com' in url or 'cloudinary.com' in url:
+            logger.warning(f"Image proxy received Cloudinary URL (should receive BGG URL): {url[:100]}")
+            # Redirect directly to the Cloudinary URL
+            return Response(
+                status_code=302,
+                headers={
+                    "Location": url,
+                    "Cache-Control": "public, max-age=31536000, immutable"
+                }
+            )
+
+        # CRITICAL FIX: Detect if URL has Cloudinary transformation parameters embedded
+        # This indicates data corruption - BGG URLs should never have these params
+        if '/fit-in/' in url or '/filters:' in url or '/c_limit' in url:
+            logger.error(
+                f"MALFORMED URL DETECTED: BGG URL contains Cloudinary transformation parameters. "
+                f"This indicates database corruption. URL: {url[:150]}"
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Malformed image URL (contains invalid transformation parameters)"
+            )
+
         # Validate URL - only allow trusted sources
         trusted_domains = [
             'cf.geekdo-images.com',  # BGG CDN
@@ -387,13 +421,14 @@ async def image_proxy(
                                 "Cache-Control": "public, max-age=31536000, immutable"
                             }
                         )
-
-                # Upload failed or returned original URL - fall through to direct proxy
-                logger.debug(f"Cloudinary upload/URL failed for {url}, using direct proxy")
+                else:
+                    # Upload failed (e.g., image too large for Cloudinary 10MB limit)
+                    # Fall through to direct proxy
+                    logger.info(f"Cloudinary upload failed for {url[:100]}... (likely too large), using direct proxy fallback")
 
             except Exception as e:
                 # If Cloudinary fails for any reason, fall through to direct proxy
-                logger.warning(f"Cloudinary error for {url}: {e}, falling back to direct proxy")
+                logger.warning(f"Cloudinary error for {url[:100]}...: {str(e)[:100]}, falling back to direct proxy")
 
         # Fallback to direct proxy if Cloudinary fails or is disabled
         # Determine cache max age based on URL
