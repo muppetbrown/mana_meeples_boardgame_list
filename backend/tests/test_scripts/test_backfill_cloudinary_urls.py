@@ -29,6 +29,7 @@ class TestBackfillCloudinaryUrlsScript:
     def test_backfill_with_dry_run(self, mock_db, mock_cloudinary):
         """Test backfill in dry-run mode doesn't commit changes"""
         from scripts.backfill_cloudinary_urls import backfill_cloudinary_urls
+        from unittest.mock import MagicMock
 
         # Create test game
         game = Game(
@@ -39,6 +40,9 @@ class TestBackfillCloudinaryUrlsScript:
         )
         mock_db.add(game)
         mock_db.commit()
+
+        # Mock the rollback method
+        mock_db.rollback = MagicMock()
 
         stats = backfill_cloudinary_urls(dry_run=True)
 
@@ -103,7 +107,10 @@ class TestBackfillCloudinaryUrlsScript:
 
         stats = backfill_cloudinary_urls(dry_run=False)
 
-        assert stats['skipped'] == 1
+        # Games without images are filtered out at the query level,
+        # so they won't be in total_games or processed
+        assert stats['total_games'] == 0
+        assert stats['processed'] == 0
         assert stats['updated'] == 0
 
     def test_backfill_with_force_regenerates_existing_urls(self, mock_db, mock_cloudinary):
@@ -183,11 +190,13 @@ class TestBackfillCloudinaryUrlsScript:
         )
         mock_db.add(game)
         mock_db.commit()
+        game_id = game.id
 
         backfill_cloudinary_urls(dry_run=False)
 
-        mock_db.refresh(game)
-        assert game.cloudinary_url == expected_url
+        # Query the game again from the database to verify the update
+        updated_game = mock_db.query(Game).filter_by(id=game_id).first()
+        assert updated_game.cloudinary_url == expected_url
 
     def test_print_summary(self):
         """Test print_summary function outputs correct statistics"""
