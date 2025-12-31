@@ -56,7 +56,7 @@ PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
 
 # API base URL for image proxying and absolute URLs
 API_BASE = (
-    PUBLIC_BASE_URL or "https://mana-meeples-boardgame-list.onrender.com"
+    PUBLIC_BASE_URL or "https://mana-meeples-boardgame-list-opgf.onrender.com"
 )
 
 # HTTP client configuration
