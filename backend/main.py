@@ -489,19 +489,16 @@ from api.routers.buy_list import router as buy_list_router
 from api.routers.sleeves import router as sleeves_router
 from api.versioning import version_info
 
-# Register v1 routers (current version with /api/v1 prefix)
-# Create a parent router for v1 to group all endpoints
-v1_router = FastAPI(title="API v1")
-v1_router.include_router(public_router)
-v1_router.include_router(admin_router)
-v1_router.include_router(bulk_router)
-v1_router.include_router(buy_list_router)
-v1_router.include_router(sleeves_router)
-v1_router.include_router(health_router)
-v1_router.include_router(debug_router)
-
-# Mount v1 as sub-application
-app.mount("/api/v1", v1_router)
+# DISABLED: API v1 versioning (was causing CORS issues with mounted sub-app)
+# Using legacy endpoints only for now - v1 endpoints will be re-enabled
+# in a future update using APIRouter instead of mounted FastAPI sub-app
+#
+# The issue: FastAPI sub-applications (created with FastAPI()) have their own
+# middleware stack that doesn't inherit CORS from the parent app. This caused
+# CORS failures on v1 endpoints even though CORS was configured on main app.
+#
+# Solution for future: Use APIRouter with prefix="/api/v1" instead of mounting
+# a sub-application. This ensures CORS middleware is properly shared.
 
 # Register legacy routers (backward compatibility - no version prefix)
 # These map to the same handlers as v1
