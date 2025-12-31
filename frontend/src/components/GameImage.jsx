@@ -105,9 +105,10 @@ export default function GameImage({
       )}
 
       {/* Only render img when shouldLoadImage is true (for IntersectionObserver) */}
+      {/* Use default size (detail) - BGG blocks 'original' size with 400 Bad Request */}
       {shouldLoadImage && (
         <img
-          src={imageProxyUrl(url)}  {/* Use default size (detail) - BGG blocks 'original' */}
+          src={imageProxyUrl(url)}
           srcSet={srcSet}
           sizes={srcSet ? sizes : undefined}
           alt={alt || "Game cover image"}
