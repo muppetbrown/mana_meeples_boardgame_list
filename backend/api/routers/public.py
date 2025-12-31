@@ -285,7 +285,7 @@ async def get_games_by_designer(
 
 
 @router.get("/image-proxy")
-@limiter.limit("300/minute")  # Allow higher rate for pages with many images
+@limiter.limit("1000/minute")  # High limit for pages with many images (admin pages can have 100+ games)
 async def image_proxy(
     request: Request,
     url: str = Query(..., description="Image URL to proxy"),
