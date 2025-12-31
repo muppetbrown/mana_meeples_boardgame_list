@@ -439,13 +439,8 @@ class CacheThumbsMiddleware:
         await self.app(scope, receive, send_wrapper)
 
 
-# Add middleware in reverse order (last added = first executed)
-app.add_middleware(RequestLoggingMiddleware)
-app.add_middleware(CacheThumbsMiddleware)
-app.add_middleware(APICacheControlMiddleware)
-app.add_middleware(SecurityHeadersMiddleware)
-
-# CORS configuration
+# CORS configuration - Must be set up BEFORE adding middleware
+# Parse CORS origins from environment or use defaults
 cors_origins = CORS_ORIGINS or [
     "https://manaandmeeples.co.nz",
     "https://www.manaandmeeples.co.nz",
@@ -462,12 +457,23 @@ if "http://localhost:3000" not in cors_origins:
 
 logger.info(f"CORS origins configured: {cors_origins}")
 
+# Add middleware in reverse order (last added = first executed)
+# IMPORTANT: CORS must be added LAST to execute FIRST and handle preflight requests
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(CacheThumbsMiddleware)
+app.add_middleware(APICacheControlMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+
+# CORS middleware MUST be added last to wrap all other middleware
+# This ensures preflight OPTIONS requests are handled correctly
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 # ------------------------------------------------------------------------------
