@@ -12,10 +12,17 @@ Populates the `cloudinary_url` column for existing games that don't have it cach
 
 ### Usage
 
+**Important:** Run from the project root directory (where `backend/` is located)
+
 #### 1. Dry Run (Recommended First)
 
 Test what will be updated without making changes:
 
+```bash
+python backend/scripts/backfill_cloudinary_urls.py --dry-run
+```
+
+Or using module syntax:
 ```bash
 python -m backend.scripts.backfill_cloudinary_urls --dry-run
 ```
@@ -25,7 +32,7 @@ python -m backend.scripts.backfill_cloudinary_urls --dry-run
 Process only a few games for testing:
 
 ```bash
-python -m backend.scripts.backfill_cloudinary_urls --dry-run --limit 10
+python backend/scripts/backfill_cloudinary_urls.py --dry-run --limit 10
 ```
 
 #### 3. Run Full Backfill
@@ -33,7 +40,7 @@ python -m backend.scripts.backfill_cloudinary_urls --dry-run --limit 10
 After testing, run the full backfill:
 
 ```bash
-python -m backend.scripts.backfill_cloudinary_urls
+python backend/scripts/backfill_cloudinary_urls.py
 ```
 
 This will prompt for confirmation before making changes.
@@ -43,7 +50,7 @@ This will prompt for confirmation before making changes.
 Re-generate URLs even for games that already have them:
 
 ```bash
-python -m backend.scripts.backfill_cloudinary_urls --force
+python backend/scripts/backfill_cloudinary_urls.py --force
 ```
 
 ### Options
@@ -59,14 +66,15 @@ python -m backend.scripts.backfill_cloudinary_urls --force
 1. Go to https://dashboard.render.com
 2. Select your `mana-meeples-boardgame-list` service
 3. Click "Shell" tab
-4. Run the script:
+4. Navigate to project root and run the script:
 
 ```bash
-# Test first
-python -m backend.scripts.backfill_cloudinary_urls --dry-run --limit 5
+# You should be in /opt/render/project/src by default
+# Test first with a small sample
+python backend/scripts/backfill_cloudinary_urls.py --dry-run --limit 5
 
-# Then run full backfill
-python -m backend.scripts.backfill_cloudinary_urls
+# Review the output, then run full backfill
+python backend/scripts/backfill_cloudinary_urls.py
 ```
 
 #### Option 2: Via SSH (if enabled)
@@ -75,9 +83,12 @@ python -m backend.scripts.backfill_cloudinary_urls
 # Connect to Render shell
 render shell mana-meeples-boardgame-list
 
+# Navigate to project root
+cd /opt/render/project/src
+
 # Run backfill
-python -m backend.scripts.backfill_cloudinary_urls --dry-run
-python -m backend.scripts.backfill_cloudinary_urls
+python backend/scripts/backfill_cloudinary_urls.py --dry-run
+python backend/scripts/backfill_cloudinary_urls.py
 ```
 
 ### Expected Output

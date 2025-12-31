@@ -21,12 +21,22 @@ import logging
 import argparse
 from typing import Optional
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+# Ensure we're running from the correct directory
+# This script needs to be run from the backend/ directory for imports to work
+script_dir = os.path.dirname(os.path.abspath(__file__))
+backend_dir = os.path.dirname(script_dir)
+project_root = os.path.dirname(backend_dir)
 
-from backend.database import get_db
-from backend.models import Game
-from backend.services.cloudinary_service import cloudinary_service
+# Change to backend directory for relative imports to work
+os.chdir(backend_dir)
+
+# Add backend directory to path for imports
+if backend_dir not in sys.path:
+    sys.path.insert(0, backend_dir)
+
+from database import get_db
+from models import Game
+from services.cloudinary_service import cloudinary_service
 
 logging.basicConfig(
     level=logging.INFO,
