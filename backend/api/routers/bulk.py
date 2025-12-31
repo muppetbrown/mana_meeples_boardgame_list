@@ -599,3 +599,95 @@ async def bulk_update_aftergame_ids(
         raise HTTPException(
             status_code=500, detail=f"Bulk AfterGame ID update failed: {str(e)}"
         )
+
+
+@router.post("/backfill-cloudinary-urls")
+async def backfill_cloudinary_urls(
+    request: Request,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin_auth),
+):
+    """
+    Backfill cloudinary_url column for all games with images.
+
+    Pre-generates Cloudinary URLs for games to eliminate 50-150ms redirect
+    overhead on every image request.
+    """
+    from services.cloudinary_service import cloudinary_service
+
+    try:
+        # Find all games with images but missing cloudinary_url
+        games = db.execute(
+            select(Game).where(
+                (Game.image.isnot(None)) | (Game.thumbnail_url.isnot(None))
+            ).where(
+                (Game.cloudinary_url.is_(None)) | (Game.cloudinary_url == '')
+            )
+        ).scalars().all()
+
+        total = len(games)
+        updated = 0
+        skipped = 0
+        failed = 0
+        errors = []
+
+        logger.info(f"Starting Cloudinary URL backfill for {total} games")
+
+        for game in games:
+            try:
+                # Prefer image over thumbnail_url (higher quality)
+                source_url = game.image or game.thumbnail_url
+
+                if not source_url:
+                    skipped += 1
+                    continue
+
+                # Generate optimized Cloudinary URL
+                # Same settings as in game_service.py
+                cloudinary_url = cloudinary_service.generate_optimized_url(
+                    source_url,
+                    width=800,
+                    height=800,
+                    quality="auto:best",
+                    format="auto"  # Auto WebP/AVIF
+                )
+
+                # Update game
+                game.cloudinary_url = cloudinary_url
+                db.add(game)
+                updated += 1
+
+                logger.debug(f"Generated Cloudinary URL for game {game.id}: {game.title}")
+
+            except Exception as e:
+                failed += 1
+                error_msg = f"Game {game.id} ({game.title}): {str(e)}"
+                logger.error(f"Failed to generate Cloudinary URL - {error_msg}")
+                errors.append(error_msg)
+                continue
+
+        # Commit all changes
+        db.commit()
+
+        logger.info(
+            f"Cloudinary URL backfill complete: "
+            f"{updated} updated, {skipped} skipped, {failed} failed"
+        )
+
+        return {
+            "message": f"Backfill complete: {updated} games updated",
+            "total": total,
+            "updated": updated,
+            "skipped": skipped,
+            "failed": failed,
+            "errors": errors[:10] if errors else [],  # Return first 10 errors
+            "cloudinary_enabled": cloudinary_service.enabled
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Cloudinary URL backfill failed: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Cloudinary URL backfill failed: {str(e)}"
+        )

@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { bulkUpdateNZDesigners, bulkUpdateAfterGameIDs, reimportAllGames, fetchAllSleeveData, fixDatabaseSequence, getDebugCategories, getDebugDatabaseInfo, getDebugPerformance, exportGamesCSV, getHealthCheck, getDbHealthCheck } from "../../api/client";
+import { bulkUpdateNZDesigners, bulkUpdateAfterGameIDs, reimportAllGames, fetchAllSleeveData, backfillCloudinaryUrls, fixDatabaseSequence, getDebugCategories, getDebugDatabaseInfo, getDebugPerformance, exportGamesCSV, getHealthCheck, getDbHealthCheck } from "../../api/client";
 
 export function AdminToolsPanel({ onToast, onLibraryReload }) {
   const [nzDesignersText, setNzDesignersText] = useState("");
@@ -137,6 +137,32 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
       onToast(`Sequence fixed! Next ID will be: ${result.next_id}`, "success");
     } catch (error) {
       onToast("Failed to fix sequence", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [onToast]);
+
+  const handleBackfillCloudinary = useCallback(async () => {
+    if (!window.confirm("This will pre-generate Cloudinary URLs for all games with images. This improves image load times by ~50-150ms per image. Continue?")) {
+      return;
+    }
+
+    setIsLoading(true);
+    onToast("Backfilling Cloudinary URLs...", "info", 3000);
+
+    try {
+      const result = await backfillCloudinaryUrls();
+      const cloudinaryStatus = result.cloudinary_enabled ? "enabled" : "disabled (using fallback URLs)";
+      onToast(
+        `Backfill complete! Updated: ${result.updated}, Skipped: ${result.skipped}, Failed: ${result.failed}. Cloudinary: ${cloudinaryStatus}`,
+        "success",
+        5000
+      );
+      if (result.errors && result.errors.length > 0) {
+        console.warn("Cloudinary backfill errors:", result.errors);
+      }
+    } catch (error) {
+      onToast("Cloudinary URL backfill failed", "error");
     } finally {
       setIsLoading(false);
     }
@@ -294,9 +320,19 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
           >
             Export Games CSV
           </button>
+
+          <button
+            className={`px-4 py-2 rounded-lg text-white ${
+              isLoading ? "bg-gray-400" : "bg-indigo-600 hover:bg-indigo-700"
+            }`}
+            onClick={handleBackfillCloudinary}
+            disabled={isLoading}
+          >
+            Backfill Cloudinary URLs
+          </button>
         </div>
         <p className="text-sm text-gray-600 mt-2">
-          Re-import will fetch latest BGG data for all games. Fetch Sleeve Data will scrape sleeve information only. Fix Sequence resolves "duplicate key" errors when adding games. Export creates a CSV backup.
+          Re-import will fetch latest BGG data for all games. Fetch Sleeve Data will scrape sleeve information only. Fix Sequence resolves "duplicate key" errors when adding games. Export creates a CSV backup. Backfill Cloudinary URLs pre-generates optimized image URLs for faster loading.
         </p>
       </div>
 
