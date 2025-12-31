@@ -217,10 +217,97 @@ class GameService:
         query = self._apply_sorting(query, sort)
 
         # Get total count before pagination
-        # Use a simpler count query that only selects the ID to avoid GROUP BY issues
-        count_query = query.with_only_columns(func.count(Game.id))
-        # Remove ORDER BY for count query (not needed and can cause issues)
-        count_query = count_query.order_by(None)
+        # Build a separate count query from scratch to avoid issues with eager loading
+        # This ensures accurate counting without interference from selectinload() options
+        count_query = select(func.count(Game.id)).where(
+            or_(Game.status == "OWNED", Game.status.is_(None))
+        ).where(
+            or_(
+                Game.is_expansion.isnot(True),
+                Game.expansion_type.in_(["both", "standalone"]),
+            )
+        )
+
+        # Apply the same filters as the main query
+        if search and search.strip():
+            search_term = f"%{search.strip()}%"
+            search_conditions = [Game.title.ilike(search_term)]
+            if hasattr(Game, "designers"):
+                search_conditions.append(cast(Game.designers, String).ilike(search_term))
+            if hasattr(Game, "description"):
+                search_conditions.append(Game.description.ilike(search_term))
+            count_query = count_query.where(or_(*search_conditions))
+
+        if designer and designer.strip():
+            designer_filter = f"%{designer.strip()}%"
+            if hasattr(Game, "designers"):
+                count_query = count_query.where(cast(Game.designers, String).ilike(designer_filter))
+
+        if nz_designer is not None:
+            count_query = count_query.where(Game.nz_designer == nz_designer)
+
+        if players is not None:
+            from sqlalchemy import alias
+            Expansion = alias(Game.__table__, name="expansion")
+            expansion_subquery = (
+                select(Expansion.c.base_game_id)
+                .where(Expansion.c.base_game_id.isnot(None))
+                .where(
+                    or_(
+                        Expansion.c.modifies_players_min.is_(None),
+                        Expansion.c.modifies_players_min <= players,
+                    )
+                )
+                .where(
+                    or_(
+                        Expansion.c.modifies_players_max.is_(None),
+                        Expansion.c.modifies_players_max >= players,
+                    )
+                )
+            )
+            count_query = count_query.where(
+                or_(
+                    and_(
+                        or_(
+                            Game.players_min.is_(None), Game.players_min <= players
+                        ),
+                        or_(
+                            Game.players_max.is_(None), Game.players_max >= players
+                        ),
+                    ),
+                    Game.id.in_(expansion_subquery),
+                )
+            )
+
+        if complexity_min is not None or complexity_max is not None:
+            if complexity_min is not None:
+                count_query = count_query.where(
+                    and_(
+                        Game.complexity.isnot(None),
+                        Game.complexity >= complexity_min
+                    )
+                )
+            if complexity_max is not None:
+                count_query = count_query.where(
+                    and_(
+                        Game.complexity.isnot(None),
+                        Game.complexity <= complexity_max
+                    )
+                )
+
+        if recently_added_days is not None:
+            cutoff_date = datetime.now(timezone.utc) - timedelta(
+                days=recently_added_days
+            )
+            if hasattr(Game, "date_added"):
+                count_query = count_query.where(Game.date_added >= cutoff_date)
+
+        if category and category != "all":
+            if category == "uncategorized":
+                count_query = count_query.where(Game.mana_meeple_category.is_(None))
+            else:
+                count_query = count_query.where(Game.mana_meeple_category == category)
+
         total = self.db.execute(count_query).scalar()
 
         # Apply pagination
