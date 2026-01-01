@@ -354,17 +354,32 @@ async def reimport_all_games(
     db: Session = Depends(get_db),
     _: None = Depends(require_admin_auth),
 ):
-    """Re-import all existing games to get enhanced BGG data"""
+    """
+    Re-import all existing games to get enhanced BGG data.
+
+    Implements rate limiting to avoid overwhelming BGG API:
+    - 2 second delay between each game import
+    - This ensures ~30 games/minute, well within BGG's rate limits
+    """
     games = (
         db.execute(select(Game).where(Game.bgg_id.isnot(None))).scalars().all()
     )
 
-    for game in games:
-        background_tasks.add_task(_reimport_single_game, game.id, game.bgg_id)
+    # Add tasks with staggered delays to avoid rate limiting
+    # 2 seconds between each request = 30 requests/minute
+    DELAY_BETWEEN_REQUESTS = 2.0
+
+    for index, game in enumerate(games):
+        delay = index * DELAY_BETWEEN_REQUESTS
+        background_tasks.add_task(_reimport_single_game, game.id, game.bgg_id, delay)
+
+    estimated_time_minutes = (len(games) * DELAY_BETWEEN_REQUESTS) / 60
 
     return {
         "message": (
-            f"Started re-importing {len(games)} games with enhanced data"
+            f"Started re-importing {len(games)} games with enhanced data. "
+            f"Estimated completion time: {estimated_time_minutes:.1f} minutes "
+            f"(rate limited to prevent BGG API errors)"
         )
     }
 
