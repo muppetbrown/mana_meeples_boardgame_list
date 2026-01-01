@@ -6,6 +6,7 @@ Handles app initialization, middleware setup, and router registration.
 import os
 import json
 import logging
+import asyncio
 from typing import Dict, Any
 from datetime import datetime, timezone
 from collections import defaultdict
