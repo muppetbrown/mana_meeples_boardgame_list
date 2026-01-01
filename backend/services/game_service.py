@@ -595,9 +595,9 @@ class GameService:
         # Update enhanced fields (description, designers, publishers, etc.)
         self._update_game_enhanced_fields(game, bgg_data)
 
-        # Pre-generate Cloudinary URL for performance optimization
-        # Eliminates 302 redirect on every image request
-        self._pre_generate_cloudinary_url(game)
+        # DISABLED: Pre-generating Cloudinary URLs causes 404s because images aren't uploaded yet
+        # The image proxy endpoint will handle Cloudinary upload on first request
+        # self._pre_generate_cloudinary_url(game)
 
         # Auto-link to base game if this is an expansion
         self._auto_link_expansion(game, bgg_data)
@@ -768,19 +768,37 @@ class GameService:
 
             # Optimize source URL to use the best quality for this game
             if 'cf.geekdo-images.com' in source_url:
-                # Replace existing quality suffix with optimal one
-                quality_map = {
+                # BGG uses NEW format with double underscores in path: __SIZE/
+                # Example: https://cf.geekdo-images.com/HASH__d/pic123.jpg
+                quality_map_new = {
+                    'original': '__original/',
+                    'detail': '__d/',
+                    'medium': '__md/',
+                    'medium-thumb': '__mt/',
+                    'thumbnail': '__t/'
+                }
+
+                # OLD format (deprecated but still handle for legacy URLs)
+                quality_map_old = {
                     'original': '_original.',
                     'detail': '_d.',
                     'medium': '_md.',
                     'medium-thumb': '_mt.',
                     'thumbnail': '_t.'
                 }
-                optimal_suffix = quality_map.get(optimal_quality, '_md.')
 
-                # Replace any existing quality suffix
-                for suffix in quality_map.values():
-                    source_url = source_url.replace(suffix, optimal_suffix)
+                optimal_suffix_new = quality_map_new.get(optimal_quality, '__md/')
+                optimal_suffix_old = quality_map_old.get(optimal_quality, '_md.')
+
+                # Try new format first (most common)
+                if '__' in source_url:
+                    # Replace new format pattern: __SIZE/
+                    import re
+                    source_url = re.sub(r'__[a-z]+/', optimal_suffix_new, source_url)
+                else:
+                    # Fallback to old format: _SIZE.
+                    for suffix in quality_map_old.values():
+                        source_url = source_url.replace(suffix, optimal_suffix_old)
 
                 logger.debug(f"Using {optimal_quality} quality for game {game.id} (users_rated: {getattr(game, 'users_rated', 0)}, rank: {getattr(game, 'bgg_rank', None)})")
 

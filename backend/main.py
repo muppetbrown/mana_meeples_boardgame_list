@@ -243,12 +243,21 @@ async def _download_and_update_thumbnail(game_id: int, thumbnail_url: str):
         db.close()
 
 
-async def _reimport_single_game(game_id: int, bgg_id: int):
+async def _reimport_single_game(game_id: int, bgg_id: int, delay_seconds: float = 0):
     """
     Background task to re-import a single game with enhanced data.
     Uses consolidated GameService.update_game_from_bgg_data method.
+
+    Args:
+        game_id: Database ID of the game
+        bgg_id: BoardGameGeek ID
+        delay_seconds: Initial delay before processing (for rate limiting)
     """
     try:
+        # Add delay to avoid overwhelming BGG API
+        if delay_seconds > 0:
+            await asyncio.sleep(delay_seconds)
+
         db = SessionLocal()
         game = db.get(Game, game_id)
         if not game:
