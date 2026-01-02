@@ -1,5 +1,7 @@
-from pydantic import BaseModel, field_validator, ConfigDict, RootModel
+from pydantic import BaseModel, field_validator, ConfigDict, RootModel, field_serializer
 from typing import Dict, List, Optional
+from datetime import datetime
+import json
 
 
 class Range(BaseModel):
@@ -190,6 +192,8 @@ class GameListItemResponse(BaseModel):
     # Filtering/sorting fields
     players_min: Optional[int] = None
     players_max: Optional[int] = None
+    playtime_min: Optional[int] = None
+    playtime_max: Optional[int] = None
     average_rating: Optional[float] = None
     complexity: Optional[float] = None
     mana_meeple_category: Optional[str] = None
@@ -262,6 +266,19 @@ class GameDetailResponse(BaseModel):
     has_sleeves: Optional[str] = None
     is_sleeved: Optional[bool] = None
 
-    # Metadata
-    date_added: Optional[str] = None
-    created_at: Optional[str] = None
+    # Metadata (Pydantic automatically serializes datetime to ISO format)
+    date_added: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+
+    @field_validator('designers', 'publishers', 'mechanics', 'artists', mode='before')
+    @classmethod
+    def parse_json_field(cls, v):
+        """Handle JSON fields that might come as strings from SQLite"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
