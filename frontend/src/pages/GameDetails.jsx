@@ -127,7 +127,8 @@ export default function GameDetails() {
   if (!game) return null;
 
   // Safely extract values with fallbacks
-  const img = game?.image_url || null;
+  // Performance: Use cloudinary_url if available (skips backend proxy)
+  const img = game?.cloudinary_url || game?.image_url || null;
   const cat = labelFor(game?.mana_meeple_category);
 
   return (

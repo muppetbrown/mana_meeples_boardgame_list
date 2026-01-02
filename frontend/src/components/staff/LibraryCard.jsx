@@ -11,7 +11,7 @@ export default function LibraryCard({ game, onEditCategory, onDelete }) {
     <div className="group bg-white border rounded-xl p-4 hover:shadow-md transition">
       <div className="flex gap-6">
         <GameImage
-          url={game.image_url}
+          url={game.cloudinary_url || game.image_url}
           alt={game.title}
           className="w-20 h-20 object-cover rounded-xl border-2 border-gray-200 group-hover:border-purple-300 transition-all duration-300 shadow"
           fallbackClass="w-20 h-20 bg-gradient-to-br from-gray-200 to-gray-300 rounded-xl flex items-center justify-center text-gray-500 text-sm border-2 border-gray-200"
