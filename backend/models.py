@@ -125,6 +125,33 @@ class Game(Base):
         Index("idx_category_year_rating", "mana_meeple_category", "year", "average_rating",
               postgresql_where=text("status = 'OWNED'")),
 
+        # Phase 1 Performance Indexes - for query optimization
+        # Category filter with rating sort (most common query pattern)
+        Index("idx_category_rating_date",
+              "mana_meeple_category", "average_rating", "date_added",
+              postgresql_where=text("status = 'OWNED'")),
+
+        # Status + date + NZ designer composite index
+        Index("idx_status_date_nz", "status", "date_added", "nz_designer"),
+
+        # GIN index for JSON designer searches (enables fast containment queries)
+        Index("idx_designers_gin",
+              "designers",
+              postgresql_using='gin',
+              postgresql_ops={'designers': 'jsonb_path_ops'}),
+
+        # GIN index for JSON mechanics searches
+        Index("idx_mechanics_gin",
+              "mechanics",
+              postgresql_using='gin',
+              postgresql_ops={'mechanics': 'jsonb_path_ops'}),
+
+        # Covering index for public queries (reduces table lookups)
+        Index("idx_public_games_covering",
+              "status", "is_expansion", "expansion_type", "mana_meeple_category",
+              postgresql_include=["title", "year", "players_min", "players_max",
+                                 "average_rating", "thumbnail_url", "image"]),
+
         # Sprint 4 Data Integrity Constraints
         # NOTE: All constraints must allow NULL values since fields are nullable
         CheckConstraint("year IS NULL OR (year >= 1900 AND year <= 2100)", name="valid_year"),
