@@ -337,7 +337,8 @@ async def image_proxy(
 
         # CRITICAL FIX: Clean malformed BGG URLs that have Cloudinary transformation parameters
         # This can happen if URLs were corrupted during import/storage
-        if '/fit-in/' in url or '/filters:' in url or '/c_limit' in url:
+        # Check for common malformed patterns: /img/, /fit-in/, /filters:, /c_limit, /0x0/
+        if '/img/' in url or '/fit-in/' in url or '/filters:' in url or '/c_limit' in url or '/0x0/' in url:
             logger.warning(
                 f"MALFORMED URL DETECTED: BGG URL contains transformation parameters. "
                 f"Attempting to clean URL: {url[:150]}"
@@ -388,6 +389,15 @@ async def image_proxy(
                 status_code=400,
                 detail="Image proxy only supports BoardGameGeek images"
             )
+
+        # CRITICAL FIX: Transform __original to __d before downloading
+        # BGG now blocks __original downloads with 400 Bad Request
+        # This is a safety check in case frontend doesn't transform
+        if 'cf.geekdo-images.com' in url and '__original/' in url:
+            logger.warning(f"Transforming blocked __original URL to __d: {url[:100]}...")
+            import re
+            url = re.sub(r'__original/', '__d/', url)
+            logger.info(f"Transformed to: {url[:100]}...")
 
         # CLOUDINARY UPLOAD: Always attempt upload to ensure image exists
         # NOTE: Removed "fast path" that redirected to cached cloudinary_url without verification
