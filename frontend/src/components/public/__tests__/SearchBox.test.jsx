@@ -44,13 +44,18 @@ describe('SearchBox', () => {
   });
 
   it('calls onChange when user types (with debouncing)', async () => {
-    render(<SearchBox value="" onChange={mockOnChange} />);
+    let currentValue = '';
+    const mockOnChangeWithUpdate = vi.fn((newValue) => {
+      currentValue = newValue;
+    });
+
+    const { rerender } = render(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
 
     const searchBox = screen.getByRole('searchbox');
     fireEvent.change(searchBox, { target: { value: 'Catan' } });
 
     // Should not be called immediately due to debouncing
-    expect(mockOnChange).not.toHaveBeenCalled();
+    expect(mockOnChangeWithUpdate).not.toHaveBeenCalled();
 
     // Fast-forward time by 300ms (debounce delay) and flush React updates
     await act(async () => {
@@ -58,8 +63,11 @@ describe('SearchBox', () => {
     });
 
     // Now onChange should be called
-    expect(mockOnChange).toHaveBeenCalledTimes(1);
-    expect(mockOnChange).toHaveBeenCalledWith('Catan');
+    expect(mockOnChangeWithUpdate).toHaveBeenCalledTimes(1);
+    expect(mockOnChangeWithUpdate).toHaveBeenCalledWith('Catan');
+
+    // Simulate parent component updating the value prop
+    rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
   });
 
   it('has correct aria-label matching placeholder', () => {
@@ -90,13 +98,18 @@ describe('SearchBox', () => {
   });
 
   it('calls onChange with empty string when cleared (with debouncing)', async () => {
-    render(<SearchBox value="Some text" onChange={mockOnChange} />);
+    let currentValue = 'Some text';
+    const mockOnChangeWithUpdate = vi.fn((newValue) => {
+      currentValue = newValue;
+    });
+
+    const { rerender } = render(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
 
     const searchBox = screen.getByRole('searchbox');
     fireEvent.change(searchBox, { target: { value: '' } });
 
     // Should not be called immediately due to debouncing
-    expect(mockOnChange).not.toHaveBeenCalled();
+    expect(mockOnChangeWithUpdate).not.toHaveBeenCalled();
 
     // Fast-forward time by 300ms (debounce delay) and flush React updates
     await act(async () => {
@@ -104,12 +117,20 @@ describe('SearchBox', () => {
     });
 
     // Now onChange should be called
-    expect(mockOnChange).toHaveBeenCalledTimes(1);
-    expect(mockOnChange).toHaveBeenCalledWith('');
+    expect(mockOnChangeWithUpdate).toHaveBeenCalledTimes(1);
+    expect(mockOnChangeWithUpdate).toHaveBeenCalledWith('');
+
+    // Simulate parent component updating the value prop
+    rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
   });
 
   it('debounces multiple rapid changes', async () => {
-    render(<SearchBox value="" onChange={mockOnChange} />);
+    let currentValue = '';
+    const mockOnChangeWithUpdate = vi.fn((newValue) => {
+      currentValue = newValue;
+    });
+
+    const { rerender } = render(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
 
     const searchBox = screen.getByRole('searchbox');
 
@@ -127,7 +148,7 @@ describe('SearchBox', () => {
     });
 
     // Should not be called yet
-    expect(mockOnChange).not.toHaveBeenCalled();
+    expect(mockOnChangeWithUpdate).not.toHaveBeenCalled();
 
     // Fast-forward past the debounce delay and flush React updates
     await act(async () => {
@@ -135,7 +156,10 @@ describe('SearchBox', () => {
     });
 
     // Should only be called once with the final value
-    expect(mockOnChange).toHaveBeenCalledTimes(1);
-    expect(mockOnChange).toHaveBeenCalledWith('Catan');
+    expect(mockOnChangeWithUpdate).toHaveBeenCalledTimes(1);
+    expect(mockOnChangeWithUpdate).toHaveBeenCalledWith('Catan');
+
+    // Simulate parent component updating the value prop
+    rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
   });
 });
