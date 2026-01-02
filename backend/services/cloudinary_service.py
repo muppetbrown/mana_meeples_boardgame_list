@@ -220,9 +220,11 @@ class CloudinaryService:
 
             except Exception as e:
                 logger.error(f"Failed to process/resize image: {e}")
-                # If image processing fails, try uploading original anyway
-                logger.warning("Attempting to upload original image despite processing failure")
-                # Don't return None, fall through to upload
+                # CRITICAL FIX: Don't upload original if processing fails
+                # The original image may be too large and will cause Cloudinary errors
+                logger.error("Image processing failed, skipping upload to avoid size limit errors")
+                self._failed_uploads.add(url)
+                return None
 
             # Upload with optimizations
             # Use hash as public_id, folder specified separately to avoid double-nesting

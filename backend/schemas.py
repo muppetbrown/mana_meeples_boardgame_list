@@ -212,16 +212,20 @@ class GameListItemResponse(BaseModel):
     @model_validator(mode='before')
     @classmethod
     def add_image_url_alias(cls, data: Any) -> Any:
-        """Add image_url as an alias for frontend compatibility"""
+        """Add image_url as an alias for frontend compatibility
+
+        IMPORTANT: Always use original BGG URL (image > thumbnail_url), NOT cloudinary_url
+        The cloudinary_url is only used internally by the backend image proxy endpoint.
+        Sending cloudinary_url to the frontend would cause a double-proxy loop.
+        """
         # If data is a SQLAlchemy model object
         if hasattr(data, '__dict__'):
-            # Prioritize cloudinary_url > image > thumbnail_url
-            cloudinary = getattr(data, 'cloudinary_url', None)
+            # Prioritize image > thumbnail_url (NOT cloudinary_url to avoid double-proxy)
             image = getattr(data, 'image', None)
             thumbnail = getattr(data, 'thumbnail_url', None)
 
-            # Compute image_url field
-            image_url = cloudinary or image or thumbnail
+            # Compute image_url field - use original BGG URL only
+            image_url = image or thumbnail
             data.image_url = image_url
 
         return data
@@ -370,14 +374,14 @@ class GameDetailResponse(BaseModel):
                 data.has_player_expansion = has_modification
 
         # Also add image_url alias for frontend compatibility
+        # IMPORTANT: Use original BGG URL only (NOT cloudinary_url to avoid double-proxy)
         if hasattr(data, '__dict__'):
-            # Prioritize cloudinary_url > image > thumbnail_url
-            cloudinary = getattr(data, 'cloudinary_url', None)
+            # Prioritize image > thumbnail_url (NOT cloudinary_url to avoid double-proxy)
             image = getattr(data, 'image', None)
             thumbnail = getattr(data, 'thumbnail_url', None)
 
-            # Compute image_url field
-            image_url = cloudinary or image or thumbnail
+            # Compute image_url field - use original BGG URL only
+            image_url = image or thumbnail
             data.image_url = image_url
 
         return data
