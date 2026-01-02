@@ -105,11 +105,11 @@ class GameService:
 
         # Exclude only require-base expansions from public view
         # Include: base games, standalone expansions, and expansions with no type set
-        # Only exclude games explicitly marked as is_expansion=True AND expansion_type='require-base'
+        # Only exclude games explicitly marked as is_expansion=True AND expansion_type='requires_base'
         query = query.where(
             ~and_(
                 Game.is_expansion == True,
-                Game.expansion_type == 'require-base'
+                Game.expansion_type == 'requires_base'
             )
         )
 
@@ -224,7 +224,7 @@ class GameService:
         ).where(
             ~and_(
                 Game.is_expansion == True,
-                Game.expansion_type == 'require-base'
+                Game.expansion_type == 'requires_base'
             )
         )
 
@@ -881,20 +881,31 @@ class GameService:
         from utils.helpers import CATEGORY_KEYS
 
         # Use SQL GROUP BY for efficient counting (no row loading required)
-        # Count all owned games
+        # Count all owned games, excluding require-base expansions
         total_count = self.db.execute(
             select(func.count(Game.id)).where(
                 or_(Game.status == "OWNED", Game.status.is_(None))
+            ).where(
+                ~and_(
+                    Game.is_expansion == True,
+                    Game.expansion_type == 'requires_base'
+                )
             )
         ).scalar()
 
         # Group by category to get counts per category in single query
+        # Also exclude require-base expansions to match get_filtered_games()
         category_results = self.db.execute(
             select(
                 Game.mana_meeple_category,
                 func.count(Game.id).label("count")
             ).where(
                 or_(Game.status == "OWNED", Game.status.is_(None))
+            ).where(
+                ~and_(
+                    Game.is_expansion == True,
+                    Game.expansion_type == 'requires_base'
+                )
             ).group_by(Game.mana_meeple_category)
         ).all()
 
