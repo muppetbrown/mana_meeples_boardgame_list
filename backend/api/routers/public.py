@@ -290,6 +290,10 @@ async def image_proxy(
     from services.cloudinary_service import cloudinary_service  # noqa: E402
 
     try:
+        # CRITICAL FIX: Strip whitespace and control characters from URL
+        # Some database records have trailing \r\n which causes "Invalid HTTP header value" errors
+        url = url.strip() if url else ""
+
         # Basic URL validation
         if not url or not url.startswith(('http://', 'https://')):
             logger.warning(f"Invalid URL format: {url[:100] if url else 'None'}")

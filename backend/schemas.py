@@ -188,6 +188,7 @@ class GameListItemResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     image: Optional[str] = None
     cloudinary_url: Optional[str] = None
+    image_url: Optional[str] = None  # Alias for frontend compatibility (computed from thumbnail_url/image)
 
     # Filtering/sorting fields
     players_min: Optional[int] = None
@@ -208,6 +209,27 @@ class GameListItemResponse(BaseModel):
     is_expansion: Optional[bool] = None
     expansion_type: Optional[str] = None
 
+    @model_validator(mode='before')
+    @classmethod
+    def add_image_url_alias(cls, data: Any) -> Any:
+        """Add image_url as an alias for frontend compatibility
+
+        IMPORTANT: Always use original BGG URL (image > thumbnail_url), NOT cloudinary_url
+        The cloudinary_url is only used internally by the backend image proxy endpoint.
+        Sending cloudinary_url to the frontend would cause a double-proxy loop.
+        """
+        # If data is a SQLAlchemy model object
+        if hasattr(data, '__dict__'):
+            # Prioritize image > thumbnail_url (NOT cloudinary_url to avoid double-proxy)
+            image = getattr(data, 'image', None)
+            thumbnail = getattr(data, 'thumbnail_url', None)
+
+            # Compute image_url field - use original BGG URL only
+            image_url = image or thumbnail
+            data.image_url = image_url
+
+        return data
+
 
 class GameDetailResponse(BaseModel):
     """
@@ -226,6 +248,7 @@ class GameDetailResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     image: Optional[str] = None
     cloudinary_url: Optional[str] = None
+    image_url: Optional[str] = None  # Alias for frontend compatibility
     players_min: Optional[int] = None
     players_max: Optional[int] = None
     average_rating: Optional[float] = None
@@ -349,6 +372,17 @@ class GameDetailResponse(BaseModel):
                 data.players_min_with_expansions = min_players
                 data.players_max_with_expansions = max_players
                 data.has_player_expansion = has_modification
+
+        # Also add image_url alias for frontend compatibility
+        # IMPORTANT: Use original BGG URL only (NOT cloudinary_url to avoid double-proxy)
+        if hasattr(data, '__dict__'):
+            # Prioritize image > thumbnail_url (NOT cloudinary_url to avoid double-proxy)
+            image = getattr(data, 'image', None)
+            thumbnail = getattr(data, 'thumbnail_url', None)
+
+            # Compute image_url field - use original BGG URL only
+            image_url = image or thumbnail
+            data.image_url = image_url
 
         return data
 

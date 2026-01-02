@@ -207,10 +207,16 @@ describe('PublicCatalogue Page', () => {
       expect(screen.getByText('Game 1')).toBeInTheDocument();
     });
 
+    // Wait for the load more trigger element to be present
+    await waitFor(() => {
+      const loadMoreText = screen.queryByText(/scroll for more/i);
+      expect(loadMoreText).toBeInTheDocument();
+    });
+
     // Verify IntersectionObserver was created (wait for useEffect to complete)
     await waitFor(() => {
       expect(global.IntersectionObserver).toHaveBeenCalled();
-    });
+    }, { timeout: 2000 });
   });
 
   test('displays load more indicator when more pages available', async () => {
@@ -492,12 +498,21 @@ describe('PublicCatalogue Page', () => {
         </BrowserRouter>
       );
 
+      // Wait for the games to load first
       await waitFor(() => {
         expect(screen.getByText('Game 1')).toBeInTheDocument();
       });
 
-      // Verify IntersectionObserver was set up
-      expect(global.IntersectionObserver).toHaveBeenCalled();
+      // Wait for the load more trigger element to be present (needed for intersection observer)
+      await waitFor(() => {
+        const loadMoreText = screen.queryByText(/scroll for more/i);
+        expect(loadMoreText).toBeInTheDocument();
+      });
+
+      // Give the intersection observer useEffect time to run after the ref is attached
+      await waitFor(() => {
+        expect(global.IntersectionObserver).toHaveBeenCalled();
+      }, { timeout: 2000 });
     });
   });
 
