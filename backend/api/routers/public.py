@@ -378,10 +378,10 @@ async def image_proxy(
                 if hash_match:
                     hash_part = hash_match.group(1)
                     # Find game with this hash in image or thumbnail_url
-                    from models import BoardGame
-                    game = db.query(BoardGame).filter(
-                        (BoardGame.image.like(f'%{hash_part}%')) |
-                        (BoardGame.thumbnail_url.like(f'%{hash_part}%'))
+                    from models import Game
+                    game = db.query(Game).filter(
+                        (Game.image.like(f'%{hash_part}%')) |
+                        (Game.thumbnail_url.like(f'%{hash_part}%'))
                     ).first()
 
                     if game and game.cloudinary_url:
@@ -438,10 +438,10 @@ async def image_proxy(
                         if hash_match:
                             hash_part = hash_match.group(1)
                             # Find game with this hash in image or thumbnail_url
-                            from models import BoardGame
-                            game = db.query(BoardGame).filter(
-                                (BoardGame.image.like(f'%{hash_part}%')) |
-                                (BoardGame.thumbnail_url.like(f'%{hash_part}%'))
+                            from models import Game
+                            game = db.query(Game).filter(
+                                (Game.image.like(f'%{hash_part}%')) |
+                                (Game.thumbnail_url.like(f'%{hash_part}%'))
                             ).first()
 
                             if game:
