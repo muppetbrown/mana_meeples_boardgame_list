@@ -1,6 +1,6 @@
 import React from 'react';
 import { vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import SearchBox from '../SearchBox';
 
 describe('SearchBox', () => {
@@ -8,6 +8,12 @@ describe('SearchBox', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers();
+    vi.useRealTimers();
   });
 
   it('renders with default placeholder', () => {
@@ -37,12 +43,21 @@ describe('SearchBox', () => {
     expect(searchBox).toHaveValue('Pandemic');
   });
 
-  it('calls onChange when user types', () => {
+  it('calls onChange when user types (with debouncing)', async () => {
     render(<SearchBox value="" onChange={mockOnChange} />);
 
     const searchBox = screen.getByRole('searchbox');
     fireEvent.change(searchBox, { target: { value: 'Catan' } });
 
+    // Should not be called immediately due to debouncing
+    expect(mockOnChange).not.toHaveBeenCalled();
+
+    // Fast-forward time by 300ms (debounce delay) and flush React updates
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // Now onChange should be called
     expect(mockOnChange).toHaveBeenCalledTimes(1);
     expect(mockOnChange).toHaveBeenCalledWith('Catan');
   });
@@ -74,13 +89,53 @@ describe('SearchBox', () => {
     expect(searchBox).toHaveClass(customClass);
   });
 
-  it('calls onChange with empty string when cleared', () => {
+  it('calls onChange with empty string when cleared (with debouncing)', async () => {
     render(<SearchBox value="Some text" onChange={mockOnChange} />);
 
     const searchBox = screen.getByRole('searchbox');
     fireEvent.change(searchBox, { target: { value: '' } });
 
+    // Should not be called immediately due to debouncing
+    expect(mockOnChange).not.toHaveBeenCalled();
+
+    // Fast-forward time by 300ms (debounce delay) and flush React updates
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // Now onChange should be called
     expect(mockOnChange).toHaveBeenCalledTimes(1);
     expect(mockOnChange).toHaveBeenCalledWith('');
+  });
+
+  it('debounces multiple rapid changes', async () => {
+    render(<SearchBox value="" onChange={mockOnChange} />);
+
+    const searchBox = screen.getByRole('searchbox');
+
+    // Type multiple characters rapidly - wrap in act to handle state updates
+    await act(async () => {
+      fireEvent.change(searchBox, { target: { value: 'C' } });
+      vi.advanceTimersByTime(100);
+      fireEvent.change(searchBox, { target: { value: 'Ca' } });
+      vi.advanceTimersByTime(100);
+      fireEvent.change(searchBox, { target: { value: 'Cat' } });
+      vi.advanceTimersByTime(100);
+      fireEvent.change(searchBox, { target: { value: 'Cata' } });
+      vi.advanceTimersByTime(100);
+      fireEvent.change(searchBox, { target: { value: 'Catan' } });
+    });
+
+    // Should not be called yet
+    expect(mockOnChange).not.toHaveBeenCalled();
+
+    // Fast-forward past the debounce delay and flush React updates
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
+
+    // Should only be called once with the final value
+    expect(mockOnChange).toHaveBeenCalledTimes(1);
+    expect(mockOnChange).toHaveBeenCalledWith('Catan');
   });
 });
