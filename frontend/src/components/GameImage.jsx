@@ -105,7 +105,7 @@ export default function GameImage({
       )}
 
       {/* Only render img when shouldLoadImage is true (for IntersectionObserver) */}
-      {/* Use default size (detail) - BGG blocks 'original' size with 400 Bad Request */}
+      {/* Use default size (medium) - safer than original/detail which BGG may block */}
       {shouldLoadImage && (
         <img
           src={imageProxyUrl(url)}

@@ -335,44 +335,12 @@ async def image_proxy(
                 }
             )
 
-        # CRITICAL FIX: Clean malformed BGG URLs that have Cloudinary transformation parameters
-        # This can happen if URLs were corrupted during import/storage
-        # Check for common malformed patterns: /img/, /fit-in/, /filters:, /c_limit, /0x0/
-        if '/img/' in url or '/fit-in/' in url or '/filters:' in url or '/c_limit' in url or '/0x0/' in url:
-            logger.warning(
-                f"MALFORMED URL DETECTED: BGG URL contains transformation parameters. "
-                f"Attempting to clean URL: {url[:150]}"
-            )
-            # Clean the URL by removing Cloudinary transformation parameters
-            # Pattern: https://cf.geekdo-images.com/HASH__SIZE/img/JUNK=/0x0/filters:format(ext)/picID.ext
-            # Should be: https://cf.geekdo-images.com/HASH__SIZE/picID.ext
-            import re
-
-            # Extract the pic filename (e.g., pic8894992.jpg)
-            pic_match = re.search(r'/(pic\d+\.[a-z]+)$', url)
-            if pic_match:
-                pic_filename = pic_match.group(1)
-
-                # Extract the base URL with hash and size (e.g., https://cf.geekdo-images.com/HASH__original)
-                base_match = re.match(r'(https://cf\.geekdo-images\.com/[^/]+__[^/]+)', url)
-                if base_match:
-                    base_url = base_match.group(1)
-                    # Reconstruct clean URL
-                    cleaned_url = f"{base_url}/{pic_filename}"
-                    logger.info(f"URL cleaned successfully: {url[:100]} -> {cleaned_url}")
-                    url = cleaned_url
-                else:
-                    logger.error(f"Failed to extract base URL from malformed URL: {url[:150]}")
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Malformed image URL (could not clean)"
-                    )
-            else:
-                logger.error(f"Failed to extract pic filename from malformed URL: {url[:150]}")
-                raise HTTPException(
-                    status_code=400,
-                    detail="Malformed image URL (could not clean)"
-                )
+        # NOTE: BGG URLs with /img/ and /filters: are VALID formats, not malformed
+        # Example: https://cf.geekdo-images.com/HASH__SIZE/img/PARAM=/0x0/filters:format(ext)/picID.ext
+        # These URLs work fine when proper browser headers are sent (User-Agent, Referer)
+        # The image_service.proxy_image() method now includes proper headers for BGG
+        #
+        # We do NOT strip /img/ parts - they are part of BGG's legitimate URL format
 
         # Validate URL - only allow trusted sources
         trusted_domains = [
@@ -390,19 +358,58 @@ async def image_proxy(
                 detail="Image proxy only supports BoardGameGeek images"
             )
 
-        # CRITICAL FIX: Transform __original to __d before downloading
-        # BGG now blocks __original downloads with 400 Bad Request
+        # CRITICAL FIX: Transform __original to __md before downloading
+        # BGG may block __original downloads with 400/403 errors
+        # Use __md (medium, ~400px) as safer alternative - confirmed working
         # This is a safety check in case frontend doesn't transform
         if 'cf.geekdo-images.com' in url and '__original/' in url:
-            logger.warning(f"Transforming blocked __original URL to __d: {url[:100]}...")
+            logger.warning(f"Transforming __original URL to __md: {url[:100]}...")
             import re
-            url = re.sub(r'__original/', '__d/', url)
+            url = re.sub(r'__original/', '__md/', url)
             logger.info(f"Transformed to: {url[:100]}...")
 
-        # CLOUDINARY UPLOAD: Always attempt upload to ensure image exists
-        # NOTE: Removed "fast path" that redirected to cached cloudinary_url without verification
-        # Pre-generated URLs don't guarantee the image exists in Cloudinary (causing 404s)
-        # Cloudinary's overwrite=False handles duplicates efficiently, so this is safe
+        # PERFORMANCE FAST-PATH: Check if we have a cached Cloudinary URL in database
+        # This avoids re-uploading images that are already in Cloudinary
+        if CLOUDINARY_ENABLED and 'cf.geekdo-images.com' in url:
+            try:
+                import re
+                # Extract hash from URL (part before __SIZE)
+                hash_match = re.search(r'geekdo-images\.com/([^/_]+)__', url)
+                if hash_match:
+                    hash_part = hash_match.group(1)
+                    # Find game with this hash in image or thumbnail_url
+                    from models import Game
+                    game = db.query(Game).filter(
+                        (Game.image.like(f'%{hash_part}%')) |
+                        (Game.thumbnail_url.like(f'%{hash_part}%'))
+                    ).first()
+
+                    if game and game.cloudinary_url:
+                        # We have a cached Cloudinary URL! Use it directly
+                        # Apply width/height transformations if requested
+                        if width or height:
+                            cached_url = cloudinary_service.get_image_url(
+                                url, width=width, height=height
+                            )
+                        else:
+                            cached_url = game.cloudinary_url
+
+                        logger.info(f"✓ Using cached Cloudinary URL for game {game.id}: {game.title}")
+                        return Response(
+                            status_code=302,
+                            headers={
+                                "Location": cached_url,
+                                "Cache-Control": "public, max-age=31536000, immutable"
+                            }
+                        )
+            except Exception as e:
+                logger.warning(f"Fast-path check failed, continuing with upload: {e}")
+                # Non-critical, continue with normal upload flow
+
+        # CLOUDINARY UPLOAD: Upload to Cloudinary if not already cached
+        # Fast-path above checks for cached cloudinary_url first
+        # This section only runs if cache miss or fast-path disabled
+        # Cloudinary's overwrite=False handles duplicates efficiently
         if CLOUDINARY_ENABLED and 'cf.geekdo-images.com' in url:
             try:
                 # Try to upload image to Cloudinary (will skip if already exists)
@@ -421,6 +428,33 @@ async def image_proxy(
                         width=width,
                         height=height
                     )
+
+                    # PERFORMANCE OPTIMIZATION: Save cloudinary_url to database for future fast-path
+                    # Find the game that owns this image by matching the hash in the URL
+                    try:
+                        import re
+                        # Extract hash from URL (part before __SIZE)
+                        hash_match = re.search(r'geekdo-images\.com/([^/_]+)__', url)
+                        if hash_match:
+                            hash_part = hash_match.group(1)
+                            # Find game with this hash in image or thumbnail_url
+                            from models import Game
+                            game = db.query(Game).filter(
+                                (Game.image.like(f'%{hash_part}%')) |
+                                (Game.thumbnail_url.like(f'%{hash_part}%'))
+                            ).first()
+
+                            if game:
+                                # Save the base Cloudinary URL (without width/height transformations)
+                                base_cloudinary_url = cloudinary_service.get_image_url(url)
+                                game.cloudinary_url = base_cloudinary_url
+                                db.commit()
+                                logger.info(f"✓ Saved Cloudinary URL to database for game {game.id}: {game.title}")
+                            else:
+                                logger.debug(f"Could not find game for URL hash: {hash_part}")
+                    except Exception as e:
+                        logger.warning(f"Failed to save cloudinary_url to database: {e}")
+                        # Non-critical, continue anyway
 
                     # Only redirect to Cloudinary if we got a valid URL that differs from original
                     if cloudinary_url and cloudinary_url != url:

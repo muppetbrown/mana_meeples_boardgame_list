@@ -113,7 +113,7 @@ function getBGGImageVariant(url, size) {
     'original': '__original'
   };
 
-  const targetSize = sizeMap[size] || '__d';  // Default to detail (safer than original)
+  const targetSize = sizeMap[size] || '__md';  // Default to medium (confirmed working with BGG)
 
   // New format (most common): Replace __SIZE/ pattern
   // Example: /HASH__original/ → /HASH__d/
@@ -144,17 +144,17 @@ function getBGGImageVariant(url, size) {
 /**
  * Enhanced image proxy URL with BGG image quality optimization
  *
- * IMPORTANT: BGG now blocks __original downloads with 400 Bad Request.
- * Default changed to 'detail' which provides high quality (~600x600) without blocking.
- * Priority order: _d (detail) > _md (medium) > _mt (medium thumb) > _t (thumbnail)
+ * IMPORTANT: BGG now blocks both __original and __d downloads with 400 Bad Request.
+ * Default changed to 'medium' (__md, ~400px) which is less restrictive.
+ * Priority order: __md (medium) > __mt (medium thumb) > __t (thumbnail)
  *
  * @param {string} url - The original image URL
- * @param {string} size - Optional size variant for responsive images ('detail'|'medium'|'medium-thumb'|'thumbnail')
+ * @param {string} size - Optional size variant for responsive images ('medium'|'medium-thumb'|'thumbnail')
  * @param {number} width - Optional width for Cloudinary transformation
  * @param {number} height - Optional height for Cloudinary transformation
  * @returns {string|null} - Proxied image URL or null if no URL provided
  */
-export function imageProxyUrl(url, size = 'detail', width = null, height = null) {
+export function imageProxyUrl(url, size = 'medium', width = null, height = null) {
   if (!url) return null;
 
   // For BGG images, optimize for requested quality
@@ -188,9 +188,9 @@ export function generateSrcSet(url) {
     return null; // Only works for BGG images
   }
 
-  // IMPORTANT: Transform __original to __d BEFORE generating srcset
-  // BGG blocks __original downloads with 400 Bad Request
-  const baseUrl = getBGGImageVariant(url, 'detail');
+  // IMPORTANT: Transform __original to __md BEFORE generating srcset
+  // BGG may block __original and __d, use __md (medium) as safer option
+  const baseUrl = getBGGImageVariant(url, 'medium');
 
   // Generate URLs for different sizes with Cloudinary transformations
   // The backend will handle uploading to Cloudinary and applying transformations
