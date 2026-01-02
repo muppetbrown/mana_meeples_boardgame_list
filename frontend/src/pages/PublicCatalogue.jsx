@@ -135,19 +135,25 @@ export default function PublicCatalogue() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [loadingMore]);
 
-  // Update URL when filters change
+  // Update URL when filters change - FIXED: Debounce URL updates to prevent navigation throttling
   useEffect(() => {
-    const params = new URLSearchParams();
-    if (q) params.set("q", q);
-    if (category !== "all") params.set("category", category);
-    if (designer) params.set("designer", designer);
-    if (nzDesigner) params.set("nz_designer", "true");
-    if (players) params.set("players", players);
-    if (complexityRange) params.set("complexity", complexityRange);
-    if (recentlyAdded) params.set("recently_added", "30");
-    if (sort !== "year_desc") params.set("sort", sort); // Changed default
+    const updateURL = () => {
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      if (category !== "all") params.set("category", category);
+      if (designer) params.set("designer", designer);
+      if (nzDesigner) params.set("nz_designer", "true");
+      if (players) params.set("players", players);
+      if (complexityRange) params.set("complexity", complexityRange);
+      if (recentlyAdded) params.set("recently_added", "30");
+      if (sort !== "year_desc") params.set("sort", sort); // Changed default
 
-    setSearchParams(params, { replace: true });
+      setSearchParams(params, { replace: true });
+    };
+
+    // CRITICAL FIX: Debounce URL updates to prevent browser navigation throttling
+    const timer = setTimeout(updateURL, 100); // Short delay to batch rapid changes
+    return () => clearTimeout(timer);
   }, [q, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, setSearchParams]);
 
   // Fetch category counts
@@ -166,13 +172,14 @@ export default function PublicCatalogue() {
     };
   }, []);
 
-  // Fetch games - NEW: Reset allLoadedItems when filters change
+  // Fetch games - FIXED: Debounce API calls to prevent resource exhaustion
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setPage(1); // Reset to page 1 on filter change
 
-    (async () => {
+    const fetchGames = async () => {
+      setLoading(true);
+      setPage(1); // Reset to page 1 on filter change
+
       try {
         const params = { q, page: 1, page_size: pageSize, sort };
         if (category !== "all") params.category = category;
@@ -203,8 +210,14 @@ export default function PublicCatalogue() {
       } finally {
         if (!cancelled) setLoading(false);
       }
-    })();
-    return () => { cancelled = true; };
+    };
+
+    // CRITICAL FIX: Debounce API calls to prevent ERR_INSUFFICIENT_RESOURCES
+    const timer = setTimeout(fetchGames, 150); // 150ms debounce to batch rapid changes
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [q, pageSize, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort]);
 
   // Load more function - Memoized to ensure Intersection Observer has latest filter values
@@ -358,16 +371,19 @@ export default function PublicCatalogue() {
   }, []);
 
   const clearAllFilters = useCallback(() => {
-    setQ("");
-    setCategory("all");
-    setDesigner("");
-    setNzDesigner(false);
-    setPlayers("");
-    setComplexityRange("");
-    setRecentlyAdded(false);
-    setSort("year_desc");
-    setExpandedCards(new Set());
-    setAnnouncement("All filters cleared. Showing all games.");
+    // CRITICAL FIX: Batch state updates to prevent cascading re-renders and API calls
+    React.startTransition(() => {
+      setQ("");
+      setCategory("all");
+      setDesigner("");
+      setNzDesigner(false);
+      setPlayers("");
+      setComplexityRange("");
+      setRecentlyAdded(false);
+      setSort("year_desc");
+      setExpandedCards(new Set());
+      setAnnouncement("All filters cleared. Showing all games.");
+    });
   }, []);
 
   const toggleNzDesigner = useCallback(() => {

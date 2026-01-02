@@ -10,11 +10,14 @@ export default function SearchBox({ value, onChange, placeholder="Search games..
   const [searchTerm, setSearchTerm] = useState(value || "");
   const [debouncedTerm, setDebouncedTerm] = useState(value || "");
 
-  // Sync with external value changes
+  // Sync with external value changes - FIXED: Only update if value actually changed
   useEffect(() => {
-    setSearchTerm(value || "");
-    setDebouncedTerm(value || "");
-  }, [value]);
+    const newValue = value || "";
+    if (searchTerm !== newValue) {
+      setSearchTerm(newValue);
+      setDebouncedTerm(newValue);
+    }
+  }, [value, searchTerm]);
 
   // Debounce search term updates (300ms delay)
   useEffect(() => {
@@ -25,9 +28,9 @@ export default function SearchBox({ value, onChange, placeholder="Search games..
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Trigger API call only when debounced term changes
+  // Trigger API call only when debounced term changes - FIXED: Prevent duplicate onChange calls
   useEffect(() => {
-    if (debouncedTerm !== value) {
+    if (debouncedTerm !== value && onChange) {
       onChange(debouncedTerm);
     }
   }, [debouncedTerm, onChange, value]);
