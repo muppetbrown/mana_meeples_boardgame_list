@@ -335,44 +335,12 @@ async def image_proxy(
                 }
             )
 
-        # CRITICAL FIX: Clean malformed BGG URLs that have Cloudinary transformation parameters
-        # This can happen if URLs were corrupted during import/storage
-        # Check for common malformed patterns: /img/, /fit-in/, /filters:, /c_limit, /0x0/
-        if '/img/' in url or '/fit-in/' in url or '/filters:' in url or '/c_limit' in url or '/0x0/' in url:
-            logger.warning(
-                f"MALFORMED URL DETECTED: BGG URL contains transformation parameters. "
-                f"Attempting to clean URL: {url[:150]}"
-            )
-            # Clean the URL by removing Cloudinary transformation parameters
-            # Pattern: https://cf.geekdo-images.com/HASH__SIZE/img/JUNK=/0x0/filters:format(ext)/picID.ext
-            # Should be: https://cf.geekdo-images.com/HASH__SIZE/picID.ext
-            import re
-
-            # Extract the pic filename (e.g., pic8894992.jpg)
-            pic_match = re.search(r'/(pic\d+\.[a-z]+)$', url)
-            if pic_match:
-                pic_filename = pic_match.group(1)
-
-                # Extract the base URL with hash and size (e.g., https://cf.geekdo-images.com/HASH__original)
-                base_match = re.match(r'(https://cf\.geekdo-images\.com/[^/]+__[^/]+)', url)
-                if base_match:
-                    base_url = base_match.group(1)
-                    # Reconstruct clean URL
-                    cleaned_url = f"{base_url}/{pic_filename}"
-                    logger.info(f"URL cleaned successfully: {url[:100]} -> {cleaned_url}")
-                    url = cleaned_url
-                else:
-                    logger.error(f"Failed to extract base URL from malformed URL: {url[:150]}")
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Malformed image URL (could not clean)"
-                    )
-            else:
-                logger.error(f"Failed to extract pic filename from malformed URL: {url[:150]}")
-                raise HTTPException(
-                    status_code=400,
-                    detail="Malformed image URL (could not clean)"
-                )
+        # NOTE: BGG URLs with /img/ and /filters: are VALID formats, not malformed
+        # Example: https://cf.geekdo-images.com/HASH__SIZE/img/PARAM=/0x0/filters:format(ext)/picID.ext
+        # These URLs work fine when proper browser headers are sent (User-Agent, Referer)
+        # The image_service.proxy_image() method now includes proper headers for BGG
+        #
+        # We do NOT strip /img/ parts - they are part of BGG's legitimate URL format
 
         # Validate URL - only allow trusted sources
         trusted_domains = [
@@ -390,13 +358,14 @@ async def image_proxy(
                 detail="Image proxy only supports BoardGameGeek images"
             )
 
-        # CRITICAL FIX: Transform __original to __d before downloading
-        # BGG now blocks __original downloads with 400 Bad Request
+        # CRITICAL FIX: Transform __original to __md before downloading
+        # BGG may block __original downloads with 400/403 errors
+        # Use __md (medium, ~400px) as safer alternative - confirmed working
         # This is a safety check in case frontend doesn't transform
         if 'cf.geekdo-images.com' in url and '__original/' in url:
-            logger.warning(f"Transforming blocked __original URL to __d: {url[:100]}...")
+            logger.warning(f"Transforming __original URL to __md: {url[:100]}...")
             import re
-            url = re.sub(r'__original/', '__d/', url)
+            url = re.sub(r'__original/', '__md/', url)
             logger.info(f"Transformed to: {url[:100]}...")
 
         # CLOUDINARY UPLOAD: Always attempt upload to ensure image exists
