@@ -143,7 +143,7 @@ export default function PublicCatalogue() {
   // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams();
-    if (q) params.set("q", q);
+    if (qDebounced) params.set("q", qDebounced);
     if (category !== "all") params.set("category", category);
     if (designer) params.set("designer", designer);
     if (nzDesigner) params.set("nz_designer", "true");
@@ -153,7 +153,7 @@ export default function PublicCatalogue() {
     if (sort !== "year_desc") params.set("sort", sort); // Changed default
 
     setSearchParams(params, { replace: true });
-  }, [q, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, setSearchParams]);
+  }, [qDebounced, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, setSearchParams]);
 
   // Fetch category counts
   useEffect(() => {
