@@ -1,0 +1,696 @@
+Run cd backend
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-7.4.3, pluggy-1.6.0 -- /opt/hostedtoolcache/Python/3.11.14/x64/bin/python
+cachedir: .pytest_cache
+rootdir: /home/runner/work/mana_meeples_boardgame_list/mana_meeples_boardgame_list/backend
+configfile: pytest.ini
+plugins: anyio-4.12.0, asyncio-0.21.1, cov-4.1.0
+asyncio: mode=Mode.STRICT
+collecting ... collected 394 items
+
+tests/test_api/test_admin.py::TestAdminAuthentication::test_admin_endpoint_without_token PASSED [  0%]
+tests/test_api/test_admin.py::TestAdminAuthentication::test_admin_endpoint_with_invalid_token PASSED [  0%]
+tests/test_api/test_admin.py::TestAdminAuthentication::test_admin_endpoint_with_valid_token PASSED [  0%]
+tests/test_api/test_admin.py::TestAdminGamesEndpoints::test_get_admin_games PASSED [  1%]
+tests/test_api/test_admin.py::TestAdminGamesEndpoints::test_create_game FAILED [  1%]
+tests/test_api/test_admin.py::TestAdminGamesEndpoints::test_update_game PASSED [  1%]
+tests/test_api/test_admin.py::TestAdminGamesEndpoints::test_delete_game PASSED [  1%]
+tests/test_api/test_admin.py::TestAdminLoginEndpoint::test_admin_login_success PASSED [  2%]
+tests/test_api/test_admin.py::TestAdminLoginEndpoint::test_admin_login_invalid_token PASSED [  2%]
+tests/test_api/test_admin.py::TestAdminLoginEndpoint::test_admin_validate PASSED [  2%]
+tests/test_api/test_admin.py::TestAdminLoginEndpoint::test_admin_logout PASSED [  2%]
+tests/test_api/test_admin.py::TestAdminAuthenticationEdgeCases::test_admin_validate_without_token PASSED [  3%]
+tests/test_api/test_admin.py::TestAdminAuthenticationEdgeCases::test_login_response_includes_expiry PASSED [  3%]
+tests/test_api/test_admin.py::TestAdminAuthenticationEdgeCases::test_login_sets_cookie PASSED [  3%]
+tests/test_api/test_admin.py::TestAdminGameCRUDEdgeCases::test_get_admin_game_not_found PASSED [  3%]
+tests/test_api/test_admin.py::TestAdminGameCRUDEdgeCases::test_update_game_not_found PASSED [  4%]
+tests/test_api/test_admin.py::TestAdminGameCRUDEdgeCases::test_delete_game_not_found PASSED [  4%]
+tests/test_api/test_admin.py::TestAdminGameCRUDEdgeCases::test_update_game_via_post PASSED [  4%]
+tests/test_api/test_admin.py::TestAdminGameCRUDEdgeCases::test_get_admin_game_success PASSED [  4%]
+tests/test_api/test_admin.py::TestAdminGameCRUDEdgeCases::test_create_game_validation_error PASSED [  5%]
+tests/test_api/test_admin.py::TestAdminBGGImport::test_import_from_bgg_success FAILED [  5%]
+tests/test_api/test_admin.py::TestAdminBGGImport::test_import_from_bgg_force_reimport FAILED [  5%]
+tests/test_api/test_admin.py::TestAdminBGGImport::test_import_from_bgg_missing_id PASSED [  5%]
+tests/test_api/test_admin.py::TestAdminBGGImport::test_import_from_bgg_api_error PASSED [  6%]
+tests/test_api/test_admin.py::TestAdminFixSequence::test_fix_sequence_success PASSED [  6%]
+tests/test_api/test_admin.py::TestAdminFixSequence::test_fix_sequence_invalid_table PASSED [  6%]
+tests/test_api/test_admin.py::TestAdminFixSequence::test_fix_sequence_unauthorized PASSED [  6%]
+tests/test_api/test_auth_flow.py::TestAuthenticationFlow::test_complete_login_logout_flow PASSED [  7%]
+tests/test_api/test_auth_flow.py::TestAuthenticationFlow::test_login_with_wrong_token PASSED [  7%]
+tests/test_api/test_auth_flow.py::TestAuthenticationFlow::test_access_without_authentication PASSED [  7%]
+tests/test_api/test_auth_flow.py::TestAuthenticationFlow::test_validate_endpoint_flow PASSED [  7%]
+tests/test_api/test_auth_flow.py::TestSessionManagement::test_session_creation_on_login PASSED [  8%]
+tests/test_api/test_auth_flow.py::TestSessionManagement::test_session_info_in_response PASSED [  8%]
+tests/test_api/test_auth_flow.py::TestSessionManagement::test_logout_clears_session PASSED [  8%]
+tests/test_api/test_auth_flow.py::TestRateLimiting::test_rate_limit_on_failed_logins PASSED [  8%]
+tests/test_api/test_auth_flow.py::TestAuthenticationEdgeCases::test_login_with_missing_token PASSED [  9%]
+tests/test_api/test_auth_flow.py::TestAuthenticationEdgeCases::test_login_with_empty_token PASSED [  9%]
+tests/test_api/test_auth_flow.py::TestAuthenticationEdgeCases::test_multiple_concurrent_logins PASSED [  9%]
+tests/test_api/test_auth_flow.py::TestAuthenticationEdgeCases::test_header_token_authentication PASSED [  9%]
+tests/test_api/test_auth_flow.py::TestAuthenticationEdgeCases::test_invalid_header_token_authentication PASSED [ 10%]
+tests/test_api/test_bulk.py::TestBulkImportCSV::test_bulk_import_empty_csv PASSED [ 10%]
+tests/test_api/test_bulk.py::TestBulkImportCSV::test_bulk_import_single_game_success PASSED [ 10%]
+tests/test_api/test_bulk.py::TestBulkImportCSV::test_bulk_import_duplicate_game PASSED [ 10%]
+tests/test_api/test_bulk.py::TestBulkImportCSV::test_bulk_import_invalid_bgg_id PASSED [ 11%]
+tests/test_api/test_bulk.py::TestBulkImportCSV::test_bulk_import_multiple_games PASSED [ 11%]
+tests/test_api/test_bulk.py::TestBulkImportCSV::test_bulk_import_unauthorized PASSED [ 11%]
+tests/test_api/test_bulk.py::TestBulkCategorizeCSV::test_bulk_categorize_empty_csv PASSED [ 11%]
+tests/test_api/test_bulk.py::TestBulkCategorizeCSV::test_bulk_categorize_success PASSED [ 12%]
+tests/test_api/test_bulk.py::TestBulkCategorizeCSV::test_bulk_categorize_invalid_category PASSED [ 12%]
+tests/test_api/test_bulk.py::TestBulkCategorizeCSV::test_bulk_categorize_game_not_found PASSED [ 12%]
+tests/test_api/test_bulk.py::TestBulkCategorizeCSV::test_bulk_categorize_missing_fields PASSED [ 12%]
+tests/test_api/test_bulk.py::TestBulkCategorizeCSV::test_bulk_categorize_unauthorized PASSED [ 13%]
+tests/test_api/test_bulk.py::TestBulkUpdateNZDesigners::test_bulk_update_nz_success_by_bgg_id PASSED [ 13%]
+tests/test_api/test_bulk.py::TestBulkUpdateNZDesigners::test_bulk_update_nz_success_by_title PASSED [ 13%]
+tests/test_api/test_bulk.py::TestBulkUpdateNZDesigners::test_bulk_update_nz_game_not_found PASSED [ 13%]
+tests/test_api/test_bulk.py::TestBulkUpdateNZDesigners::test_bulk_update_nz_invalid_format PASSED [ 14%]
+tests/test_api/test_bulk.py::TestBulkUpdateNZDesigners::test_bulk_update_nz_unauthorized PASSED [ 14%]
+tests/test_api/test_bulk.py::TestReimportAllGames::test_reimport_all_success PASSED [ 14%]
+tests/test_api/test_bulk.py::TestReimportAllGames::test_reimport_all_no_games PASSED [ 14%]
+tests/test_api/test_bulk.py::TestReimportAllGames::test_reimport_all_unauthorized PASSED [ 15%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_create_game_manually FAILED [ 15%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_get_all_games_admin_view PASSED [ 15%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_get_single_game_admin_view PASSED [ 15%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_update_game_title PASSED [ 16%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_update_game_category PASSED [ 16%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_update_game_nz_designer_flag PASSED [ 16%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_update_multiple_fields PASSED [ 17%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_update_nonexistent_game PASSED [ 17%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_delete_game PASSED [ 17%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_delete_nonexistent_game PASSED [ 17%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_create_game_with_invalid_data PASSED [ 18%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_create_game_with_duplicate_bgg_id PASSED [ 18%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_update_with_invalid_category PASSED [ 18%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_admin_operations_require_auth PASSED [ 18%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_partial_update PASSED [ 19%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_update_preserves_bgg_data PASSED [ 19%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_create_game_sets_defaults FAILED [ 19%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_update_timestamp_on_modification PASSED [ 19%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_validate_player_count_logic PASSED [ 20%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_validate_player_count_logic ERROR [ 20%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_validate_playtime_logic PASSED [ 20%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_validate_playtime_logic ERROR [ 20%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_validate_year_range PASSED [ 20%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_validate_year_range ERROR [ 20%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_validate_complexity_range PASSED [ 20%]
+tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_validate_rating_range PASSED [ 21%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_new_game_complete_flow FAILED [ 21%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_existing_game_without_force FAILED [ 21%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_existing_game_with_force FAILED [ 21%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_invalid_bgg_id PASSED [ 22%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_without_authentication PASSED [ 22%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_with_network_error PASSED [ 22%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_with_malformed_bgg_data PASSED [ 22%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_persists_all_fields FAILED [ 23%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_handles_null_optional_fields FAILED [ 23%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_bulk_import_csv FAILED [ 23%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_duplicate_detection PASSED [ 23%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_transaction_rollback_on_error PASSED [ 24%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_rate_limiting PASSED [ 24%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_concurrent_requests PASSED [ 24%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_updates_timestamp FAILED [ 24%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_thumbnail_download_trigger FAILED [ 25%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_special_characters_in_title FAILED [ 25%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_large_designer_list FAILED [ 25%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_returns_complete_game_object FAILED [ 25%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_idempotency FAILED [ 26%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_validates_required_fields PASSED [ 26%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_preserves_manual_categorization FAILED [ 26%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_logs_activity FAILED [ 26%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_sets_default_status FAILED [ 27%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_bgg_api_retry_logic PASSED [ 27%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_respects_bgg_rate_limits PASSED [ 27%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_reimport_all_games_endpoint PASSED [ 27%]
+tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_error_provides_helpful_message PASSED [ 28%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_add_game_to_buy_list SKIPPED [ 28%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_remove_game_from_buy_list SKIPPED [ 28%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_get_buy_list_games SKIPPED [ 28%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_set_buy_list_priority SKIPPED [ 29%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_update_buy_list_status SKIPPED [ 29%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_bulk_add_to_buy_list SKIPPED [ 29%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_buy_list_requires_authentication SKIPPED [ 29%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_add_nonexistent_game_to_buy_list SKIPPED [ 30%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_duplicate_buy_list_entry SKIPPED [ 30%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_buy_list_sorting_by_priority SKIPPED [ 30%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_mark_buy_list_item_as_purchased SKIPPED [ 30%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_buy_list_with_notes SKIPPED [ 31%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_buy_list_filter_by_status SKIPPED [ 31%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_buy_list_export SKIPPED [ 31%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_buy_list_pagination SKIPPED [ 31%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_buy_list_reordering SKIPPED [ 32%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_buy_list_price_tracking SKIPPED [ 32%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_buy_list_statistics SKIPPED [ 32%]
+tests/test_api/test_integration_buy_list.py::TestBuyListWorkflowsIntegration::test_clear_completed_buy_list_items SKIPPED [ 32%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_filter_by_single_category PASSED [ 33%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_filter_by_nz_designer PASSED [ 33%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_search_by_title PASSED [ 33%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_search_by_designer PASSED [ 34%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_category_and_search_combination PASSED [ 34%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_nz_designer_and_category_combination PASSED [ 34%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_sort_by_title_ascending PASSED [ 34%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_sort_by_title_descending PASSED [ 35%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_sort_by_year_ascending PASSED [ 35%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_sort_by_year_descending PASSED [ 35%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_sort_by_rating_descending PASSED [ 35%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_category_search_and_sort_combination PASSED [ 36%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_pagination_first_page PASSED [ 36%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_pagination_second_page PASSED [ 36%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_pagination_with_filters PASSED [ 36%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_large_page_size PASSED [ 37%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_invalid_page_number PASSED [ 37%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_empty_search_results PASSED [ 37%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_category_with_no_games PASSED [ 37%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_filter_by_designer_name PASSED [ 38%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_complex_search_query PASSED [ 38%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_case_insensitive_search PASSED [ 38%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_special_characters_in_search PASSED [ 38%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_filter_uncategorized_games PASSED [ 39%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_multiple_filters_reduce_results PASSED [ 39%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_search_with_pagination PASSED [ 39%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_sort_with_null_values PASSED [ 39%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_filter_performance_with_large_dataset PASSED [ 40%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_category_counts_endpoint PASSED [ 40%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_url_encoded_search_parameters PASSED [ 40%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_simultaneous_filters_are_AND_not_OR PASSED [ 40%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_returns_correct_total_count PASSED [ 41%]
+tests/test_api/test_integration_search_filter.py::TestSearchFilterIntegration::test_search_matches_partial_words PASSED [ 41%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_concurrent_game_list_requests PASSED [ 41%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_concurrent_search_requests PASSED [ 41%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_concurrent_filter_requests PASSED [ 42%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_mixed_read_workload PASSED [ 42%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_sustained_load PASSED [ 42%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_concurrent_admin_operations PASSED [ 42%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_rate_limiting_under_load PASSED [ 43%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_database_connection_pool PASSED [ 43%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_concurrent_pagination PASSED [ 43%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_concurrent_sorting PASSED [ 43%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_peak_load_simulation PASSED [ 44%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_error_recovery_under_load PASSED [ 44%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_cache_effectiveness_under_load PASSED [ 44%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_connection_timeout_handling PASSED [ 44%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_memory_stability_under_load PASSED [ 45%]
+tests/test_api/test_load.py::TestConcurrentLoad::test_graceful_degradation PASSED [ 45%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_game_list_endpoint_performance PASSED [ 45%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_game_detail_endpoint_performance PASSED [ 45%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_search_performance PASSED [ 46%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_category_filter_performance PASSED [ 46%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_complex_filter_performance PASSED [ 46%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_category_counts_performance PASSED [ 46%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_pagination_performance PASSED [ 47%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_large_page_size_performance PASSED [ 47%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_sort_performance PASSED [ 47%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_nz_designer_filter_performance PASSED [ 47%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_designer_search_performance PASSED [ 48%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_rapid_sequential_requests PASSED [ 48%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_health_check_performance PASSED [ 48%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_database_health_check_performance PASSED [ 48%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_admin_game_list_performance PASSED [ 49%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_concurrent_read_performance PASSED [ 49%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_response_size_efficiency PASSED [ 49%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_empty_result_performance PASSED [ 50%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_database_query_count PASSED [ 50%]
+tests/test_api/test_performance.py::TestAPIPerformance::test_memory_efficiency PASSED [ 50%]
+tests/test_api/test_public.py::TestPublicGamesEndpoint::test_get_games_empty_database PASSED [ 50%]
+tests/test_api/test_public.py::TestPublicGamesEndpoint::test_get_games_with_data PASSED [ 51%]
+tests/test_api/test_public.py::TestPublicGamesEndpoint::test_get_games_pagination PASSED [ 51%]
+tests/test_api/test_public.py::TestPublicGamesEndpoint::test_get_games_search PASSED [ 51%]
+tests/test_api/test_public.py::TestPublicGamesEndpoint::test_get_games_category_filter PASSED [ 51%]
+tests/test_api/test_public.py::TestPublicGamesEndpoint::test_get_games_sorting PASSED [ 52%]
+tests/test_api/test_public.py::TestPublicGameDetailEndpoint::test_get_game_not_found PASSED [ 52%]
+tests/test_api/test_public.py::TestPublicGameDetailEndpoint::test_get_game_success PASSED [ 52%]
+tests/test_api/test_public.py::TestCategoryCountsEndpoint::test_category_counts_empty PASSED [ 52%]
+tests/test_api/test_public.py::TestCategoryCountsEndpoint::test_category_counts_with_data PASSED [ 53%]
+tests/test_api/test_public.py::TestPublicGamesAdvancedFiltering::test_get_games_nz_designer_filter PASSED [ 53%]
+tests/test_api/test_public.py::TestPublicGamesAdvancedFiltering::test_get_games_designer_filter PASSED [ 53%]
+tests/test_api/test_public.py::TestPublicGamesAdvancedFiltering::test_get_games_combined_filters PASSED [ 53%]
+tests/test_api/test_public.py::TestPublicGamesAdvancedFiltering::test_get_games_players_filter PASSED [ 54%]
+tests/test_api/test_public.py::TestPublicGamesAdvancedFiltering::test_get_games_search_and_category PASSED [ 54%]
+tests/test_api/test_public.py::TestPublicGamesSorting::test_get_games_sort_rating_desc PASSED [ 54%]
+tests/test_api/test_public.py::TestPublicGamesSorting::test_get_games_sort_rating_asc PASSED [ 54%]
+tests/test_api/test_public.py::TestPublicGamesSorting::test_get_games_sort_time_asc PASSED [ 55%]
+tests/test_api/test_public.py::TestPublicGamesSorting::test_get_games_sort_time_desc PASSED [ 55%]
+tests/test_api/test_public.py::TestPublicGamesValidation::test_get_games_invalid_page PASSED [ 55%]
+tests/test_api/test_public.py::TestPublicGamesValidation::test_get_games_invalid_page_size PASSED [ 55%]
+tests/test_api/test_public.py::TestPublicGamesValidation::test_get_games_large_page_size PASSED [ 56%]
+tests/test_api/test_public.py::TestPublicGamesValidation::test_get_games_empty_search PASSED [ 56%]
+tests/test_api/test_public.py::TestPublicGamesValidation::test_get_games_uncategorized_filter PASSED [ 56%]
+tests/test_api/test_public.py::TestDesignerEndpoint::test_get_games_by_designer_success PASSED [ 56%]
+tests/test_api/test_public.py::TestDesignerEndpoint::test_get_games_by_designer_not_found PASSED [ 57%]
+tests/test_api/test_public.py::TestImageProxyEndpoint::test_image_proxy_missing_url PASSED [ 57%]
+tests/test_api/test_public.py::TestImageProxyEndpoint::test_image_proxy_untrusted_domain PASSED [ 57%]
+tests/test_api/test_public.py::TestImageProxyEndpoint::test_image_proxy_bgg_domain PASSED [ 57%]
+tests/test_api/test_public.py::TestHealthEndpoints::test_health_check PASSED [ 58%]
+tests/test_api/test_public.py::TestHealthEndpoints::test_health_db_check PASSED [ 58%]
+tests/test_api/test_security.py::TestFixSequenceValidation::test_fix_sequence_valid_table PASSED [ 58%]
+tests/test_api/test_security.py::TestFixSequenceValidation::test_fix_sequence_invalid_table PASSED [ 58%]
+tests/test_api/test_security.py::TestFixSequenceValidation::test_fix_sequence_whitelist_enforcement PASSED [ 59%]
+tests/test_api/test_security.py::TestFixSequenceValidation::test_fix_sequence_special_characters PASSED [ 59%]
+tests/test_api/test_security.py::TestImageProxyRateLimiting::test_image_proxy_rate_limit SKIPPED [ 59%]
+tests/test_api/test_security.py::TestImageProxyURLValidation::test_image_proxy_trusted_domain_bgg PASSED [ 59%]
+tests/test_api/test_security.py::TestImageProxyURLValidation::test_image_proxy_untrusted_domain PASSED [ 60%]
+tests/test_api/test_security.py::TestImageProxyURLValidation::test_image_proxy_localhost_blocked PASSED [ 60%]
+tests/test_api/test_security.py::TestSecurityHeaders::test_security_headers_present PASSED [ 60%]
+tests/test_api/test_security.py::TestSecurityHeaders::test_csp_header_content PASSED [ 60%]
+tests/test_api/test_security.py::TestSecurityHeaders::test_permissions_policy_restrictive PASSED [ 61%]
+tests/test_api/test_security.py::TestSecurityIntegration::test_sql_injection_prevention PASSED [ 61%]
+tests/test_api/test_security.py::TestSecurityIntegration::test_ssrf_prevention PASSED [ 61%]
+tests/test_api/test_security.py::TestSecurityIntegration::test_clickjacking_prevention PASSED [ 61%]
+tests/test_services/test_bgg_service.py::TestFetchBGGThing::test_fetch_successful PASSED [ 62%]
+tests/test_services/test_bgg_service.py::TestFetchBGGThing::test_fetch_retry_on_202_accepted PASSED [ 62%]
+tests/test_services/test_bgg_service.py::TestFetchBGGThing::test_fetch_retry_on_401_rate_limit PASSED [ 62%]
+tests/test_services/test_bgg_service.py::TestFetchBGGThing::test_fetch_invalid_bgg_id PASSED [ 62%]
+tests/test_services/test_bgg_service.py::TestFetchBGGThing::test_fetch_empty_response PASSED [ 63%]
+tests/test_services/test_bgg_service.py::TestFetchBGGThing::test_fetch_whitespace_only_response PASSED [ 63%]
+tests/test_services/test_bgg_service.py::TestFetchBGGThing::test_fetch_non_xml_response PASSED [ 63%]
+tests/test_services/test_bgg_service.py::TestFetchBGGThing::test_fetch_network_error PASSED [ 63%]
+tests/test_services/test_bgg_service.py::TestXMLParsing::test_strip_namespace_with_namespace PASSED [ 64%]
+tests/test_services/test_bgg_service.py::TestXMLParsing::test_strip_namespace_without_namespace PASSED [ 64%]
+tests/test_services/test_bgg_service.py::TestXMLParsing::test_extract_game_data_basic_fields PASSED [ 64%]
+tests/test_services/test_bgg_service.py::TestXMLParsing::test_extract_game_data_playtime PASSED [ 64%]
+tests/test_services/test_bgg_service.py::TestXMLParsing::test_extract_game_data_categories PASSED [ 65%]
+tests/test_services/test_bgg_service.py::TestXMLParsing::test_extract_game_data_designers PASSED [ 65%]
+tests/test_services/test_bgg_service.py::TestXMLParsing::test_extract_game_data_mechanics PASSED [ 65%]
+tests/test_services/test_bgg_service.py::TestXMLParsing::test_extract_game_data_statistics PASSED [ 65%]
+tests/test_services/test_bgg_service.py::TestXMLParsing::test_extract_game_data_missing_fields PASSED [ 66%]
+tests/test_services/test_bgg_service.py::TestGameClassification::test_classify_strategy_default PASSED [ 66%]
+tests/test_services/test_bgg_service.py::TestGameClassification::test_classify_cooperative_game PASSED [ 66%]
+tests/test_services/test_bgg_service.py::TestGameClassification::test_classify_party_game PASSED [ 67%]
+tests/test_services/test_bgg_service.py::TestGameClassification::test_classify_worker_placement PASSED [ 67%]
+tests/test_services/test_bgg_service.py::TestErrorHandling::test_fetch_exceeds_max_retries PASSED [ 67%]
+tests/test_services/test_bgg_service.py::TestErrorHandling::test_extract_data_malformed_xml PASSED [ 67%]
+tests/test_services/test_bgg_service.py::TestEdgeCases::test_fetch_with_special_characters_in_name PASSED [ 68%]
+tests/test_services/test_bgg_service.py::TestEdgeCases::test_extract_data_multiple_names PASSED [ 68%]
+tests/test_services/test_bgg_service.py::TestEdgeCases::test_extract_data_zero_players PASSED [ 68%]
+tests/test_services/test_error_handling.py::TestCircuitBreaker::test_circuit_breaker_basic_functionality PASSED [ 68%]
+tests/test_services/test_error_handling.py::TestCircuitBreaker::test_circuit_breaker_availability_check PASSED [ 69%]
+tests/test_services/test_error_handling.py::TestRetryLogic::test_image_service_has_retry_decorator PASSED [ 69%]
+tests/test_services/test_error_handling.py::TestBackgroundTaskFailureTracking::test_record_background_task_failure PASSED [ 69%]
+tests/test_services/test_error_handling.py::TestBackgroundTaskFailureTracking::test_background_task_failure_model PASSED [ 69%]
+tests/test_services/test_error_handling.py::TestSentryIntegration::test_sentry_captures_download_failures PASSED [ 70%]
+tests/test_services/test_error_handling.py::TestMonitoringEndpoints::test_get_background_failures_requires_auth PASSED [ 70%]
+tests/test_services/test_error_handling.py::TestMonitoringEndpoints::test_circuit_breaker_status_requires_auth PASSED [ 70%]
+tests/test_services/test_error_handling.py::TestSentryConfiguration::test_sentry_before_send_filters_development PASSED [ 70%]
+tests/test_services/test_error_handling.py::TestSentryConfiguration::test_sentry_before_send_enriches_events PASSED [ 71%]
+tests/test_services/test_game_service.py::TestGameService::test_get_game_by_id_found PASSED [ 71%]
+tests/test_services/test_game_service.py::TestGameService::test_get_game_by_id_not_found PASSED [ 71%]
+tests/test_services/test_game_service.py::TestGameService::test_get_game_by_bgg_id PASSED [ 71%]
+tests/test_services/test_game_service.py::TestGameService::test_get_all_games PASSED [ 72%]
+tests/test_services/test_game_service.py::TestGameService::test_create_game_success PASSED [ 72%]
+tests/test_services/test_game_service.py::TestGameService::test_create_game_duplicate_bgg_id PASSED [ 72%]
+tests/test_services/test_game_service.py::TestGameService::test_update_game_success PASSED [ 72%]
+tests/test_services/test_game_service.py::TestGameService::test_update_game_not_found PASSED [ 73%]
+tests/test_services/test_game_service.py::TestGameService::test_delete_game_success PASSED [ 73%]
+tests/test_services/test_game_service.py::TestGameService::test_delete_game_not_found PASSED [ 73%]
+tests/test_services/test_game_service.py::TestGameService::test_get_filtered_games_by_category PASSED [ 73%]
+tests/test_services/test_game_service.py::TestGameService::test_get_filtered_games_by_search PASSED [ 74%]
+tests/test_services/test_game_service.py::TestGameService::test_get_filtered_games_pagination PASSED [ 74%]
+tests/test_services/test_game_service.py::TestGameService::test_get_filtered_games_sorting PASSED [ 74%]
+tests/test_services/test_game_service.py::TestGameService::test_create_or_update_from_bgg_new_game PASSED [ 74%]
+tests/test_services/test_game_service.py::TestGameService::test_create_or_update_from_bgg_update_existing PASSED [ 75%]
+tests/test_services/test_game_service.py::TestGameService::test_create_or_update_from_bgg_invalid_id PASSED [ 75%]
+tests/test_services/test_game_service.py::TestGameService::test_get_games_by_designer PASSED [ 75%]
+tests/test_services/test_game_service.py::TestGameService::test_get_filtered_games_by_nz_designer PASSED [ 75%]
+tests/test_services/test_game_service.py::TestGameService::test_get_filtered_games_by_designer_param PASSED [ 76%]
+tests/test_services/test_game_service.py::TestGameService::test_get_filtered_games_combined_filters PASSED [ 76%]
+tests/test_services/test_game_service.py::TestGameService::test_get_filtered_games_excludes_wishlist PASSED [ 76%]
+tests/test_services/test_game_service.py::TestGameService::test_get_filtered_games_uncategorized PASSED [ 76%]
+tests/test_services/test_game_service.py::TestGameService::test_sort_title_descending PASSED [ 77%]
+tests/test_services/test_game_service.py::TestGameService::test_sort_rating_ascending PASSED [ 77%]
+tests/test_services/test_game_service.py::TestGameService::test_sort_rating_descending PASSED [ 77%]
+tests/test_services/test_game_service.py::TestGameService::test_search_case_insensitive PASSED [ 77%]
+tests/test_services/test_game_service.py::TestGameService::test_search_partial_match PASSED [ 78%]
+tests/test_services/test_game_service.py::TestGameService::test_search_empty_string PASSED [ 78%]
+tests/test_services/test_game_service.py::TestGameService::test_search_whitespace_only PASSED [ 78%]
+tests/test_services/test_game_service.py::TestGameService::test_pagination_page_beyond_available PASSED [ 78%]
+tests/test_services/test_game_service.py::TestGameService::test_get_category_counts PASSED [ 79%]
+tests/test_services/test_game_service.py::TestGameService::test_create_game_with_list_categories PASSED [ 79%]
+tests/test_services/test_game_service.py::TestGameService::test_create_game_with_string_categories PASSED [ 79%]
+tests/test_services/test_game_service.py::TestGameService::test_update_game_category PASSED [ 79%]
+tests/test_services/test_game_service.py::TestGameService::test_create_or_update_from_bgg_no_update_when_exists PASSED [ 80%]
+tests/test_services/test_game_service.py::TestGameService::test_update_game_with_expansion_fields PASSED [ 80%]
+tests/test_services/test_game_service.py::TestGameService::test_update_game_ignores_nonexistent_fields PASSED [ 80%]
+tests/test_services/test_game_service.py::TestGameService::test_get_all_games_excludes_non_owned PASSED [ 80%]
+tests/test_services/test_game_service.py::TestGameService::test_sort_year_asc PASSED [ 81%]
+tests/test_services/test_game_service.py::TestGameService::test_get_filtered_games_category_all PASSED [ 81%]
+tests/test_services/test_game_service.py::TestGameService::test_create_or_update_from_bgg_with_enhanced_fields PASSED [ 81%]
+tests/test_services/test_game_service.py::TestGameService::test_sort_playtime_asc PASSED [ 81%]
+tests/test_services/test_game_service.py::TestGameService::test_sort_playtime_desc PASSED [ 82%]
+tests/test_services/test_game_service.py::TestGameService::test_filter_excludes_expansions PASSED [ 82%]
+tests/test_services/test_game_service.py::TestGameService::test_update_game_nz_designer_flag PASSED [ 82%]
+tests/test_services/test_game_service.py::TestGameService::test_update_game_player_count PASSED [ 82%]
+tests/test_services/test_game_service.py::TestGameService::test_update_game_playtime PASSED [ 83%]
+tests/test_services/test_game_service.py::TestGameService::test_create_game_auto_categorize PASSED [ 83%]
+tests/test_services/test_game_service.py::TestGameService::test_get_filtered_games_multiple_sort_fallback PASSED [ 83%]
+tests/test_services/test_game_service.py::TestGameService::test_pagination_first_page PASSED [ 84%]
+tests/test_services/test_game_service.py::TestGameService::test_get_games_by_designer_no_matches PASSED [ 84%]
+tests/test_services/test_image_service.py::TestImageService::test_download_thumbnail_success PASSED [ 84%]
+tests/test_services/test_image_service.py::TestImageService::test_download_thumbnail_failure PASSED [ 84%]
+tests/test_services/test_image_service.py::TestImageService::test_download_and_update_game_thumbnail_success PASSED [ 85%]
+tests/test_services/test_image_service.py::TestImageService::test_download_and_update_game_thumbnail_not_found PASSED [ 85%]
+tests/test_services/test_image_service.py::TestImageService::test_download_and_update_with_retry PASSED [ 85%]
+tests/test_services/test_image_service.py::TestImageService::test_download_exceeds_max_retries PASSED [ 85%]
+tests/test_services/test_image_service.py::TestImageService::test_proxy_image_success PASSED [ 86%]
+tests/test_services/test_image_service.py::TestImageService::test_proxy_image_default_content_type PASSED [ 86%]
+tests/test_services/test_image_service.py::TestImageService::test_cleanup_old_thumbnails PASSED [ 86%]
+tests/test_services/test_image_service.py::TestImageService::test_cleanup_handles_errors PASSED [ 86%]
+tests/test_services/test_image_service.py::TestImageServiceInit::test_init_with_custom_client PASSED [ 87%]
+tests/test_services/test_image_service.py::TestImageServiceInit::test_init_creates_default_client PASSED [ 87%]
+tests/test_services/test_image_service.py::TestImageServiceInit::test_ensures_thumbs_dir_exists PASSED [ 87%]
+tests/test_services/test_image_service.py::TestImageFormats::test_proxy_image_png_format PASSED [ 87%]
+tests/test_services/test_image_service.py::TestImageFormats::test_proxy_image_gif_format PASSED [ 88%]
+tests/test_services/test_image_service.py::TestImageFormats::test_proxy_image_webp_format PASSED [ 88%]
+tests/test_services/test_image_service.py::TestImageEdgeCases::test_download_thumbnail_with_invalid_url PASSED [ 88%]
+tests/test_services/test_image_service.py::TestImageEdgeCases::test_download_thumbnail_timeout PASSED [ 88%]
+tests/test_services/test_image_service.py::TestImageEdgeCases::test_proxy_image_empty_response PASSED [ 89%]
+tests/test_services/test_image_service.py::TestImageEdgeCases::test_proxy_image_custom_cache_max_age PASSED [ 89%]
+tests/test_utils/test_helpers.py::TestParseCategories::test_parse_categories_from_list PASSED [ 89%]
+tests/test_utils/test_helpers.py::TestParseCategories::test_parse_categories_from_comma_separated PASSED [ 89%]
+tests/test_utils/test_helpers.py::TestParseCategories::test_parse_categories_from_json_string PASSED [ 90%]
+tests/test_utils/test_helpers.py::TestParseCategories::test_parse_categories_empty_string PASSED [ 90%]
+tests/test_utils/test_helpers.py::TestParseCategories::test_parse_categories_none PASSED [ 90%]
+tests/test_utils/test_helpers.py::TestParseCategories::test_parse_categories_strips_whitespace PASSED [ 90%]
+tests/test_utils/test_helpers.py::TestParseCategories::test_parse_categories_filters_empty PASSED [ 91%]
+tests/test_utils/test_helpers.py::TestParseJSONField::test_parse_json_field_from_list PASSED [ 91%]
+tests/test_utils/test_helpers.py::TestParseJSONField::test_parse_json_field_from_json_string PASSED [ 91%]
+tests/test_utils/test_helpers.py::TestParseJSONField::test_parse_json_field_none PASSED [ 91%]
+tests/test_utils/test_helpers.py::TestParseJSONField::test_parse_json_field_invalid_json PASSED [ 92%]
+tests/test_utils/test_helpers.py::TestParseJSONField::test_parse_json_field_non_list_json PASSED [ 92%]
+tests/test_utils/test_helpers.py::TestCategorizeGame::test_categorize_cooperative_game PASSED [ 92%]
+tests/test_utils/test_helpers.py::TestCategorizeGame::test_categorize_party_game PASSED [ 92%]
+tests/test_utils/test_helpers.py::TestCategorizeGame::test_categorize_strategy_game PASSED [ 93%]
+tests/test_utils/test_helpers.py::TestCategorizeGame::test_categorize_gateway_game PASSED [ 93%]
+tests/test_utils/test_helpers.py::TestCategorizeGame::test_categorize_kids_game PASSED [ 93%]
+tests/test_utils/test_helpers.py::TestCategorizeGame::test_categorize_empty_categories PASSED [ 93%]
+tests/test_utils/test_helpers.py::TestCategorizeGame::test_categorize_case_insensitive PASSED [ 94%]
+tests/test_utils/test_helpers.py::TestCategorizeGame::test_categorize_highest_score_wins PASSED [ 94%]
+tests/test_utils/test_helpers.py::TestMakeAbsoluteURL::test_make_absolute_url_already_absolute PASSED [ 94%]
+tests/test_utils/test_helpers.py::TestMakeAbsoluteURL::test_make_absolute_url_http_already_absolute PASSED [ 94%]
+tests/test_utils/test_helpers.py::TestMakeAbsoluteURL::test_make_absolute_url_relative PASSED [ 95%]
+tests/test_utils/test_helpers.py::TestMakeAbsoluteURL::test_make_absolute_url_none PASSED [ 95%]
+tests/test_utils/test_helpers.py::TestMakeAbsoluteURL::test_make_absolute_url_empty_string PASSED [ 95%]
+tests/test_utils/test_helpers.py::TestGameToDict::test_game_to_dict_basic_fields PASSED [ 95%]
+tests/test_utils/test_helpers.py::TestGameToDict::test_game_to_dict_with_categories PASSED [ 96%]
+tests/test_utils/test_helpers.py::TestGameToDict::test_game_to_dict_with_json_fields PASSED [ 96%]
+tests/test_utils/test_helpers.py::TestGameToDict::test_game_to_dict_aliases PASSED [ 96%]
+tests/test_utils/test_helpers.py::TestGameToDict::test_game_to_dict_missing_optional_fields PASSED [ 96%]
+tests/test_utils/test_helpers.py::TestCalculateCategoryCounts::test_calculate_category_counts_basic PASSED [ 97%]
+tests/test_utils/test_helpers.py::TestCalculateCategoryCounts::test_calculate_category_counts_uncategorized PASSED [ 97%]
+tests/test_utils/test_helpers.py::TestCalculateCategoryCounts::test_calculate_category_counts_tuple_format PASSED [ 97%]
+tests/test_utils/test_helpers.py::TestCalculateCategoryCounts::test_calculate_category_counts_empty_list PASSED [ 97%]
+tests/test_utils/test_helpers.py::TestSuccessResponse::test_success_response_with_data PASSED [ 98%]
+tests/test_utils/test_helpers.py::TestSuccessResponse::test_success_response_without_data PASSED [ 98%]
+tests/test_utils/test_helpers.py::TestSuccessResponse::test_success_response_default_message PASSED [ 98%]
+tests/test_utils/test_helpers.py::TestSuccessResponse::test_success_response_timestamp_format PASSED [ 98%]
+tests/test_utils/test_helpers.py::TestErrorResponse::test_error_response_basic PASSED [ 99%]
+tests/test_utils/test_helpers.py::TestErrorResponse::test_error_response_with_details PASSED [ 99%]
+tests/test_utils/test_helpers.py::TestErrorResponse::test_error_response_default_code PASSED [ 99%]
+tests/test_utils/test_helpers.py::TestErrorResponse::test_error_response_timestamp_format PASSED [100%]
+
+==================================== ERRORS ====================================
+_ ERROR at teardown of TestAdminGameManagementIntegration.test_validate_player_count_logic _
+tests/conftest.py:32: in db_engine
+    Base.metadata.drop_all(engine)
+/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/sql/schema.py:5928: in drop_all
+    bind._run_ddl_visitor(
+/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py:3248: in _run_ddl_visitor
+    with self.begin() as conn:
+/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/contextlib.py:137: in __enter__
+    return next(self.gen)
+/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py:3238: in begin
+    with self.connect() as conn:
+/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py:3274: in connect
+    return self._connection_cls(self)
+/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py:146: in __init__
+    self._dbapi_connection = engine.raw_connection()
+/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py:3298: in raw_connection
+    return self.pool.connect()
+/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/pool/impl.py:445: in connect
+    return rec._checkout_existing()
+/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/pool/base.py:1382: in _checkout_existing
+    return _ConnectionFairy._checkout(self._pool, fairy=self)
+/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/pool/base.py:1269: in _checkout
+    fairy._connection_record is not None
+E   AssertionError: can't 'checkout' a detached connection fairy
+---------------------------- Captured stderr setup -----------------------------
+2025-12-22 05:02:40,445 - main - INFO - Starting Mana & Meeples API...
+2025-12-22 05:02:40,445 - main - INFO - Verifying database connection...
+2025-12-22 05:02:40,445 - main - INFO - Database connection verified
+2025-12-22 05:02:40,446 - main - INFO - Thumbnails directory: /tmp/thumbs
+2025-12-22 05:02:40,446 - main - INFO - API startup complete
+------------------------------ Captured log setup ------------------------------
+INFO     main:main.py:285 Starting Mana & Meeples API...
+INFO     main:main.py:286 Verifying database connection...
+INFO     main:main.py:293 Database connection verified
+INFO     main:main.py:299 Thumbnails directory: /tmp/thumbs
+INFO     main:main.py:300 API startup complete
+----------------------------- Captured stderr call -----------------------------
+2025-12-22 05:02:40,457 - middleware.logging - INFO - Request started: PUT /api/admin/games/1
+2025-12-22 05:02:40,463 - api.routers.admin - ERROR - Failed to update game 1: (sqlite3.IntegrityError) CHECK constraint failed: players_max_gte_min
+[SQL: UPDATE boardgames SET players_min=?, players_max=? WHERE boardgames.id = ?]
+[parameters: (4, 2, 1)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1964, in _exec_single_context
+    self.dialect.do_execute(
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 942, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.IntegrityError: CHECK constraint failed: players_max_gte_min
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/runner/work/mana_meeples_boardgame_list/mana_meeples_boardgame_list/backend/api/routers/admin.py", line 268, in update_admin_game
+    game = game_service.update_game(game_id, game_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/mana_meeples_boardgame_list/mana_meeples_boardgame_list/backend/services/game_service.py", line 409, in update_game
+    self.db.commit()
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1313, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1288, in _prepare_impl
+    self.session.flush()
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4353, in flush
+    self._flush(objects)
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4488, in _flush
+    with util.safe_reraise():
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4449, in _flush
+    flush_context.execute()
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 85, in save_obj
+    _emit_update_statements(
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 912, in _emit_update_statements
+    c = connection.execute(
+        ^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1416, in execute
+    return meth(
+           ^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1638, in _execute_clauseelement
+    ret = self._execute_context(
+          ^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1843, in _execute_context
+    return self._exec_single_context(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1983, in _exec_single_context
+    self._handle_dbapi_exception(
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2352, in _handle_dbapi_exception
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1964, in _exec_single_context
+    self.dialect.do_execute(
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 942, in do_execute
+    cursor.execute(statement, parameters)
+sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) CHECK constraint failed: players_max_gte_min
+[SQL: UPDATE boardgames SET players_min=?, players_max=? WHERE boardgames.id = ?]
+[parameters: (4, 2, 1)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+2025-12-22 05:02:40,466 - middleware.logging - INFO - Request completed: PUT /api/admin/games/1 (0.010s)
+2025-12-22 05:02:40,467 - httpx - INFO - HTTP Request: PUT http://testserver/api/admin/games/1 "HTTP/1.1 500 Internal Server Error"
+------------------------------ Captured log call -------------------------------
+INFO     middleware.logging:logging.py:36 Request started: PUT /api/admin/games/1
+ERROR    api.routers.admin:admin.py:279 Failed to update game 1: (sqlite3.IntegrityError) CHECK constraint failed: players_max_gte_min
+[SQL: UPDATE boardgames SET players_min=?, players_max=? WHERE boardgames.id = ?]
+[parameters: (4, 2, 1)]
+(Background on this error at: https://sqlalche.me/e/20/gkpj)
+Traceback (most recent call last):
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1964, in _exec_single_context
+    self.dialect.do_execute(
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 942, in do_execute
+    cursor.execute(statement, parameters)
+sqlite3.IntegrityError: CHECK constraint failed: players_max_gte_min
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/runner/work/mana_meeples_boardgame_list/mana_meeples_boardgame_list/backend/api/routers/admin.py", line 268, in update_admin_game
+    game = game_service.update_game(game_id, game_data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/mana_meeples_boardgame_list/mana_meeples_boardgame_list/backend/services/game_service.py", line 409, in update_game
+    self.db.commit()
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 2032, in commit
+    trans.commit(_to_root=True)
+  File "<string>", line 2, in commit
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1313, in commit
+    self._prepare_impl()
+  File "<string>", line 2, in _prepare_impl
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/state_changes.py", line 139, in _go
+    ret_value = fn(self, *arg, **kw)
+                ^^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 1288, in _prepare_impl
+    self.session.flush()
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4353, in flush
+    self._flush(objects)
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4488, in _flush
+    with util.safe_reraise():
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/session.py", line 4449, in _flush
+    flush_context.execute()
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 466, in execute
+    rec.execute(self)
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/unitofwork.py", line 642, in execute
+    util.preloaded.orm_persistence.save_obj(
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 85, in save_obj
+    _emit_update_statements(
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/orm/persistence.py", line 912, in _emit_update_statements
+    c = connection.execute(
+        ^^^^^^^^^^^^^^^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 1416, in execute
+    return meth(
+           ^^^^^
+  File "/opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/sqlalchemy/sql/elements.py", line 515, in _execute_on_connection
+    return connection._execute_clauseelement(
+tests/test_api/test_performance.py: 20 warnings
+tests/test_api/test_public.py: 31 warnings
+tests/test_services/test_error_handling.py: 2 warnings
+  /opt/hostedtoolcache/Python/3.11.14/x64/lib/python3.11/site-packages/httpx/_client.py:680: DeprecationWarning: The 'app' shortcut is now deprecated. Use the explicit style 'transport=WSGITransport(app=...)' instead.
+    warnings.warn(message, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /home/runner/work/mana_meeples_boardgame_list/mana_meeples_boardgame_list/backend/pytest-report.xml -
+
+---------- coverage: platform linux, python 3.11.14-final-0 ----------
+Name                                                  Stmts   Miss  Cover
+-------------------------------------------------------------------------
+api/__init__.py                                           0      0   100%
+api/dependencies.py                                      75     45    40%
+api/routers/__init__.py                                   0      0   100%
+api/routers/admin.py                                    231     92    60%
+api/routers/bulk.py                                     277    108    61%
+api/routers/buy_list.py                                 305    271    11%
+api/routers/health.py                                    72     39    46%
+api/routers/public.py                                   112     39    65%
+api/routers/sleeves.py                                   42     20    52%
+bgg_service.py                                          411    138    66%
+config.py                                                56     11    80%
+database.py                                             193    173    10%
+exceptions.py                                            10      0   100%
+main.py                                                 188     74    61%
+middleware/__init__.py                                    0      0   100%
+middleware/logging.py                                    35      6    83%
+middleware/performance.py                                30      6    80%
+middleware/security.py                                   33      0   100%
+models.py                                               119      1    99%
+redis_client.py                                         103     68    34%
+schemas.py                                              104     10    90%
+services/__init__.py                                      3      0   100%
+services/cloudinary_service.py                          108     80    26%
+services/game_service.py                                223     35    84%
+services/image_service.py                               116     30    74%
+services/sleeve_scraper.py                               86     86     0%
+shared/__init__.py                                        0      0   100%
+shared/rate_limiting.py                                 122     70    43%
+test_cloudinary.py                                      102    102     0%
+test_redis_integration.py                               136    136     0%
+tests/__init__.py                                         0      0   100%
+tests/conftest.py                                        79      4    95%
+tests/test_api/__init__.py                                0      0   100%
+tests/test_api/test_admin.py                            158     12    92%
+tests/test_api/test_auth_flow.py                         76      0   100%
+tests/test_api/test_bulk.py                             145      0   100%
+tests/test_api/test_integration_admin_management.py     124      6    95%
+tests/test_api/test_integration_bgg_import.py           194     38    80%
+tests/test_api/test_integration_buy_list.py             117     94    20%
+tests/test_api/test_integration_search_filter.py        197      0   100%
+tests/test_api/test_load.py                             214     20    91%
+tests/test_api/test_performance.py                      147      0   100%
+tests/test_api/test_public.py                           286      0   100%
+tests/test_api/test_security.py                          91     11    88%
+tests/test_services/__init__.py                           0      0   100%
+tests/test_services/test_bgg_service.py                 268      1    99%
+tests/test_services/test_error_handling.py              103      0   100%
+tests/test_services/test_game_service.py                424      0   100%
+tests/test_services/test_image_service.py               203      0   100%
+tests/test_utils/__init__.py                              0      0   100%
+tests/test_utils/test_helpers.py                        208      1    99%
+utils/__init__.py                                         0      0   100%
+utils/helpers.py                                         97      7    93%
+utils/jwt_utils.py                                       30     14    53%
+-------------------------------------------------------------------------
+TOTAL                                                  6453   1848    71%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+
+=========================== short test summary info ============================
+FAILED tests/test_api/test_admin.py::TestAdminGamesEndpoints::test_create_game - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_admin.py::TestAdminBGGImport::test_import_from_bgg_success - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_admin.py::TestAdminBGGImport::test_import_from_bgg_force_reimport - assert 500 == 200
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_create_game_manually - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_create_game_sets_defaults - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_new_game_complete_flow - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_existing_game_without_force - assert 500 == 200
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_existing_game_with_force - assert 500 == 200
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_persists_all_fields - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_handles_null_optional_fields - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_bulk_import_csv - KeyError: 'imported'
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_updates_timestamp - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_thumbnail_download_trigger - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_special_characters_in_title - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_large_designer_list - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_returns_complete_game_object - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_idempotency - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_preserves_manual_categorization - assert 500 == 200
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_logs_activity - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+FAILED tests/test_api/test_integration_bgg_import.py::TestBGGImportFlowIntegration::test_import_sets_default_status - assert 500 == 201
+ +  where 500 = <Response [500 Internal Server Error]>.status_code
+ERROR tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_validate_player_count_logic - AssertionError: can't 'checkout' a detached connection fairy
+ERROR tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_validate_playtime_logic - AssertionError: can't 'checkout' a detached connection fairy
+ERROR tests/test_api/test_integration_admin_management.py::TestAdminGameManagementIntegration::test_validate_year_range - AssertionError: can't 'checkout' a detached connection fairy
+= 20 failed, 354 passed, 20 skipped, 214 warnings, 3 errors in 413.74s (0:06:53) =
+Error: Process completed with exit code 1.
