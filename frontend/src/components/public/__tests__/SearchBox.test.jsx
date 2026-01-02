@@ -1,6 +1,6 @@
 import React from 'react';
 import { vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import SearchBox from '../SearchBox';
 
 describe('SearchBox', () => {
@@ -52,14 +52,14 @@ describe('SearchBox', () => {
     // Should not be called immediately due to debouncing
     expect(mockOnChange).not.toHaveBeenCalled();
 
-    // Fast-forward time by 300ms (debounce delay)
-    vi.advanceTimersByTime(300);
+    // Fast-forward time by 300ms (debounce delay) and flush React updates
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
 
     // Now onChange should be called
-    await waitFor(() => {
-      expect(mockOnChange).toHaveBeenCalledTimes(1);
-      expect(mockOnChange).toHaveBeenCalledWith('Catan');
-    });
+    expect(mockOnChange).toHaveBeenCalledTimes(1);
+    expect(mockOnChange).toHaveBeenCalledWith('Catan');
   });
 
   it('has correct aria-label matching placeholder', () => {
@@ -98,14 +98,14 @@ describe('SearchBox', () => {
     // Should not be called immediately due to debouncing
     expect(mockOnChange).not.toHaveBeenCalled();
 
-    // Fast-forward time by 300ms (debounce delay)
-    vi.advanceTimersByTime(300);
+    // Fast-forward time by 300ms (debounce delay) and flush React updates
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
 
     // Now onChange should be called
-    await waitFor(() => {
-      expect(mockOnChange).toHaveBeenCalledTimes(1);
-      expect(mockOnChange).toHaveBeenCalledWith('');
-    });
+    expect(mockOnChange).toHaveBeenCalledTimes(1);
+    expect(mockOnChange).toHaveBeenCalledWith('');
   });
 
   it('debounces multiple rapid changes', async () => {
@@ -113,27 +113,29 @@ describe('SearchBox', () => {
 
     const searchBox = screen.getByRole('searchbox');
 
-    // Type multiple characters rapidly
-    fireEvent.change(searchBox, { target: { value: 'C' } });
-    vi.advanceTimersByTime(100);
-    fireEvent.change(searchBox, { target: { value: 'Ca' } });
-    vi.advanceTimersByTime(100);
-    fireEvent.change(searchBox, { target: { value: 'Cat' } });
-    vi.advanceTimersByTime(100);
-    fireEvent.change(searchBox, { target: { value: 'Cata' } });
-    vi.advanceTimersByTime(100);
-    fireEvent.change(searchBox, { target: { value: 'Catan' } });
+    // Type multiple characters rapidly - wrap in act to handle state updates
+    await act(async () => {
+      fireEvent.change(searchBox, { target: { value: 'C' } });
+      vi.advanceTimersByTime(100);
+      fireEvent.change(searchBox, { target: { value: 'Ca' } });
+      vi.advanceTimersByTime(100);
+      fireEvent.change(searchBox, { target: { value: 'Cat' } });
+      vi.advanceTimersByTime(100);
+      fireEvent.change(searchBox, { target: { value: 'Cata' } });
+      vi.advanceTimersByTime(100);
+      fireEvent.change(searchBox, { target: { value: 'Catan' } });
+    });
 
     // Should not be called yet
     expect(mockOnChange).not.toHaveBeenCalled();
 
-    // Fast-forward past the debounce delay
-    vi.advanceTimersByTime(300);
+    // Fast-forward past the debounce delay and flush React updates
+    await act(async () => {
+      vi.advanceTimersByTime(300);
+    });
 
     // Should only be called once with the final value
-    await waitFor(() => {
-      expect(mockOnChange).toHaveBeenCalledTimes(1);
-      expect(mockOnChange).toHaveBeenCalledWith('Catan');
-    });
+    expect(mockOnChange).toHaveBeenCalledTimes(1);
+    expect(mockOnChange).toHaveBeenCalledWith('Catan');
   });
 });
