@@ -113,7 +113,7 @@ function getBGGImageVariant(url, size) {
     'original': '__original'
   };
 
-  const targetSize = sizeMap[size] || '__d';  // Default to detail (safer than original)
+  const targetSize = sizeMap[size] || '__md';  // Default to medium (confirmed working with BGG)
 
   // New format (most common): Replace __SIZE/ pattern
   // Example: /HASH__original/ → /HASH__d/
@@ -188,9 +188,9 @@ export function generateSrcSet(url) {
     return null; // Only works for BGG images
   }
 
-  // IMPORTANT: Transform __original to __d BEFORE generating srcset
-  // BGG blocks __original downloads with 400 Bad Request
-  const baseUrl = getBGGImageVariant(url, 'detail');
+  // IMPORTANT: Transform __original to __md BEFORE generating srcset
+  // BGG may block __original and __d, use __md (medium) as safer option
+  const baseUrl = getBGGImageVariant(url, 'medium');
 
   // Generate URLs for different sizes with Cloudinary transformations
   // The backend will handle uploading to Cloudinary and applying transformations
