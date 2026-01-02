@@ -113,22 +113,42 @@ class CloudinaryService:
             image_size = len(image_bytes)
             logger.info(f"Downloaded {image_size} bytes from BGG")
 
-            # Check file size - Cloudinary free tier has 10MB limit
+            # CRITICAL: Always process images through Pillow to check uncompressed size
+            # Cloudinary checks uncompressed pixel data, not compressed file size!
+            # A 2.5MB compressed PNG can be 11MB uncompressed
             MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB in bytes
-            if image_size > MAX_FILE_SIZE:
-                logger.warning(
-                    f"Image too large for Cloudinary: {image_size / (1024 * 1024):.2f}MB "
-                    f"(max: {MAX_FILE_SIZE / (1024 * 1024):.0f}MB). Resizing before upload..."
+
+            try:
+                # Always open image to check true size
+                image = Image.open(io.BytesIO(image_bytes))
+                original_size = image.size
+                original_format = image.format or 'JPEG'
+
+                # Calculate uncompressed size (width × height × channels × bytes_per_channel)
+                channels = len(image.getbands())  # 3 for RGB, 4 for RGBA
+                uncompressed_size = original_size[0] * original_size[1] * channels * 1  # 1 byte per channel
+
+                logger.debug(
+                    f"Image stats: {original_size[0]}x{original_size[1]}, "
+                    f"{channels} channels, {original_format} format, "
+                    f"compressed: {image_size / (1024 * 1024):.2f}MB, "
+                    f"uncompressed: {uncompressed_size / (1024 * 1024):.2f}MB"
                 )
-                # Resize the image to reduce file size
-                try:
-                    image = Image.open(io.BytesIO(image_bytes))
-                    original_size = image.size
-                    original_format = image.format or 'JPEG'
+
+                # Resize if either compressed OR uncompressed size > 10MB
+                needs_resize = (image_size > MAX_FILE_SIZE) or (uncompressed_size > MAX_FILE_SIZE)
+
+                if needs_resize:
+                    logger.warning(
+                        f"Image too large for Cloudinary "
+                        f"(compressed: {image_size / (1024 * 1024):.2f}MB, "
+                        f"uncompressed: {uncompressed_size / (1024 * 1024):.2f}MB, "
+                        f"max: {MAX_FILE_SIZE / (1024 * 1024):.0f}MB). Resizing..."
+                    )
 
                     # Aggressive resize: reduce both dimensions AND quality for large files
-                    # Start with smaller max dimension based on how large the file is
-                    file_size_mb = image_size / (1024 * 1024)
+                    # Start with smaller max dimension based on uncompressed size
+                    file_size_mb = max(image_size, uncompressed_size) / (1024 * 1024)
                     if file_size_mb > 20:
                         max_dimension = 1200  # Very large files get aggressive resize
                     elif file_size_mb > 15:
@@ -136,9 +156,9 @@ class CloudinaryService:
                     else:
                         max_dimension = 1800  # Slightly over limit, gentle resize
 
-                    # Always resize if file > 10MB (not just if dimensions > max)
-                    ratio = max_dimension / max(image.size)
-                    if ratio < 1.0:  # Only resize down, never up
+                    # Resize dimensions if needed
+                    if max(image.size) > max_dimension:
+                        ratio = max_dimension / max(image.size)
                         new_size = tuple(int(dim * ratio) for dim in image.size)
                         image = image.resize(new_size, Image.Resampling.LANCZOS)
                         logger.info(f"Resized dimensions: {original_size} -> {new_size}")
@@ -168,8 +188,13 @@ class CloudinaryService:
                                 image = image.convert('RGB')
                             image.save(output, format='JPEG', quality=quality, optimize=True)
 
-                        # Check if we're under the limit
-                        if len(output.getvalue()) <= MAX_FILE_SIZE:
+                        # Check BOTH compressed and uncompressed size
+                        output_bytes = output.getvalue()
+                        output_img = Image.open(io.BytesIO(output_bytes))
+                        output_channels = len(output_img.getbands())
+                        output_uncompressed = output_img.size[0] * output_img.size[1] * output_channels
+
+                        if len(output_bytes) <= MAX_FILE_SIZE and output_uncompressed <= MAX_FILE_SIZE:
                             final_quality = quality
                             break
 
@@ -189,10 +214,11 @@ class CloudinaryService:
                         f"(quality: {final_quality})"
                     )
 
-                except Exception as e:
-                    logger.error(f"Failed to resize image: {e}")
-                    self._failed_uploads.add(url)
-                    return None
+            except Exception as e:
+                logger.error(f"Failed to process/resize image: {e}")
+                # If image processing fails, try uploading original anyway
+                logger.warning("Attempting to upload original image despite processing failure")
+                # Don't return None, fall through to upload
 
             # Upload with optimizations
             # Use hash as public_id, folder specified separately to avoid double-nesting
