@@ -17,7 +17,8 @@ export default function GameCardPublic({
 }) {
   const { shouldShowCardHint, shouldShowAfterGameHint, markCardExpanded, markAfterGameClicked } = useOnboarding();
   const href = `/game/${game.id}`;
-  const imgSrc = game.image_url;
+  // Performance optimization: Use Cloudinary URL directly if available (skips backend proxy)
+  const imgSrc = game.cloudinary_url || game.image_url;
   const categoryLabel = labelFor(game.mana_meeple_category);
   const cardRef = useRef(null);
 

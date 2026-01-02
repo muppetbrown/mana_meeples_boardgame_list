@@ -36,7 +36,7 @@ export default function SearchBGGPanel({
             <div key={game.bgg_id} className="group bg-white border rounded-xl p-4 hover:shadow-lg transition">
               <div className="flex gap-4">
                 <GameImage
-                  url={game.image_url}
+                  url={game.cloudinary_url || game.image_url}
                   alt={game.title}
                   className="w-20 h-20 object-cover rounded-xl border-2 border-gray-200 group-hover:border-purple-300 transition-all duration-300 shadow"
                   fallbackClass="w-20 h-20 bg-gray-200 rounded-xl flex items-center justify-center text-gray-500 text-sm border-2 border-gray-200"

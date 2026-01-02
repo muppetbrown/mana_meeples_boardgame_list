@@ -148,6 +148,8 @@ function getBGGImageVariant(url, size) {
  * Default changed to 'medium' (__md, ~400px) which is less restrictive.
  * Priority order: __md (medium) > __mt (medium thumb) > __t (thumbnail)
  *
+ * PERFORMANCE: If URL is already a Cloudinary URL, return it directly (skips backend proxy)
+ *
  * @param {string} url - The original image URL
  * @param {string} size - Optional size variant for responsive images ('medium'|'medium-thumb'|'thumbnail')
  * @param {number} width - Optional width for Cloudinary transformation
@@ -156,6 +158,11 @@ function getBGGImageVariant(url, size) {
  */
 export function imageProxyUrl(url, size = 'medium', width = null, height = null) {
   if (!url) return null;
+
+  // PERFORMANCE OPTIMIZATION: If already a Cloudinary URL, use it directly (no proxy needed)
+  if (url.includes('res.cloudinary.com')) {
+    return url;
+  }
 
   // For BGG images, optimize for requested quality
   if (url.includes('cf.geekdo-images.com')) {
@@ -184,8 +191,14 @@ export function imageProxyUrl(url, size = 'medium', width = null, height = null)
  * @returns {string|null} - srcset string with multiple resolutions
  */
 export function generateSrcSet(url) {
-  if (!url || !url.includes('cf.geekdo-images.com')) {
-    return null; // Only works for BGG images
+  // Don't generate srcset for Cloudinary URLs (already optimized)
+  if (!url || url.includes('res.cloudinary.com')) {
+    return null;
+  }
+
+  // Only generate srcset for BGG images
+  if (!url.includes('cf.geekdo-images.com')) {
+    return null;
   }
 
   // IMPORTANT: Transform __original to __md BEFORE generating srcset
