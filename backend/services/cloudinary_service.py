@@ -123,12 +123,13 @@ class CloudinaryService:
                 image = Image.open(io.BytesIO(image_bytes))
                 original_size = image.size
                 original_format = image.format or 'JPEG'
+                logger.info(f"Opened image: {original_size}, format: {original_format}")
 
                 # Calculate uncompressed size (width × height × channels × bytes_per_channel)
                 channels = len(image.getbands())  # 3 for RGB, 4 for RGBA
                 uncompressed_size = original_size[0] * original_size[1] * channels * 1  # 1 byte per channel
 
-                logger.debug(
+                logger.info(
                     f"Image stats: {original_size[0]}x{original_size[1]}, "
                     f"{channels} channels, {original_format} format, "
                     f"compressed: {image_size / (1024 * 1024):.2f}MB, "
