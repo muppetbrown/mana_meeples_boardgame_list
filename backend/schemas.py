@@ -188,6 +188,7 @@ class GameListItemResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     image: Optional[str] = None
     cloudinary_url: Optional[str] = None
+    image_url: Optional[str] = None  # Alias for frontend compatibility (computed from thumbnail_url/image)
 
     # Filtering/sorting fields
     players_min: Optional[int] = None
@@ -208,6 +209,23 @@ class GameListItemResponse(BaseModel):
     is_expansion: Optional[bool] = None
     expansion_type: Optional[str] = None
 
+    @model_validator(mode='before')
+    @classmethod
+    def add_image_url_alias(cls, data: Any) -> Any:
+        """Add image_url as an alias for frontend compatibility"""
+        # If data is a SQLAlchemy model object
+        if hasattr(data, '__dict__'):
+            # Prioritize cloudinary_url > image > thumbnail_url
+            cloudinary = getattr(data, 'cloudinary_url', None)
+            image = getattr(data, 'image', None)
+            thumbnail = getattr(data, 'thumbnail_url', None)
+
+            # Compute image_url field
+            image_url = cloudinary or image or thumbnail
+            data.image_url = image_url
+
+        return data
+
 
 class GameDetailResponse(BaseModel):
     """
@@ -226,6 +244,7 @@ class GameDetailResponse(BaseModel):
     thumbnail_url: Optional[str] = None
     image: Optional[str] = None
     cloudinary_url: Optional[str] = None
+    image_url: Optional[str] = None  # Alias for frontend compatibility
     players_min: Optional[int] = None
     players_max: Optional[int] = None
     average_rating: Optional[float] = None
@@ -349,6 +368,17 @@ class GameDetailResponse(BaseModel):
                 data.players_min_with_expansions = min_players
                 data.players_max_with_expansions = max_players
                 data.has_player_expansion = has_modification
+
+        # Also add image_url alias for frontend compatibility
+        if hasattr(data, '__dict__'):
+            # Prioritize cloudinary_url > image > thumbnail_url
+            cloudinary = getattr(data, 'cloudinary_url', None)
+            image = getattr(data, 'image', None)
+            thumbnail = getattr(data, 'thumbnail_url', None)
+
+            # Compute image_url field
+            image_url = cloudinary or image or thumbnail
+            data.image_url = image_url
 
         return data
 
