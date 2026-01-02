@@ -150,73 +150,104 @@ class CloudinaryService:
                         f"max: {MAX_FILE_SIZE / (1024 * 1024):.0f}MB). Resizing..."
                     )
 
-                    # Aggressive resize: reduce both dimensions AND quality for large files
-                    # Start with smaller max dimension based on uncompressed size
+                    # IMPROVED: Multi-pass aggressive compression with iterative dimension reduction
+                    # Try progressively smaller dimensions and qualities until we fit under 10MB
+
+                    # Convert to RGB/JPEG early for better compression (PNG to JPEG)
+                    if original_format == 'PNG' or image.mode in ('RGBA', 'LA', 'P'):
+                        if image.mode in ('RGBA', 'LA', 'P'):
+                            background = Image.new('RGB', image.size, (255, 255, 255))
+                            if image.mode == 'P':
+                                image = image.convert('RGBA')
+                            background.paste(image, mask=image.split()[-1] if image.mode in ('RGBA', 'LA') else None)
+                            image = background
+                        elif image.mode not in ('RGB', 'L'):
+                            image = image.convert('RGB')
+
+                    # Iterative compression: try dimension + quality combinations
+                    # More aggressive progression for very large files
                     file_size_mb = max(image_size, uncompressed_size) / (1024 * 1024)
+
+                    # Start with aggressive dimensions for large files
                     if file_size_mb > 20:
-                        max_dimension = 1200  # Very large files get aggressive resize
+                        max_dimensions = [1000, 800, 600, 400]  # Very aggressive
                     elif file_size_mb > 15:
-                        max_dimension = 1500
+                        max_dimensions = [1200, 1000, 800, 600]
+                    elif file_size_mb > 10:
+                        max_dimensions = [1500, 1200, 1000, 800]
                     else:
-                        max_dimension = 1800  # Slightly over limit, gentle resize
+                        max_dimensions = [1800, 1500, 1200]
 
-                    # Resize dimensions if needed
-                    if max(image.size) > max_dimension:
-                        ratio = max_dimension / max(image.size)
-                        new_size = tuple(int(dim * ratio) for dim in image.size)
-                        image = image.resize(new_size, Image.Resampling.LANCZOS)
-                        logger.info(f"Resized dimensions: {original_size} -> {new_size}")
+                    qualities = [85, 75, 65, 55, 45, 35]  # More quality steps
 
-                    # Try saving with progressively lower quality until under 10MB
-                    qualities = [80, 70, 60, 50]  # Try these quality levels
                     output = None
                     final_quality = None
+                    final_dimension = None
+                    success = False
 
-                    for quality in qualities:
-                        output = io.BytesIO()
-                        if original_format == 'JPEG':
-                            image.save(output, format='JPEG', quality=quality, optimize=True)
-                        elif original_format == 'PNG':
-                            # Convert PNG to JPEG for better compression
-                            # Convert RGBA to RGB if needed
-                            if image.mode in ('RGBA', 'LA', 'P'):
-                                background = Image.new('RGB', image.size, (255, 255, 255))
-                                if image.mode == 'P':
-                                    image = image.convert('RGBA')
-                                background.paste(image, mask=image.split()[-1] if image.mode in ('RGBA', 'LA') else None)
-                                image = background
-                            image.save(output, format='JPEG', quality=quality, optimize=True)
-                        else:
-                            # Other formats: convert to JPEG
-                            if image.mode not in ('RGB', 'L'):
-                                image = image.convert('RGB')
-                            image.save(output, format='JPEG', quality=quality, optimize=True)
+                    # Try each dimension + quality combination until we succeed
+                    for max_dimension in max_dimensions:
+                        # Resize if needed
+                        test_image = image.copy()
+                        if max(test_image.size) > max_dimension:
+                            ratio = max_dimension / max(test_image.size)
+                            new_size = tuple(int(dim * ratio) for dim in test_image.size)
+                            test_image = test_image.resize(new_size, Image.Resampling.LANCZOS)
 
-                        # Check BOTH compressed and uncompressed size
-                        output_bytes = output.getvalue()
-                        output_img = Image.open(io.BytesIO(output_bytes))
-                        output_channels = len(output_img.getbands())
-                        output_uncompressed = output_img.size[0] * output_img.size[1] * output_channels
+                        # Try each quality level
+                        for quality in qualities:
+                            output = io.BytesIO()
+                            test_image.save(output, format='JPEG', quality=quality, optimize=True)
+                            output_bytes = output.getvalue()
+                            compressed_size = len(output_bytes)
 
-                        if len(output_bytes) <= MAX_FILE_SIZE and output_uncompressed <= MAX_FILE_SIZE:
-                            final_quality = quality
+                            # Calculate uncompressed size more accurately
+                            # Use actual test save to measure what Cloudinary will see
+                            test_output = io.BytesIO()
+                            test_img = Image.open(io.BytesIO(output_bytes))
+                            test_img.save(test_output, format='PNG', compress_level=0)
+                            actual_uncompressed = len(test_output.getvalue())
+
+                            # Check if both sizes are acceptable
+                            if compressed_size <= MAX_FILE_SIZE and actual_uncompressed <= MAX_FILE_SIZE:
+                                final_quality = quality
+                                final_dimension = max_dimension
+                                image_bytes = output_bytes
+                                success = True
+                                logger.info(
+                                    f"✓ Compression successful: {file_size_mb:.2f}MB -> {compressed_size / (1024 * 1024):.2f}MB "
+                                    f"(dimension: {max_dimension}px, quality: {quality}, "
+                                    f"uncompressed: {actual_uncompressed / (1024 * 1024):.2f}MB)"
+                                )
+                                break
+
+                        if success:
                             break
 
-                    if output is None or len(output.getvalue()) > MAX_FILE_SIZE:
-                        # Even at lowest quality, still too large
-                        logger.error(
-                            f"Image still too large after aggressive resize: "
-                            f"{len(output.getvalue()) / (1024 * 1024):.2f}MB. Skipping."
-                        )
-                        self._failed_uploads.add(url)
-                        return None
+                    if not success:
+                        # Final fallback: ultra-aggressive compression
+                        logger.warning("Standard compression failed, trying ultra-aggressive fallback")
+                        ultra_dimension = 400
+                        ratio = ultra_dimension / max(image.size)
+                        new_size = tuple(int(dim * ratio) for dim in image.size)
+                        image = image.resize(new_size, Image.Resampling.LANCZOS)
 
-                    image_bytes = output.getvalue()
-                    new_size_mb = len(image_bytes) / (1024 * 1024)
-                    logger.info(
-                        f"✓ Resized successfully: {file_size_mb:.2f}MB -> {new_size_mb:.2f}MB "
-                        f"(quality: {final_quality})"
-                    )
+                        output = io.BytesIO()
+                        image.save(output, format='JPEG', quality=30, optimize=True)
+                        image_bytes = output.getvalue()
+
+                        if len(image_bytes) <= MAX_FILE_SIZE:
+                            logger.warning(
+                                f"✓ Ultra-aggressive compression succeeded: {file_size_mb:.2f}MB -> "
+                                f"{len(image_bytes) / (1024 * 1024):.2f}MB (400px, quality: 30)"
+                            )
+                        else:
+                            logger.error(
+                                f"Image still too large even at 400px/quality:30: "
+                                f"{len(image_bytes) / (1024 * 1024):.2f}MB. Cannot upload."
+                            )
+                            self._failed_uploads.add(url)
+                            return None
 
             except Exception as e:
                 logger.error(f"Failed to process/resize image: {e}")
