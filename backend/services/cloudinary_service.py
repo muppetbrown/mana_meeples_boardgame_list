@@ -150,35 +150,24 @@ class CloudinaryService:
                         f"max: {MAX_FILE_SIZE / (1024 * 1024):.0f}MB). Resizing..."
                     )
 
-                    # IMPROVED: Multi-pass aggressive compression with iterative dimension reduction
-                    # Try progressively smaller dimensions and qualities until we fit under 10MB
+                    # OPTIMIZED: WebP compression with 1200px cap for best quality/size ratio
+                    # WebP achieves 25-35% better compression than JPEG
 
-                    # Convert to RGB/JPEG early for better compression (PNG to JPEG)
-                    if original_format == 'PNG' or image.mode in ('RGBA', 'LA', 'P'):
-                        if image.mode in ('RGBA', 'LA', 'P'):
-                            background = Image.new('RGB', image.size, (255, 255, 255))
-                            if image.mode == 'P':
-                                image = image.convert('RGBA')
-                            background.paste(image, mask=image.split()[-1] if image.mode in ('RGBA', 'LA') else None)
-                            image = background
-                        elif image.mode not in ('RGB', 'L'):
-                            image = image.convert('RGB')
+                    # Convert to RGB for WebP (handles transparency)
+                    if image.mode in ('RGBA', 'LA'):
+                        # Keep alpha channel for WebP (it supports transparency)
+                        pass  # WebP handles RGBA natively
+                    elif image.mode == 'P':
+                        image = image.convert('RGBA')
+                    elif image.mode not in ('RGB', 'RGBA', 'L'):
+                        image = image.convert('RGB')
 
-                    # Iterative compression: try dimension + quality combinations
-                    # More aggressive progression for very large files
                     file_size_mb = max(image_size, uncompressed_size) / (1024 * 1024)
 
-                    # Start with aggressive dimensions for large files
-                    if file_size_mb > 20:
-                        max_dimensions = [1000, 800, 600, 400]  # Very aggressive
-                    elif file_size_mb > 15:
-                        max_dimensions = [1200, 1000, 800, 600]
-                    elif file_size_mb > 10:
-                        max_dimensions = [1500, 1200, 1000, 800]
-                    else:
-                        max_dimensions = [1800, 1500, 1200]
-
-                    qualities = [85, 75, 65, 55, 45, 35]  # More quality steps
+                    # Simple, effective strategy: 1200px max with WebP compression
+                    # WebP is much more efficient than JPEG, so fewer dimension steps needed
+                    max_dimensions = [1200, 1000, 800, 600, 400]  # Start at 1200px
+                    qualities = [90, 85, 80, 75, 70, 65]  # WebP quality range
 
                     output = None
                     final_quality = None
@@ -194,10 +183,11 @@ class CloudinaryService:
                             new_size = tuple(int(dim * ratio) for dim in test_image.size)
                             test_image = test_image.resize(new_size, Image.Resampling.LANCZOS)
 
-                        # Try each quality level
+                        # Try each quality level with WebP format
                         for quality in qualities:
                             output = io.BytesIO()
-                            test_image.save(output, format='JPEG', quality=quality, optimize=True)
+                            # WebP format with quality setting (supports both lossy and lossless)
+                            test_image.save(output, format='WEBP', quality=quality, method=6)
                             output_bytes = output.getvalue()
                             compressed_size = len(output_bytes)
 
@@ -215,7 +205,7 @@ class CloudinaryService:
                                 image_bytes = output_bytes
                                 success = True
                                 logger.info(
-                                    f"✓ Compression successful: {file_size_mb:.2f}MB -> {compressed_size / (1024 * 1024):.2f}MB "
+                                    f"✓ WebP compression successful: {file_size_mb:.2f}MB -> {compressed_size / (1024 * 1024):.2f}MB "
                                     f"(dimension: {max_dimension}px, quality: {quality}, "
                                     f"uncompressed: {actual_uncompressed / (1024 * 1024):.2f}MB)"
                                 )
@@ -225,25 +215,25 @@ class CloudinaryService:
                             break
 
                     if not success:
-                        # Final fallback: ultra-aggressive compression
-                        logger.warning("Standard compression failed, trying ultra-aggressive fallback")
+                        # Final fallback: ultra-aggressive WebP compression
+                        logger.warning("Standard compression failed, trying ultra-aggressive WebP fallback")
                         ultra_dimension = 400
                         ratio = ultra_dimension / max(image.size)
                         new_size = tuple(int(dim * ratio) for dim in image.size)
                         image = image.resize(new_size, Image.Resampling.LANCZOS)
 
                         output = io.BytesIO()
-                        image.save(output, format='JPEG', quality=30, optimize=True)
+                        image.save(output, format='WEBP', quality=60, method=6)
                         image_bytes = output.getvalue()
 
                         if len(image_bytes) <= MAX_FILE_SIZE:
                             logger.warning(
-                                f"✓ Ultra-aggressive compression succeeded: {file_size_mb:.2f}MB -> "
-                                f"{len(image_bytes) / (1024 * 1024):.2f}MB (400px, quality: 30)"
+                                f"✓ Ultra-aggressive WebP compression succeeded: {file_size_mb:.2f}MB -> "
+                                f"{len(image_bytes) / (1024 * 1024):.2f}MB (400px WebP, quality: 60)"
                             )
                         else:
                             logger.error(
-                                f"Image still too large even at 400px/quality:30: "
+                                f"Image still too large even at 400px WebP quality:60: "
                                 f"{len(image_bytes) / (1024 * 1024):.2f}MB. Cannot upload."
                             )
                             self._failed_uploads.add(url)

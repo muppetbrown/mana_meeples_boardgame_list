@@ -216,17 +216,46 @@ async def import_from_bgg(
             bgg_id=bgg_id, bgg_data=bgg_data, force_update=force
         )
 
-        # Download thumbnail in background
+        # Upload image to Cloudinary in background (PROACTIVE vs on-demand during page loads)
+        # This improves customer experience by pre-processing images during import
         thumbnail_url = bgg_data.get("image") or bgg_data.get("thumbnail")
         if thumbnail_url and background_tasks:
+            from config import CLOUDINARY_ENABLED
+            from services.cloudinary_service import cloudinary_service
 
-            async def download_task():
-                image_service = ImageService(db, http_client=httpx_client)
-                await image_service.download_and_update_game_thumbnail(
-                    game.id, thumbnail_url
-                )
+            async def cloudinary_upload_task():
+                """Upload image to Cloudinary immediately during import"""
+                if CLOUDINARY_ENABLED:
+                    try:
+                        # Upload to Cloudinary (will compress to WebP at 1200px)
+                        upload_result = await cloudinary_service.upload_from_url(
+                            thumbnail_url, httpx_client, game_id=game.id
+                        )
 
-            background_tasks.add_task(download_task)
+                        if upload_result:
+                            # Generate base Cloudinary URL (without transformations)
+                            cloudinary_url = cloudinary_service.get_image_url(thumbnail_url)
+
+                            # Save to database for fast-path serving
+                            from models import Game
+                            db_game = db.query(Game).filter(Game.id == game.id).first()
+                            if db_game:
+                                db_game.cloudinary_url = cloudinary_url
+                                db.commit()
+                                logger.info(f"✓ Cloudinary upload completed for game {game.id}: {game.title}")
+                        else:
+                            logger.warning(f"Cloudinary upload failed for game {game.id}, will use direct proxy fallback")
+                    except Exception as e:
+                        logger.error(f"Cloudinary upload task failed for game {game.id}: {e}")
+                        # Non-critical - image proxy will handle it on-demand if needed
+                else:
+                    # Cloudinary disabled - download thumbnail locally (legacy behavior)
+                    image_service = ImageService(db, http_client=httpx_client)
+                    await image_service.download_and_update_game_thumbnail(
+                        game.id, thumbnail_url
+                    )
+
+            background_tasks.add_task(cloudinary_upload_task)
 
         # Note: Sleeve data is fetched via GitHub Actions workflow (not on Render server)
         # Users can select games in Manage Library and trigger sleeve fetch for selected games
