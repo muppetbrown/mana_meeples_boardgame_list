@@ -19,7 +19,6 @@ export default function PublicCatalogue() {
   
   // Get initial values from URL or defaults - CHANGED: default sort to recent
   const [q, setQ] = useState(searchParams.get("q") || "");
-  const [qDebounced, setQDebounced] = useState(q);
   const [category, setCategory] = useState(searchParams.get("category") || "all");
   const [designer, setDesigner] = useState(searchParams.get("designer") || "");
   const [nzDesigner, setNzDesigner] = useState(searchParams.get("nz_designer") === "true");
@@ -68,11 +67,7 @@ export default function PublicCatalogue() {
     setIsSticky(false);
   }, []);
 
-  // Debounce search input
-  useEffect(() => {
-    const id = setTimeout(() => setQDebounced(q), 150);
-    return () => clearTimeout(id);
-  }, [q]);
+  // Note: Search debouncing is handled by SearchBox component (300ms)
 
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
@@ -143,7 +138,7 @@ export default function PublicCatalogue() {
   // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams();
-    if (qDebounced) params.set("q", qDebounced);
+    if (q) params.set("q", q);
     if (category !== "all") params.set("category", category);
     if (designer) params.set("designer", designer);
     if (nzDesigner) params.set("nz_designer", "true");
@@ -153,7 +148,7 @@ export default function PublicCatalogue() {
     if (sort !== "year_desc") params.set("sort", sort); // Changed default
 
     setSearchParams(params, { replace: true });
-  }, [qDebounced, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, setSearchParams]);
+  }, [q, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, setSearchParams]);
 
   // Fetch category counts
   useEffect(() => {
@@ -179,7 +174,7 @@ export default function PublicCatalogue() {
 
     (async () => {
       try {
-        const params = { q: qDebounced, page: 1, page_size: pageSize, sort };
+        const params = { q, page: 1, page_size: pageSize, sort };
         if (category !== "all") params.category = category;
         if (designer) params.designer = designer;
         if (nzDesigner) params.nz_designer = true;
@@ -210,7 +205,7 @@ export default function PublicCatalogue() {
       }
     })();
     return () => { cancelled = true; };
-  }, [qDebounced, pageSize, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort]);
+  }, [q, pageSize, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort]);
 
   // Load more function - Memoized to ensure Intersection Observer has latest filter values
   const loadMore = useCallback(async () => {
@@ -222,7 +217,7 @@ export default function PublicCatalogue() {
     const nextPage = page + 1;
 
     try {
-      const params = { q: qDebounced, page: nextPage, page_size: pageSize, sort };
+      const params = { q, page: nextPage, page_size: pageSize, sort };
       if (category !== "all") params.category = category;
       if (designer) params.designer = designer;
       if (nzDesigner) params.nz_designer = true;
@@ -266,7 +261,7 @@ export default function PublicCatalogue() {
       isLoadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [page, qDebounced, pageSize, sort, category, designer, nzDesigner, players, complexityRange, recentlyAdded, total, allLoadedItems.length]);
+  }, [page, q, pageSize, sort, category, designer, nzDesigner, players, complexityRange, recentlyAdded, total, allLoadedItems.length]);
 
   // Infinite scroll: Intersection Observer for auto-loading more games
   useEffect(() => {
