@@ -1,5 +1,5 @@
-from pydantic import BaseModel, field_validator, ConfigDict, RootModel, field_serializer, Field
-from typing import Dict, List, Optional
+from pydantic import BaseModel, field_validator, ConfigDict, RootModel, field_serializer, Field, model_serializer, model_validator
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 import json
 
@@ -264,6 +264,11 @@ class GameDetailResponse(BaseModel):
     modifies_players_min: Optional[int] = None
     modifies_players_max: Optional[int] = None
 
+    # Computed player counts with expansions (calculated from expansions relationship)
+    players_min_with_expansions: Optional[int] = None
+    players_max_with_expansions: Optional[int] = None
+    has_player_expansion: Optional[bool] = None
+
     # Sleeve data
     has_sleeves: Optional[str] = None
     is_sleeved: Optional[bool] = None
@@ -306,6 +311,46 @@ class GameDetailResponse(BaseModel):
         if v is None:
             return []
         return v
+
+    @model_validator(mode='before')
+    @classmethod
+    def calculate_expansion_player_counts(cls, data: Any) -> Any:
+        """
+        Calculate player count ranges with expansions.
+
+        This runs before validation and calculates three fields based on the game's expansions:
+        - players_min_with_expansions: Minimum player count across all expansions
+        - players_max_with_expansions: Maximum player count across all expansions
+        - has_player_expansion: True if any expansion modifies player counts
+        """
+        # If data is a SQLAlchemy model object (has expansions attribute)
+        if hasattr(data, 'expansions'):
+            expansions = getattr(data, 'expansions', [])
+
+            min_players = None
+            max_players = None
+            has_modification = False
+
+            # Check each expansion for player count modifications
+            for expansion in expansions:
+                exp_min = getattr(expansion, 'modifies_players_min', None)
+                exp_max = getattr(expansion, 'modifies_players_max', None)
+
+                if exp_min is not None:
+                    min_players = exp_min if min_players is None else min(min_players, exp_min)
+                    has_modification = True
+                if exp_max is not None:
+                    max_players = exp_max if max_players is None else max(max_players, exp_max)
+                    has_modification = True
+
+            # Store computed values on the object so they get picked up during validation
+            # Use setattr if possible, otherwise we'll handle in dict form
+            if hasattr(data, '__dict__'):
+                data.players_min_with_expansions = min_players
+                data.players_max_with_expansions = max_players
+                data.has_player_expansion = has_modification
+
+        return data
 
 # Update forward references for circular dependency
 GameDetailResponse.model_rebuild()
