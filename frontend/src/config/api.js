@@ -188,6 +188,10 @@ export function generateSrcSet(url) {
     return null; // Only works for BGG images
   }
 
+  // IMPORTANT: Transform __original to __d BEFORE generating srcset
+  // BGG blocks __original downloads with 400 Bad Request
+  const baseUrl = getBGGImageVariant(url, 'detail');
+
   // Generate URLs for different sizes with Cloudinary transformations
   // The backend will handle uploading to Cloudinary and applying transformations
   const sizes = [
@@ -200,7 +204,7 @@ export function generateSrcSet(url) {
 
   return sizes
     .map(({ width, height }) => {
-      const proxyUrl = `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(url)}&width=${width}&height=${height}`;
+      const proxyUrl = `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(baseUrl)}&width=${width}&height=${height}`;
       return `${proxyUrl} ${width}w`;
     })
     .join(', ');
