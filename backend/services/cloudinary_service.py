@@ -117,40 +117,77 @@ class CloudinaryService:
             MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB in bytes
             if image_size > MAX_FILE_SIZE:
                 logger.warning(
-                    f"Image too large for Cloudinary: {image_size} bytes "
-                    f"(max: {MAX_FILE_SIZE} bytes). Resizing before upload..."
+                    f"Image too large for Cloudinary: {image_size / (1024 * 1024):.2f}MB "
+                    f"(max: {MAX_FILE_SIZE / (1024 * 1024):.0f}MB). Resizing before upload..."
                 )
                 # Resize the image to reduce file size
                 try:
                     image = Image.open(io.BytesIO(image_bytes))
                     original_size = image.size
+                    original_format = image.format or 'JPEG'
 
-                    # Calculate new dimensions (max 2000x2000, maintain aspect ratio)
-                    max_dimension = 2000
-                    if max(image.size) > max_dimension:
-                        ratio = max_dimension / max(image.size)
+                    # Aggressive resize: reduce both dimensions AND quality for large files
+                    # Start with smaller max dimension based on how large the file is
+                    file_size_mb = image_size / (1024 * 1024)
+                    if file_size_mb > 20:
+                        max_dimension = 1200  # Very large files get aggressive resize
+                    elif file_size_mb > 15:
+                        max_dimension = 1500
+                    else:
+                        max_dimension = 1800  # Slightly over limit, gentle resize
+
+                    # Always resize if file > 10MB (not just if dimensions > max)
+                    ratio = max_dimension / max(image.size)
+                    if ratio < 1.0:  # Only resize down, never up
                         new_size = tuple(int(dim * ratio) for dim in image.size)
                         image = image.resize(new_size, Image.Resampling.LANCZOS)
-                        logger.info(f"Resized from {original_size} to {new_size}")
+                        logger.info(f"Resized dimensions: {original_size} -> {new_size}")
 
-                    # Save to BytesIO with optimization
-                    output = io.BytesIO()
-                    # Preserve format (JPEG, PNG, etc.)
-                    format = image.format or 'JPEG'
-                    if format == 'JPEG':
-                        image.save(output, format=format, quality=85, optimize=True)
-                    else:
-                        image.save(output, format=format, optimize=True)
+                    # Try saving with progressively lower quality until under 10MB
+                    qualities = [80, 70, 60, 50]  # Try these quality levels
+                    output = None
+                    final_quality = None
+
+                    for quality in qualities:
+                        output = io.BytesIO()
+                        if original_format == 'JPEG':
+                            image.save(output, format='JPEG', quality=quality, optimize=True)
+                        elif original_format == 'PNG':
+                            # Convert PNG to JPEG for better compression
+                            # Convert RGBA to RGB if needed
+                            if image.mode in ('RGBA', 'LA', 'P'):
+                                background = Image.new('RGB', image.size, (255, 255, 255))
+                                if image.mode == 'P':
+                                    image = image.convert('RGBA')
+                                background.paste(image, mask=image.split()[-1] if image.mode in ('RGBA', 'LA') else None)
+                                image = background
+                            image.save(output, format='JPEG', quality=quality, optimize=True)
+                        else:
+                            # Other formats: convert to JPEG
+                            if image.mode not in ('RGB', 'L'):
+                                image = image.convert('RGB')
+                            image.save(output, format='JPEG', quality=quality, optimize=True)
+
+                        # Check if we're under the limit
+                        if len(output.getvalue()) <= MAX_FILE_SIZE:
+                            final_quality = quality
+                            break
+
+                    if output is None or len(output.getvalue()) > MAX_FILE_SIZE:
+                        # Even at lowest quality, still too large
+                        logger.error(
+                            f"Image still too large after aggressive resize: "
+                            f"{len(output.getvalue()) / (1024 * 1024):.2f}MB. Skipping."
+                        )
+                        self._failed_uploads.add(url)
+                        return None
 
                     image_bytes = output.getvalue()
                     new_size_mb = len(image_bytes) / (1024 * 1024)
-                    logger.info(f"Resized image: {image_size / (1024 * 1024):.2f}MB -> {new_size_mb:.2f}MB")
-
-                    # If still too large after resize, give up
-                    if len(image_bytes) > MAX_FILE_SIZE:
-                        logger.error(f"Image still too large after resize: {new_size_mb:.2f}MB. Skipping.")
-                        self._failed_uploads.add(url)
-                        return None
+                    logger.info(
+                        f"✓ Resized successfully: {file_size_mb:.2f}MB -> {new_size_mb:.2f}MB "
+                        f"(quality: {final_quality})"
+                    )
 
                 except Exception as e:
                     logger.error(f"Failed to resize image: {e}")
