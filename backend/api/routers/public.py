@@ -404,9 +404,13 @@ async def image_proxy(
 
                 # If upload succeeded, generate and redirect to Cloudinary URL
                 if upload_result:
-                    # Get optimized URL without size transformations
-                    # Don't pass width/height - use base Cloudinary URL only
-                    cloudinary_url = cloudinary_service.get_image_url(url)
+                    # Get optimized URL with size transformations for responsive images
+                    # Pass width/height from request params for srcset support
+                    cloudinary_url = cloudinary_service.get_image_url(
+                        url,
+                        width=width,
+                        height=height
+                    )
 
                     # Only redirect to Cloudinary if we got a valid URL that differs from original
                     if cloudinary_url and cloudinary_url != url:
