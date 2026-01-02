@@ -18,3 +18,4 @@ cloudinary==1.40.0
 tenacity==8.2.3
 pybreaker==1.0.1
 redis==5.0.1
+Pillow==10.2.0

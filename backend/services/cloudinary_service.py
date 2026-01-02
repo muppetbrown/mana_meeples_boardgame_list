@@ -13,6 +13,7 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 from cloudinary import CloudinaryImage
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -117,11 +118,44 @@ class CloudinaryService:
             if image_size > MAX_FILE_SIZE:
                 logger.warning(
                     f"Image too large for Cloudinary: {image_size} bytes "
-                    f"(max: {MAX_FILE_SIZE} bytes). Skipping upload, will use direct proxy."
+                    f"(max: {MAX_FILE_SIZE} bytes). Resizing before upload..."
                 )
-                # Track this URL as failed so we don't try to use Cloudinary for it
-                self._failed_uploads.add(url)
-                return None
+                # Resize the image to reduce file size
+                try:
+                    image = Image.open(io.BytesIO(image_bytes))
+                    original_size = image.size
+
+                    # Calculate new dimensions (max 2000x2000, maintain aspect ratio)
+                    max_dimension = 2000
+                    if max(image.size) > max_dimension:
+                        ratio = max_dimension / max(image.size)
+                        new_size = tuple(int(dim * ratio) for dim in image.size)
+                        image = image.resize(new_size, Image.Resampling.LANCZOS)
+                        logger.info(f"Resized from {original_size} to {new_size}")
+
+                    # Save to BytesIO with optimization
+                    output = io.BytesIO()
+                    # Preserve format (JPEG, PNG, etc.)
+                    format = image.format or 'JPEG'
+                    if format == 'JPEG':
+                        image.save(output, format=format, quality=85, optimize=True)
+                    else:
+                        image.save(output, format=format, optimize=True)
+
+                    image_bytes = output.getvalue()
+                    new_size_mb = len(image_bytes) / (1024 * 1024)
+                    logger.info(f"Resized image: {image_size / (1024 * 1024):.2f}MB -> {new_size_mb:.2f}MB")
+
+                    # If still too large after resize, give up
+                    if len(image_bytes) > MAX_FILE_SIZE:
+                        logger.error(f"Image still too large after resize: {new_size_mb:.2f}MB. Skipping.")
+                        self._failed_uploads.add(url)
+                        return None
+
+                except Exception as e:
+                    logger.error(f"Failed to resize image: {e}")
+                    self._failed_uploads.add(url)
+                    return None
 
             # Upload with optimizations
             # Use hash as public_id, folder specified separately to avoid double-nesting
