@@ -160,3 +160,108 @@ class BuyListGameOut(BaseModel):
     latest_price: Optional[PriceSnapshotOut] = None
     # Computed field
     buy_filter: Optional[bool] = None
+
+
+# ------------------------------------------------------------------------------
+# Phase 1 Performance Optimization Schemas
+# ------------------------------------------------------------------------------
+
+
+class GameListItemResponse(BaseModel):
+    """
+    Minimal game data for list views - reduces payload by ~75%.
+
+    This schema excludes heavy fields like description, mechanics, publishers,
+    and artists to dramatically reduce response size for list endpoints.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    # Essential fields
+    id: int
+    title: str
+    year: Optional[int] = None
+
+    # Display fields
+    thumbnail_url: Optional[str] = None
+    image: Optional[str] = None
+    cloudinary_url: Optional[str] = None
+
+    # Filtering/sorting fields
+    players_min: Optional[int] = None
+    players_max: Optional[int] = None
+    average_rating: Optional[float] = None
+    complexity: Optional[float] = None
+    mana_meeple_category: Optional[str] = None
+    nz_designer: Optional[bool] = None
+
+    # Metadata
+    bgg_id: Optional[int] = None
+    aftergame_game_id: Optional[str] = None
+    status: Optional[str] = None
+
+    # Expansion info (minimal)
+    is_expansion: Optional[bool] = None
+    expansion_type: Optional[str] = None
+
+
+class GameDetailResponse(BaseModel):
+    """
+    Full game data for detail views - includes all fields.
+
+    This schema is used when fetching a single game's details,
+    where we want comprehensive information.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    # All fields from GameListItemResponse
+    id: int
+    title: str
+    year: Optional[int] = None
+    thumbnail_url: Optional[str] = None
+    image: Optional[str] = None
+    cloudinary_url: Optional[str] = None
+    players_min: Optional[int] = None
+    players_max: Optional[int] = None
+    average_rating: Optional[float] = None
+    complexity: Optional[float] = None
+    mana_meeple_category: Optional[str] = None
+    nz_designer: Optional[bool] = None
+    bgg_id: Optional[int] = None
+    aftergame_game_id: Optional[str] = None
+    status: Optional[str] = None
+
+    # Additional detail fields
+    description: Optional[str] = None
+    designers: Optional[List[str]] = None
+    publishers: Optional[List[str]] = None
+    mechanics: Optional[List[str]] = None
+    artists: Optional[List[str]] = None
+    categories: Optional[str] = None
+
+    playtime_min: Optional[int] = None
+    playtime_max: Optional[int] = None
+    min_age: Optional[int] = None
+
+    bgg_rank: Optional[int] = None
+    users_rated: Optional[int] = None
+    is_cooperative: Optional[bool] = None
+    game_type: Optional[str] = None
+
+    # Expansion data
+    is_expansion: Optional[bool] = None
+    expansion_type: Optional[str] = None
+    base_game_id: Optional[int] = None
+
+    # Player count modifications (for expansions)
+    modifies_players_min: Optional[int] = None
+    modifies_players_max: Optional[int] = None
+
+    # Sleeve data
+    has_sleeves: Optional[str] = None
+    is_sleeved: Optional[bool] = None
+
+    # Metadata
+    date_added: Optional[str] = None
+    created_at: Optional[str] = None
