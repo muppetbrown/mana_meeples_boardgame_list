@@ -1,15 +1,9 @@
-Short-term (Next 2 Weeks)
- Follow ALEMBIC_MIGRATION_GUIDE.md to set up proper migrations
- Follow FRONTEND_TEST_GUIDE.md to create missing tests
- Increase frontend coverage from 62.77% to 80%+
-Medium-term (Next Month)
- Complete Alembic migration from in-code migrations
- Refactor large router files (buy_list.py: 797 lines, admin.py: 691 lines)
- Implement proper task queue (Celery) for background tasks
- 
- 
- 
- TEST CMDS
- cd C:\Git_Repos\mana_meeples_boardgame_list\backend
- .\venv\Scripts\Activate.ps1
- pytest tests/ -v
+continue work on performance improvements:
+C:\Git_Repos\mana_meeples_boardgame_list\docs\performance\COMPREHENSIVE_PERFORMANCE_REVIEW.md
+
+search flickering
+
+infinite scroll count when on all category.
+
+images on admin side still using old method - cloudinary primary.
+
