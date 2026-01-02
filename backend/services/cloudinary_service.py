@@ -125,13 +125,16 @@ class CloudinaryService:
                 original_format = image.format or 'JPEG'
                 logger.info(f"Opened image: {original_size}, format: {original_format}")
 
-                # Calculate uncompressed size (width × height × channels × bytes_per_channel)
-                channels = len(image.getbands())  # 3 for RGB, 4 for RGBA
-                uncompressed_size = original_size[0] * original_size[1] * channels * 1  # 1 byte per channel
+                # Get ACTUAL uncompressed size by saving as uncompressed PNG
+                # This matches what Cloudinary will see when processing the image
+                test_output = io.BytesIO()
+                # Save with no compression to get true uncompressed size
+                image.save(test_output, format='PNG', compress_level=0)
+                uncompressed_size = len(test_output.getvalue())
 
                 logger.info(
                     f"Image stats: {original_size[0]}x{original_size[1]}, "
-                    f"{channels} channels, {original_format} format, "
+                    f"mode: {image.mode}, {original_format} format, "
                     f"compressed: {image_size / (1024 * 1024):.2f}MB, "
                     f"uncompressed: {uncompressed_size / (1024 * 1024):.2f}MB"
                 )
