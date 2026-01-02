@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, ConfigDict, RootModel, field_serializer
+from pydantic import BaseModel, field_validator, ConfigDict, RootModel, field_serializer, Field
 from typing import Dict, List, Optional
 from datetime import datetime
 import json
@@ -257,6 +257,8 @@ class GameDetailResponse(BaseModel):
     is_expansion: Optional[bool] = None
     expansion_type: Optional[str] = None
     base_game_id: Optional[int] = None
+    expansions: List['GameListItemResponse'] = Field(default_factory=list)
+    base_game: Optional[dict] = None
 
     # Player count modifications (for expansions)
     modifies_players_min: Optional[int] = None
@@ -282,3 +284,28 @@ class GameDetailResponse(BaseModel):
             except (json.JSONDecodeError, TypeError):
                 return None
         return v
+
+    @field_validator('base_game', mode='before')
+    @classmethod
+    def serialize_base_game(cls, v):
+        """Serialize base_game object to dict"""
+        if v is None:
+            return None
+        if hasattr(v, '__dict__'):
+            return {
+                'id': v.id,
+                'title': v.title,
+                'thumbnail_url': v.image or v.thumbnail_url,
+            }
+        return v
+
+    @field_validator('expansions', mode='before')
+    @classmethod
+    def ensure_expansions_list(cls, v):
+        """Ensure expansions is always a list (empty if none)"""
+        if v is None:
+            return []
+        return v
+
+# Update forward references for circular dependency
+GameDetailResponse.model_rebuild()
