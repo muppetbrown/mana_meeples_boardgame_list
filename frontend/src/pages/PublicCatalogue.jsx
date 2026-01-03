@@ -30,7 +30,8 @@ export default function PublicCatalogue() {
   const [pageSize] = useState(12); // NEW: Smaller initial load
 
   // Loading states
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // Initial page load only
+  const [refreshing, setRefreshing] = useState(false); // Filter/search updates
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
   const [items, setItems] = useState([]);
@@ -177,7 +178,12 @@ export default function PublicCatalogue() {
     let cancelled = false;
 
     const fetchGames = async () => {
-      setLoading(true);
+      // Use 'loading' only for initial page load, 'refreshing' for filter changes
+      if (allLoadedItems.length === 0 && !error) {
+        setLoading(true);
+      } else {
+        setRefreshing(true);
+      }
       setPage(1); // Reset to page 1 on filter change
 
       try {
@@ -208,7 +214,10 @@ export default function PublicCatalogue() {
           setTotal(0);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     };
 
@@ -218,7 +227,7 @@ export default function PublicCatalogue() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [q, pageSize, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort]);
+  }, [q, pageSize, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, allLoadedItems.length, error]);
 
   // Load more function - Memoized to ensure Intersection Observer has latest filter values
   const loadMore = useCallback(async () => {
@@ -889,6 +898,7 @@ export default function PublicCatalogue() {
             </div>
           )}
 
+          {/* Show skeletons ONLY on initial page load */}
           {loading && (
             <div className="game-grid grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 items-start">
               {/* Show skeleton loaders matching the grid layout */}
@@ -898,6 +908,7 @@ export default function PublicCatalogue() {
             </div>
           )}
 
+          {/* No results message */}
           {!loading && !error && allLoadedItems.length === 0 && (
             <div className="text-center py-12">
               <p className="text-slate-600 text-lg">No games found matching your criteria.</p>
@@ -910,7 +921,22 @@ export default function PublicCatalogue() {
             </div>
           )}
 
+          {/* Show games - with subtle refresh indicator when filters change */}
           {!loading && !error && allLoadedItems.length > 0 && (
+            <>
+              {/* Subtle loading indicator when refreshing */}
+              {refreshing && (
+                <div className="mb-4 flex justify-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full shadow-sm">
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span className="text-sm font-medium">Updating...</span>
+                  </div>
+                </div>
+              )}
+
             <>
               <div className="game-grid grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 items-start">
                 {allLoadedItems.map((game, index) => (
