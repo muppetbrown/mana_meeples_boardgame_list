@@ -311,13 +311,32 @@ class GameService:
         total = self.db.execute(count_query).scalar()
 
         # Apply pagination
+        offset = (page - 1) * page_size
         games = (
             self.db.execute(
-                query.offset((page - 1) * page_size).limit(page_size)
+                query.offset(offset).limit(page_size)
             )
             .scalars()
             .all()
         )
+
+        # DEBUG LOGGING: Track pagination issues
+        import logging
+        logger = logging.getLogger(__name__)
+        actual_count = len(games)
+        logger.info(
+            f"Pagination DEBUG - Category: {category}, Page: {page}, "
+            f"PageSize: {page_size}, Offset: {offset}, "
+            f"Expected: {min(page_size, total - offset)}, "
+            f"Actual returned: {actual_count}, Total count: {total}"
+        )
+
+        # Additional logging for suspicious cases
+        if actual_count < page_size and offset + actual_count < total:
+            logger.warning(
+                f"PAGINATION MISMATCH - Returned {actual_count} items but expected "
+                f"{min(page_size, total - offset)} (total: {total}, offset: {offset})"
+            )
 
         return games, total
 
