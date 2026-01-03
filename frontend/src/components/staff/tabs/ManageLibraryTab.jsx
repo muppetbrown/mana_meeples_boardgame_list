@@ -304,7 +304,7 @@ export function ManageLibraryTab() {
                           </span>
                           {game.modifies_players_max && (
                             <span className="text-xs text-purple-600">
-                              +{game.modifies_players_min ?? game.min_players}-{game.modifies_players_max}p
+                              +{game.modifies_players_min ?? game.players_min}-{game.modifies_players_max}p
                             </span>
                           )}
                         </div>

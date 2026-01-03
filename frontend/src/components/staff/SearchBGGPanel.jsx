@@ -44,7 +44,7 @@ export default function SearchBGGPanel({
                 <div className="flex-1">
                   <div className="font-semibold">{game.title}</div>
                   <div className="text-sm text-gray-600">
-                    {game.min_players ?? "?"}–{game.max_players ?? "?"} · {game.playing_time ?? "?"} mins
+                    {game.players_min ?? "?"}–{game.players_max ?? "?"} · {game.playing_time ?? "?"} mins
                   </div>
                   <div className="mt-2 flex gap-2 flex-wrap">
                     {CATEGORY_KEYS.map((c) => (

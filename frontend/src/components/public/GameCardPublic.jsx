@@ -86,8 +86,8 @@ export default function GameCardPublic({
 
   // Format player count with expansion notation
   const formatPlayerCount = () => {
-    const baseMin = game.min_players;
-    const baseMax = game.max_players;
+    const baseMin = game.players_min;
+    const baseMax = game.players_max;
     const expMin = game.players_min_with_expansions;
     const expMax = game.players_max_with_expansions;
     const hasExpansion = game.has_player_expansion;
