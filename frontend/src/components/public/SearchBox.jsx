@@ -29,12 +29,14 @@ export default function SearchBox({ value, onChange, placeholder="Search games..
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Trigger API call only when debounced term changes - FIXED: Prevent duplicate onChange calls
+  // Trigger API call only when debounced term changes
+  // CRITICAL: value NOT in dependencies to prevent circular update loop
+  // Effect 1 already handles syncing external value changes
   useEffect(() => {
     if (debouncedTerm !== value && onChange) {
       onChange(debouncedTerm);
     }
-  }, [debouncedTerm, onChange, value]);
+  }, [debouncedTerm, onChange]);
 
   const handleSearchChange = (e) => {
     const newValue = e.target.value;
