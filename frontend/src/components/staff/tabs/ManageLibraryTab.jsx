@@ -265,9 +265,9 @@ export function ManageLibraryTab() {
                     {/* Thumbnail */}
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
-                        {game.cloudinary_url || game.thumbnail_url || game.image ? (
+                        {game.cloudinary_url || game.image_url ? (
                           <img
-                            src={imageProxyUrl(game.cloudinary_url || game.image || game.thumbnail_url)}
+                            src={imageProxyUrl(game.cloudinary_url || game.image_url)}
                             alt={game.title}
                             className="w-full h-full object-cover"
                             onError={(e) => {
