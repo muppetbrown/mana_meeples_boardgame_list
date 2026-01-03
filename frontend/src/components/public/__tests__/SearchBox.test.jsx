@@ -52,7 +52,10 @@ describe('SearchBox', () => {
     const { rerender } = render(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
 
     const searchBox = screen.getByRole('searchbox');
-    fireEvent.change(searchBox, { target: { value: 'Catan' } });
+
+    await act(async () => {
+      fireEvent.change(searchBox, { target: { value: 'Catan' } });
+    });
 
     // Should not be called immediately due to debouncing
     expect(mockOnChangeWithUpdate).not.toHaveBeenCalled();
@@ -67,6 +70,7 @@ describe('SearchBox', () => {
     expect(mockOnChangeWithUpdate).toHaveBeenCalledWith('Catan');
 
     // Simulate parent component updating the value prop
+    currentValue = 'Catan'; // Update the current value
     rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
   });
 
@@ -106,7 +110,10 @@ describe('SearchBox', () => {
     const { rerender } = render(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
 
     const searchBox = screen.getByRole('searchbox');
-    fireEvent.change(searchBox, { target: { value: '' } });
+
+    await act(async () => {
+      fireEvent.change(searchBox, { target: { value: '' } });
+    });
 
     // Should not be called immediately due to debouncing
     expect(mockOnChangeWithUpdate).not.toHaveBeenCalled();
@@ -121,6 +128,7 @@ describe('SearchBox', () => {
     expect(mockOnChangeWithUpdate).toHaveBeenCalledWith('');
 
     // Simulate parent component updating the value prop
+    currentValue = ''; // Update the current value
     rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
   });
 
@@ -160,6 +168,7 @@ describe('SearchBox', () => {
     expect(mockOnChangeWithUpdate).toHaveBeenCalledWith('Catan');
 
     // Simulate parent component updating the value prop
+    currentValue = 'Catan'; // Update the current value
     rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
   });
 });

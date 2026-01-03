@@ -33,6 +33,7 @@ const mockCategoryCounts = {
 
 describe('PublicCatalogue Page', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     apiClient.getPublicGames.mockResolvedValue(mockGames);
     apiClient.getPublicCategoryCounts.mockResolvedValue(mockCategoryCounts);
     window.scrollTo = vi.fn();
@@ -50,6 +51,8 @@ describe('PublicCatalogue Page', () => {
       this.options = options;
       return this;
     });
+    // Use real timers for PublicCatalogue tests to avoid debounce issues
+    vi.useRealTimers();
   });
 
   test('renders games after loading', async () => {
@@ -1087,9 +1090,16 @@ describe('PublicCatalogue Page', () => {
         </BrowserRouter>
       );
 
+      // Wait for component to be mounted and debounced API call to complete
+      // Component has 150ms debounce + async API call
+      await waitFor(() => {
+        expect(apiClient.getPublicGames).toHaveBeenCalled();
+      }, { timeout: 1000 });
+
+      // Wait for the games to actually render in the DOM
       await waitFor(() => {
         expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
+      }, { timeout: 2000 });
 
       const gatewayButton = screen.getByRole('button', { name: /filter by gateway strategy/i });
       await userEvent.click(gatewayButton);
