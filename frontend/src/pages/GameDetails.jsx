@@ -265,9 +265,9 @@ export default function GameDetails() {
                   )}
 
                   {/* Description */}
-                  {game?.description && DOMPurify && typeof game.description === 'string' && (
-                    <section>
-                      <h2 className="font-bold text-slate-800 mb-4">About This Game</h2>
+                  <section>
+                    <h2 className="font-bold text-slate-800 mb-4">About This Game</h2>
+                    {game?.description && DOMPurify && typeof game.description === 'string' ? (
                       <div className="prose prose-slate max-w-none">
                         <div
                           className="text-slate-700 leading-relaxed"
@@ -280,14 +280,31 @@ export default function GameDetails() {
                                 });
                               } catch (err) {
                                 console.error('DOMPurify sanitize error:', err);
-                                return '<p>Description unavailable</p>';
+                                return '<p class="text-slate-500 italic">Description unavailable due to formatting error</p>';
                               }
                             })()
                           }}
                         />
                       </div>
-                    </section>
-                  )}
+                    ) : (
+                      <div className="text-slate-500 italic bg-slate-50 rounded-lg p-4 border border-slate-200">
+                        <p>No description available for this game yet.</p>
+                        {game?.bgg_id && (
+                          <p className="mt-2 text-sm">
+                            View more details on{' '}
+                            <a
+                              href={`https://boardgamegeek.com/boardgame/${game.bgg_id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-emerald-600 hover:text-emerald-700 underline"
+                            >
+                              BoardGameGeek
+                            </a>
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </section>
 
                   {/* Base Game Info (if this is an expansion) */}
                   {game?.is_expansion && game?.base_game && game.base_game.id && game.base_game.title && (
