@@ -72,7 +72,7 @@ export default function GameCardPublic({
 
   // Format time display with average calculation
   const formatTime = () => {
-    const min = game.playtime_min || game.playing_time;
+    const min = game.playtime_min;
     const max = game.playtime_max;
 
     if (min && max && min !== max) {

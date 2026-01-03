@@ -13,10 +13,11 @@ vi.mock('dompurify', () => ({
 const mockGame = {
   id: 1,
   title: 'Catan',
-  year_published: 1995,
+  year: 1995,
   players_min: 3,
   players_max: 4,
-  playing_time: 90,
+  playtime_min: 90,
+  playtime_max: 90,
   designers: ['Klaus Teuber'],
   mana_meeple_category: 'GATEWAY_STRATEGY',
   bgg_id: 13,
@@ -179,8 +180,10 @@ describe('GameDetails Page', () => {
     );
 
     await waitFor(() => {
-      const bggLink = screen.getByRole('link', { name: /boardgamegeek/i });
-      expect(bggLink).toHaveAttribute('href', 'https://boardgamegeek.com/boardgame/13');
+      // There are now two BGG links: one in description fallback, one in action buttons
+      const bggLinks = screen.getAllByRole('link', { name: /boardgamegeek/i });
+      expect(bggLinks.length).toBeGreaterThan(0);
+      expect(bggLinks[0]).toHaveAttribute('href', 'https://boardgamegeek.com/boardgame/13');
     });
   });
 
@@ -553,7 +556,7 @@ describe('GameDetails Page', () => {
   test('handles missing year gracefully', async () => {
     const gameWithoutYear = {
       ...mockGame,
-      year_published: null,
+      year: null,
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithoutYear);
 
@@ -575,7 +578,8 @@ describe('GameDetails Page', () => {
   test('handles missing playtime gracefully', async () => {
     const gameWithoutTime = {
       ...mockGame,
-      playing_time: null,
+      playtime_min: null,
+      playtime_max: null,
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithoutTime);
 
@@ -701,8 +705,9 @@ describe('GameDetails Page', () => {
       expect(screen.getByText('Catan')).toBeInTheDocument();
     });
 
-    // Should not display description section for non-string
-    expect(screen.queryByText(/About This Game/i)).not.toBeInTheDocument();
+    // Description section now always renders with fallback message
+    expect(screen.getByText(/About This Game/i)).toBeInTheDocument();
+    expect(screen.getByText(/No description available/i)).toBeInTheDocument();
   });
 
   test('handles error response with different structures', async () => {
