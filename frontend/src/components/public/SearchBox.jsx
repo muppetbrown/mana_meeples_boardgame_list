@@ -17,7 +17,8 @@ export default function SearchBox({ value, onChange, placeholder="Search games..
       setSearchTerm(newValue);
       setDebouncedTerm(newValue);
     }
-  }, [value, searchTerm]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);  // Only sync when prop changes, not when searchTerm changes internally
 
   // Debounce search term updates (300ms delay)
   useEffect(() => {
