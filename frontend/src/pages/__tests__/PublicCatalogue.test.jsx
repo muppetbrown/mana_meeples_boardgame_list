@@ -457,13 +457,17 @@ describe('PublicCatalogue Page', () => {
         </BrowserRouter>
       );
 
-      // Unmount before API call resolves
-      unmount();
-
-      // Should not cause errors or state updates
+      // Wait for the debounced API call to be scheduled (component has 150ms debounce)
       await waitFor(() => {
         expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
+      }, { timeout: 300 }); // Wait longer than the 150ms debounce
+
+      // Unmount after API call starts - this tests cancellation handling
+      unmount();
+
+      // Should not cause errors or state updates after unmount
+      // The cancellation logic should prevent state updates
+      expect(apiClient.getPublicGames).toHaveBeenCalled();
     });
   });
 

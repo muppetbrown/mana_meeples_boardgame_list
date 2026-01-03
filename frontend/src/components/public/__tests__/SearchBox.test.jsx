@@ -69,9 +69,10 @@ describe('SearchBox', () => {
     expect(mockOnChangeWithUpdate).toHaveBeenCalledTimes(1);
     expect(mockOnChangeWithUpdate).toHaveBeenCalledWith('Catan');
 
-    // Simulate parent component updating the value prop
-    currentValue = 'Catan'; // Update the current value
-    rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
+    // Simulate parent component updating the value prop after onChange call
+    await act(async () => {
+      rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
+    });
   });
 
   it('has correct aria-label matching placeholder', () => {
@@ -127,9 +128,10 @@ describe('SearchBox', () => {
     expect(mockOnChangeWithUpdate).toHaveBeenCalledTimes(1);
     expect(mockOnChangeWithUpdate).toHaveBeenCalledWith('');
 
-    // Simulate parent component updating the value prop
-    currentValue = ''; // Update the current value
-    rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
+    // Simulate parent component updating the value prop after onChange call
+    await act(async () => {
+      rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
+    });
   });
 
   it('debounces multiple rapid changes', async () => {
@@ -167,8 +169,9 @@ describe('SearchBox', () => {
     expect(mockOnChangeWithUpdate).toHaveBeenCalledTimes(1);
     expect(mockOnChangeWithUpdate).toHaveBeenCalledWith('Catan');
 
-    // Simulate parent component updating the value prop
-    currentValue = 'Catan'; // Update the current value
-    rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
+    // Simulate parent component updating the value prop after onChange call
+    await act(async () => {
+      rerender(<SearchBox value={currentValue} onChange={mockOnChangeWithUpdate} />);
+    });
   });
 });
