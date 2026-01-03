@@ -223,7 +223,7 @@ export default function GameCardPublic({
                 className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
                 aria-label={`Complexity: ${formatComplexity(game.complexity)} out of 5`}
               >
-                <span className="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-wide">Complexity</span>
+                <span className="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-wide">🧩 Complexity</span>
                 <span className="font-semibold text-xs md:text-sm text-slate-700">
                   {formatComplexity(game.complexity)}/5
                 </span>
@@ -233,7 +233,7 @@ export default function GameCardPublic({
                 className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
                 aria-label="Complexity not available"
               >
-                <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wide">Complexity</span>
+                <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wide">🧩 Complexity</span>
                 <span className="font-semibold text-xs md:text-sm text-slate-400">—</span>
               </div>
             )}
@@ -376,7 +376,7 @@ export default function GameCardPublic({
               className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
               aria-label={`Complexity: ${formatComplexity(game.complexity)} out of 5`}
             >
-              <span className="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-wide">Complex</span>
+              <span className="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-wide">🧩 Complex</span>
               <span className="font-semibold text-xs md:text-sm text-slate-700">
                 {formatComplexity(game.complexity)}/5
               </span>
@@ -386,7 +386,7 @@ export default function GameCardPublic({
               className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
               aria-label="Complexity not available"
             >
-              <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wide">Complex</span>
+              <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wide">🧩 Complex</span>
               <span className="font-semibold text-xs md:text-sm text-slate-400">—</span>
             </div>
           )}
@@ -450,7 +450,7 @@ export default function GameCardPublic({
           {formatComplexity(game.complexity) && (
             <div className="flex items-center gap-2">
               <span className="text-slate-700">
-                <span className="font-semibold">Complexity:</span> {formatComplexity(game.complexity)}/5
+                <span className="font-semibold">🧩 Complexity:</span> {formatComplexity(game.complexity)}/5
               </span>
             </div>
           )}
