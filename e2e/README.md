@@ -58,10 +58,12 @@ npm run report
 
 ## Test Files
 
-- `admin-login-management.spec.ts` - Admin authentication and session management
-- `bgg-import-workflow.spec.ts` - BoardGameGeek import functionality
-- `game-detail-view.spec.ts` - Game details page
-- `public-browsing.spec.ts` - Public catalogue browsing and filtering
+All test files are located in the `tests/` directory:
+
+- `tests/admin-login-management.spec.js` - Admin authentication and session management
+- `tests/bgg-import-workflow.spec.js` - BoardGameGeek import functionality
+- `tests/game-detail-view.spec.js` - Game details page
+- `tests/public-browsing.spec.js` - Public catalogue browsing and filtering
 
 ## Configuration
 
