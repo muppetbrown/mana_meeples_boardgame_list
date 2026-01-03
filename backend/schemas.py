@@ -171,10 +171,11 @@ class BuyListGameOut(BaseModel):
 
 class GameListItemResponse(BaseModel):
     """
-    Minimal game data for list views - reduces payload by ~75%.
+    Minimal game data for list views - reduces payload size.
 
-    This schema excludes heavy fields like description, mechanics, publishers,
-    and artists to dramatically reduce response size for list endpoints.
+    This schema excludes heavy fields like mechanics, publishers,
+    and artists to reduce response size for list endpoints.
+    Includes description and designers for expanded card preview.
     """
 
     model_config = ConfigDict(from_attributes=True)
@@ -208,6 +209,23 @@ class GameListItemResponse(BaseModel):
     # Expansion info (minimal)
     is_expansion: Optional[bool] = None
     expansion_type: Optional[str] = None
+
+    # Card preview fields (shown in expanded card state)
+    description: Optional[str] = None
+    designers: Optional[List[str]] = None
+
+    @field_validator('designers', mode='before')
+    @classmethod
+    def parse_designers_json(cls, v):
+        """Handle JSON field that might come as string"""
+        if v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except (json.JSONDecodeError, TypeError):
+                return None
+        return v
 
     @model_validator(mode='before')
     @classmethod
