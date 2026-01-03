@@ -30,6 +30,7 @@ export default function PublicCatalogue() {
   const [pageSize] = useState(12); // NEW: Smaller initial load
 
   // Loading states
+  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track if this is the very first load
   const [loading, setLoading] = useState(true); // Initial page load only
   const [refreshing, setRefreshing] = useState(false); // Filter/search updates
   const [loadingMore, setLoadingMore] = useState(false);
@@ -173,13 +174,13 @@ export default function PublicCatalogue() {
     };
   }, []);
 
-  // Fetch games - FIXED: Debounce API calls to prevent resource exhaustion
+  // Fetch games - FIXED: Prevent infinite loop by removing state dependencies
   useEffect(() => {
     let cancelled = false;
 
     const fetchGames = async () => {
-      // Use 'loading' only for initial page load, 'refreshing' for filter changes
-      if (allLoadedItems.length === 0 && !error) {
+      // Use 'loading' only for very first page load, 'refreshing' for all subsequent changes
+      if (isInitialLoad) {
         setLoading(true);
       } else {
         setRefreshing(true);
@@ -203,9 +204,14 @@ export default function PublicCatalogue() {
         if (cancelled) return;
 
         setItems(data.items || []);
-        setAllLoadedItems(data.items || []); // NEW: Initialize loaded items
+        setAllLoadedItems(data.items || []); // Initialize loaded items
         setTotal(data.total || 0);
         setError(null);
+
+        // Mark initial load as complete
+        if (isInitialLoad) {
+          setIsInitialLoad(false);
+        }
       } catch (e) {
         if (!cancelled) {
           setError("Failed to load games. Please try again.");
@@ -221,13 +227,13 @@ export default function PublicCatalogue() {
       }
     };
 
-    // CRITICAL FIX: Debounce API calls to prevent ERR_INSUFFICIENT_RESOURCES
-    const timer = setTimeout(fetchGames, 150); // 150ms debounce to batch rapid changes
+    // Debounce API calls to batch rapid filter changes (e.g., typing in search)
+    const timer = setTimeout(fetchGames, 150); // 150ms debounce
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [q, pageSize, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, allLoadedItems.length, error]);
+  }, [q, pageSize, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, isInitialLoad]); // FIXED: Removed allLoadedItems.length and error
 
   // Load more function - Memoized to ensure Intersection Observer has latest filter values
   const loadMore = useCallback(async () => {
@@ -380,19 +386,18 @@ export default function PublicCatalogue() {
   }, []);
 
   const clearAllFilters = useCallback(() => {
-    // CRITICAL FIX: Batch state updates to prevent cascading re-renders and API calls
-    React.startTransition(() => {
-      setQ("");
-      setCategory("all");
-      setDesigner("");
-      setNzDesigner(false);
-      setPlayers("");
-      setComplexityRange("");
-      setRecentlyAdded(false);
-      setSort("year_desc");
-      setExpandedCards(new Set());
-      setAnnouncement("All filters cleared. Showing all games.");
-    });
+    // React 18 automatically batches these state updates into a single render
+    // This prevents multiple API calls and reduces flickering
+    setQ("");
+    setCategory("all");
+    setDesigner("");
+    setNzDesigner(false);
+    setPlayers("");
+    setComplexityRange("");
+    setRecentlyAdded(false);
+    setSort("year_desc");
+    setExpandedCards(new Set());
+    setAnnouncement("All filters cleared. Showing all games.");
   }, []);
 
   const toggleNzDesigner = useCallback(() => {

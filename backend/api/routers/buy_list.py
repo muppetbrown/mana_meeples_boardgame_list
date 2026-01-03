@@ -91,8 +91,11 @@ def build_buy_list_response(
         "updated_at": buy_list_entry.updated_at.replace(tzinfo=timezone.utc).isoformat(),
         # Game details
         "title": buy_list_entry.game.title if buy_list_entry.game else None,
-        "thumbnail_url": (
-            buy_list_entry.game.thumbnail_url if buy_list_entry.game else None
+        "cloudinary_url": (
+            buy_list_entry.game.cloudinary_url if buy_list_entry.game else None
+        ),
+        "image_url": (
+            buy_list_entry.game.image if buy_list_entry.game else None
         ),
         "bgg_id": buy_list_entry.game.bgg_id if buy_list_entry.game else None,
         # Latest price data

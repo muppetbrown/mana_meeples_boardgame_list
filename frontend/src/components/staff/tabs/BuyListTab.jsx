@@ -447,9 +447,9 @@ export function BuyListTab() {
                       <>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
-                            {item.thumbnail_url || item.image ? (
+                            {item.cloudinary_url || item.image_url ? (
                               <img
-                                src={imageProxyUrl(item.image || item.thumbnail_url)}
+                                src={imageProxyUrl(item.cloudinary_url || item.image_url)}
                                 alt={item.title}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -558,9 +558,9 @@ export function BuyListTab() {
                       <>
                         <td className="px-4 py-3 whitespace-nowrap">
                           <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
-                            {item.thumbnail_url || item.image ? (
+                            {item.cloudinary_url || item.image_url ? (
                               <img
-                                src={imageProxyUrl(item.image || item.thumbnail_url)}
+                                src={imageProxyUrl(item.cloudinary_url || item.image_url)}
                                 alt={item.title}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
