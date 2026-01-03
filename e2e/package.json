@@ -1,9 +1,17 @@
 {
   "name": "e2e",
   "version": "1.0.0",
-  "description": "",
+  "description": "End-to-end tests for Mana & Meeples Board Game Library using Playwright",
   "main": "index.js",
-  "scripts": {},
+  "scripts": {
+    "install:browsers": "playwright install",
+    "install:chromium": "playwright install chromium",
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "test:headed": "playwright test --headed",
+    "test:chromium": "playwright test --project=chromium",
+    "report": "playwright show-report"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
