@@ -199,7 +199,9 @@ export default function GameDetails() {
                       <span className="w-2 h-2 rounded-full bg-amber-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-amber-800">Time: </span>
                       <span className="font-bold text-amber-900 ml-1">
-                        {game?.playing_time ?? "?"} min
+                        {game?.playtime_min && game?.playtime_max && game.playtime_min !== game.playtime_max
+                          ? `${game.playtime_min}-${game.playtime_max}`
+                          : (game?.playtime_min || game?.playtime_max || "?")} min
                       </span>
                     </div>
 
@@ -207,7 +209,7 @@ export default function GameDetails() {
                       <span className="w-2 h-2 rounded-full bg-blue-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-blue-800">Year: </span>
                       <span className="font-bold text-blue-900 ml-1">
-                        {game?.year_published || "–"}
+                        {game?.year || "–"}
                       </span>
                     </div>
 
