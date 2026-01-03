@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+const { test, expect } = require('@playwright/test');
 
 /**
  * E2E Tests for Admin Login and Game Management
