@@ -4,14 +4,23 @@ End-to-end tests for the Mana & Meeples Board Game Library using Playwright.
 
 ## Setup
 
-### 1. Install Dependencies
+### 1. Install Frontend Dependencies (Required)
+
+The tests need the frontend application to be running. First, install frontend dependencies:
+
+```bash
+cd frontend
+npm install
+```
+
+### 2. Install E2E Test Dependencies
 
 ```bash
 cd e2e
 npm install
 ```
 
-### 2. Install Playwright Browsers
+### 3. Install Playwright Browsers
 
 **Important:** This step requires network access to download browser binaries (~400MB).
 
@@ -29,7 +38,7 @@ If you encounter 403 errors during browser installation, you're in an environmen
 - OR use your local machine to install browsers
 - OR configure a proxy if your organization requires one
 
-### 3. Verify Installation
+### 4. Verify Installation
 
 Check that Playwright is installed correctly:
 
@@ -39,7 +48,20 @@ npx playwright --version
 
 ## Running Tests
 
+**Important:** Before running tests, start the frontend dev server in a separate terminal:
+
 ```bash
+# Terminal 1: Start the frontend dev server
+cd frontend
+npm run dev
+```
+
+Then run your tests in another terminal:
+
+```bash
+# Terminal 2: Run tests
+cd e2e
+
 # Run all tests (headless)
 npm test
 
@@ -69,7 +91,11 @@ All test files are located in the `tests/` directory:
 
 - `playwright.config.js` - Playwright configuration
 - Tests run against `http://localhost:5173` (Vite dev server) by default
-- The frontend dev server is automatically started before tests run
+- You must manually start the frontend dev server before running tests
+
+### Auto-start Dev Server (Optional)
+
+To have Playwright automatically start the dev server, uncomment the `webServer` section in `playwright.config.js`. This requires frontend dependencies to be installed first.
 
 ## Troubleshooting
 
