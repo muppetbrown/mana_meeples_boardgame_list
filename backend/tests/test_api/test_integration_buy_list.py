@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 # Skip all tests in this module - buy list endpoints not implemented yet
-pytestmark = pytest.mark.skip(reason="Buy list endpoints not yet implemented")
+# pytestmark = pytest.mark.skip(reason="Buy list endpoints not yet implemented")
 
 
 class TestBuyListWorkflowsIntegration:
