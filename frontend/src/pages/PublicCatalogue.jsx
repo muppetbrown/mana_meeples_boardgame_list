@@ -386,19 +386,18 @@ export default function PublicCatalogue() {
   }, []);
 
   const clearAllFilters = useCallback(() => {
-    // CRITICAL FIX: Batch state updates to prevent cascading re-renders and API calls
-    React.startTransition(() => {
-      setQ("");
-      setCategory("all");
-      setDesigner("");
-      setNzDesigner(false);
-      setPlayers("");
-      setComplexityRange("");
-      setRecentlyAdded(false);
-      setSort("year_desc");
-      setExpandedCards(new Set());
-      setAnnouncement("All filters cleared. Showing all games.");
-    });
+    // React 18 automatically batches these state updates into a single render
+    // This prevents multiple API calls and reduces flickering
+    setQ("");
+    setCategory("all");
+    setDesigner("");
+    setNzDesigner(false);
+    setPlayers("");
+    setComplexityRange("");
+    setRecentlyAdded(false);
+    setSort("year_desc");
+    setExpandedCards(new Set());
+    setAnnouncement("All filters cleared. Showing all games.");
   }, []);
 
   const toggleNzDesigner = useCallback(() => {

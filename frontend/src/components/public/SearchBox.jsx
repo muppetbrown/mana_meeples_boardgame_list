@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 
 /**
  * SearchBox with debouncing to reduce API calls.
@@ -9,13 +9,17 @@ import React, { useState, useEffect, useCallback } from "react";
 export default function SearchBox({ value, onChange, placeholder="Search games...", id, className, ...props }) {
   const [searchTerm, setSearchTerm] = useState(value || "");
   const [debouncedTerm, setDebouncedTerm] = useState(value || "");
+  const isExternalUpdate = useRef(false); // Track if update came from external prop change
 
-  // Sync with external value changes - FIXED: Only update if value actually changed
+  // Sync with external value changes
+  // When parent changes value (like clear filters), sync both states immediately
+  // but set flag to prevent Effect 3 from calling onChange back to parent
   useEffect(() => {
     const newValue = value || "";
     if (searchTerm !== newValue) {
+      isExternalUpdate.current = true; // Mark as external update
       setSearchTerm(newValue);
-      setDebouncedTerm(newValue);
+      setDebouncedTerm(newValue); // Sync immediately for external changes
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);  // Only sync when prop changes, not when searchTerm changes internally
@@ -29,14 +33,21 @@ export default function SearchBox({ value, onChange, placeholder="Search games..
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Trigger API call only when debounced term changes
-  // CRITICAL: value NOT in dependencies to prevent circular update loop
-  // Effect 1 already handles syncing external value changes
+  // Trigger API call only when debounced term changes from USER INPUT
+  // CRITICAL: Skip if update came from external prop change (like clear filters)
+  // This prevents calling onChange back to parent when parent already initiated the change
   useEffect(() => {
+    // If this was an external update (from parent), skip calling onChange
+    if (isExternalUpdate.current) {
+      isExternalUpdate.current = false; // Reset flag
+      return;
+    }
+
+    // Only call onChange if debounced term differs from prop AND this is from user input
     if (debouncedTerm !== value && onChange) {
       onChange(debouncedTerm);
     }
-  }, [debouncedTerm, onChange]);
+  }, [debouncedTerm, onChange, value]);
 
   const handleSearchChange = (e) => {
     const newValue = e.target.value;
