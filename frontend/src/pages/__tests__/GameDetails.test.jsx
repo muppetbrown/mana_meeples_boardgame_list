@@ -556,7 +556,7 @@ describe('GameDetails Page', () => {
   test('handles missing year gracefully', async () => {
     const gameWithoutYear = {
       ...mockGame,
-      year_published: null,
+      year: null,
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithoutYear);
 
@@ -578,7 +578,8 @@ describe('GameDetails Page', () => {
   test('handles missing playtime gracefully', async () => {
     const gameWithoutTime = {
       ...mockGame,
-      playing_time: null,
+      playtime_min: null,
+      playtime_max: null,
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithoutTime);
 
