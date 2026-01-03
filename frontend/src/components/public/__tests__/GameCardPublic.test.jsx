@@ -14,8 +14,8 @@ describe('GameCardPublic', () => {
     id: 1,
     title: 'Pandemic',
     year: 2008,
-    min_players: 2,
-    max_players: 4,
+    players_min: 2,
+    players_max: 4,
     playtime_min: 45,
     playtime_max: 60,
     complexity: 2.43,
@@ -106,8 +106,8 @@ describe('GameCardPublic', () => {
   it('formats single player count correctly', () => {
     const singlePlayerGame = {
       ...mockGame,
-      min_players: 1,
-      max_players: 1,
+      players_min: 1,
+      players_max: 1,
     };
 
     render(
@@ -267,8 +267,8 @@ describe('GameCardPublic', () => {
   it('displays player count with expansion', () => {
     const expansionPlayersGame = {
       ...mockGame,
-      min_players: 2,
-      max_players: 4,
+      players_min: 2,
+      players_max: 4,
       has_player_expansion: true,
       players_max_with_expansions: 6,
     };
@@ -285,8 +285,8 @@ describe('GameCardPublic', () => {
   it('handles missing player count', () => {
     const gameNoPlayers = {
       ...mockGame,
-      min_players: null,
-      max_players: null,
+      players_min: null,
+      players_max: null,
     };
 
     render(

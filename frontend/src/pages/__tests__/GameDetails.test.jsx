@@ -14,8 +14,8 @@ const mockGame = {
   id: 1,
   title: 'Catan',
   year_published: 1995,
-  min_players: 3,
-  max_players: 4,
+  players_min: 3,
+  players_max: 4,
   playing_time: 90,
   designers: ['Klaus Teuber'],
   mana_meeple_category: 'GATEWAY_STRATEGY',
@@ -597,8 +597,8 @@ describe('GameDetails Page', () => {
   test('handles missing player counts gracefully', async () => {
     const gameWithoutPlayers = {
       ...mockGame,
-      min_players: null,
-      max_players: null,
+      players_min: null,
+      players_max: null,
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithoutPlayers);
 

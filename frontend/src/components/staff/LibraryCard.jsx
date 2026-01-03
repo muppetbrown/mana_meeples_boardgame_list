@@ -33,10 +33,10 @@ export default function LibraryCard({ game, onEditCategory, onDelete }) {
             )}
           </div>
           <div className="text-sm text-gray-600">
-            {game.min_players ?? "?"}–{game.max_players ?? "?"} · {game.playing_time ?? "?"} mins
+            {game.players_min ?? "?"}–{game.players_max ?? "?"} · {game.playing_time ?? "?"} mins
             {game.is_expansion && game.modifies_players_max && (
               <span className="text-purple-600 ml-1 font-medium">
-                (extends to {game.modifies_players_min ?? game.min_players}-{game.modifies_players_max})
+                (extends to {game.modifies_players_min ?? game.players_min}-{game.modifies_players_max})
               </span>
             )}
           </div>
