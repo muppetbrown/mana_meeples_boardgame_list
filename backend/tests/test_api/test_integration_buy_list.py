@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 class TestBuyListWorkflowsIntegration:
     """Test complete buy list management workflows"""
 
-    def test_add_game_to_buy_list(self, client, sample_game):
+    def test_add_game_to_buy_list(self, client, sample_game, admin_headers):
         """Should add a game to the buy list using BGG ID"""
         # Ensure sample_game has a BGG ID
         if not sample_game.bgg_id:
@@ -29,13 +29,13 @@ class TestBuyListWorkflowsIntegration:
         response = client.post(
             '/api/admin/buy-list/games',
             json={'bgg_id': sample_game.bgg_id},
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         # Should succeed or indicate already exists
         assert response.status_code in [200, 201, 400]
 
-    def test_remove_game_from_buy_list(self, client, sample_game):
+    def test_remove_game_from_buy_list(self, client, sample_game, admin_headers):
         """Should remove a game from the buy list using buy_list_entry ID"""
         # Ensure sample_game has a BGG ID
         if not sample_game.bgg_id:
@@ -50,7 +50,7 @@ class TestBuyListWorkflowsIntegration:
         add_response = client.post(
             '/api/admin/buy-list/games',
             json={'bgg_id': sample_game.bgg_id},
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         if add_response.status_code in [200, 201]:
@@ -59,12 +59,12 @@ class TestBuyListWorkflowsIntegration:
             # Then remove using buy_list_entry ID
             response = client.delete(
                 f'/api/admin/buy-list/games/{buy_list_id}',
-                headers={'Authorization': 'Bearer test_token'}
+                headers=admin_headers
             )
 
             assert response.status_code in [200, 204]
 
-    def test_get_buy_list_games(self, client, db_session, sample_game):
+    def test_get_buy_list_games(self, client, db_session, sample_game, admin_headers):
         """Should retrieve all games on the buy list"""
         # Ensure sample_game has a BGG ID
         if not sample_game.bgg_id:
@@ -76,13 +76,13 @@ class TestBuyListWorkflowsIntegration:
         client.post(
             '/api/admin/buy-list/games',
             json={'bgg_id': sample_game.bgg_id},
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         # Get buy list (correct endpoint path)
         response = client.get(
             '/api/admin/buy-list/games',
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         assert response.status_code == 200
@@ -90,7 +90,7 @@ class TestBuyListWorkflowsIntegration:
         assert isinstance(data, dict)
         assert 'items' in data
 
-    def test_set_buy_list_priority(self, client, sample_game):
+    def test_set_buy_list_priority(self, client, sample_game, admin_headers):
         """Should set priority/rank for buy list item"""
         # Ensure sample_game has a BGG ID
         if not sample_game.bgg_id:
@@ -105,7 +105,7 @@ class TestBuyListWorkflowsIntegration:
         response = client.post(
             '/api/admin/buy-list/games',
             json={'bgg_id': sample_game.bgg_id, 'rank': 1},
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 201, 400]
@@ -176,16 +176,20 @@ class TestBuyListWorkflowsIntegration:
         response3 = client.delete('/api/admin/buy-list/games/1')
         assert response3.status_code == 401
 
-    def test_add_nonexistent_game_to_buy_list(self, client):
-        """Should return 404 when adding nonexistent game to buy list"""
+    def test_add_nonexistent_game_to_buy_list(self, client, admin_headers):
+        """Should return 400 when adding nonexistent BGG ID"""
+        # This test attempts to add a game with a non-existent BGG ID
+        # The API will try to fetch from BGG and fail
         response = client.post(
-            '/api/admin/buy-list/99999',
-            headers={'Authorization': 'Bearer test_token'}
+            '/api/admin/buy-list/games',
+            json={'bgg_id': 999999999},  # Non-existent BGG ID
+            headers=admin_headers
         )
 
-        assert response.status_code == 404
+        # Expect 400 because BGG fetch will fail
+        assert response.status_code in [400, 404]
 
-    def test_duplicate_buy_list_entry(self, client, sample_game):
+    def test_duplicate_buy_list_entry(self, client, sample_game, admin_headers):
         """Should handle duplicate buy list entries gracefully"""
         # Ensure sample_game has a BGG ID
         if not sample_game.bgg_id:
@@ -200,14 +204,14 @@ class TestBuyListWorkflowsIntegration:
         response1 = client.post(
             '/api/admin/buy-list/games',
             json={'bgg_id': sample_game.bgg_id},
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         # Add again
         response2 = client.post(
             '/api/admin/buy-list/games',
             json={'bgg_id': sample_game.bgg_id},
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         # Should return 400 "already on buy list" error
