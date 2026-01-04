@@ -2,7 +2,6 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import GameDetails from '../GameDetails';
 import * as apiClient from '../../api/client';
 
@@ -33,39 +32,15 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-// Phase 2 Performance: Test QueryClient setup
-function createTestQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-        staleTime: 0,
-      },
-    },
-    logger: { log: console.log, warn: console.warn, error: () => {} },
-  });
-}
-
 describe('GameDetails Page', () => {
-  let queryClient;
-
-  const renderWithQuery = (ui) => {
-    return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>
-    );
-  };
   beforeEach(() => {
-    queryClient = createTestQueryClient();
     vi.clearAllMocks();
   });
 
   test('renders game details after loading', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -83,7 +58,7 @@ describe('GameDetails Page', () => {
       response: { status: 404, data: { detail: 'Game not found' } },
     });
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/999']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -99,7 +74,7 @@ describe('GameDetails Page', () => {
   test('displays loading state initially', () => {
     apiClient.getPublicGame.mockImplementation(() => new Promise(() => {}));
 
-    const { container } = renderWithQuery(
+    const { container } = render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -115,7 +90,7 @@ describe('GameDetails Page', () => {
   test('displays game year', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -131,7 +106,7 @@ describe('GameDetails Page', () => {
   test('displays player count', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -147,7 +122,7 @@ describe('GameDetails Page', () => {
   test('displays designers', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -163,7 +138,7 @@ describe('GameDetails Page', () => {
   test('displays category badge', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -179,7 +154,7 @@ describe('GameDetails Page', () => {
   test('shows back button', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -196,7 +171,7 @@ describe('GameDetails Page', () => {
   test('displays BGG link if bgg_id available', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -215,7 +190,7 @@ describe('GameDetails Page', () => {
   test('displays playtime if available', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -235,7 +210,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(minimalGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -255,7 +230,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithDescription);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -275,7 +250,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithUnsafeHTML);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -291,7 +266,7 @@ describe('GameDetails Page', () => {
   test('handles network errors', async () => {
     apiClient.getPublicGame.mockRejectedValue(new Error('Network error'));
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -311,7 +286,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithType);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -328,7 +303,7 @@ describe('GameDetails Page', () => {
   test('does not display game type badge when not available', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -352,7 +327,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithExpansion);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -372,7 +347,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithMechanics);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -391,7 +366,7 @@ describe('GameDetails Page', () => {
   test('does not display mechanics section when not available', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -418,7 +393,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(expansionGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -436,7 +411,7 @@ describe('GameDetails Page', () => {
   test('does not display base game info for non-expansions', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -461,7 +436,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithExpansions);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -477,7 +452,7 @@ describe('GameDetails Page', () => {
   test('does not display expansions section when not available', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -495,7 +470,7 @@ describe('GameDetails Page', () => {
   test('navigates back when back button clicked', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -518,7 +493,7 @@ describe('GameDetails Page', () => {
       response: { status: 404, data: { detail: 'Game not found' } },
     });
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/999']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -539,7 +514,7 @@ describe('GameDetails Page', () => {
   test('navigates to designer filter when designer clicked', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -564,7 +539,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithAfterGame);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -585,7 +560,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithoutYear);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -608,7 +583,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithoutTime);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -631,7 +606,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithoutPlayers);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -649,7 +624,7 @@ describe('GameDetails Page', () => {
   test('displays category badge with correct styling', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    const { container } = renderWithQuery(
+    const { container } = render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -673,7 +648,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithoutCategory);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -696,7 +671,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithMultipleDesigners);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -718,7 +693,7 @@ describe('GameDetails Page', () => {
     };
     apiClient.getPublicGame.mockResolvedValue(gameWithInvalidDescription);
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -743,7 +718,7 @@ describe('GameDetails Page', () => {
       },
     });
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -759,7 +734,7 @@ describe('GameDetails Page', () => {
   test('uses default error message when no error detail available', async () => {
     apiClient.getPublicGame.mockRejectedValue({});
 
-    renderWithQuery(
+    render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
@@ -775,7 +750,7 @@ describe('GameDetails Page', () => {
   test('cleans up effect when component unmounts during loading', async () => {
     apiClient.getPublicGame.mockImplementation(() => new Promise(() => {}));
 
-    const { unmount } = renderWithQuery(
+    const { unmount } = render(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />
