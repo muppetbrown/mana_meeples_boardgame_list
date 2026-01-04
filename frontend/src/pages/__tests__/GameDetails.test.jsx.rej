@@ -1,0 +1,57 @@
+--- frontend/src/pages/__tests__/GameDetails.test.jsx
++++ frontend/src/pages/__tests__/GameDetails.test.jsx
+@@ -66,7 +66,9 @@ describe('GameDetails Page', () => {
+       </MemoryRouter>
+     );
+ 
+-    await waitFor(() => {
++    // React Query retries once (retry: 1 in component), so we need to wait longer
++    await waitFor(() => {
+       expect(screen.getByText(/game not found/i)).toBeInTheDocument();
++    }, { timeout: 3000 });
+   });
+ 
+@@ -274,7 +276,9 @@ describe('GameDetails Page', () => {
+       </MemoryRouter>
+     );
+ 
+-    await waitFor(() => {
++    // React Query retries once, need longer timeout for error state
++    await waitFor(() => {
+       expect(screen.getByText(/error/i)).toBeInTheDocument();
++    }, { timeout: 3000 });
+   });
+ 
+@@ -502,7 +506,9 @@ describe('GameDetails Page', () => {
+       </MemoryRouter>
+     );
+ 
+-    await waitFor(() => {
++    // Wait for error state after retry
++    await waitFor(() => {
+       expect(screen.getByText(/game not found/i)).toBeInTheDocument();
++    }, { timeout: 3000 });
+ 
+     const goBackButton = screen.getByRole('button', { name: /go back/i });
+@@ -727,7 +733,9 @@ describe('GameDetails Page', () => {
+       </MemoryRouter>
+     );
+ 
+-    await waitFor(() => {
++    // Wait for error state after retry
++    await waitFor(() => {
+       expect(screen.getByText(/Internal server error/i)).toBeInTheDocument();
++    }, { timeout: 3000 });
+   });
+ 
+@@ -742,7 +750,9 @@ describe('GameDetails Page', () => {
+       </MemoryRouter>
+     );
+ 
+-    await waitFor(() => {
++    // Wait for error state after retry
++    await waitFor(() => {
+       expect(screen.getByText(/Failed to load game details/i)).toBeInTheDocument();
++    }, { timeout: 3000 });
+   });
+ 
