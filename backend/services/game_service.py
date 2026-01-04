@@ -344,32 +344,36 @@ class GameService:
         """
         Apply sorting to query based on sort parameter.
 
-        CRITICAL: Always include secondary sort by ID to ensure stable pagination.
-        Without this, games with duplicate sort values (same year, rating, etc.)
-        can appear on multiple pages, causing items to be filtered as duplicates
-        on the frontend and resulting in incomplete pagination (e.g., "200 of 221").
+        CRITICAL: Always include secondary/tertiary sort (Title, then ID) to ensure
+        stable pagination. Without this, games with duplicate sort values (same year,
+        rating, etc.) can appear on multiple pages, causing items to be filtered as
+        duplicates on the frontend and resulting in incomplete pagination (e.g., "200 of 221").
+
+        Sort order pattern: [Primary Field] → Title → ID
+        This gives users alphabetical grouping within each primary value, with ID
+        ensuring uniqueness for stable pagination.
         """
         if sort == "title_desc":
             return query.order_by(Game.title.desc(), Game.id.asc())
         elif sort == "year_desc":
-            return query.order_by(Game.year.desc().nulls_last(), Game.id.asc())
+            return query.order_by(Game.year.desc().nulls_last(), Game.title.asc(), Game.id.asc())
         elif sort == "year_asc":
-            return query.order_by(Game.year.asc().nulls_last(), Game.id.asc())
+            return query.order_by(Game.year.asc().nulls_last(), Game.title.asc(), Game.id.asc())
         elif sort == "date_added_desc":
             if hasattr(Game, "date_added"):
-                return query.order_by(Game.date_added.desc().nulls_last(), Game.id.asc())
+                return query.order_by(Game.date_added.desc().nulls_last(), Game.title.asc(), Game.id.asc())
             return query.order_by(Game.title.asc(), Game.id.asc())
         elif sort == "date_added_asc":
             if hasattr(Game, "date_added"):
-                return query.order_by(Game.date_added.asc().nulls_last(), Game.id.asc())
+                return query.order_by(Game.date_added.asc().nulls_last(), Game.title.asc(), Game.id.asc())
             return query.order_by(Game.title.asc(), Game.id.asc())
         elif sort == "rating_desc":
             if hasattr(Game, "average_rating"):
-                return query.order_by(Game.average_rating.desc().nulls_last(), Game.id.asc())
+                return query.order_by(Game.average_rating.desc().nulls_last(), Game.title.asc(), Game.id.asc())
             return query.order_by(Game.title.asc(), Game.id.asc())
         elif sort == "rating_asc":
             if hasattr(Game, "average_rating"):
-                return query.order_by(Game.average_rating.asc().nulls_last(), Game.id.asc())
+                return query.order_by(Game.average_rating.asc().nulls_last(), Game.title.asc(), Game.id.asc())
             return query.order_by(Game.title.asc(), Game.id.asc())
         elif sort == "time_asc":
             # SQLAlchemy 2.0: case() takes positional args, not a list
@@ -385,7 +389,7 @@ class GameService:
                 (Game.playtime_max.isnot(None), Game.playtime_max),
                 else_=999999,
             )
-            return query.order_by(avg_time.asc(), Game.id.asc())
+            return query.order_by(avg_time.asc(), Game.title.asc(), Game.id.asc())
         elif sort == "time_desc":
             # SQLAlchemy 2.0: case() takes positional args, not a list
             avg_time = case(
@@ -400,7 +404,7 @@ class GameService:
                 (Game.playtime_max.isnot(None), Game.playtime_max),
                 else_=0,
             )
-            return query.order_by(avg_time.desc(), Game.id.asc())
+            return query.order_by(avg_time.desc(), Game.title.asc(), Game.id.asc())
         else:  # Default to title_asc
             return query.order_by(Game.title.asc(), Game.id.asc())
 
