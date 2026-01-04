@@ -202,12 +202,15 @@ class GameService:
         # Apply sorting to ID query
         id_query = self._apply_sorting(id_query, sort)
 
+        # Save the base query before pagination for potential count fallback
+        base_id_query = id_query
+
         # Apply pagination to ID query
         offset = (page - 1) * page_size
-        id_query = id_query.offset(offset).limit(page_size)
+        id_query_paginated = id_query.offset(offset).limit(page_size)
 
         # Execute ID query to get IDs + total count (SINGLE DATABASE ROUND TRIP)
-        id_results = self.db.execute(id_query).all()
+        id_results = self.db.execute(id_query_paginated).all()
 
         # Extract total count and game IDs
         if id_results:
@@ -231,8 +234,15 @@ class GameService:
             id_order = {id_: idx for idx, id_ in enumerate(game_ids)}
             games = sorted(games, key=lambda g: id_order[g.id])
         else:
-            total = 0
+            # Edge case: Page beyond available data
+            # Window function returned no rows, so we need to get count separately
+            # This is rare (only when requesting page beyond last page)
             games = []
+
+            # Execute count query using the base query (before pagination)
+            # Replace the select columns with just a count
+            count_query = select(func.count()).select_from(base_id_query.alias())
+            total = self.db.execute(count_query).scalar() or 0
 
         # DEBUG LOGGING: Track pagination issues
         import logging
