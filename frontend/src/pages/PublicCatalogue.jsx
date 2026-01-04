@@ -1,6 +1,8 @@
 // src/pages/PublicCatalogue.jsx - Enhanced Mobile-First Version with Accessibility
+// Phase 2 Performance: Refactored to use React Query for API caching and infinite scroll
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { getPublicGames, getPublicCategoryCounts } from "../api/client";
 import { CATEGORY_KEYS, CATEGORY_LABELS } from "../constants/categories";
 import GameCardPublic from "../components/public/GameCardPublic";
@@ -16,8 +18,8 @@ import { useOnboarding } from "../hooks/useOnboarding";
 export default function PublicCatalogue() {
   // Use URL parameters to preserve state
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  // Get initial values from URL or defaults - CHANGED: default sort to recent
+
+  // Get initial values from URL or defaults
   const [q, setQ] = useState(searchParams.get("q") || "");
   const [category, setCategory] = useState(searchParams.get("category") || "all");
   const [designer, setDesigner] = useState(searchParams.get("designer") || "");
@@ -25,28 +27,16 @@ export default function PublicCatalogue() {
   const [players, setPlayers] = useState(searchParams.get("players") || "");
   const [complexityRange, setComplexityRange] = useState(searchParams.get("complexity") || "");
   const [recentlyAdded, setRecentlyAdded] = useState(searchParams.get("recently_added") === "30");
-  const [sort, setSort] = useState(searchParams.get("sort") || "year_desc"); // NEW: Default to recent
-  const [page, setPage] = useState(1); // NEW: Always start at page 1
-  const [pageSize] = useState(12); // NEW: Smaller initial load
-
-  // Loading states
-  const [isInitialLoad, setIsInitialLoad] = useState(true); // Track if this is the very first load
-  const [loading, setLoading] = useState(true); // Initial page load only
-  const [refreshing, setRefreshing] = useState(false); // Filter/search updates
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState(null);
-  const [items, setItems] = useState([]);
-  const [allLoadedItems, setAllLoadedItems] = useState([]); // NEW: Track all loaded items
-  const [total, setTotal] = useState(0);
-  const [counts, setCounts] = useState(null);
+  const [sort, setSort] = useState(searchParams.get("sort") || "year_desc");
+  const pageSize = 12; // Items per page
 
   // UI state
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const [isHeaderVisible, setIsHeaderVisible] = useState(true); // NEW: Header visibility
-  const [isFilterExpanded, setIsFilterExpanded] = useState(false); // NEW: Filter panel state
-  const [isSticky, setIsSticky] = useState(false); // NEW: Sticky toolbar state
-  const [expandedCards, setExpandedCards] = useState(new Set()); // NEW: Track expanded cards
-  const [announcement, setAnnouncement] = useState(""); // Accessibility: Screen reader announcements
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
+  const [isFilterExpanded, setIsFilterExpanded] = useState(false);
+  const [isSticky, setIsSticky] = useState(false);
+  const [expandedCards, setExpandedCards] = useState(new Set());
+  const [announcement, setAnnouncement] = useState("");
 
   // Onboarding state
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
@@ -54,80 +44,130 @@ export default function PublicCatalogue() {
 
   // Refs for scroll detection
   const lastScrollY = useRef(0);
-  const lastToggleY = useRef(0); // Track where we last toggled to prevent oscillation
+  const lastToggleY = useRef(0);
   const headerRef = useRef(null);
   const toolbarRef = useRef(null);
   const ticking = useRef(false);
-  const loadMoreTriggerRef = useRef(null); // Sentinel element for infinite scroll
-  const isLoadingMoreRef = useRef(false); // Track loading state without triggering re-renders
+  const loadMoreTriggerRef = useRef(null);
+
+  // Build query parameters
+  const queryParams = useMemo(() => {
+    const params = { q, page_size: pageSize, sort };
+    if (category !== "all") params.category = category;
+    if (designer) params.designer = designer;
+    if (nzDesigner) params.nz_designer = true;
+    if (players) params.players = parseInt(players);
+    if (complexityRange) {
+      const [min, max] = complexityRange.split('-').map(parseFloat);
+      params.complexity_min = min;
+      params.complexity_max = max;
+    }
+    if (recentlyAdded) params.recently_added = 30;
+    return params;
+  }, [q, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, pageSize]);
+
+  // Phase 2 Performance: React Query for infinite scroll games data
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['games', queryParams],
+    queryFn: async ({ pageParam = 1 }) => {
+      const response = await getPublicGames({ ...queryParams, page: pageParam });
+      return response;
+    },
+    getNextPageParam: (lastPage, allPages) => {
+      const currentItems = allPages.reduce((sum, page) => sum + (page.items?.length || 0), 0);
+      const totalPages = Math.ceil((lastPage.total || 0) / pageSize);
+      const currentPage = allPages.length;
+      return currentPage < totalPages ? currentPage + 1 : undefined;
+    },
+    staleTime: 30 * 1000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+
+  // Phase 2 Performance: React Query for category counts
+  const { data: counts } = useQuery({
+    queryKey: ['category-counts'],
+    queryFn: getPublicCategoryCounts,
+    staleTime: 60 * 1000, // 1 minute (counts change infrequently)
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  // Flatten all loaded items from pages
+  const allLoadedItems = useMemo(() => {
+    return data?.pages?.flatMap(page => page.items || []) || [];
+  }, [data]);
+
+  // Get total count
+  const total = data?.pages?.[0]?.total || 0;
 
   // Scroll to top on initial page load/refresh
   useEffect(() => {
-    // Force scroll to top on mount to prevent browser scroll restoration
     window.scrollTo(0, 0);
     setIsHeaderVisible(true);
     setIsSticky(false);
   }, []);
 
-  // Note: Search debouncing is handled by SearchBox component (300ms)
-
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
     const handleScroll = () => {
-      // CRITICAL: Skip ALL scroll handling during loading to prevent freeze/jump
-      if (isLoadingMoreRef.current || loadingMore) {
+      // Skip scroll handling during loading
+      if (isFetchingNextPage) {
         return;
       }
 
       if (!ticking.current) {
         window.requestAnimationFrame(() => {
-            const currentScrollY = window.scrollY;
-            const scrollDelta = currentScrollY - lastScrollY.current;
-            const headerHeight = headerRef.current?.offsetHeight || 0;
-            const SCROLL_THRESHOLD = 15; // Minimum scroll distance before toggling
-            const TOGGLE_BUFFER = 50; // Prevent toggling again until we've scrolled this far
+          const currentScrollY = window.scrollY;
+          const scrollDelta = currentScrollY - lastScrollY.current;
+          const headerHeight = headerRef.current?.offsetHeight || 0;
+          const SCROLL_THRESHOLD = 15;
+          const TOGGLE_BUFFER = 50;
 
-            // Show/hide scroll to top button with hysteresis to prevent flicker
-            if (currentScrollY > 450) {
-              setShowScrollTop(true);
-            } else if (currentScrollY < 350) {
-              setShowScrollTop(false);
-            }
-            // Between 350-450px: maintain current state (no flicker)
+          // Show/hide scroll to top button with hysteresis
+          if (currentScrollY > 450) {
+            setShowScrollTop(true);
+          } else if (currentScrollY < 350) {
+            setShowScrollTop(false);
+          }
 
-            // Always show header when at the very top of the page
-            if (currentScrollY < 50) {
-              setIsHeaderVisible(true);
-              setIsSticky(false);
-              lastToggleY.current = currentScrollY;
-            }
-            // Header hide/show on scroll direction with threshold
-            else if (currentScrollY > headerHeight + 20) {
-              // Only toggle if we've scrolled enough since last toggle
-              const distanceFromLastToggle = Math.abs(currentScrollY - lastToggleY.current);
+          // Always show header when at the very top
+          if (currentScrollY < 50) {
+            setIsHeaderVisible(true);
+            setIsSticky(false);
+            lastToggleY.current = currentScrollY;
+          }
+          // Header hide/show on scroll direction
+          else if (currentScrollY > headerHeight + 20) {
+            const distanceFromLastToggle = Math.abs(currentScrollY - lastToggleY.current);
 
-              if (distanceFromLastToggle > TOGGLE_BUFFER) {
-                if (scrollDelta > SCROLL_THRESHOLD) {
-                  // Scrolling down significantly
-                  setIsHeaderVisible(false);
-                  setIsSticky(true);
-                  lastToggleY.current = currentScrollY;
-                } else if (scrollDelta < -SCROLL_THRESHOLD) {
-                  // Scrolling up significantly
-                  setIsHeaderVisible(true);
-                  lastToggleY.current = currentScrollY;
-                }
+            if (distanceFromLastToggle > TOGGLE_BUFFER) {
+              if (scrollDelta > SCROLL_THRESHOLD) {
+                setIsHeaderVisible(false);
+                setIsSticky(true);
+                lastToggleY.current = currentScrollY;
+              } else if (scrollDelta < -SCROLL_THRESHOLD) {
+                setIsHeaderVisible(true);
+                lastToggleY.current = currentScrollY;
               }
-            } else {
-              // Near top - always show header
-              setIsHeaderVisible(true);
-              setIsSticky(false);
-              lastToggleY.current = currentScrollY;
             }
+          } else {
+            setIsHeaderVisible(true);
+            setIsSticky(false);
+            lastToggleY.current = currentScrollY;
+          }
 
-            lastScrollY.current = currentScrollY;
-            ticking.current = false;
-          });
+          lastScrollY.current = currentScrollY;
+          ticking.current = false;
+        });
 
         ticking.current = true;
       }
@@ -135,9 +175,9 @@ export default function PublicCatalogue() {
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [loadingMore]);
+  }, [isFetchingNextPage]);
 
-  // Update URL when filters change - FIXED: Debounce URL updates to prevent navigation throttling
+  // Update URL when filters change
   useEffect(() => {
     const updateURL = () => {
       const params = new URLSearchParams();
@@ -148,196 +188,31 @@ export default function PublicCatalogue() {
       if (players) params.set("players", players);
       if (complexityRange) params.set("complexity", complexityRange);
       if (recentlyAdded) params.set("recently_added", "30");
-      if (sort !== "year_desc") params.set("sort", sort); // Changed default
+      if (sort !== "year_desc") params.set("sort", sort);
 
       setSearchParams(params, { replace: true });
     };
 
-    // CRITICAL FIX: Debounce URL updates to prevent browser navigation throttling
-    const timer = setTimeout(updateURL, 100); // Short delay to batch rapid changes
+    const timer = setTimeout(updateURL, 100);
     return () => clearTimeout(timer);
   }, [q, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, setSearchParams]);
 
-  // Fetch category counts
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const c = await getPublicCategoryCounts();
-        if (!cancelled) setCounts(c);
-      } catch (err) {
-        console.warn("Failed to load category counts:", err);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Fetch games - FIXED: Prevent infinite loop by removing state dependencies
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchGames = async () => {
-      // Use 'loading' only for very first page load, 'refreshing' for all subsequent changes
-      if (isInitialLoad) {
-        setLoading(true);
-      } else {
-        setRefreshing(true);
-      }
-      setPage(1); // Reset to page 1 on filter change
-
-      try {
-        const params = { q, page: 1, page_size: pageSize, sort };
-        if (category !== "all") params.category = category;
-        if (designer) params.designer = designer;
-        if (nzDesigner) params.nz_designer = true;
-        if (players) params.players = parseInt(players);
-        if (complexityRange) {
-          const [min, max] = complexityRange.split('-').map(parseFloat);
-          params.complexity_min = min;
-          params.complexity_max = max;
-        }
-        if (recentlyAdded) params.recently_added = 30;
-
-        const data = await getPublicGames(params);
-        if (cancelled) return;
-
-        setItems(data.items || []);
-        setAllLoadedItems(data.items || []); // Initialize loaded items
-        setTotal(data.total || 0);
-        setError(null);
-
-        // Mark initial load as complete
-        if (isInitialLoad) {
-          setIsInitialLoad(false);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError("Failed to load games. Please try again.");
-          setItems([]);
-          setAllLoadedItems([]);
-          setTotal(0);
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          setRefreshing(false);
-        }
-      }
-    };
-
-    // Debounce API calls to batch rapid filter changes (e.g., typing in search)
-    const timer = setTimeout(fetchGames, 150); // 150ms debounce
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [q, pageSize, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, isInitialLoad]); // FIXED: Removed allLoadedItems.length and error
-
-  // Load more function - Memoized to ensure Intersection Observer has latest filter values
-  const loadMore = useCallback(async () => {
-    // Prevent duplicate loads with multiple safety checks
-    if (isLoadingMoreRef.current || allLoadedItems.length >= total) {
-      // Debug logging to help identify issues
-      if (allLoadedItems.length >= total && total > 0) {
-        console.log(`✓ All items loaded: ${allLoadedItems.length} of ${total}`);
-      }
-      return;
-    }
-
-    console.log(`Loading more games: currently have ${allLoadedItems.length} of ${total}, requesting page ${page + 1}`);
-
-    isLoadingMoreRef.current = true;
-    setLoadingMore(true);
-    const nextPage = page + 1;
-
-    try {
-      const params = { q, page: nextPage, page_size: pageSize, sort };
-      if (category !== "all") params.category = category;
-      if (designer) params.designer = designer;
-      if (nzDesigner) params.nz_designer = true;
-      if (players) params.players = parseInt(players);
-      if (complexityRange) {
-        const [min, max] = complexityRange.split('-').map(parseFloat);
-        params.complexity_min = min;
-        params.complexity_max = max;
-      }
-      if (recentlyAdded) params.recently_added = 30;
-
-      const data = await getPublicGames(params);
-      console.log(`API returned ${data.items?.length || 0} items for page ${nextPage}, total: ${data.total}`);
-
-      // Update total count in case it changed (can happen with real-time updates)
-      if (data.total !== undefined && data.total !== total) {
-        setTotal(data.total);
-      }
-
-      // Prevent adding duplicate items by checking IDs
-      if (data.items && data.items.length > 0) {
-        setAllLoadedItems(prev => {
-          const existingIds = new Set(prev.map(item => item.id));
-          const newItems = data.items.filter(item => !existingIds.has(item.id));
-
-          // Log if duplicates were prevented (helps with debugging)
-          const duplicateCount = data.items.length - newItems.length;
-          if (duplicateCount > 0) {
-            console.warn(`Prevented ${duplicateCount} duplicate game(s) from being added to the list`);
-          }
-
-          // Only update if we have new items
-          if (newItems.length > 0) {
-            console.log(`✓ Added ${newItems.length} new items, total now: ${prev.length + newItems.length}`);
-            return [...prev, ...newItems];
-          }
-          return prev;
-        });
-        setPage(nextPage);
-      } else {
-        console.log('No items returned from API, stopping pagination');
-      }
-
-      // REMOVED: Scroll restoration that was fighting with user scrolling
-      // CSS scroll-anchor (overflow-anchor: auto) handles this automatically
-      // No manual intervention needed - browser maintains scroll position naturally
-    } catch (e) {
-      console.error("Failed to load more games:", e);
-    } finally {
-      isLoadingMoreRef.current = false;
-      setLoadingMore(false);
-    }
-  }, [page, q, pageSize, sort, category, designer, nzDesigner, players, complexityRange, recentlyAdded, total, allLoadedItems.length]);
-
-  // Infinite scroll: Intersection Observer for auto-loading more games
+  // Infinite scroll: Intersection Observer
   useEffect(() => {
     const sentinel = loadMoreTriggerRef.current;
     if (!sentinel) return;
 
-    // Use a ref to track when the observer last triggered to prevent rapid-fire calls
-    let lastTriggerTime = 0;
-    const MIN_TRIGGER_INTERVAL = 300; // FIXED: Reduced from 1000ms to 300ms for more responsive loading
-
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
-        const now = Date.now();
-
-        // CRITICAL: Only trigger if NOT currently loading AND enough time has passed
-        // AND we haven't loaded all items yet
-        if (
-          entry.isIntersecting &&
-          !isLoadingMoreRef.current &&
-          (now - lastTriggerTime) > MIN_TRIGGER_INTERVAL &&
-          allLoadedItems.length < total // FIXED: Add explicit check for more items available
-        ) {
-          lastTriggerTime = now;
-          loadMore();
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          fetchNextPage();
         }
       },
       {
-        root: null, // viewport
-        rootMargin: '100px', // FIXED: Reduced to 100px for better control
-        threshold: 0.1, // FIXED: Slight threshold to ensure intersection is meaningful
+        root: null,
+        rootMargin: '100px',
+        threshold: 0.1,
       }
     );
 
@@ -346,15 +221,13 @@ export default function PublicCatalogue() {
     return () => {
       observer.disconnect();
     };
-  }, [loadMore, allLoadedItems.length, total]); // FIXED: Add dependencies for proper re-setup
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  // Helper functions with accessibility announcements
-  // Phase 1 Performance: Wrapped in useCallback to prevent unnecessary re-renders
+  // Helper functions with accessibility announcements (wrapped in useCallback)
   const updateCategory = useCallback((newCategory) => {
     setCategory(newCategory);
-    setExpandedCards(new Set()); // Collapse all cards on filter change
+    setExpandedCards(new Set());
 
-    // Announce category change to screen readers
     const categoryName = newCategory === "all"
       ? "All Games"
       : newCategory === "uncategorized"
@@ -386,8 +259,6 @@ export default function PublicCatalogue() {
   }, []);
 
   const clearAllFilters = useCallback(() => {
-    // React 18 automatically batches these state updates into a single render
-    // This prevents multiple API calls and reduces flickering
     setQ("");
     setCategory("all");
     setDesigner("");
@@ -437,21 +308,19 @@ export default function PublicCatalogue() {
     }
   }, []);
 
-  // NEW: Toggle card expansion
   const toggleCardExpansion = useCallback((gameId) => {
     setExpandedCards(prev => {
       const next = new Set(prev);
       if (next.has(gameId)) {
         next.delete(gameId);
       } else {
-        next.clear(); // Accordion: only one open at a time
+        next.clear();
         next.add(gameId);
       }
       return next;
     });
   }, []);
 
-  // Scroll to top
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -478,15 +347,12 @@ export default function PublicCatalogue() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-amber-50">
-      {/* Skip Navigation for Keyboard Users */}
       <SkipNav />
-
-      {/* Live Region for Screen Reader Announcements */}
       <LiveRegion message={announcement} />
 
       <div className="container mx-auto px-4 py-4 sm:py-8">
 
-        {/* Header - with scroll-away behavior - wrapped to prevent layout shift */}
+        {/* Header */}
         <div className="mb-4">
           <header
             ref={headerRef}
@@ -496,7 +362,7 @@ export default function PublicCatalogue() {
                 : 'opacity-0 -translate-y-full pointer-events-none h-0 overflow-hidden'
             }`}
           >
-          {/* Logo and Text Side by Side */}
+          {/* Logo and Text */}
           <div className="flex items-center gap-3 sm:gap-4 mb-4">
             <a
               href="https://www.manaandmeeples.co.nz"
@@ -557,7 +423,7 @@ export default function PublicCatalogue() {
           </div>
           <div className="w-12 sm:w-20 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 rounded-full mb-4" aria-hidden="true"></div>
 
-          {/* Category Pills - part of header, hides with header on scroll */}
+          {/* Category Pills */}
           <section id="category-filters" aria-labelledby="categories-heading" className="mt-4">
             <h2 id="categories-heading" className="sr-only">
               Game Categories
@@ -598,11 +464,10 @@ export default function PublicCatalogue() {
 
         <main id="main-content">
 
-          {/* Sticky Search/Filter Toolbar - Mobile */}
+          {/* Mobile Sticky Toolbar */}
           <div ref={toolbarRef} className="md:hidden sticky top-0 z-40 mb-4">
             <div className="bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-md">
-              
-              {/* Collapsed Search Bar */}
+
               <div className="flex items-center gap-2 p-3">
                 <SortSelect
                   sort={sort}
@@ -635,10 +500,10 @@ export default function PublicCatalogue() {
                 </button>
               </div>
 
-              {/* Expanded Filter Panel */}
+              {/* Expanded Filter Panel - Mobile */}
               {isFilterExpanded && (
                 <div className="p-3 space-y-3 border-t border-slate-200 bg-slate-50">
-                  
+
                   {/* Search */}
                   <div>
                     <label htmlFor="search-box" className="block text-sm font-semibold text-slate-700 mb-1.5">
@@ -753,8 +618,8 @@ export default function PublicCatalogue() {
             </div>
           </div>
 
-          {/* Desktop Filter Section - Unchanged for now */}
-          <section 
+          {/* Desktop Filter Section */}
+          <section
             className="hidden md:block bg-white/90 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-slate-200/50 mb-6"
             aria-labelledby="search-filters-heading"
           >
@@ -891,11 +756,11 @@ export default function PublicCatalogue() {
           )}
 
           {/* Games Grid */}
-          {error && (
+          {isError && (
             <div className="text-center py-12">
-              <p className="text-red-600 mb-4">{error}</p>
+              <p className="text-red-600 mb-4">{error?.message || 'Failed to load games'}</p>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => refetch()}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
               >
                 Retry
@@ -904,9 +769,8 @@ export default function PublicCatalogue() {
           )}
 
           {/* Show skeletons ONLY on initial page load */}
-          {loading && (
+          {isLoading && (
             <div className="game-grid grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 items-start">
-              {/* Show skeleton loaders matching the grid layout */}
               {Array.from({ length: pageSize }).map((_, index) => (
                 <GameCardSkeleton key={`skeleton-${index}`} />
               ))}
@@ -914,7 +778,7 @@ export default function PublicCatalogue() {
           )}
 
           {/* No results message */}
-          {!loading && !error && allLoadedItems.length === 0 && (
+          {!isLoading && !isError && allLoadedItems.length === 0 && (
             <div className="text-center py-12">
               <p className="text-slate-600 text-lg">No games found matching your criteria.</p>
               <button
@@ -926,22 +790,9 @@ export default function PublicCatalogue() {
             </div>
           )}
 
-          {/* Show games - with subtle refresh indicator when filters change */}
-          {!loading && !error && allLoadedItems.length > 0 && (
+          {/* Show games */}
+          {!isLoading && !isError && allLoadedItems.length > 0 && (
             <>
-              {/* Subtle loading indicator when refreshing */}
-              {refreshing && (
-                <div className="mb-4 flex justify-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full shadow-sm">
-                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span className="text-sm font-medium">Updating...</span>
-                  </div>
-                </div>
-              )}
-
               <div className="game-grid grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 items-start">
                 {allLoadedItems.map((game, index) => (
                   <GameCardPublic
@@ -957,10 +808,10 @@ export default function PublicCatalogue() {
               </div>
 
               {/* Infinite Scroll Trigger & Loading Indicator */}
-              {allLoadedItems.length < total && (
+              {hasNextPage && (
                 <>
-                  {/* Show skeleton loaders while loading more to prevent scrollbar jumps */}
-                  {loadingMore && (
+                  {/* Show skeleton loaders while loading more */}
+                  {isFetchingNextPage && (
                     <div className="game-grid grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 items-start mt-6">
                       {Array.from({ length: Math.min(pageSize, total - allLoadedItems.length) }).map((_, index) => (
                         <GameCardSkeleton key={`loading-skeleton-${index}`} />
@@ -972,7 +823,7 @@ export default function PublicCatalogue() {
                     ref={loadMoreTriggerRef}
                     className="mt-8 py-8 text-center"
                   >
-                    {!loadingMore && (
+                    {!isFetchingNextPage && (
                       <p className="text-xs text-slate-400">
                         Scroll for more • {allLoadedItems.length} of {total}
                       </p>
@@ -982,7 +833,7 @@ export default function PublicCatalogue() {
               )}
 
               {/* End of results message */}
-              {allLoadedItems.length >= total && total > pageSize && (
+              {!hasNextPage && total > pageSize && (
                 <div className="mt-8 py-4 text-center">
                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -1011,7 +862,7 @@ export default function PublicCatalogue() {
           </button>
         )}
 
-        {/* Help Button - Mobile-first onboarding */}
+        {/* Help Button */}
         <HelpButton
           onClick={() => {
             setIsHelpModalOpen(true);
@@ -1029,4 +880,3 @@ export default function PublicCatalogue() {
     </div>
   );
 }
-

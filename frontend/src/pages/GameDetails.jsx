@@ -1,6 +1,8 @@
 // src/pages/GameDetails.jsx
+// Phase 2 Performance: Refactored to use React Query for API caching
 import React from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useQuery } from '@tanstack/react-query';
 import { getPublicGame } from "../api/client";
 import { labelFor } from "../constants/categories";
 import { GameDetailsSkeleton } from "../components/common/SkeletonLoader";
@@ -11,9 +13,6 @@ import { getAfterGameCreateUrl } from "../constants/aftergame";
 export default function GameDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [game, setGame] = React.useState(null);
-  const [error, setError] = React.useState(null);
-  const [loading, setLoading] = React.useState(true);
   const [DOMPurify, setDOMPurify] = React.useState(null);
   const handleDesignerClick = (designerName) => {navigate(`/?designer=${encodeURIComponent(designerName)}`);};
 
@@ -28,52 +27,41 @@ export default function GameDetails() {
       });
   }, []);
 
+  // Phase 2 Performance: React Query for game details with caching
+  const { data: game, isLoading: loading, isError, error } = useQuery({
+    queryKey: ['game', id],
+    queryFn: () => getPublicGame(id),
+    staleTime: 60 * 1000, // 1 minute (game details change infrequently)
+    gcTime: 10 * 60 * 1000, // 10 minutes
+    refetchOnWindowFocus: false,
+    retry: 1, // Only retry once for 404s (game not found)
+  });
+
+  // Log game data for debugging (only when data changes)
   React.useEffect(() => {
-    let alive = true;
-    setLoading(true);
-    (async () => {
-      try {
-        const data = await getPublicGame(id);
-        if (alive) {
-          // Log the game data for debugging
-          console.log('Game details loaded:', {
-            id: data?.id,
-            title: data?.title,
-            hasDescription: !!data?.description,
-            descriptionType: typeof data?.description,
-            hasExpansions: Array.isArray(data?.expansions),
-            expansionsCount: data?.expansions?.length || 0
-          });
-          setGame(data);
-          setError(null);
-        }
-      } catch (e) {
-        if (alive) {
-          // Log detailed error for debugging
-          console.error('Game details error:', {
-            gameId: id,
-            error: e,
-            message: e?.message,
-            response: e?.response?.data
-          });
+    if (game) {
+      console.log('Game details loaded:', {
+        id: game?.id,
+        title: game?.title,
+        hasDescription: !!game?.description,
+        descriptionType: typeof game?.description,
+        hasExpansions: Array.isArray(game?.expansions),
+        expansionsCount: game?.expansions?.length || 0
+      });
+    }
+  }, [game]);
 
-          // Extract error message from various sources
-          const errorMessage =
-            e?.response?.data?.detail ||
-            e?.response?.data?.message ||
-            e?.message ||
-            "Failed to load game details";
-
-          setError(errorMessage);
-        }
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-  }, [id]);
+  // Log errors for debugging
+  React.useEffect(() => {
+    if (isError) {
+      console.error('Game details error:', {
+        gameId: id,
+        error: error,
+        message: error?.message,
+        response: error?.response?.data
+      });
+    }
+  }, [isError, error, id]);
 
   // Category color mapping with fallback
   const getCategoryStyle = (category) => {
@@ -100,14 +88,21 @@ export default function GameDetails() {
     );
   }
 
-  if (error) {
+  if (isError) {
+    // Extract error message from various sources
+    const errorMessage =
+      error?.response?.data?.detail ||
+      error?.response?.data?.message ||
+      error?.message ||
+      "Failed to load game details";
+
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 via-emerald-50 to-teal-50">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="text-center py-16">
             <div className="bg-red-50 border border-red-200 rounded-xl p-8 max-w-md mx-auto" role="alert">
               <h1 className="text-red-600 font-medium text-lg mb-2">Couldn't load game</h1>
-              <p className="text-red-500 text-sm mb-4">{error}</p>
+              <p className="text-red-500 text-sm mb-4">{errorMessage}</p>
               <button
                 onClick={() => navigate(-1)}
                 className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"

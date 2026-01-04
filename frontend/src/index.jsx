@@ -2,9 +2,25 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import * as Sentry from "@sentry/react";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import "./index.css";
 import App from "./App";
 import * as serviceWorkerRegistration from './utils/serviceWorkerRegistration';
+
+// Phase 2 Performance: Configure React Query for API response caching
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30 * 1000,        // Data stays fresh for 30 seconds (matches backend cache TTL)
+      gcTime: 5 * 60 * 1000,       // Keep unused data in cache for 5 minutes (formerly cacheTime)
+      refetchOnWindowFocus: false, // Don't refetch when user returns to tab (reduces unnecessary requests)
+      refetchOnMount: false,       // Don't refetch on component mount if data is fresh
+      retry: 2,                    // Retry failed requests twice before giving up
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    },
+  },
+});
 
 // Initialize Sentry for error tracking and performance monitoring
 // Only initializes if VITE_SENTRY_DSN is configured
@@ -54,9 +70,13 @@ const base = import.meta.env.BASE_URL || "/";
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <React.StrictMode>
-    <BrowserRouter basename={base}>
-      <App />
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter basename={base}>
+        <App />
+      </BrowserRouter>
+      {/* React Query Devtools - only shows in development */}
+      <ReactQueryDevtools initialIsOpen={false} position="bottom-right" />
+    </QueryClientProvider>
   </React.StrictMode>
 );
 
