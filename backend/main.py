@@ -7,6 +7,7 @@ import os
 import json
 import logging
 import asyncio
+import time
 from typing import Dict, Any
 from datetime import datetime, timezone
 from collections import defaultdict
@@ -286,6 +287,84 @@ async def _reimport_single_game(game_id: int, bgg_id: int, delay_seconds: float 
 # ------------------------------------------------------------------------------
 
 
+def warm_cache():
+    """
+    Warm up cache with popular queries on startup.
+    Sprint 12: Performance Optimization - Cache Warming
+
+    Pre-loads frequently accessed data to eliminate cold start delays:
+    - Category counts (used in filter buttons)
+    - First page of games (default landing page)
+    - Popular category filters
+    """
+    from database import SessionLocal
+    from services import GameService
+
+    logger.info("Starting cache warming...")
+    start_time = time.time()
+
+    try:
+        db = SessionLocal()
+        service = GameService(db)
+
+        # 1. Warm category counts (most common query, shown on every page load)
+        try:
+            counts = service.get_category_counts()
+            logger.info(f"✓ Warmed category counts: {len(counts)} categories")
+        except Exception as e:
+            logger.warning(f"Failed to warm category counts: {e}")
+
+        # 2. Warm first page of games (default landing page query)
+        # This uses the same code path as the public API endpoint
+        try:
+            games, total = service.get_filtered_games(
+                search=None,
+                category=None,
+                designer=None,
+                nz_designer=None,
+                players=None,
+                complexity_min=None,
+                complexity_max=None,
+                recently_added_days=None,
+                sort="title_asc",
+                page=1,
+                page_size=24  # Default page size
+            )
+            logger.info(f"✓ Warmed first page: {len(games)}/{total} games")
+        except Exception as e:
+            logger.warning(f"Failed to warm first page: {e}")
+
+        # 3. Warm popular category filters (each category's first page)
+        from utils.helpers import CATEGORY_KEYS
+        for category in CATEGORY_KEYS[:3]:  # Warm top 3 categories only
+            try:
+                games, total = service.get_filtered_games(
+                    search=None,
+                    category=category,
+                    designer=None,
+                    nz_designer=None,
+                    players=None,
+                    complexity_min=None,
+                    complexity_max=None,
+                    recently_added_days=None,
+                    sort="title_asc",
+                    page=1,
+                    page_size=24
+                )
+                logger.info(f"✓ Warmed category '{category}': {len(games)}/{total} games")
+            except Exception as e:
+                logger.warning(f"Failed to warm category '{category}': {e}")
+
+        db.close()
+
+        elapsed = time.time() - start_time
+        logger.info(f"Cache warming complete in {elapsed:.2f}s")
+
+    except Exception as e:
+        logger.error(f"Cache warming failed: {e}")
+        # Don't raise - allow app to start even if cache warming fails
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
@@ -309,6 +388,10 @@ async def lifespan(app: FastAPI):
 
     os.makedirs(THUMBS_DIR, exist_ok=True)
     logger.info(f"Thumbnails directory: {THUMBS_DIR}")
+
+    # Sprint 12: Warm cache for popular queries
+    warm_cache()
+
     logger.info("API startup complete")
 
     yield
