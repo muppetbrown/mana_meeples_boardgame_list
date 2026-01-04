@@ -1,12 +1,20 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, event
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
 from config import DATABASE_URL, READ_REPLICA_URL
 from models import Base
 from datetime import datetime
 import logging
+import time
+import os
 
 logger = logging.getLogger(__name__)
+
+# Phase 1 Performance: Slow query logger
+# Separate logger for database queries to enable fine-grained control
+query_logger = logging.getLogger('sqlalchemy.queries')
+query_logger.setLevel(logging.WARNING)  # Only log slow queries
 
 # PostgreSQL connection pooling configuration
 # Optimized for high concurrency load (Sprint 12: Performance)
@@ -43,6 +51,57 @@ else:
     logger.info("Read replica not configured - using primary database for reads")
     read_engine = engine
     ReadSessionLocal = SessionLocal
+
+
+# ------------------------------------------------------------------------------
+# Phase 1 Performance: SQLAlchemy Query Monitoring
+# ------------------------------------------------------------------------------
+# Tracks slow database queries and optionally sends alerts to Sentry
+# This helps identify performance bottlenecks at the SQL level
+
+
+@event.listens_for(Engine, "before_cursor_execute")
+def before_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    """Record query start time for duration tracking"""
+    conn.info.setdefault('query_start_time', []).append(time.time())
+
+
+@event.listens_for(Engine, "after_cursor_execute")
+def after_cursor_execute(conn, cursor, statement, parameters, context, executemany):
+    """Log slow queries (>1 second) with optional Sentry integration"""
+    total = time.time() - conn.info['query_start_time'].pop(-1)
+
+    # Log slow queries (>1 second)
+    if total > 1.0:
+        # Truncate query for readability in logs
+        query_preview = statement[:200] + "..." if len(statement) > 200 else statement
+
+        query_logger.warning(
+            f"SLOW QUERY ({total:.2f}s): {query_preview}",
+            extra={
+                "duration_seconds": total,
+                "query_full": statement,
+                "parameters": str(parameters)[:100]  # Truncate params too
+            }
+        )
+
+        # Optional: Send to Sentry for alerting
+        # Only if SENTRY_DSN is configured
+        if os.getenv("SENTRY_DSN"):
+            try:
+                import sentry_sdk
+                sentry_sdk.capture_message(
+                    f"Slow database query: {total:.2f}s",
+                    level="warning",
+                    extras={
+                        "query": statement,
+                        "duration_seconds": total,
+                        "parameters": str(parameters)
+                    }
+                )
+            except ImportError:
+                # Sentry not installed, skip
+                pass
 
 
 def db_ping() -> bool:

@@ -2,8 +2,11 @@
 """
 Performance monitoring middleware with LRU eviction to prevent memory leaks.
 Tracks request times, endpoint statistics, and slow queries.
+
+Phase 1 Performance: Added Sentry integration for slow request alerting.
 """
 import time
+import os
 from collections import deque, OrderedDict
 from typing import Dict, Any
 
@@ -59,6 +62,30 @@ class PerformanceMonitor:
                     "timestamp": time.time(),
                 }
             )
+
+            # Phase 1 Performance: Send very slow requests to Sentry (>3 seconds)
+            # This provides real-time alerting for performance issues
+            if duration > 3.0 and os.getenv("SENTRY_DSN"):
+                try:
+                    import sentry_sdk
+                    sentry_sdk.capture_message(
+                        f"Slow API request: {method} {path} took {duration:.2f}s",
+                        level="warning",
+                        extras={
+                            "endpoint": endpoint_key,
+                            "duration_seconds": duration,
+                            "status_code": status_code,
+                            "method": method,
+                            "path": path,
+                        },
+                        tags={
+                            "performance": "slow_request",
+                            "endpoint": endpoint_key,
+                        }
+                    )
+                except ImportError:
+                    # Sentry not installed, skip
+                    pass
 
     def get_stats(self) -> Dict[str, Any]:
         """Get performance statistics"""
