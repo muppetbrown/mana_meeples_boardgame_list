@@ -1,9 +1,5 @@
 continue work on performance improvements:
 C:\Git_Repos\mana_meeples_boardgame_list\docs\performance\COMPREHENSIVE_PERFORMANCE_REVIEW.md
 
-search flickering
 
 infinite scroll count when on all category.
-
-images on admin side still using old method - cloudinary primary.
-
