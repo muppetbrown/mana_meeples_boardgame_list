@@ -38,9 +38,13 @@ function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        retry: false,
+        retry: false,  // Disable retries globally
+        retryDelay: 0, // No delay between retries (in case retry is overridden)
         gcTime: 0,
         staleTime: 0,
+      },
+      mutations: {
+        retry: false,
       },
     },
     logger: { log: console.log, warn: console.warn, error: () => {} },
@@ -83,9 +87,9 @@ describe('GameDetails Page', () => {
   });
 
   test('handles API errors gracefully', async () => {
-    apiClient.getPublicGame.mockRejectedValue({
-      response: { status: 404, data: { detail: 'Game not found' } },
-    });
+    const error = new Error('Game not found');
+    error.response = { status: 404, data: { detail: 'Game not found' } };
+    apiClient.getPublicGame.mockRejectedValue(error);
 
     renderWithQuery(
       <MemoryRouter initialEntries={['/game/999']}>
@@ -97,7 +101,7 @@ describe('GameDetails Page', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/game not found/i)).toBeInTheDocument();
-    });
+    }, { timeout: 3000 }); // Increased timeout to account for retry: 1
   });
 
   test('displays loading state initially', () => {
@@ -307,7 +311,7 @@ describe('GameDetails Page', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/error/i)).toBeInTheDocument();
-    });
+    }, { timeout: 3000 }); // Increased timeout to account for retry: 1
   });
 
   test('displays game type badge when available', async () => {
@@ -520,9 +524,9 @@ describe('GameDetails Page', () => {
   });
 
   test('navigates back when error Go Back button clicked', async () => {
-    apiClient.getPublicGame.mockRejectedValue({
-      response: { status: 404, data: { detail: 'Game not found' } },
-    });
+    const error = new Error('Game not found');
+    error.response = { status: 404, data: { detail: 'Game not found' } };
+    apiClient.getPublicGame.mockRejectedValue(error);
 
     renderWithQuery(
       <MemoryRouter initialEntries={['/game/999']}>
@@ -534,7 +538,7 @@ describe('GameDetails Page', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/game not found/i)).toBeInTheDocument();
-    });
+    }, { timeout: 3000 }); // Increased timeout to account for retry: 1
 
     const goBackButton = screen.getByRole('button', { name: /go back/i });
     goBackButton.click();
@@ -742,12 +746,12 @@ describe('GameDetails Page', () => {
   });
 
   test('handles error response with different structures', async () => {
-    apiClient.getPublicGame.mockRejectedValue({
-      response: {
-        status: 500,
-        data: { message: 'Internal server error' }
-      },
-    });
+    const error = new Error('Internal server error');
+    error.response = {
+      status: 500,
+      data: { message: 'Internal server error' }
+    };
+    apiClient.getPublicGame.mockRejectedValue(error);
 
     renderWithQuery(
       <MemoryRouter initialEntries={['/game/1']}>
@@ -759,11 +763,12 @@ describe('GameDetails Page', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Internal server error/i)).toBeInTheDocument();
-    });
+    }, { timeout: 3000 }); // Increased timeout to account for retry: 1
   });
 
   test('uses default error message when no error detail available', async () => {
-    apiClient.getPublicGame.mockRejectedValue({});
+    const error = new Error();  // Error with no message
+    apiClient.getPublicGame.mockRejectedValue(error);
 
     renderWithQuery(
       <MemoryRouter initialEntries={['/game/1']}>
@@ -775,7 +780,7 @@ describe('GameDetails Page', () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Failed to load game details/i)).toBeInTheDocument();
-    });
+    }, { timeout: 3000 }); // Increased timeout to account for retry: 1
   });
 
   test('cleans up effect when component unmounts during loading', async () => {

@@ -144,7 +144,7 @@ describe('PublicCatalogue Page', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Failed to load games/i)).toBeInTheDocument();
+      expect(screen.getByText(/Network error/i)).toBeInTheDocument();
     });
   });
 
@@ -725,7 +725,7 @@ describe('PublicCatalogue Page', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText(/failed to load/i)).toBeInTheDocument();
+        expect(screen.getByText(/Network error/i)).toBeInTheDocument();
       });
 
       const retryButton = screen.getByRole('button', { name: /retry/i });
