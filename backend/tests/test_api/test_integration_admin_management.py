@@ -200,25 +200,26 @@ class TestAdminGameManagementIntegration:
 
         assert response.status_code in [400, 422]
 
-    def test_admin_operations_require_auth(self, client, sample_game):
+    def test_admin_operations_require_auth(self, client, sample_game, csrf_headers):
         """Should require authentication for all admin operations"""
-        # Create without auth
-        response1 = client.post('/api/admin/games', json={'title': 'Test'})
+        # Create without auth (but with CSRF headers)
+        response1 = client.post('/api/admin/games', json={'title': 'Test'}, headers=csrf_headers)
         assert response1.status_code == 401
 
-        # Read without auth
+        # Read without auth (GET requests don't need CSRF headers)
         response2 = client.get(f'/api/admin/games/{sample_game.id}')
         assert response2.status_code == 401
 
-        # Update without auth
+        # Update without auth (but with CSRF headers)
         response3 = client.put(
             f'/api/admin/games/{sample_game.id}',
-            json={'title': 'Test'}
+            json={'title': 'Test'},
+            headers=csrf_headers
         )
         assert response3.status_code == 401
 
-        # Delete without auth
-        response4 = client.delete(f'/api/admin/games/{sample_game.id}')
+        # Delete without auth (but with CSRF headers)
+        response4 = client.delete(f'/api/admin/games/{sample_game.id}', headers=csrf_headers)
         assert response4.status_code == 401
 
     def test_partial_update(self, client, sample_game):

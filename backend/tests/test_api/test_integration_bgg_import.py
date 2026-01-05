@@ -98,9 +98,9 @@ class TestBGGImportFlowIntegration:
         # API/validation errors may return 400, 404, or 500
         assert response.status_code in [400, 404, 500]
 
-    def test_import_without_authentication(self, client):
+    def test_import_without_authentication(self, client, csrf_headers):
         """Should return 401 when not authenticated"""
-        response = client.post('/api/admin/import/bgg?bgg_id=13')
+        response = client.post('/api/admin/import/bgg?bgg_id=13', headers=csrf_headers)
 
         assert response.status_code == 401
 

@@ -224,6 +224,14 @@ def admin_headers():
 
 
 @pytest.fixture
+def csrf_headers():
+    """Headers with only CSRF protection (for unauthorized tests)"""
+    return {
+        "Origin": "http://localhost:3000"  # Required for CSRF protection
+    }
+
+
+@pytest.fixture
 def sample_game(db_session):
     """Create a sample game in the database for testing"""
     from models import Game

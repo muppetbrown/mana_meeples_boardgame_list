@@ -343,11 +343,12 @@ class TestAdminFixSequence:
         # Should be rejected by validation (400) or fail gracefully (500)
         assert response.status_code in [400, 422, 500]
 
-    def test_fix_sequence_unauthorized(self, client):
+    def test_fix_sequence_unauthorized(self, client, csrf_headers):
         """Test sequence fix without authentication"""
         response = client.post(
             "/api/admin/fix-sequence",
-            json={"table_name": "boardgames"}
+            json={"table_name": "boardgames"},
+            headers=csrf_headers
         )
         assert response.status_code == 401
 
@@ -658,10 +659,11 @@ class TestAdminBackgroundFailureMonitoring:
         # Should return 404 (not found) or 500 (model doesn't exist)
         assert response.status_code in [404, 500]
 
-    def test_resolve_background_failure_unauthorized(self, client):
+    def test_resolve_background_failure_unauthorized(self, client, csrf_headers):
         """Test resolving failure without authentication"""
         response = client.post(
-            "/api/admin/monitoring/background-failures/1/resolve"
+            "/api/admin/monitoring/background-failures/1/resolve",
+            headers=csrf_headers
         )
         assert response.status_code == 401
 
@@ -686,6 +688,7 @@ class TestAdminCircuitBreakerStatus:
 
     def test_get_circuit_breaker_status_unauthorized(self, client):
         """Test getting circuit breaker status without authentication"""
+        # GET requests don't trigger CSRF validation, so no csrf_headers needed
         response = client.get(
             "/api/admin/monitoring/circuit-breaker-status"
         )
