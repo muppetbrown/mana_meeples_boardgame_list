@@ -51,7 +51,7 @@ class TestBGGImportFlowIntegration:
         assert data['complexity'] == 3.86
         assert 'Isaac Childres' in data['designers']
 
-    def test_import_existing_game_without_force(self, client, db_session, sample_game):, admin_headers)
+    def test_import_existing_game_without_force(self, client, db_session, sample_game, admin_headers):
         """Should return cached game when importing existing game without force flag"""
         bgg_id = sample_game.bgg_id
 
@@ -65,7 +65,7 @@ class TestBGGImportFlowIntegration:
         assert data['bgg_id'] == bgg_id
         assert data['title'] == sample_game.title  # Original title, not updated
 
-    def test_import_existing_game_with_force(self, client, db_session, sample_game):, admin_headers)
+    def test_import_existing_game_with_force(self, client, db_session, sample_game, admin_headers):
         """Should update existing game when force flag is true"""
         bgg_id = sample_game.bgg_id
 
@@ -217,7 +217,7 @@ class TestBGGImportFlowIntegration:
         data = response.json()
         assert len(data['added']) >= 3
 
-    def test_import_duplicate_detection(self, client, db_session, sample_game):, admin_headers)
+    def test_import_duplicate_detection(self, client, db_session, sample_game, admin_headers):
         """Should detect and handle duplicate BGG IDs"""
         # Try to import with same BGG ID as existing game
         mock_bgg_data = {'title': 'Different Title', 'bgg_id': sample_game.bgg_id}
@@ -405,7 +405,7 @@ class TestBGGImportFlowIntegration:
 
         assert response.status_code in [400, 422, 500]
 
-    def test_import_preserves_manual_categorization(self, client, db_session, sample_game):, admin_headers)
+    def test_import_preserves_manual_categorization(self, client, db_session, sample_game, admin_headers):
         """Should preserve manual category assignment when re-importing"""
         # Set manual category
         sample_game.mana_meeple_category = 'GATEWAY_STRATEGY'
@@ -484,7 +484,7 @@ class TestBGGImportFlowIntegration:
         # but included here for completeness
         pass
 
-    def test_reimport_all_games_endpoint(self, client, db_session, sample_game):, admin_headers)
+    def test_reimport_all_games_endpoint(self, client, db_session, sample_game, admin_headers):
         """Should re-import all existing games with enhanced data"""
         mock_bgg_data = {
             'title': sample_game.title,
