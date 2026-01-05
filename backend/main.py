@@ -187,100 +187,7 @@ THUMBS_DIR = os.getenv("THUMBS_DIR", "/tmp/thumbs")
 httpx_client = httpx.AsyncClient(follow_redirects=True, timeout=HTTP_TIMEOUT)
 
 # Session storage and rate limiting moved to shared/rate_limiting.py
-
-# ------------------------------------------------------------------------------
-# Background task functions
-# TODO: Move to services/ module
-# ------------------------------------------------------------------------------
-
-
-async def _download_thumbnail(url: str, filename_prefix: str) -> str:
-    """Download thumbnail from URL and save to local storage"""
-    try:
-        response = await httpx_client.get(url)
-        response.raise_for_status()
-
-        # Generate filename
-        ext = url.split(".")[-1].split("?")[0]  # Handle query params
-        if ext not in ["jpg", "jpeg", "png", "webp"]:
-            ext = "jpg"
-        filename = f"{filename_prefix}.{ext}"
-        filepath = os.path.join(THUMBS_DIR, filename)
-
-        # Save file
-        with open(filepath, "wb") as f:
-            f.write(response.content)
-
-        logger.info(f"Downloaded thumbnail: {filename}")
-        return filename
-
-    except Exception as e:
-        logger.error(f"Failed to download thumbnail from {url}: {e}")
-        return None
-
-
-async def _download_and_update_thumbnail(game_id: int, thumbnail_url: str):
-    """Background task to download and update game thumbnail"""
-    try:
-        db = SessionLocal()
-        game = db.get(Game, game_id)
-        if not game:
-            return
-
-        filename = await _download_thumbnail(
-            thumbnail_url, f"{game_id}-{game.title}"
-        )
-        if filename:
-            if hasattr(game, "thumbnail_file"):
-                game.thumbnail_file = filename
-            if hasattr(game, "thumbnail_url"):
-                game.thumbnail_url = f"/thumbs/{filename}"
-            db.add(game)
-            db.commit()
-            logger.info(f"Updated thumbnail for game {game_id}: {filename}")
-
-    except Exception as e:
-        logger.error(f"Failed to download thumbnail for game {game_id}: {e}")
-    finally:
-        db.close()
-
-
-async def _reimport_single_game(game_id: int, bgg_id: int, delay_seconds: float = 0):
-    """
-    Background task to re-import a single game with enhanced data.
-    Uses consolidated GameService.update_game_from_bgg_data method.
-
-    Args:
-        game_id: Database ID of the game
-        bgg_id: BoardGameGeek ID
-        delay_seconds: Initial delay before processing (for rate limiting)
-    """
-    try:
-        # Add delay to avoid overwhelming BGG API
-        if delay_seconds > 0:
-            await asyncio.sleep(delay_seconds)
-
-        db = SessionLocal()
-        game = db.get(Game, game_id)
-        if not game:
-            logger.warning(f"Game {game_id} not found for reimport")
-            return
-
-        # Fetch enhanced data from BGG (including sleeve data)
-        bgg_data = await fetch_bgg_thing(bgg_id)
-
-        # Use consolidated GameService method for all BGG data mapping
-        from services.game_service import GameService
-        game_service = GameService(db)
-        game_service.update_game_from_bgg_data(game, bgg_data, commit=True)
-
-        logger.info(f"Re-imported game {game_id}: {game.title}")
-
-    except Exception as e:
-        logger.error(f"Failed to reimport game {game_id}: {e}")
-    finally:
-        db.close()
-
+# Background task functions moved to services/background_tasks.py
 
 # ------------------------------------------------------------------------------
 # Lifespan event handler
@@ -612,19 +519,8 @@ from api.routers.buy_list import router as buy_list_router
 from api.routers.sleeves import router as sleeves_router
 from api.versioning import version_info
 
-# DISABLED: API v1 versioning (was causing CORS issues with mounted sub-app)
-# Using legacy endpoints only for now - v1 endpoints will be re-enabled
-# in a future update using APIRouter instead of mounted FastAPI sub-app
-#
-# The issue: FastAPI sub-applications (created with FastAPI()) have their own
-# middleware stack that doesn't inherit CORS from the parent app. This caused
-# CORS failures on v1 endpoints even though CORS was configured on main app.
-#
-# Solution for future: Use APIRouter with prefix="/api/v1" instead of mounting
-# a sub-application. This ensures CORS middleware is properly shared.
-
-# Register legacy routers (backward compatibility - no version prefix)
-# These map to the same handlers as v1
+# Register API routers (currently using /api prefix without versioning)
+# Note: Explicit /api/v1 versioning disabled due to CORS middleware inheritance issues
 app.include_router(public_router)
 app.include_router(admin_router)
 app.include_router(bulk_router)
@@ -648,14 +544,13 @@ async def root():
     return {
         "message": "Mana & Meeples Board Game Library API",
         "app_version": "2.0.0",
-        "api_versioning": version_info.to_dict(),
         "endpoints": {
             "documentation": "/docs",
             "health_check": "/api/health",
-            "api_v1": "/api/v1",
-            "legacy_api": "/api (maps to v1)",
+            "public_games": "/api/public/games",
+            "admin_panel": "/api/admin",
         },
-        "recommended_base_url": "/api/v1",
+        "base_url": "/api",
     }
 
 

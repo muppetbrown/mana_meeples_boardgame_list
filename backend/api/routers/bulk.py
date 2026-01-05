@@ -23,10 +23,10 @@ from utils.helpers import CATEGORY_KEYS, categorize_game, parse_categories
 
 logger = logging.getLogger(__name__)
 
-# Import background task from main - TODO: move to services
-from main import (  # noqa: E402
-    _download_and_update_thumbnail,
-    _reimport_single_game,
+# Background task imports from services
+from services.background_tasks import (
+    download_and_update_thumbnail,
+    reimport_single_game,
 )
 
 # Create router with prefix and tags
@@ -206,7 +206,7 @@ async def bulk_import_csv(
                     )
                     if thumbnail_url and background_tasks:
                         background_tasks.add_task(
-                            _download_and_update_thumbnail,
+                            download_and_update_thumbnail,
                             game.id,
                             thumbnail_url,
                         )
@@ -371,7 +371,7 @@ async def reimport_all_games(
 
     for index, game in enumerate(games):
         delay = index * DELAY_BETWEEN_REQUESTS
-        background_tasks.add_task(_reimport_single_game, game.id, game.bgg_id, delay)
+        background_tasks.add_task(reimport_single_game, game.id, game.bgg_id, delay)
 
     estimated_time_minutes = (len(games) * DELAY_BETWEEN_REQUESTS) / 60
 

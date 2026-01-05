@@ -113,11 +113,14 @@ def require_admin_auth(
     request: Request,
     authorization: Optional[str] = Header(None),
     x_admin_token: Optional[str] = Header(None),
-    admin_session: Optional[str] = Cookie(None),
 ) -> None:
     """
     Dependency for admin endpoints.
-    Validates admin authentication via JWT token (preferred), session cookie, or legacy token header.
+    Validates admin authentication via JWT token (preferred) or X-Admin-Token header (fallback).
+
+    Authentication methods (in order):
+    1. JWT token from Authorization header (preferred)
+    2. X-Admin-Token header (fallback for backward compatibility)
 
     Raises:
         HTTPException: 401 if authentication fails, 429 if rate limited
@@ -132,13 +135,7 @@ def require_admin_auth(
             logger.debug(f"Valid JWT authentication from {client_ip}")
             return  # Valid JWT, authentication successful
 
-    # 2. Try session cookie (legacy method - for backward compatibility)
-    cleanup_expired_sessions()
-    if admin_session and validate_session(admin_session, client_ip):
-        logger.debug(f"Valid session authentication from {client_ip}")
-        return  # Valid session, authentication successful
-
-    # 3. Fall back to direct admin token header (legacy method)
+    # 2. Fall back to direct admin token header (for backward compatibility)
     # Sprint 8: Use Redis-backed rate limiting (unless disabled for testing)
     if not DISABLE_RATE_LIMITING:
         current_time = time.time()
