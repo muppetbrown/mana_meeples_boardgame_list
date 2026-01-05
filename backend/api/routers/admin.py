@@ -23,10 +23,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from api.dependencies import (
-    create_session,
     get_client_ip,
     require_admin_auth,
-    revoke_session,
 )
 from bgg_service import fetch_bgg_thing
 from config import (
