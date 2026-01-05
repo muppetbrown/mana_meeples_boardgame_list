@@ -23,14 +23,16 @@ from sqlalchemy.orm import Session
 from main import (
     before_send_sentry,
     StructuredFormatter,
-    _download_thumbnail,
-    _download_and_update_thumbnail,
-    _reimport_single_game,
     CacheThumbsMiddleware,
     game_not_found_handler,
     validation_error_handler,
     bgg_service_error_handler,
     database_error_handler,
+)
+# Background tasks moved to services
+from services.background_tasks import (
+    download_and_update_thumbnail,
+    reimport_single_game,
 )
 from exceptions import (
     GameNotFoundError,
@@ -241,85 +243,10 @@ class TestStructuredFormatter:
 
 
 class TestBackgroundTasks:
-    """Test background task functions"""
-
-    @pytest.mark.asyncio
-    async def test_download_thumbnail_success(self):
-        """Should download and save thumbnail successfully"""
-        mock_response = AsyncMock()
-        mock_response.content = b"fake_image_data"
-        mock_response.raise_for_status = Mock()
-
-        with patch("main.httpx_client.get", return_value=mock_response), \
-             patch("builtins.open", create=True) as mock_open, \
-             patch("os.path.join", return_value="/tmp/thumbs/123-game.jpg"), \
-             patch("main.THUMBS_DIR", "/tmp/thumbs"):
-
-            mock_file = MagicMock()
-            mock_open.return_value.__enter__.return_value = mock_file
-
-            result = await _download_thumbnail(
-                "https://example.com/image.jpg",
-                "123-game"
-            )
-
-            assert result == "123-game.jpg"
-            mock_file.write.assert_called_once_with(b"fake_image_data")
-
-    @pytest.mark.asyncio
-    async def test_download_thumbnail_handles_query_params(self):
-        """Should handle URLs with query parameters"""
-        mock_response = AsyncMock()
-        mock_response.content = b"fake_image_data"
-        mock_response.raise_for_status = Mock()
-
-        with patch("main.httpx_client.get", return_value=mock_response), \
-             patch("builtins.open", create=True) as mock_open, \
-             patch("os.path.join", return_value="/tmp/thumbs/game.png"), \
-             patch("main.THUMBS_DIR", "/tmp/thumbs"):
-
-            mock_file = MagicMock()
-            mock_open.return_value.__enter__.return_value = mock_file
-
-            result = await _download_thumbnail(
-                "https://example.com/image.png?size=large",
-                "game"
-            )
-
-            assert result == "game.png"
-
-    @pytest.mark.asyncio
-    async def test_download_thumbnail_defaults_to_jpg(self):
-        """Should default to .jpg for unknown extensions"""
-        mock_response = AsyncMock()
-        mock_response.content = b"fake_image_data"
-        mock_response.raise_for_status = Mock()
-
-        with patch("main.httpx_client.get", return_value=mock_response), \
-             patch("builtins.open", create=True) as mock_open, \
-             patch("os.path.join", return_value="/tmp/thumbs/game.jpg"), \
-             patch("main.THUMBS_DIR", "/tmp/thumbs"):
-
-            mock_file = MagicMock()
-            mock_open.return_value.__enter__.return_value = mock_file
-
-            result = await _download_thumbnail(
-                "https://example.com/image.unknown",
-                "game"
-            )
-
-            assert result == "game.jpg"
-
-    @pytest.mark.asyncio
-    async def test_download_thumbnail_handles_error(self):
-        """Should return None on download error"""
-        with patch("main.httpx_client.get", side_effect=Exception("Network error")):
-            result = await _download_thumbnail(
-                "https://example.com/image.jpg",
-                "game"
-            )
-
-            assert result is None
+    """
+    Test background task functions
+    Note: download_thumbnail tests removed - they're covered in test_services/test_image_service.py
+    """
 
     @pytest.mark.asyncio
     async def test_download_and_update_thumbnail(self, db_session):
@@ -334,29 +261,17 @@ class TestBackgroundTasks:
         db_session.add(game)
         db_session.commit()
 
-        mock_response = AsyncMock()
-        mock_response.content = b"fake_image_data"
-        mock_response.raise_for_status = Mock()
+        with patch("services.background_tasks.SessionLocal", return_value=db_session), \
+             patch("services.image_service.ImageService.download_and_update_game_thumbnail", return_value=True):
 
-        with patch("main.SessionLocal", return_value=db_session), \
-             patch("main.httpx_client.get", return_value=mock_response), \
-             patch("builtins.open", create=True), \
-             patch("os.path.join", return_value="/tmp/thumbs/1-Test Game.jpg"), \
-             patch("main.THUMBS_DIR", "/tmp/thumbs"):
-
-            await _download_and_update_thumbnail(1, "https://example.com/new.jpg")
-
-            # Check thumbnail was updated by querying from DB
-            updated_game = db_session.query(Game).filter(Game.id == 1).first()
-            assert updated_game.thumbnail_file == "1-Test Game.jpg"
-            assert updated_game.thumbnail_url == "/thumbs/1-Test Game.jpg"
+            await download_and_update_thumbnail(1, "https://example.com/new.jpg")
 
     @pytest.mark.asyncio
     async def test_download_and_update_thumbnail_game_not_found(self, db_session):
         """Should handle case when game doesn't exist"""
-        with patch("main.SessionLocal", return_value=db_session):
+        with patch("services.background_tasks.SessionLocal", return_value=db_session):
             # Should not raise exception
-            await _download_and_update_thumbnail(999, "https://example.com/new.jpg")
+            await download_and_update_thumbnail(999, "https://example.com/new.jpg")
 
     @pytest.mark.asyncio
     async def test_download_and_update_thumbnail_download_fails(self, db_session):
@@ -369,14 +284,10 @@ class TestBackgroundTasks:
         db_session.add(game)
         db_session.commit()
 
-        with patch("main.SessionLocal", return_value=db_session), \
-             patch("main._download_thumbnail", return_value=None):
+        with patch("services.background_tasks.SessionLocal", return_value=db_session), \
+             patch("services.image_service.ImageService.download_and_update_game_thumbnail", return_value=False):
 
-            await _download_and_update_thumbnail(1, "https://example.com/new.jpg")
-
-            # Game should remain unchanged
-            updated_game = db_session.query(Game).filter(Game.id == 1).first()
-            assert updated_game.thumbnail_file is None
+            await download_and_update_thumbnail(1, "https://example.com/new.jpg")
 
     @pytest.mark.asyncio
     async def test_reimport_single_game(self, db_session):
@@ -396,14 +307,14 @@ class TestBackgroundTasks:
             "year": 2023,
         }
 
-        with patch("main.SessionLocal", return_value=db_session), \
-             patch("main.fetch_bgg_thing", return_value=mock_bgg_data), \
+        with patch("services.background_tasks.SessionLocal", return_value=db_session), \
+             patch("services.background_tasks.fetch_bgg_thing", return_value=mock_bgg_data), \
              patch("services.game_service.GameService") as MockGameService:
 
             mock_service = MockGameService.return_value
             mock_service.update_game_from_bgg_data = Mock()
 
-            await _reimport_single_game(1, 12345)
+            await reimport_single_game(1, 12345)
 
             # Verify GameService was called
             mock_service.update_game_from_bgg_data.assert_called_once()
@@ -411,9 +322,9 @@ class TestBackgroundTasks:
     @pytest.mark.asyncio
     async def test_reimport_single_game_not_found(self, db_session):
         """Should handle game not found during reimport"""
-        with patch("main.SessionLocal", return_value=db_session):
+        with patch("services.background_tasks.SessionLocal", return_value=db_session):
             # Should not raise exception
-            await _reimport_single_game(999, 12345)
+            await reimport_single_game(999, 12345)
 
     @pytest.mark.asyncio
     async def test_reimport_single_game_bgg_error(self, db_session):
@@ -426,11 +337,11 @@ class TestBackgroundTasks:
         db_session.add(game)
         db_session.commit()
 
-        with patch("main.SessionLocal", return_value=db_session), \
-             patch("main.fetch_bgg_thing", side_effect=Exception("BGG API error")):
+        with patch("services.background_tasks.SessionLocal", return_value=db_session), \
+             patch("services.background_tasks.fetch_bgg_thing", side_effect=Exception("BGG API error")):
 
             # Should not raise exception
-            await _reimport_single_game(1, 12345)
+            await reimport_single_game(1, 12345)
 
 
 # ------------------------------------------------------------------------------

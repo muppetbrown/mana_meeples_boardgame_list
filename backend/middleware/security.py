@@ -16,14 +16,13 @@ class SecurityHeadersMiddleware:
     Headers added:
     - X-Frame-Options: Prevent clickjacking attacks
     - X-Content-Type-Options: Prevent MIME type sniffing
-    - X-XSS-Protection: DEPRECATED - Only added to HTML responses, not API responses
     - Strict-Transport-Security: Force HTTPS connections
     - Content-Security-Policy: Only added to HTML responses, not API responses
     - Referrer-Policy: Control referrer information
     - Permissions-Policy: Control browser features
 
-    Note: CSP and X-XSS-Protection are only applied to HTML responses.
-    API JSON responses do not need these headers and they can cause webhint warnings.
+    Note: CSP is only applied to HTML responses.
+    API JSON responses do not need CSP and it can cause webhint warnings.
     """
 
     def __init__(self, app: ASGIApp):
@@ -57,12 +56,6 @@ class SecurityHeadersMiddleware:
                 # nosniff = Browsers must respect Content-Type
                 if b"x-content-type-options" not in headers_dict:
                     new_headers.append((b"x-content-type-options", b"nosniff"))
-
-                # X-XSS-Protection: DEPRECATED and only for HTML pages
-                # NOTE: This header is deprecated and can create security vulnerabilities.
-                # Modern browsers use CSP instead. Only add to non-API responses.
-                if not is_api_endpoint and b"x-xss-protection" not in headers_dict:
-                    new_headers.append((b"x-xss-protection", b"1; mode=block"))
 
                 # Strict-Transport-Security (HSTS): Force HTTPS
                 # max-age=31536000 = Remember for 1 year
