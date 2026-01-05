@@ -106,6 +106,100 @@ jobs:
           path: frontend/build/
           retention-days: 7
 
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]  # Run after unit tests pass
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        run: |
+          cd backend
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install frontend dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          VITE_API_BASE=http://localhost:8000 npm run build
+
+      - name: Start backend server in background
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          ADMIN_TOKEN: test_admin_token_for_e2e
+          CORS_ORIGINS: http://localhost:3000,http://localhost:5173
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: |
+          cd backend
+          alembic upgrade head
+          uvicorn main:app --host 0.0.0.0 --port 8000 &
+          echo $! > /tmp/backend.pid
+          sleep 5  # Wait for server to start
+
+      - name: Serve frontend in background
+        run: |
+          cd frontend
+          npx http-server build -p 3000 &
+          echo $! > /tmp/frontend.pid
+          sleep 3  # Wait for server to start
+
+      - name: Install Playwright
+        run: |
+          cd e2e
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: |
+          cd e2e
+          npx playwright test --reporter=html
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 7
+
+      - name: Stop servers
+        if: always()
+        run: |
+          if [ -f /tmp/backend.pid ]; then kill $(cat /tmp/backend.pid) || true; fi
+          if [ -f /tmp/frontend.pid ]; then kill $(cat /tmp/frontend.pid) || true; fi
+
   lint:
     name: Lint Code
     runs-on: ubuntu-latest
@@ -136,7 +230,7 @@ jobs:
 
   all-tests-passed:
     name: All Tests Passed
-    needs: [backend-tests, frontend-tests, lint]
+    needs: [backend-tests, frontend-tests, e2e-tests, lint]
     runs-on: ubuntu-latest
     if: always()
 
@@ -149,6 +243,10 @@ jobs:
           fi
           if [ "${{ needs.frontend-tests.result }}" != "success" ]; then
             echo "Frontend tests failed!"
+            exit 1
+          fi
+          if [ "${{ needs.e2e-tests.result }}" != "success" ]; then
+            echo "E2E tests failed!"
             exit 1
           fi
           if [ "${{ needs.lint.result }}" != "success" ]; then

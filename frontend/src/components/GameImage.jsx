@@ -1,7 +1,8 @@
 // src/components/GameImage.jsx
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { imageProxyUrl, generateSrcSet } from "../config/api";
 import { useImageLazyLoad } from "../hooks/useLazyLoad";
+import { sanitizeImageUrl } from "../utils/urlSanitizer";
 
 /**
  * Optimized image component with progressive loading, error handling, and CLS prevention
@@ -43,6 +44,11 @@ export default function GameImage({
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
 
+  // SECURITY: Sanitize URL to prevent XSS attacks (defense-in-depth)
+  // Even though backend validates URLs, frontend should also validate
+  // to prevent javascript:, data:, and other malicious URL schemes
+  const sanitizedUrl = useMemo(() => sanitizeImageUrl(url), [url]);
+
   // Advanced lazy loading with Intersection Observer
   // BEST PRACTICE: Use IntersectionObserver OR native lazy loading, not both
   const isLazy = loading === "lazy";
@@ -65,9 +71,10 @@ export default function GameImage({
   };
 
   // Generate responsive srcset if enabled and URL is BGG image
-  const srcSet = useResponsive ? generateSrcSet(url) : null;
+  // Use sanitized URL for security
+  const srcSet = useResponsive ? generateSrcSet(sanitizedUrl) : null;
 
-  if (!url || imageError) {
+  if (!sanitizedUrl || imageError) {
     return (
       <div
         ref={lazyRef}
@@ -106,9 +113,10 @@ export default function GameImage({
 
       {/* Only render img when shouldLoadImage is true (for IntersectionObserver) */}
       {/* Use default size (medium) - safer than original/detail which BGG may block */}
+      {/* SECURITY: Use sanitizedUrl to prevent XSS via malicious image URLs */}
       {shouldLoadImage && (
         <img
-          src={imageProxyUrl(url)}
+          src={imageProxyUrl(sanitizedUrl)}
           srcSet={srcSet}
           sizes={srcSet ? sizes : undefined}
           alt={alt || "Game cover image"}

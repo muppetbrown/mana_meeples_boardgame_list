@@ -42,6 +42,7 @@ from config import HTTP_TIMEOUT, CORS_ORIGINS
 from middleware.logging import RequestLoggingMiddleware
 from middleware.security import SecurityHeadersMiddleware
 from middleware.cache import APICacheControlMiddleware
+from middleware.csrf_protection import OriginValidationMiddleware
 
 # ------------------------------------------------------------------------------
 # Sentry initialization (Sprint 5: Enhanced with custom filtering)
@@ -467,6 +468,7 @@ app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(CacheThumbsMiddleware)
 app.add_middleware(APICacheControlMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(OriginValidationMiddleware)  # CSRF protection via Origin/Referer validation
 
 # CORS middleware MUST be added last to wrap all other middleware
 # This ensures preflight OPTIONS requests are handled correctly
