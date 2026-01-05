@@ -17,5 +17,5 @@ PyJWT==2.8.0
 cloudinary==1.40.0
 tenacity==8.2.3
 pybreaker==1.0.1
-redis==5.0.1
+redis==7.1.0
 Pillow==10.2.0
