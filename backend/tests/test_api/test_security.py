@@ -19,7 +19,11 @@ client = TestClient(app)
 
 # Admin token for authenticated tests
 # Using "test_admin_token" from conftest.py environment setup
-ADMIN_HEADERS = {"X-Admin-Token": "test_admin_token"}
+# Must include Origin header for CSRF protection
+ADMIN_HEADERS = {
+    "X-Admin-Token": "test_admin_token",
+    "Origin": "http://localhost:3000"
+}
 
 
 @pytest.fixture(autouse=True)
@@ -38,9 +42,11 @@ class TestFixSequenceValidation:
     def test_fix_sequence_valid_table(self):
         """Should accept valid table names"""
         # Note: This will fail without admin auth, but we're testing validation
+        # Need to include CSRF headers for POST requests
         response = client.post(
             "/api/admin/fix-sequence",
-            json={"table_name": "boardgames"}
+            json={"table_name": "boardgames"},
+            headers={"Origin": "http://localhost:3000"}  # CSRF protection
         )
         # Should get 401 (auth required), not 400 (validation error)
         assert response.status_code in [401, 429]

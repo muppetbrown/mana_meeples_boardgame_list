@@ -13,7 +13,7 @@ from datetime import datetime
 class TestBGGImportFlowIntegration:
     """Test complete BGG import workflow"""
 
-    def test_import_new_game_complete_flow(self, client, db_session):
+    def test_import_new_game_complete_flow(self, client, admin_headers, db_session):
         """Should import a new game from BGG with all data"""
         bgg_id = 174430  # Gloomhaven
 
@@ -41,7 +41,7 @@ class TestBGGImportFlowIntegration:
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={bgg_id}',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code == 201
@@ -51,13 +51,13 @@ class TestBGGImportFlowIntegration:
         assert data['complexity'] == 3.86
         assert 'Isaac Childres' in data['designers']
 
-    def test_import_existing_game_without_force(self, client, db_session, sample_game):
+    def test_import_existing_game_without_force(self, client, db_session, sample_game):, admin_headers)
         """Should return cached game when importing existing game without force flag"""
         bgg_id = sample_game.bgg_id
 
         response = client.post(
             f'/api/admin/import/bgg?bgg_id={bgg_id}&force=false',
-            headers={'X-Admin-Token': 'test_admin_token'}
+            headers=admin_headers
         )
 
         assert response.status_code == 200
@@ -65,7 +65,7 @@ class TestBGGImportFlowIntegration:
         assert data['bgg_id'] == bgg_id
         assert data['title'] == sample_game.title  # Original title, not updated
 
-    def test_import_existing_game_with_force(self, client, db_session, sample_game):
+    def test_import_existing_game_with_force(self, client, db_session, sample_game):, admin_headers)
         """Should update existing game when force flag is true"""
         bgg_id = sample_game.bgg_id
 
@@ -80,7 +80,7 @@ class TestBGGImportFlowIntegration:
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={bgg_id}&force=true',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code == 200
@@ -88,11 +88,11 @@ class TestBGGImportFlowIntegration:
         assert data['title'] == 'Updated Title'
         assert data['year'] == 2025
 
-    def test_import_invalid_bgg_id(self, client):
+    def test_import_invalid_bgg_id(self, client, admin_headers):
         """Should return 400 for invalid BGG ID"""
         response = client.post(
             '/api/admin/import/bgg?bgg_id=99999999',
-            headers={'X-Admin-Token': 'test_admin_token'}
+            headers=admin_headers
         )
 
         # API/validation errors may return 400, 404, or 500
@@ -104,32 +104,32 @@ class TestBGGImportFlowIntegration:
 
         assert response.status_code == 401
 
-    def test_import_with_network_error(self, client):
+    def test_import_with_network_error(self, client, admin_headers):
         """Should handle BGG API network errors gracefully"""
         from httpx import TimeoutException
 
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, side_effect=TimeoutException("Timeout")):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=13',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code in [500, 503, 504]
 
-    def test_import_with_malformed_bgg_data(self, client):
+    def test_import_with_malformed_bgg_data(self, client, admin_headers):
         """Should handle malformed BGG XML data"""
         mock_bad_data = {'title': None, 'year': 'invalid'}
 
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bad_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=13',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         # Should either reject or handle gracefully
         assert response.status_code in [400, 422, 500]
 
-    def test_import_persists_all_fields(self, client, db_session):
+    def test_import_persists_all_fields(self, client, admin_headers, db_session):
         """Should persist all BGG fields to database"""
         mock_bgg_data = {
             'title': 'Test Game',
@@ -156,7 +156,7 @@ class TestBGGImportFlowIntegration:
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=12345',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code == 201
@@ -172,7 +172,7 @@ class TestBGGImportFlowIntegration:
         assert len(data['designers']) == 2
         assert len(data['mechanics']) == 2
 
-    def test_import_handles_null_optional_fields(self, client):
+    def test_import_handles_null_optional_fields(self, client, admin_headers):
         """Should handle games with missing optional fields"""
         mock_bgg_data = {
             'title': 'Minimal Game',
@@ -186,14 +186,14 @@ class TestBGGImportFlowIntegration:
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=11111',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code == 201
         data = response.json()
         assert data['title'] == 'Minimal Game'
 
-    def test_bulk_import_csv(self, client, db_session):
+    def test_bulk_import_csv(self, client, admin_headers, db_session):
         """Should bulk import multiple games from CSV"""
         csv_content = "174430\n13\n12345"
 
@@ -210,14 +210,14 @@ class TestBGGImportFlowIntegration:
             response = client.post(
                 '/api/admin/bulk-import-csv',
                 json=csv_payload,
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code == 200
         data = response.json()
         assert len(data['added']) >= 3
 
-    def test_import_duplicate_detection(self, client, db_session, sample_game):
+    def test_import_duplicate_detection(self, client, db_session, sample_game):, admin_headers)
         """Should detect and handle duplicate BGG IDs"""
         # Try to import with same BGG ID as existing game
         mock_bgg_data = {'title': 'Different Title', 'bgg_id': sample_game.bgg_id}
@@ -225,7 +225,7 @@ class TestBGGImportFlowIntegration:
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={sample_game.bgg_id}',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         # Should return existing game or indicate duplicate
@@ -237,14 +237,14 @@ class TestBGGImportFlowIntegration:
         # Placeholder for future implementation
         pass
 
-    def test_import_rate_limiting(self, client):
+    def test_import_rate_limiting(self, client, admin_headers):
         """Should rate limit rapid BGG import requests"""
         # Make multiple rapid requests
         responses = []
         for i in range(10):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={i}',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
             responses.append(response.status_code)
 
@@ -253,7 +253,7 @@ class TestBGGImportFlowIntegration:
         has_rate_limit = any(status == 429 for status in responses)
         # This test may pass even without rate limiting
 
-    def test_import_concurrent_requests(self, client):
+    def test_import_concurrent_requests(self, client, admin_headers):
         """Should handle concurrent import requests safely"""
         import threading
 
@@ -262,7 +262,7 @@ class TestBGGImportFlowIntegration:
         def import_game(bgg_id):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={bgg_id}',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
             results.append(response.status_code)
 
@@ -281,21 +281,21 @@ class TestBGGImportFlowIntegration:
         # All should succeed or fail gracefully
         assert all(status in [200, 201, 400, 429, 500] for status in results)
 
-    def test_import_updates_timestamp(self, client, db_session):
+    def test_import_updates_timestamp(self, client, admin_headers, db_session):
         """Should update created_at/updated_at timestamps"""
         mock_bgg_data = {'title': 'Timestamp Test', 'bgg_id': 99999}
 
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=99999',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code == 201
         data = response.json()
         assert 'created_at' in data or 'id' in data
 
-    def test_import_thumbnail_download_trigger(self, client):
+    def test_import_thumbnail_download_trigger(self, client, admin_headers):
         """Should trigger thumbnail download for imported game"""
         mock_bgg_data = {
             'title': 'Thumbnail Test',
@@ -307,13 +307,13 @@ class TestBGGImportFlowIntegration:
             with patch('services.image_service.ImageService.download_and_update_game_thumbnail') as mock_download:
                 response = client.post(
                     '/api/admin/import/bgg?bgg_id=88888',
-                    headers={'X-Admin-Token': 'test_admin_token'}
+                    headers=admin_headers
                 )
 
         assert response.status_code == 201
         # Thumbnail download may be async, so just verify import succeeded
 
-    def test_import_special_characters_in_title(self, client):
+    def test_import_special_characters_in_title(self, client, admin_headers):
         """Should handle games with special characters in titles"""
         mock_bgg_data = {
             'title': 'Café International: Das große Würfelspiel',
@@ -324,14 +324,14 @@ class TestBGGImportFlowIntegration:
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=77777',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code == 201
         data = response.json()
         assert 'Café' in data['title']
 
-    def test_import_large_designer_list(self, client):
+    def test_import_large_designer_list(self, client, admin_headers):
         """Should handle games with many designers"""
         mock_bgg_data = {
             'title': 'Many Designers Game',
@@ -342,14 +342,14 @@ class TestBGGImportFlowIntegration:
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=66666',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code == 201
         data = response.json()
         assert len(data['designers']) == 20
 
-    def test_import_returns_complete_game_object(self, client):
+    def test_import_returns_complete_game_object(self, client, admin_headers):
         """Should return complete game object after import"""
         mock_bgg_data = {
             'title': 'Complete Object Test',
@@ -361,7 +361,7 @@ class TestBGGImportFlowIntegration:
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=55555',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code == 201
@@ -372,7 +372,7 @@ class TestBGGImportFlowIntegration:
         for field in expected_fields:
             assert field in data
 
-    def test_import_idempotency(self, client):
+    def test_import_idempotency(self, client, admin_headers):
         """Should be idempotent - multiple imports of same game produce same result"""
         mock_bgg_data = {'title': 'Idempotent Test', 'bgg_id': 44444}
 
@@ -380,32 +380,32 @@ class TestBGGImportFlowIntegration:
             # Import once
             response1 = client.post(
                 '/api/admin/import/bgg?bgg_id=44444',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
             # Import again (without force)
             response2 = client.post(
                 '/api/admin/import/bgg?bgg_id=44444&force=false',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response1.status_code == 201
         assert response2.status_code == 200
         assert response1.json()['bgg_id'] == response2.json()['bgg_id']
 
-    def test_import_validates_required_fields(self, client):
+    def test_import_validates_required_fields(self, client, admin_headers):
         """Should reject BGG data missing required fields"""
         mock_bad_data = {'year': 2023}  # Missing title
 
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bad_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=33333',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code in [400, 422, 500]
 
-    def test_import_preserves_manual_categorization(self, client, db_session, sample_game):
+    def test_import_preserves_manual_categorization(self, client, db_session, sample_game):, admin_headers)
         """Should preserve manual category assignment when re-importing"""
         # Set manual category
         sample_game.mana_meeple_category = 'GATEWAY_STRATEGY'
@@ -420,7 +420,7 @@ class TestBGGImportFlowIntegration:
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 f'/api/admin/import/bgg?bgg_id={sample_game.bgg_id}&force=true',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code == 200
@@ -428,7 +428,7 @@ class TestBGGImportFlowIntegration:
         # Category should be preserved (this depends on implementation)
         assert data['mana_meeple_category'] in [None, 'GATEWAY_STRATEGY']
 
-    def test_import_logs_activity(self, client):
+    def test_import_logs_activity(self, client, admin_headers):
         """Should log import activity for audit trail"""
         mock_bgg_data = {'title': 'Logging Test', 'bgg_id': 22222}
 
@@ -436,20 +436,20 @@ class TestBGGImportFlowIntegration:
             with patch('logging.Logger.info') as mock_log:
                 response = client.post(
                     '/api/admin/import/bgg?bgg_id=22222',
-                    headers={'X-Admin-Token': 'test_admin_token'}
+                    headers=admin_headers
                 )
 
         assert response.status_code == 201
         # Logging should have occurred (exact assertion depends on implementation)
 
-    def test_import_sets_default_status(self, client):
+    def test_import_sets_default_status(self, client, admin_headers):
         """Should set default status for newly imported games"""
         mock_bgg_data = {'title': 'Status Test', 'bgg_id': 11112}
 
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=11112',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code == 201
@@ -457,7 +457,7 @@ class TestBGGImportFlowIntegration:
         # Should have default status (likely "OWNED" or similar)
         assert 'status' in data or 'id' in data
 
-    def test_import_bgg_api_retry_logic(self, client):
+    def test_import_bgg_api_retry_logic(self, client, admin_headers):
         """Should retry BGG API calls on transient failures"""
         from unittest.mock import call
 
@@ -470,7 +470,7 @@ class TestBGGImportFlowIntegration:
 
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=11113',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         # May succeed if retry logic is implemented
@@ -484,7 +484,7 @@ class TestBGGImportFlowIntegration:
         # but included here for completeness
         pass
 
-    def test_reimport_all_games_endpoint(self, client, db_session, sample_game):
+    def test_reimport_all_games_endpoint(self, client, db_session, sample_game):, admin_headers)
         """Should re-import all existing games with enhanced data"""
         mock_bgg_data = {
             'title': sample_game.title,
@@ -495,18 +495,18 @@ class TestBGGImportFlowIntegration:
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
             response = client.post(
                 '/api/admin/reimport-all-games',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         # Should start background task or return success
         assert response.status_code in [200, 202]
 
-    def test_import_error_provides_helpful_message(self, client):
+    def test_import_error_provides_helpful_message(self, client, admin_headers):
         """Should provide clear error messages for failed imports"""
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, side_effect=ValueError("Invalid BGG ID")):
             response = client.post(
                 '/api/admin/import/bgg?bgg_id=00000',
-                headers={'X-Admin-Token': 'test_admin_token'}
+                headers=admin_headers
             )
 
         assert response.status_code in [400, 422, 500]

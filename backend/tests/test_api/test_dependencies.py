@@ -376,6 +376,7 @@ class TestRequireAdminAuth:
             request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None
         )
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_require_admin_auth_valid_session_cookie(self):
         """Test authentication with valid session cookie"""
         client_ip = "10.0.0.5"
@@ -385,7 +386,7 @@ class TestRequireAdminAuth:
         request.headers = {}
         request.client = Mock(host=client_ip)
 
-        # Should not raise exception
+        # Should not raise exception (session auth no longer supported)
         require_admin_auth(
             request=request, authorization=None, x_admin_token=None
         )
@@ -430,8 +431,7 @@ class TestRequireAdminAuth:
             require_admin_auth(
                 request=request,
                 authorization="Bearer invalid.jwt.token",
-                x_admin_token=None,
-                admin_session=None,
+                x_admin_token=None
             )
 
         assert exc_info.value.status_code == 401
@@ -451,6 +451,7 @@ class TestRequireAdminAuth:
 
         assert exc_info.value.status_code == 401
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_require_admin_auth_invalid_session(self):
         """Test authentication fails with invalid session"""
         client_ip = "192.168.1.1"
@@ -466,6 +467,7 @@ class TestRequireAdminAuth:
 
         assert exc_info.value.status_code == 401
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_require_admin_auth_jwt_preferred_over_session(self):
         """Test JWT is tried before session cookie"""
         client_ip = "192.168.1.100"
@@ -482,6 +484,7 @@ class TestRequireAdminAuth:
             request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None
         )
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_require_admin_auth_session_preferred_over_token(self):
         """Test session cookie is tried before admin token"""
         client_ip = "192.168.1.100"
@@ -556,6 +559,7 @@ class TestRequireAdminAuth:
             "Valid JWT authentication" in record.message for record in caplog.records
         )
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_require_admin_auth_session_debug_logging(self, caplog):
         """Test session authentication debug logging"""
         import logging
@@ -586,6 +590,7 @@ class TestIntegration:
         session_storage._memory_sessions.clear()
         admin_sessions.clear()
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_full_session_workflow(self):
         """Test complete session creation, validation, and revocation"""
         client_ip = "192.168.1.100"
@@ -631,6 +636,7 @@ class TestIntegration:
             request=request, authorization=f"Bearer {token}", x_admin_token=None
         )
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_mixed_authentication_methods(self):
         """Test using different authentication methods"""
         client_ip = "172.16.0.1"
