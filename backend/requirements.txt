@@ -16,6 +16,6 @@ selenium>=4.15.0
 PyJWT==2.10.1
 cloudinary==1.44.1
 tenacity==8.2.3
-pybreaker==1.4.1
-redis==5.0.1
+pybreaker==1.0.1
+redis==7.1.0
 Pillow==10.2.0
