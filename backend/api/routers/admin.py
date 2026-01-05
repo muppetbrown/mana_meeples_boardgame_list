@@ -26,6 +26,11 @@ from api.dependencies import (
     get_client_ip,
     require_admin_auth,
 )
+from utils.error_handlers import (
+    handle_integrity_error,
+    handle_validation_error,
+    handle_generic_error,
+)
 from bgg_service import fetch_bgg_thing
 from config import (
     ADMIN_TOKEN,
@@ -162,24 +167,12 @@ async def create_game(
 
     except IntegrityError as e:
         db.rollback()
-        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
-        # Extract constraint name from error message for better user feedback
-        if "players_max_gte_min" in error_msg:
-            raise HTTPException(status_code=400, detail="Maximum players must be greater than or equal to minimum players")
-        elif "playtime_max_gte_min" in error_msg:
-            raise HTTPException(status_code=400, detail="Maximum playtime must be greater than or equal to minimum playtime")
-        elif "valid_year" in error_msg:
-            raise HTTPException(status_code=400, detail="Year must be 1900 or later")
-        else:
-            raise HTTPException(status_code=400, detail=f"Database constraint violation: {error_msg}")
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise handle_integrity_error(e)
+    except (ValidationError, ValueError) as e:
+        raise handle_validation_error(e)
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to create game: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to create game")
+        raise handle_generic_error(e, "create game")
 
 
 @router.post("/import/bgg")
@@ -320,26 +313,15 @@ async def update_admin_game(
         raise HTTPException(status_code=404, detail=str(e))
     except IntegrityError as e:
         db.rollback()
-        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
-        # Extract constraint name from error message for better user feedback
-        if "players_max_gte_min" in error_msg:
-            raise HTTPException(status_code=400, detail="Maximum players must be greater than or equal to minimum players")
-        elif "playtime_max_gte_min" in error_msg:
-            raise HTTPException(status_code=400, detail="Maximum playtime must be greater than or equal to minimum playtime")
-        elif "valid_year" in error_msg:
-            raise HTTPException(status_code=400, detail="Year must be 1900 or later")
-        else:
-            raise HTTPException(status_code=400, detail=f"Database constraint violation: {error_msg}")
-    except ValidationError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+        raise handle_integrity_error(e)
+    except (ValidationError, ValueError) as e:
+        raise handle_validation_error(e)
     except Exception as e:
         db.rollback()
         logger.error(
             f"Failed to update game {game_id}: {e}", extra={"game_id": game_id}, exc_info=True
         )
-        raise HTTPException(status_code=500, detail="Failed to update game")
+        raise handle_generic_error(e, f"update game {game_id}")
 
 
 @router.post("/games/{game_id}/update")
@@ -432,19 +414,52 @@ async def fix_sequence(
 
         sequence_name = VALID_SEQUENCES[table_name]
 
-        # Get the current maximum ID from the table
-        # Using parameterized query with identifier() for table name
-        result = db.execute(text(f"SELECT MAX(id) FROM {table_name}"))
-        max_id = result.scalar()
+        # SECURITY FIX: Use SQLAlchemy's identifier quoting to prevent SQL injection
+        # Even though we have a whitelist, using proper identifier quoting is defense-in-depth
+        from sqlalchemy import inspect, func
+        from sqlalchemy.sql import quoted_name
+
+        # Option 1: Use SQLAlchemy's table inspection for safety
+        inspector = inspect(db.get_bind())
+        if table_name not in inspector.get_table_names():
+            raise HTTPException(
+                status_code=400,
+                detail=f"Table {table_name} does not exist in database"
+            )
+
+        # Get the current maximum ID using SQLAlchemy's func
+        # This is safer than raw SQL with f-strings
+        from models import Base
+
+        # Map table names to model classes for type-safe queries
+        table_models = {
+            "boardgames": __import__('models', fromlist=['Game']).Game,
+            "buy_list_games": __import__('models', fromlist=['BuyListGame']).BuyListGame,
+            "price_snapshots": __import__('models', fromlist=['PriceSnapshot']).PriceSnapshot,
+            "price_offers": __import__('models', fromlist=['PriceOffer']).PriceOffer,
+            "sleeves": __import__('models', fromlist=['Sleeve']).Sleeve,
+        }
+
+        if table_name not in table_models:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid table name. Allowed: {', '.join(table_models.keys())}"
+            )
+
+        model_class = table_models[table_name]
+
+        # Type-safe query using SQLAlchemy ORM
+        max_id = db.query(func.max(model_class.id)).scalar()
 
         if max_id is None:
             max_id = 0
 
-        # Reset the sequence to max_id (with is_called=true, so next value will be max_id + 1)
-        # Using parameter binding for both sequence name and max_id
+        # Reset the sequence using func.setval (safer than raw SQL)
+        # Note: PostgreSQL's setval() requires literal sequence name, not a parameter
+        # We use the whitelisted sequence_name from VALID_SEQUENCES
+        # This is safe because sequence_name comes from a hardcoded dict, not user input
         db.execute(
-            text(f"SELECT setval(:sequence_name, :max_id, true)"),
-            {"sequence_name": sequence_name, "max_id": max_id}
+            select(func.setval(sequence_name, max_id, True))
         )
         db.commit()
 
