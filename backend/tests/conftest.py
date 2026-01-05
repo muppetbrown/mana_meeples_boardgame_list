@@ -216,8 +216,11 @@ def sample_games_list():
 
 @pytest.fixture
 def admin_headers():
-    """Headers with admin authentication"""
-    return {"X-Admin-Token": "test_admin_token"}
+    """Headers with admin authentication and CSRF protection"""
+    return {
+        "X-Admin-Token": "test_admin_token",
+        "Origin": "http://localhost:3000"  # Required for CSRF protection
+    }
 
 
 @pytest.fixture
