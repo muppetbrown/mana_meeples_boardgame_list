@@ -307,9 +307,10 @@ class TestBackgroundTasks:
             "year": 2023,
         }
 
+        # Patch where GameService is imported in background_tasks module, not where it's defined
         with patch("services.background_tasks.SessionLocal", return_value=db_session), \
              patch("services.background_tasks.fetch_bgg_thing", return_value=mock_bgg_data), \
-             patch("services.game_service.GameService") as MockGameService:
+             patch("services.background_tasks.GameService") as MockGameService:
 
             mock_service = MockGameService.return_value
             mock_service.update_game_from_bgg_data = Mock()

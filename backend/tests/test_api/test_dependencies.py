@@ -373,9 +373,10 @@ class TestRequireAdminAuth:
 
         # Should not raise exception
         require_admin_auth(
-            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None, admin_session=None
+            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None
         )
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_require_admin_auth_valid_session_cookie(self):
         """Test authentication with valid session cookie"""
         client_ip = "10.0.0.5"
@@ -385,9 +386,9 @@ class TestRequireAdminAuth:
         request.headers = {}
         request.client = Mock(host=client_ip)
 
-        # Should not raise exception
+        # Should not raise exception (session auth no longer supported)
         require_admin_auth(
-            request=request, authorization=None, x_admin_token=None, admin_session=session_token
+            request=request, authorization=None, x_admin_token=None
         )
 
     def test_require_admin_auth_valid_admin_token(self):
@@ -400,7 +401,7 @@ class TestRequireAdminAuth:
 
         # Should not raise exception
         require_admin_auth(
-            request=request, authorization=None, x_admin_token=ADMIN_TOKEN, admin_session=None
+            request=request, authorization=None, x_admin_token=ADMIN_TOKEN
         )
 
     def test_require_admin_auth_no_credentials(self):
@@ -413,7 +414,7 @@ class TestRequireAdminAuth:
 
         with pytest.raises(HTTPException) as exc_info:
             require_admin_auth(
-                request=request, authorization=None, x_admin_token=None, admin_session=None
+                request=request, authorization=None, x_admin_token=None
             )
 
         assert exc_info.value.status_code == 401
@@ -430,8 +431,7 @@ class TestRequireAdminAuth:
             require_admin_auth(
                 request=request,
                 authorization="Bearer invalid.jwt.token",
-                x_admin_token=None,
-                admin_session=None,
+                x_admin_token=None
             )
 
         assert exc_info.value.status_code == 401
@@ -446,11 +446,12 @@ class TestRequireAdminAuth:
 
         with pytest.raises(HTTPException) as exc_info:
             require_admin_auth(
-                request=request, authorization=None, x_admin_token="wrong-token", admin_session=None
+                request=request, authorization=None, x_admin_token="wrong-token"
             )
 
         assert exc_info.value.status_code == 401
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_require_admin_auth_invalid_session(self):
         """Test authentication fails with invalid session"""
         client_ip = "192.168.1.1"
@@ -461,11 +462,12 @@ class TestRequireAdminAuth:
 
         with pytest.raises(HTTPException) as exc_info:
             require_admin_auth(
-                request=request, authorization=None, x_admin_token=None, admin_session="invalid-session"
+                request=request, authorization=None, x_admin_token=None
             )
 
         assert exc_info.value.status_code == 401
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_require_admin_auth_jwt_preferred_over_session(self):
         """Test JWT is tried before session cookie"""
         client_ip = "192.168.1.100"
@@ -479,9 +481,10 @@ class TestRequireAdminAuth:
 
         # Should succeed with valid JWT even though session is invalid
         require_admin_auth(
-            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None, admin_session=invalid_session
+            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None
         )
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_require_admin_auth_session_preferred_over_token(self):
         """Test session cookie is tried before admin token"""
         client_ip = "192.168.1.100"
@@ -493,7 +496,7 @@ class TestRequireAdminAuth:
 
         # Should succeed with valid session even with wrong admin token
         require_admin_auth(
-            request=request, authorization=None, x_admin_token="wrong", admin_session=session_token
+            request=request, authorization=None, x_admin_token="wrong"
         )
 
     @patch("api.dependencies.DISABLE_RATE_LIMITING", False)
@@ -511,7 +514,7 @@ class TestRequireAdminAuth:
         for _ in range(3):
             with pytest.raises(HTTPException):
                 require_admin_auth(
-                    request=request, authorization=None, x_admin_token="wrong", admin_session=None
+                    request=request, authorization=None, x_admin_token="wrong"
                 )
 
     def test_require_admin_auth_logging_invalid(self, caplog):
@@ -527,7 +530,7 @@ class TestRequireAdminAuth:
 
         with pytest.raises(HTTPException):
             require_admin_auth(
-                request=request, authorization=None, x_admin_token="wrong-token", admin_session=None
+                request=request, authorization=None, x_admin_token="wrong-token"
             )
 
         # Check log message
@@ -548,7 +551,7 @@ class TestRequireAdminAuth:
         request.client = Mock(host=client_ip)
 
         require_admin_auth(
-            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None, admin_session=None
+            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None
         )
 
         # Check debug log
@@ -556,6 +559,7 @@ class TestRequireAdminAuth:
             "Valid JWT authentication" in record.message for record in caplog.records
         )
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_require_admin_auth_session_debug_logging(self, caplog):
         """Test session authentication debug logging"""
         import logging
@@ -569,7 +573,7 @@ class TestRequireAdminAuth:
         request.client = Mock(host=client_ip)
 
         require_admin_auth(
-            request=request, authorization=None, x_admin_token=None, admin_session=session_token
+            request=request, authorization=None, x_admin_token=None
         )
 
         # Check debug log
@@ -586,6 +590,7 @@ class TestIntegration:
         session_storage._memory_sessions.clear()
         admin_sessions.clear()
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_full_session_workflow(self):
         """Test complete session creation, validation, and revocation"""
         client_ip = "192.168.1.100"
@@ -602,7 +607,7 @@ class TestIntegration:
         request.headers = {}
         request.client = Mock(host=client_ip)
 
-        require_admin_auth(request=request, authorization=None, x_admin_token=None, admin_session=token)
+        require_admin_auth(request=request, authorization=None, x_admin_token=None)
 
         # 4. Revoke session
         revoke_session(token)
@@ -612,7 +617,7 @@ class TestIntegration:
 
         with pytest.raises(HTTPException):
             require_admin_auth(
-                request=request, authorization=None, x_admin_token=None, admin_session=token
+                request=request, authorization=None, x_admin_token=None
             )
 
     def test_full_jwt_workflow(self):
@@ -628,9 +633,10 @@ class TestIntegration:
         request.client = Mock(host=client_ip)
 
         require_admin_auth(
-            request=request, authorization=f"Bearer {token}", x_admin_token=None, admin_session=None
+            request=request, authorization=f"Bearer {token}", x_admin_token=None
         )
 
+    @pytest.mark.skip(reason="Session-based authentication removed in favor of JWT-only")
     def test_mixed_authentication_methods(self):
         """Test using different authentication methods"""
         client_ip = "172.16.0.1"
@@ -645,15 +651,15 @@ class TestIntegration:
 
         # Test JWT
         require_admin_auth(
-            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None, admin_session=None
+            request=request, authorization=f"Bearer {jwt_token}", x_admin_token=None
         )
 
         # Test session
         require_admin_auth(
-            request=request, authorization=None, x_admin_token=None, admin_session=session_token
+            request=request, authorization=None, x_admin_token=None
         )
 
         # Test admin token
         require_admin_auth(
-            request=request, authorization=None, x_admin_token=ADMIN_TOKEN, admin_session=None
+            request=request, authorization=None, x_admin_token=ADMIN_TOKEN
         )

@@ -113,11 +113,12 @@ class TestBulkImportCSV:
                 data = response.json()
                 assert len(data["added"]) == 2
 
-    def test_bulk_import_unauthorized(self, client):
+    def test_bulk_import_unauthorized(self, client, csrf_headers):
         """Test bulk import without authentication"""
         response = client.post(
             "/api/admin/bulk-import-csv",
-            json={"csv_data": "174430"}
+            json={"csv_data": "174430"},
+            headers=csrf_headers
         )
         assert response.status_code in [401, 429]
 
@@ -203,11 +204,12 @@ class TestBulkCategorizeCSV:
             assert len(data["errors"]) == 1
             assert "at least" in data["errors"][0].lower()
 
-    def test_bulk_categorize_unauthorized(self, client):
+    def test_bulk_categorize_unauthorized(self, client, csrf_headers):
         """Test bulk categorize without authentication"""
         response = client.post(
             "/api/admin/bulk-categorize-csv",
-            json={"csv_data": "30549,COOP_ADVENTURE"}
+            json={"csv_data": "30549,COOP_ADVENTURE"},
+            headers=csrf_headers
         )
         assert response.status_code in [401, 429]
 
@@ -276,11 +278,12 @@ class TestBulkUpdateNZDesigners:
             data = response.json()
             assert len(data["errors"]) == 1
 
-    def test_bulk_update_nz_unauthorized(self, client):
+    def test_bulk_update_nz_unauthorized(self, client, csrf_headers):
         """Test bulk NZ designer update without authentication"""
         response = client.post(
             "/api/admin/bulk-update-nz-designers",
-            json={"csv_data": "12345,true"}
+            json={"csv_data": "12345,true"},
+            headers=csrf_headers
         )
         assert response.status_code in [401, 429]
 
@@ -319,9 +322,9 @@ class TestReimportAllGames:
             data = response.json()
             assert "0 games" in data["message"]
 
-    def test_reimport_all_unauthorized(self, client):
+    def test_reimport_all_unauthorized(self, client, csrf_headers):
         """Test reimport all without authentication"""
-        response = client.post("/api/admin/reimport-all-games")
+        response = client.post("/api/admin/reimport-all-games", headers=csrf_headers)
         assert response.status_code in [401, 429]
 
 
@@ -470,11 +473,12 @@ class TestBulkUpdateAfterGameIds:
             assert len(data["updated"]) == 3
             assert "Processed 3 lines" in data["message"]
 
-    def test_bulk_update_aftergame_unauthorized(self, client):
+    def test_bulk_update_aftergame_unauthorized(self, client, csrf_headers):
         """Test bulk update AfterGame IDs without authentication"""
         response = client.post(
             "/api/admin/bulk-update-aftergame-ids",
-            json={"csv_data": "12345,550e8400-e29b-41d4-a716-446655440000"}
+            json={"csv_data": "12345,550e8400-e29b-41d4-a716-446655440000"},
+            headers=csrf_headers
         )
         assert response.status_code in [401, 429]
 
@@ -565,9 +569,9 @@ class TestFetchAllSleeveData:
 
             assert response.status_code in [500, 429]
 
-    def test_fetch_all_sleeve_data_unauthorized(self, client):
+    def test_fetch_all_sleeve_data_unauthorized(self, client, csrf_headers):
         """Test fetch all sleeve data without authentication"""
-        response = client.post("/api/admin/fetch-all-sleeve-data")
+        response = client.post("/api/admin/fetch-all-sleeve-data", headers=csrf_headers)
         assert response.status_code in [401, 429]
 
 
@@ -942,9 +946,9 @@ class TestBackfillCloudinaryUrls:
                     call_args = mock_cloudinary.generate_optimized_url.call_args
                     assert "full.jpg" in call_args[0][0]
 
-    def test_backfill_cloudinary_unauthorized(self, client):
+    def test_backfill_cloudinary_unauthorized(self, client, csrf_headers):
         """Test backfill without authentication"""
-        response = client.post("/api/admin/backfill-cloudinary-urls")
+        response = client.post("/api/admin/backfill-cloudinary-urls", headers=csrf_headers)
         assert response.status_code in [401, 429]
 
     def test_backfill_cloudinary_returns_error_limit(self, client, db_session, admin_headers):

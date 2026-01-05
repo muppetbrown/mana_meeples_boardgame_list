@@ -62,8 +62,10 @@ class OriginValidationMiddleware:
                 await self.app(scope, receive, send)
                 return
 
-            # Skip validation for login endpoint (no prior origin)
-            if path == "/api/admin/login":
+            # Skip validation for login and logout endpoints
+            # Login: No prior origin available before authentication
+            # Logout: Session invalidation doesn't need CSRF protection
+            if path in ("/api/admin/login", "/api/admin/logout"):
                 await self.app(scope, receive, send)
                 return
 
