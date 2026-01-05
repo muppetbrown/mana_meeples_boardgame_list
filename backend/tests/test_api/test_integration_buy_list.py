@@ -174,7 +174,8 @@ class TestBuyListWorkflowsIntegration:
         assert response2.status_code == 401
 
         # Remove without auth (using a dummy ID since we can't add without auth)
-        response3 = client.delete('/api/admin/buy-list/games/1')
+        # Include CSRF headers to pass CSRF check and reach authentication
+        response3 = client.delete('/api/admin/buy-list/games/1', headers=csrf_headers)
         assert response3.status_code == 401
 
     def test_add_nonexistent_game_to_buy_list(self, client, admin_headers):
