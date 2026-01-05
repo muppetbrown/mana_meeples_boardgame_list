@@ -119,19 +119,6 @@ ${body}`;
   }
 );
 
-/**
- * Helper to get admin token from safe storage (legacy fallback)
- * @returns {Object} Headers object with admin token if available
- *
- * NOTE: This is kept for backward compatibility but the primary authentication
- * method is now cookie-based via the admin_session cookie set by the login endpoint.
- * Most admin operations should work without explicit headers.
- */
-function getAdminHeaders() {
-  const token = safeStorage.getItem("ADMIN_TOKEN");
-  return token ? { "X-Admin-Token": token } : {};
-}
-
 // ============================================================================
 // PUBLIC API METHODS
 // ============================================================================

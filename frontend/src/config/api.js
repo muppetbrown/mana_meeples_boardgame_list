@@ -85,13 +85,6 @@ export function getApiUrl(path) {
 }
 
 /**
- * Legacy API_BASE for backward compatibility
- * This will be deprecated in future versions
- * @deprecated Use getApiUrl() instead
- */
-export const LEGACY_API_BASE = API_BASE;
-
-/**
  * Generate BGG image URL at specific size
  *
  * @param {string} url - The original image URL
