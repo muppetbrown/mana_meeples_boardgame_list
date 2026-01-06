@@ -175,6 +175,30 @@ jobs:
           echo $! > /tmp/frontend.pid
           sleep 3  # Wait for server to start
 
+      - name: Wait for servers to be ready
+        run: |
+          # Wait for backend health check
+          echo "Waiting for backend to be ready..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/api/health > /dev/null; then
+              echo "Backend is ready!"
+              break
+            fi
+            echo "Attempt $i: Backend not ready yet, waiting..."
+            sleep 2
+          done
+
+          # Wait for frontend to be ready
+          echo "Waiting for frontend to be ready..."
+          for i in {1..30}; do
+            if curl -s http://localhost:3000 > /dev/null; then
+              echo "Frontend is ready!"
+              break
+            fi
+            echo "Attempt $i: Frontend not ready yet, waiting..."
+            sleep 2
+          done
+
       - name: Install Playwright
         run: |
           cd e2e
@@ -182,6 +206,8 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Run E2E tests
+        env:
+          BASE_URL: http://localhost:3000
         run: |
           cd e2e
           npx playwright test --reporter=html
