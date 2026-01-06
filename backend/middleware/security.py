@@ -66,6 +66,12 @@ class SecurityHeadersMiddleware:
                         b"max-age=31536000; includeSubDomains"
                     ))
 
+                # X-XSS-Protection: Legacy XSS protection header
+                # Note: Deprecated in favor of CSP, but included for compatibility
+                # Only added to non-API endpoints (HTML pages)
+                if not is_api_endpoint and b"x-xss-protection" not in headers_dict:
+                    new_headers.append((b"x-xss-protection", b"1; mode=block"))
+
                 # Content-Security-Policy: Only for HTML pages, not API JSON responses
                 # This is a moderate policy that allows same-origin and trusted CDNs
                 if not is_api_endpoint and b"content-security-policy" not in headers_dict:

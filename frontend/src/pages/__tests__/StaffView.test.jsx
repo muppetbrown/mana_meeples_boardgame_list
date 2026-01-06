@@ -212,8 +212,8 @@ describe('StaffView Page', () => {
 
   describe('Logout functionality', () => {
     test('shows confirmation dialog when logout clicked', async () => {
-      
-      
+
+
       window.confirm = vi.fn(() => false);
 
       render(

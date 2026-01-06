@@ -37,12 +37,14 @@ class OriginValidationMiddleware:
             for origin in CORS_ORIGINS:
                 self.allowed_origins.add(origin.rstrip('/'))
 
-        # Always allow localhost for development
+        # Always allow localhost for development and testing
         self.allowed_origins.update([
             'http://localhost:3000',
             'http://127.0.0.1:3000',
             'http://localhost:5173',
             'http://127.0.0.1:5173',
+            'http://testserver',  # For FastAPI TestClient
+            'http://test',        # For async test client
         ])
 
         logger.info(f"CSRF protection enabled for origins: {self.allowed_origins}")
