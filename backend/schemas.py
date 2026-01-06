@@ -41,8 +41,8 @@ class BGGGameImport(BaseModel):
     @field_validator("bgg_id")
     @classmethod
     def validate_bgg_id(cls, v):
-        if v <= 0 or v > 999999:
-            raise ValueError("BGG ID must be between 1 and 999999")
+        if v <= 0 or v > 10000000:
+            raise ValueError("BGG ID must be between 1 and 10000000")
         return v
 
 
@@ -109,8 +109,8 @@ class BuyListGameCreate(BaseModel):
     @field_validator("bgg_id")
     @classmethod
     def validate_bgg_id(cls, v):
-        if v <= 0 or v > 999999:
-            raise ValueError("BGG ID must be between 1 and 999999")
+        if v <= 0 or v > 10000000:
+            raise ValueError("BGG ID must be between 1 and 10000000")
         return v
 
 
