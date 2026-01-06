@@ -55,17 +55,19 @@ test.describe('Public Browsing and Filtering', () => {
     // Find search input
     const searchInput = page.locator('input[placeholder*="Search"], input[type="search"], input[name="search"]').first();
 
+    // Focus and fill the search input
+    await searchInput.click();
     await searchInput.fill('catan');
 
-    // Wait for debounced search
-    await page.waitForTimeout(300);
+    // Wait for debounced search (150ms debounce + extra time for URL update)
+    await page.waitForTimeout(500);
 
     // Verify URL contains search parameter
     expect(page.url()).toContain('q=');
 
     // Results should be visible (or "no results" message)
     const hasResults = await page.locator('[data-testid="game-card"], .game-card, article').count() > 0;
-    const hasNoResults = await page.locator('text=/no.*games.*found/i, text=/no.*results/i').count() > 0;
+    const hasNoResults = await page.locator('text=/no.*games.*found/i').or(page.locator('text=/no.*results/i')).count() > 0;
 
     expect(hasResults || hasNoResults).toBeTruthy();
   });
@@ -89,12 +91,15 @@ test.describe('Public Browsing and Filtering', () => {
     // Wait for initial load
     await page.waitForSelector('[data-testid="game-card"], .game-card, article');
 
-    // Find sort dropdown/select
-    const sortSelect = page.locator('select[name="sort"], select:has(option:text-matches("Title|Year|Rating", "i"))').first();
+    // Find sort dropdown/select - use a simpler selector
+    const sortSelect = page.locator('select[aria-label="Choose sort field"]').first();
 
-    if (await sortSelect.count() > 0) {
-      // Select "Year" or similar option
-      await sortSelect.selectOption({ label: /year|rating/i });
+    // Check if sort select exists and is visible (may be hidden on mobile)
+    const isVisible = await sortSelect.isVisible().catch(() => false);
+
+    if (isVisible) {
+      // Select "Year" option by value
+      await sortSelect.selectOption('year');
 
       // Wait for re-sort
       await page.waitForTimeout(500);
@@ -106,6 +111,13 @@ test.describe('Public Browsing and Filtering', () => {
       const gameCards = page.locator('[data-testid="game-card"], .game-card, article');
       const count = await gameCards.count();
       expect(count).toBeGreaterThan(0);
+    } else {
+      // Sort controls may be hidden on mobile or in certain layouts
+      // Skip the sorting verification but ensure games are still displayed
+      const gameCards = page.locator('[data-testid="game-card"], .game-card, article');
+      const count = await gameCards.count();
+      expect(count).toBeGreaterThan(0);
+      console.log('Sort select not visible - skipping sort test (may be mobile layout)');
     }
   });
 });

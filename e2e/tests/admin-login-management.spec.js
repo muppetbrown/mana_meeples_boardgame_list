@@ -43,7 +43,7 @@ test.describe('Admin Login and Management', () => {
     await page.waitForTimeout(1000);
 
     // Verify error message is displayed
-    const errorMessage = await page.locator('text=/invalid|incorrect|failed/i, [role="alert"]').count();
+    const errorMessage = await page.locator('[role="alert"]').count();
     expect(errorMessage).toBeGreaterThan(0);
 
     // Verify we're still on login page

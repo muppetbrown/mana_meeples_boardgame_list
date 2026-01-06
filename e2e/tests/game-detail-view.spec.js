@@ -17,9 +17,9 @@ test.describe('Game Detail View', () => {
       timeout: 10000
     });
 
-    // Click on the first game card
-    const firstGame = page.locator('[data-testid="game-card"], .game-card, article').first();
-    await firstGame.click();
+    // Click on the first game card's link (not the expand button)
+    const firstGameLink = page.locator('article a[href^="/game/"]').first();
+    await firstGameLink.click();
 
     // Wait for navigation to detail page
     await page.waitForURL(/\/game\/\d+/);
@@ -40,8 +40,8 @@ test.describe('Game Detail View', () => {
     // Wait for games to load
     await page.waitForSelector('[data-testid="game-card"], .game-card, article');
 
-    // Click on a game card
-    await page.locator('[data-testid="game-card"], .game-card, article').first().click();
+    // Click on a game card's link (not the expand button)
+    await page.locator('article a[href^="/game/"]').first().click();
 
     // Wait for detail page
     await page.waitForURL(/\/game\/\d+/);
@@ -54,15 +54,15 @@ test.describe('Game Detail View', () => {
     await expect(gameImage).toBeVisible();
 
     // Player count information
-    const hasPlayerInfo = await page.locator('text=/\\d+[-–]\\d+ players?/i, :text("Players")').count() > 0;
+    const hasPlayerInfo = await page.locator('text=/\\d+[-–]\\d+ players?/i').or(page.locator(':text("Players")')).count() > 0;
     expect(hasPlayerInfo).toBeTruthy();
 
     // Playtime information
-    const hasPlaytime = await page.locator('text=/\\d+ min/i, :text("Playtime")').count() > 0;
+    const hasPlaytime = await page.locator('text=/\\d+ min/i').or(page.locator(':text("Playtime")')).count() > 0;
     expect(hasPlaytime).toBeTruthy();
 
     // Year published
-    const hasYear = await page.locator('text=/20\\d\\d|19\\d\\d/, :text("Year")').count() > 0;
+    const hasYear = await page.locator('text=/20\\d\\d|19\\d\\d/').or(page.locator(':text("Year")')).count() > 0;
     expect(hasYear).toBeTruthy();
   });
 
@@ -76,8 +76,8 @@ test.describe('Game Detail View', () => {
     // Remember the catalogue URL
     const catalogueUrl = page.url();
 
-    // Click on a game card
-    await page.locator('[data-testid="game-card"], .game-card, article').first().click();
+    // Click on a game card's link (not the expand button)
+    await page.locator('article a[href^="/game/"]').first().click();
 
     // Wait for detail page
     await page.waitForURL(/\/game\/\d+/);
