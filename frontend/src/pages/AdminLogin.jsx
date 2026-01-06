@@ -60,6 +60,7 @@ export default function AdminLogin() {
           </label>
           <input
             id="admin-token"
+            name="token"
             type="password"
             value={token}
             onChange={(e) => setToken(e.target.value)}
