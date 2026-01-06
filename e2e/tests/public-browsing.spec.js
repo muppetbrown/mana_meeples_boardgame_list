@@ -93,8 +93,8 @@ test.describe('Public Browsing and Filtering', () => {
     const sortSelect = page.locator('select[name="sort"], select:has(option:text-matches("Title|Year|Rating", "i"))').first();
 
     if (await sortSelect.count() > 0) {
-      // Select "Year" or similar option
-      await sortSelect.selectOption({ label: /year|rating/i });
+      // Select "Year" option by value
+      await sortSelect.selectOption('year');
 
       // Wait for re-sort
       await page.waitForTimeout(500);
