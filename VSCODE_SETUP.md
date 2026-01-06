@@ -2,6 +2,19 @@
 
 This guide helps you set up VSCode for optimal development experience with Python (pytest) and Playwright tests.
 
+## Quick Troubleshooting
+
+**Got an error?** Jump to the solution:
+
+| Error Message | Quick Fix | Section |
+|--------------|-----------|---------|
+| `command 'python.configureTests' not found` | Install Python extension (`ms-python.python`) | [Python Extension Error](#vscode-python-extension-command-not-found-error) |
+| `Cannot redefine property: Symbol($$jest-matchers-object)` | ✅ FIXED - Pull latest changes | [Playwright/Vitest Conflict](#playwright-running-vitest-tests-typeerror-cannot-redefine-property) |
+| `describe is not defined` | ✅ FIXED - Pull latest changes | [Playwright/Vitest Conflict](#playwright-running-vitest-tests-typeerror-cannot-redefine-property) |
+| Tests don't appear in VSCode | Select Python interpreter + install deps | [Pytest Discovery](#pytest-discovery-fails-with-import-errors) |
+| Coverage errors during discovery | ✅ FIXED - `--no-cov` in settings | [Coverage Issues](#coverage-shows-in-terminal-but-not-vscode) |
+| Tailwind CSS PostCSS error | ✅ FIXED - Updated to v4 syntax | [Playwright Timeout](#playwright-tests-timeout) |
+
 ## Quick Start
 
 The `.vscode` directory has been created locally with optimal settings. Since it's in `.gitignore`, you'll need to keep it locally or share it with your team manually.
@@ -106,6 +119,72 @@ Recommended extensions:
 
 ## Troubleshooting
 
+### VSCode Python Extension "Command Not Found" Error
+
+**Problem**: When trying to configure tests, you see:
+```
+Command 'Python: Configure Tests' resulted in an error
+command 'python.configureTests' not found
+```
+
+**Cause**: Python extension isn't installed or properly activated
+
+**Solutions**:
+1. **Install Python Extension**:
+   - Open Extensions panel (`Ctrl+Shift+X`)
+   - Search for "Python" by Microsoft (`ms-python.python`)
+   - Click Install
+   - Also install "Pylance" extension for better IntelliSense
+
+2. **Reload VSCode**:
+   - Press `Ctrl+Shift+P`
+   - Type "Developer: Reload Window"
+   - Press Enter
+
+3. **Select Python Interpreter**:
+   - Press `Ctrl+Shift+P`
+   - Type "Python: Select Interpreter"
+   - Choose your Python installation or virtual environment
+   - For virtual env, look for paths like `./backend/venv/bin/python`
+
+4. **Install Dependencies**:
+   ```bash
+   cd backend
+   pip install -r requirements.txt
+   ```
+
+5. **Verify Extension is Active**:
+   - Look for Python version in bottom-left status bar
+   - Click it to change interpreter if needed
+
+### Playwright Running Vitest Tests (TypeError: Cannot redefine property)
+
+**Problem**: Running `npm run test:e2e` shows errors like:
+```
+TypeError: Cannot redefine property: Symbol($$jest-matchers-object)
+ReferenceError: describe is not defined
+```
+
+**Cause**: Playwright is trying to run Vitest test files (`.test.jsx`) instead of only Playwright tests (`.spec.js`)
+
+**Solution**: ✅ FIXED - Updated `playwright.config.ts` and `e2e/playwright.config.js` to:
+- Only match `.spec.{js,ts}` files
+- Explicitly ignore `.test.{js,jsx,ts,tsx}` files
+
+**Verify Fix**:
+```bash
+cd frontend
+npm run test:e2e  # Should only run 4 .spec.js files from e2e/tests/
+```
+
+**Expected Output**:
+- Should find and run 4 test files:
+  - `admin-login-management.spec.js`
+  - `bgg-import-workflow.spec.js`
+  - `game-detail-view.spec.js`
+  - `public-browsing.spec.js`
+- Should NOT show any errors about Vitest or `describe is not defined`
+
 ### Pytest Discovery Fails with Import Errors
 
 **Problem**: VSCode shows "Test Discovery Error" with import failures
@@ -199,24 +278,31 @@ If tests still don't appear:
 
 ## Summary of Changes
 
-### Files Modified
-- ✅ `frontend/src/index.css` - Updated to Tailwind v4 syntax
+### Files Modified (Committed)
+- ✅ `frontend/src/index.css` - Updated to Tailwind v4 syntax (`@import "tailwindcss"`)
 - ✅ `frontend/postcss.config.cjs` - Removed old Tailwind plugin
-- ✅ `backend/tests/test_scripts/__init__.py` - Added missing init file
+- ✅ `backend/tests/test_scripts/__init__.py` - Added missing init file for pytest discovery
+- ✅ `playwright.config.ts` - Added `testMatch` and `testIgnore` to prevent Vitest conflicts
+- ✅ `e2e/playwright.config.js` - Added `testMatch` and `testIgnore` for consistency
+- ✅ `VSCODE_SETUP.md` - Comprehensive troubleshooting guide
 
 ### Files Created (Local Only - Not in Git)
-- 📝 `.vscode/settings.json` - Test and editor configuration
-- 📝 `.vscode/launch.json` - Debug configurations
-- 📝 `.vscode/extensions.json` - Recommended extensions
+- 📝 `.vscode/settings.json` - Test discovery, Python config, comments for troubleshooting
+- 📝 `.vscode/launch.json` - Debug configurations for tests and FastAPI
+- 📝 `.vscode/extensions.json` - Recommended extensions list
 
-### No Changes Needed
-- `backend/pytest.ini` - Already properly configured
-- `playwright.config.ts` - Works with fixed Tailwind config
-- `e2e/playwright.config.js` - Alternative config also works
+### Key Configuration Settings
+- **Pytest Args**: `--no-cov` and `-o addopts=` to disable coverage during discovery
+- **Playwright Test Match**: `**/*.spec.{js,ts}` only (excludes `.test.{js,jsx}`)
+- **Test Directories**:
+  - Backend: `backend/tests/`
+  - E2E: `e2e/tests/` (Playwright `.spec.js` files)
+  - Frontend: `frontend/src/**/__tests__/` (Vitest `.test.jsx` files)
 
 ---
 
-**Last Updated**: 2026-01-05
+**Last Updated**: 2026-01-06
 **Tailwind Version**: 4.1.18
 **Pytest Version**: 9.0.2
-**VSCode Python Extension**: Tested with latest
+**Playwright Version**: 1.57.0
+**VSCode Extensions**: Python (ms-python.python), Pylance, Playwright
