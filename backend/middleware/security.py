@@ -88,6 +88,11 @@ class SecurityHeadersMiddleware:
                     ])
                     new_headers.append((b"content-security-policy", csp_policy.encode()))
 
+                # X-XSS-Protection: Only for HTML pages (deprecated but still useful for older browsers)
+                # Only add for non-API endpoints as API endpoints don't need this
+                if not is_api_endpoint and b"x-xss-protection" not in headers_dict:
+                    new_headers.append((b"x-xss-protection", b"1; mode=block"))
+
                 # Referrer-Policy: Control referrer information
                 # strict-origin-when-cross-origin = Send full URL for same-origin, only origin for cross-origin
                 if b"referrer-policy" not in headers_dict:

@@ -110,24 +110,24 @@ class TestBuyListWorkflowsIntegration:
 
         assert response.status_code in [200, 201, 400]
 
-    def test_update_buy_list_status(self, client, sample_game):
+    def test_update_buy_list_status(self, client, sample_game, admin_headers):
         """Should update status of buy list item (e.g., 'ordered', 'received')"""
         # Add to buy list
         client.post(
             f'/api/admin/buy-list/{sample_game.id}',
-            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+            headers=admin_headers
         )
 
         # Update status
         response = client.put(
             f'/api/admin/buy-list/{sample_game.id}',
             json={'status': 'ORDERED'},
-            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 204, 404]
 
-    def test_bulk_add_to_buy_list(self, client, db_session):
+    def test_bulk_add_to_buy_list(self, client, db_session, admin_headers):
         """Should add multiple games to buy list at once"""
         from models import Game
 
@@ -145,7 +145,7 @@ class TestBuyListWorkflowsIntegration:
         response = client.post(
             '/api/admin/buy-list/bulk',
             json={'game_ids': game_ids},
-            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 201, 404]
@@ -169,12 +169,11 @@ class TestBuyListWorkflowsIntegration:
         )
         assert response1.status_code == 401
 
-        # Get without auth
+        # Get without auth (GET doesn't need CSRF headers)
         response2 = client.get('/api/admin/buy-list/games')
         assert response2.status_code == 401
 
-        # Remove without auth (using a dummy ID since we can't add without auth)
-        # Include CSRF headers to pass CSRF check and reach authentication
+        # Remove without auth (DELETE needs CSRF headers)
         response3 = client.delete('/api/admin/buy-list/games/1', headers=csrf_headers)
         assert response3.status_code == 401
 
@@ -219,7 +218,7 @@ class TestBuyListWorkflowsIntegration:
         # Should return 400 "already on buy list" error, or 422 for validation
         assert response2.status_code in [200, 201, 400, 409, 422]
 
-    def test_buy_list_sorting_by_priority(self, client, db_session):
+    def test_buy_list_sorting_by_priority(self, client, db_session, admin_headers):
         """Should return buy list sorted by priority"""
         from models import Game
 
@@ -237,44 +236,44 @@ class TestBuyListWorkflowsIntegration:
             client.post(
                 f'/api/admin/buy-list/{game.id}',
                 json={'rank': i+1},
-                headers={'Authorization': 'Bearer test_token'}
+                headers=admin_headers
             )
 
         response = client.get(
             '/api/admin/buy-list?sort=rank',
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 404]
 
-    def test_mark_buy_list_item_as_purchased(self, client, sample_game):
+    def test_mark_buy_list_item_as_purchased(self, client, sample_game, admin_headers):
         """Should mark buy list item as purchased"""
         # Add to buy list
         client.post(
             f'/api/admin/buy-list/{sample_game.id}',
-            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+            headers=admin_headers
         )
 
         # Mark as purchased
         response = client.put(
             f'/api/admin/buy-list/{sample_game.id}',
             json={'status': 'PURCHASED', 'on_buy_list': False},
-            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 204, 404]
 
-    def test_buy_list_with_notes(self, client, sample_game):
+    def test_buy_list_with_notes(self, client, sample_game, admin_headers):
         """Should allow adding notes to buy list items"""
         response = client.post(
             f'/api/admin/buy-list/{sample_game.id}',
             json={'notes': 'Check for discount'},
-            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 201, 404]
 
-    def test_buy_list_filter_by_status(self, client, db_session):
+    def test_buy_list_filter_by_status(self, client, db_session, admin_headers):
         """Should filter buy list by status"""
         from models import Game
 
@@ -288,38 +287,38 @@ class TestBuyListWorkflowsIntegration:
         client.post(
             f'/api/admin/buy-list/{game1.id}',
             json={'lpg_status': 'ORDERED'},
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         client.post(
             f'/api/admin/buy-list/{game2.id}',
             json={'lpg_status': 'WISHLIST'},
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         response = client.get(
             '/api/admin/buy-list?status=ORDERED',
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 404]
 
-    def test_buy_list_export(self, client, sample_game):
+    def test_buy_list_export(self, client, sample_game, admin_headers):
         """Should export buy list to CSV"""
         # Add to buy list
         client.post(
             f'/api/admin/buy-list/{sample_game.id}',
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         response = client.get(
             '/api/admin/buy-list/export',
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 404]
 
-    def test_buy_list_pagination(self, client, db_session):
+    def test_buy_list_pagination(self, client, db_session, admin_headers):
         """Should paginate large buy lists"""
         from models import Game
 
@@ -336,18 +335,18 @@ class TestBuyListWorkflowsIntegration:
         for game in games:
             client.post(
                 f'/api/admin/buy-list/{game.id}',
-                headers={'Authorization': 'Bearer test_token'}
+                headers=admin_headers
             )
 
         # Get paginated results
         response = client.get(
             '/api/admin/buy-list?page=1&page_size=10',
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 404]
 
-    def test_buy_list_reordering(self, client, db_session):
+    def test_buy_list_reordering(self, client, db_session, admin_headers):
         """Should allow reordering buy list items"""
         from models import Game
 
@@ -364,29 +363,29 @@ class TestBuyListWorkflowsIntegration:
             client.post(
                 f'/api/admin/buy-list/{game.id}',
                 json={'rank': i+1},
-                headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+                headers=admin_headers
             )
 
         # Reorder - move first to last
         response = client.put(
             f'/api/admin/buy-list/{games[0].id}',
             json={'rank': 3},
-            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 204, 404]
 
-    def test_buy_list_price_tracking(self, client, sample_game):
+    def test_buy_list_price_tracking(self, client, sample_game, admin_headers):
         """Should track price information for buy list items"""
         response = client.post(
             f'/api/admin/buy-list/{sample_game.id}',
             json={'target_price': 49.99, 'current_price': 59.99},
-            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 201, 404]
 
-    def test_buy_list_statistics(self, client, db_session):
+    def test_buy_list_statistics(self, client, db_session, admin_headers):
         """Should return buy list statistics"""
         from models import Game
 
@@ -402,36 +401,36 @@ class TestBuyListWorkflowsIntegration:
         for game in games:
             client.post(
                 f'/api/admin/buy-list/{game.id}',
-                headers={'Authorization': 'Bearer test_token'}
+                headers=admin_headers
             )
 
         response = client.get(
             '/api/admin/buy-list/stats',
-            headers={'Authorization': 'Bearer test_token'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 404]
         # May return total count, total price, etc.
 
-    def test_clear_completed_buy_list_items(self, client, sample_game):
+    def test_clear_completed_buy_list_items(self, client, sample_game, admin_headers):
         """Should clear completed/purchased items from buy list"""
         # Add to buy list
         client.post(
             f'/api/admin/buy-list/{sample_game.id}',
-            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+            headers=admin_headers
         )
 
         # Mark as completed
         client.put(
             f'/api/admin/buy-list/{sample_game.id}',
             json={'on_buy_list': False},
-            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+            headers=admin_headers
         )
 
         # Clear completed
         response = client.post(
             '/api/admin/buy-list/clear-completed',
-            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
+            headers=admin_headers
         )
 
         assert response.status_code in [200, 204, 404]
