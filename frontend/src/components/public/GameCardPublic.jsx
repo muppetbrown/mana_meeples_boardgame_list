@@ -144,6 +144,7 @@ const GameCardPublic = memo(function GameCardPublic({
             className={`w-full h-full object-cover ${transitionClass} group-hover:scale-110`}
             fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-gradient-to-br from-slate-100 to-slate-200"
             loading={lazy ? "lazy" : "eager"}
+            fetchPriority={priority ? "high" : "auto"}  // Optimize first images for LCP
             fetchPriority={priority ? "high" : "auto"}
             aspectRatio=""
           />
@@ -301,6 +302,7 @@ const GameCardPublic = memo(function GameCardPublic({
             className={`w-full h-full object-cover ${transitionClass} group-hover:scale-110`}
             fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-gradient-to-br from-slate-100 to-slate-200"
             loading={lazy ? "lazy" : "eager"}
+            fetchPriority={priority ? "high" : "auto"}  // Optimize first images for LCP
             fetchPriority={priority ? "high" : "auto"}
             aspectRatio=""
           />

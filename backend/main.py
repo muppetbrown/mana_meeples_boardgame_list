@@ -385,6 +385,31 @@ app.add_exception_handler(
 # ------------------------------------------------------------------------------
 # Exception handlers
 # ------------------------------------------------------------------------------
+# BEST PRACTICE: Centralized error handling for clean separation of concerns
+#
+# This application follows a layered architecture for error handling:
+#
+# 1. SERVICE LAYER (services/*.py):
+#    - Always raises domain exceptions (GameNotFoundError, ValidationError, etc.)
+#    - Never raises HTTPException (maintains framework independence)
+#    - Example: raise GameNotFoundError(f"Game {game_id} not found")
+#
+# 2. EXCEPTION HANDLERS (below):
+#    - Converts domain exceptions to HTTP responses
+#    - Maps exception types to appropriate status codes
+#    - Provides consistent error response format
+#
+# 3. ROUTER LAYER (api/routers/*.py):
+#    - Calls service methods and lets exceptions bubble up
+#    - May catch specific exceptions for custom handling if needed
+#    - Example: Let GameNotFoundError propagate to handler (most cases)
+#
+# Benefits:
+# - Services are testable without HTTP framework
+# - Consistent error responses across all endpoints
+# - Easy to change HTTP framework or response format
+# - Clear separation between business logic and HTTP concerns
+# ------------------------------------------------------------------------------
 
 
 @app.exception_handler(GameNotFoundError)

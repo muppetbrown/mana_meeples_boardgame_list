@@ -2,7 +2,14 @@ from sqlalchemy import create_engine, text, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
-from config import DATABASE_URL, READ_REPLICA_URL
+from config import (
+    DATABASE_URL,
+    READ_REPLICA_URL,
+    DB_POOL_SIZE,
+    DB_MAX_OVERFLOW,
+    DB_POOL_TIMEOUT,
+    DB_POOL_RECYCLE,
+)
 from models import Base
 from datetime import datetime
 import logging
@@ -17,16 +24,22 @@ query_logger = logging.getLogger('sqlalchemy.queries')
 query_logger.setLevel(logging.WARNING)  # Only log slow queries
 
 # PostgreSQL connection pooling configuration
-# Optimized for high concurrency load (Sprint 12: Performance)
+# Performance Tuning: Now configurable via environment variables
+# Optimized defaults for high concurrency (400+ games, multiple concurrent users)
 engine_kwargs = {
     "poolclass": QueuePool,
-    "pool_size": 15,  # Number of permanent connections (increased for load tests)
-    "max_overflow": 20,  # Additional connections when pool is full
-    "pool_timeout": 30,  # Seconds to wait for connection from pool
-    "pool_recycle": 3600,  # Recycle connections after 1 hour
-    "pool_pre_ping": True,  # Test connections before using them
+    "pool_size": DB_POOL_SIZE,  # Permanent connections (configurable, default 15)
+    "max_overflow": DB_MAX_OVERFLOW,  # Burst capacity (configurable, default 20)
+    "pool_timeout": DB_POOL_TIMEOUT,  # Connection wait timeout (configurable, default 30s)
+    "pool_recycle": DB_POOL_RECYCLE,  # Recycle connections (configurable, default 30min)
+    "pool_pre_ping": True,  # Test connections before using them (prevents stale connections)
     "echo": False,  # Set to True for SQL debugging
 }
+
+logger.info(
+    f"Database pool configuration: size={DB_POOL_SIZE}, overflow={DB_MAX_OVERFLOW}, "
+    f"timeout={DB_POOL_TIMEOUT}s, recycle={DB_POOL_RECYCLE}s"
+)
 
 # Primary database engine (write operations)
 logger.info(
@@ -147,3 +160,42 @@ def get_read_db():
         yield db
     finally:
         db.close()
+
+
+def get_pool_stats():
+    """
+    Get database connection pool statistics for monitoring.
+    
+    Performance Tuning: Use this endpoint to monitor pool health and adjust
+    DB_POOL_SIZE/DB_MAX_OVERFLOW if you see pool exhaustion warnings.
+    
+    Returns:
+        Dictionary with pool statistics for primary and read replica (if configured)
+    """
+    stats = {
+        "primary": {
+            "size": engine.pool.size(),
+            "checked_in": engine.pool.checkedin(),
+            "checked_out": engine.pool.checkedout(),
+            "overflow": engine.pool.overflow(),
+            "total_connections": engine.pool.size() + engine.pool.overflow(),
+            "config": {
+                "pool_size": DB_POOL_SIZE,
+                "max_overflow": DB_MAX_OVERFLOW,
+                "pool_timeout": DB_POOL_TIMEOUT,
+                "pool_recycle": DB_POOL_RECYCLE,
+            }
+        }
+    }
+    
+    # Add read replica stats if configured
+    if READ_REPLICA_URL and read_engine != engine:
+        stats["read_replica"] = {
+            "size": read_engine.pool.size(),
+            "checked_in": read_engine.pool.checkedin(),
+            "checked_out": read_engine.pool.checkedout(),
+            "overflow": read_engine.pool.overflow(),
+            "total_connections": read_engine.pool.size() + read_engine.pool.overflow(),
+        }
+    
+    return stats

@@ -74,6 +74,9 @@ def _get_games_from_db(
     """
     Execute game query with probabilistic early expiration to prevent cache stampedes.
 
+    REFACTORED: This function now only handles caching logic.
+    Query execution is delegated to GameService.get_filtered_games (DRY principle).
+
     Phase 1 Performance Optimization:
     - 90% of TTL: Always return cached result (fast path)
     - Last 10% of TTL: Probabilistically refresh cache (prevents stampede)
@@ -82,6 +85,7 @@ def _get_games_from_db(
     """
     import time
     from utils.cache import _cache_store, _cache_timestamps
+    from config import CACHE_TTL_SECONDS, CACHE_FRESH_THRESHOLD
 
     # Generate cache key
     cache_params = _get_cached_games_key(
@@ -91,21 +95,20 @@ def _get_games_from_db(
     cache_key = f"games_query:{cache_params}"
 
     current_time = time.time()
-    ttl = 30  # 30 second TTL
 
     # Check if we have cached data
     if cache_key in _cache_store and cache_key in _cache_timestamps:
         cache_age = current_time - _cache_timestamps[cache_key]
 
         # PHASE 1: Cache is fresh (0-90% of TTL) - always serve cached
-        if cache_age < ttl * 0.9:
+        if cache_age < CACHE_TTL_SECONDS * CACHE_FRESH_THRESHOLD:
             return _cache_store[cache_key]
 
         # PHASE 2: Cache is aging (90-100% of TTL) - probabilistic refresh
-        elif cache_age < ttl:
+        elif cache_age < CACHE_TTL_SECONDS:
             # Calculate refresh probability (0% at 90% TTL, 100% at 100% TTL)
-            time_in_danger_zone = cache_age - (ttl * 0.9)
-            danger_zone_duration = ttl * 0.1
+            time_in_danger_zone = cache_age - (CACHE_TTL_SECONDS * CACHE_FRESH_THRESHOLD)
+            danger_zone_duration = CACHE_TTL_SECONDS * (1 - CACHE_FRESH_THRESHOLD)
             refresh_probability = time_in_danger_zone / danger_zone_duration
 
             # Random decision: refresh or serve stale
@@ -120,7 +123,8 @@ def _get_games_from_db(
         # PHASE 3: Cache is definitely expired (>100% of TTL)
         # Fall through to refresh
 
-    # Cache miss or selected for refresh - execute query
+    # Cache miss or selected for refresh - execute query via service layer
+    # REFACTORED: No longer duplicates query logic, delegates to GameService
     service = GameService(db)
     result = service.get_filtered_games(
         search=search,
@@ -236,9 +240,44 @@ async def get_public_game(
 @router.get("/category-counts")
 @limiter.limit("60/minute")  # Category counts change infrequently
 async def get_category_counts(request: Request, db: Session = Depends(get_read_db)):
-    """Get counts for each category"""
+    """
+    Get counts for each category with Redis caching.
+
+    Performance: Uses Redis cache with 5-minute TTL to reduce database load.
+    Category counts change infrequently, so aggressive caching is safe.
+    """
+    import json
+    from redis_client import get_redis_client
+
+    cache_key = "category_counts"
+    redis_client = get_redis_client()
+
+    # Try Redis cache first
+    if redis_client:
+        try:
+            cached = redis_client.get(cache_key)
+            if cached:
+                logger.debug("Category counts served from Redis cache")
+                return json.loads(cached)
+        except Exception as e:
+            # Redis failure shouldn't break the endpoint
+            logger.warning(f"Redis cache read failed for category counts: {e}")
+
+    # Cache miss or Redis unavailable - query database
     service = GameService(db)
-    return service.get_category_counts()
+    counts = service.get_category_counts()
+
+    # Store in Redis with 5-minute TTL (300 seconds)
+    # Category counts change infrequently, so longer cache is acceptable
+    if redis_client:
+        try:
+            redis_client.setex(cache_key, 300, json.dumps(counts))
+            logger.debug("Category counts stored in Redis cache (TTL: 5min)")
+        except Exception as e:
+            # Redis failure shouldn't break the endpoint
+            logger.warning(f"Redis cache write failed for category counts: {e}")
+
+    return counts
 
 
 @router.get("/games/by-designer/{designer_name}")
