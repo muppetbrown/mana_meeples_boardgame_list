@@ -54,15 +54,15 @@ test.describe('Game Detail View', () => {
     await expect(gameImage).toBeVisible();
 
     // Player count information
-    const hasPlayerInfo = await page.locator('text=/\\d+[-–]\\d+ players?/i, :text("Players")').count() > 0;
+    const hasPlayerInfo = await page.locator('text=/\\d+[-–]\\d+ players?/i').or(page.locator(':text("Players")')).count() > 0;
     expect(hasPlayerInfo).toBeTruthy();
 
     // Playtime information
-    const hasPlaytime = await page.locator('text=/\\d+ min/i, :text("Playtime")').count() > 0;
+    const hasPlaytime = await page.locator('text=/\\d+ min/i').or(page.locator(':text("Playtime")')).count() > 0;
     expect(hasPlaytime).toBeTruthy();
 
     // Year published
-    const hasYear = await page.locator('text=/20\\d\\d|19\\d\\d/, :text("Year")').count() > 0;
+    const hasYear = await page.locator('text=/20\\d\\d|19\\d\\d/').or(page.locator(':text("Year")')).count() > 0;
     expect(hasYear).toBeTruthy();
   });
 
