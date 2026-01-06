@@ -14,6 +14,12 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './tests',
+
+  // IMPORTANT: Only match .spec.{js,ts} files to avoid running Vitest tests
+  // Vitest tests use .test.{js,jsx} pattern and should not be run by Playwright
+  testMatch: '**/*.spec.{js,ts}',
+  testIgnore: '**/*.test.{js,jsx,ts,tsx}',
+
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
