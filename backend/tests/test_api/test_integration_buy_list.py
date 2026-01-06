@@ -115,14 +115,14 @@ class TestBuyListWorkflowsIntegration:
         # Add to buy list
         client.post(
             f'/api/admin/buy-list/{sample_game.id}',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
         )
 
         # Update status
         response = client.put(
             f'/api/admin/buy-list/{sample_game.id}',
             json={'status': 'ORDERED'},
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
         )
 
         assert response.status_code in [200, 204, 404]
@@ -145,12 +145,12 @@ class TestBuyListWorkflowsIntegration:
         response = client.post(
             '/api/admin/buy-list/bulk',
             json={'game_ids': game_ids},
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
         )
 
         assert response.status_code in [200, 201, 404]
 
-    def test_buy_list_requires_authentication(self, client, sample_game):
+    def test_buy_list_requires_authentication(self, client, sample_game, csrf_headers):
         """Should require admin authentication for buy list operations"""
         # Ensure sample_game has a BGG ID
         if not sample_game.bgg_id:
@@ -161,10 +161,11 @@ class TestBuyListWorkflowsIntegration:
             db.commit()
             db.close()
 
-        # Add without auth
+        # Add without auth (but with CSRF headers to pass CSRF check)
         response1 = client.post(
             '/api/admin/buy-list/games',
-            json={'bgg_id': sample_game.bgg_id}
+            json={'bgg_id': sample_game.bgg_id},
+            headers=csrf_headers
         )
         assert response1.status_code == 401
 
@@ -173,7 +174,8 @@ class TestBuyListWorkflowsIntegration:
         assert response2.status_code == 401
 
         # Remove without auth (using a dummy ID since we can't add without auth)
-        response3 = client.delete('/api/admin/buy-list/games/1')
+        # Include CSRF headers to pass CSRF check and reach authentication
+        response3 = client.delete('/api/admin/buy-list/games/1', headers=csrf_headers)
         assert response3.status_code == 401
 
     def test_add_nonexistent_game_to_buy_list(self, client, admin_headers):
@@ -250,14 +252,14 @@ class TestBuyListWorkflowsIntegration:
         # Add to buy list
         client.post(
             f'/api/admin/buy-list/{sample_game.id}',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
         )
 
         # Mark as purchased
         response = client.put(
             f'/api/admin/buy-list/{sample_game.id}',
             json={'status': 'PURCHASED', 'on_buy_list': False},
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
         )
 
         assert response.status_code in [200, 204, 404]
@@ -267,7 +269,7 @@ class TestBuyListWorkflowsIntegration:
         response = client.post(
             f'/api/admin/buy-list/{sample_game.id}',
             json={'notes': 'Check for discount'},
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
         )
 
         assert response.status_code in [200, 201, 404]
@@ -362,14 +364,14 @@ class TestBuyListWorkflowsIntegration:
             client.post(
                 f'/api/admin/buy-list/{game.id}',
                 json={'rank': i+1},
-                headers={'Authorization': 'Bearer test_token'}
+                headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
             )
 
         # Reorder - move first to last
         response = client.put(
             f'/api/admin/buy-list/{games[0].id}',
             json={'rank': 3},
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
         )
 
         assert response.status_code in [200, 204, 404]
@@ -379,7 +381,7 @@ class TestBuyListWorkflowsIntegration:
         response = client.post(
             f'/api/admin/buy-list/{sample_game.id}',
             json={'target_price': 49.99, 'current_price': 59.99},
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
         )
 
         assert response.status_code in [200, 201, 404]
@@ -416,20 +418,20 @@ class TestBuyListWorkflowsIntegration:
         # Add to buy list
         client.post(
             f'/api/admin/buy-list/{sample_game.id}',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
         )
 
         # Mark as completed
         client.put(
             f'/api/admin/buy-list/{sample_game.id}',
             json={'on_buy_list': False},
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
         )
 
         # Clear completed
         response = client.post(
             '/api/admin/buy-list/clear-completed',
-            headers={'Authorization': 'Bearer test_token'}
+            headers={'Authorization': 'Bearer test_token', 'Origin': 'http://testserver'}
         )
 
         assert response.status_code in [200, 204, 404]

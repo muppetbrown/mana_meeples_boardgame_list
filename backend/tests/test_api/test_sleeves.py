@@ -210,10 +210,12 @@ class TestGenerateSleeveShoppingList:
         assert len(data) == 1
         assert data[0]["total_quantity"] == 50
 
-    def test_requires_auth(self, client):
+    def test_requires_auth(self, client, csrf_headers):
         """Should require admin authentication"""
         response = client.post(
-            "/api/admin/sleeves/shopping-list", json={"game_ids": [1]}
+            "/api/admin/sleeves/shopping-list",
+            json={"game_ids": [1]},
+            headers=csrf_headers
         )
 
         assert response.status_code == 401
