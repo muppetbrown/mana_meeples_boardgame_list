@@ -142,7 +142,8 @@ def sample_game_data():
     """Sample game data for testing"""
     import random
     # Use a random BGG ID to avoid conflicts between tests
-    unique_bgg_id = 30000 + random.randint(1, 999999)
+    # Keep within schema validator limit: 1 <= bgg_id <= 999999
+    unique_bgg_id = random.randint(30000, 999999)
 
     return {
         "title": "Pandemic",
@@ -239,7 +240,8 @@ def sample_game(db_session):
 
     # Use a random bgg_id to avoid conflicts between tests
     # This ensures each test gets a unique game even if using shared cache
-    unique_bgg_id = 10000 + random.randint(1, 999999)
+    # Keep within schema validator limit: 1 <= bgg_id <= 999999
+    unique_bgg_id = random.randint(10000, 999999)
 
     game = Game(
         title="Test Game",
