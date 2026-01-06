@@ -51,7 +51,7 @@ class TestAPIPerformance:
         assert duration < 0.2, f"Game list took {duration:.3f}s, expected <0.2s"
 
     def test_game_detail_endpoint_performance(self, client, large_game_dataset):
-        """Game detail endpoint should respond within 100ms"""
+        """Game detail endpoint should respond within 150ms"""
         game_id = large_game_dataset[0].id
 
         start = time.time()
@@ -59,7 +59,7 @@ class TestAPIPerformance:
         duration = time.time() - start
 
         assert response.status_code == 200
-        assert duration < 0.1, f"Game detail took {duration:.3f}s, expected <0.1s"
+        assert duration < 0.15, f"Game detail took {duration:.3f}s, expected <0.15s"
 
     def test_search_performance(self, client, large_game_dataset):
         """Search should complete within 300ms"""

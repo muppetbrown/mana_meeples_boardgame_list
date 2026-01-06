@@ -28,8 +28,8 @@ def upgrade() -> None:
 
     # Check if we're on PostgreSQL (migrations should be PostgreSQL-only in production)
     if connection.dialect.name == 'postgresql':
-        # Convert text columns to jsonb if they exist and are text type
-        # This is idempotent - if already jsonb, ALTER TYPE will be a no-op
+        # Convert text/json columns to jsonb if they exist and are not already jsonb
+        # This is idempotent - if already jsonb, the ALTER TYPE will be skipped
         op.execute("""
             DO $$
             BEGIN
@@ -38,7 +38,7 @@ def upgrade() -> None:
                     SELECT 1 FROM information_schema.columns
                     WHERE table_name = 'boardgames'
                     AND column_name = 'designers'
-                    AND data_type = 'text'
+                    AND data_type IN ('text', 'json')
                 ) THEN
                     ALTER TABLE boardgames
                     ALTER COLUMN designers TYPE jsonb USING designers::jsonb;
@@ -49,7 +49,7 @@ def upgrade() -> None:
                     SELECT 1 FROM information_schema.columns
                     WHERE table_name = 'boardgames'
                     AND column_name = 'publishers'
-                    AND data_type = 'text'
+                    AND data_type IN ('text', 'json')
                 ) THEN
                     ALTER TABLE boardgames
                     ALTER COLUMN publishers TYPE jsonb USING publishers::jsonb;
@@ -60,7 +60,7 @@ def upgrade() -> None:
                     SELECT 1 FROM information_schema.columns
                     WHERE table_name = 'boardgames'
                     AND column_name = 'mechanics'
-                    AND data_type = 'text'
+                    AND data_type IN ('text', 'json')
                 ) THEN
                     ALTER TABLE boardgames
                     ALTER COLUMN mechanics TYPE jsonb USING mechanics::jsonb;
@@ -71,7 +71,7 @@ def upgrade() -> None:
                     SELECT 1 FROM information_schema.columns
                     WHERE table_name = 'boardgames'
                     AND column_name = 'artists'
-                    AND data_type = 'text'
+                    AND data_type IN ('text', 'json')
                 ) THEN
                     ALTER TABLE boardgames
                     ALTER COLUMN artists TYPE jsonb USING artists::jsonb;
