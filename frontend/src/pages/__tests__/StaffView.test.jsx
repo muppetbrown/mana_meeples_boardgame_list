@@ -223,7 +223,7 @@ describe('StaffView Page', () => {
       );
 
       const logoutButton = screen.getByRole('button', { name: /logout/i });
-      userEvent.click(logoutButton);
+      await userEvent.click(logoutButton);
 
       expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to logout?');
     });
