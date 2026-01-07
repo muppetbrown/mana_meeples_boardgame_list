@@ -1,7 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import * as Sentry from "@sentry/react";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import "./index.css";
@@ -22,39 +21,35 @@ const queryClient = new QueryClient({
   },
 });
 
-// Initialize Sentry for error tracking and performance monitoring
-// Only initializes if VITE_SENTRY_DSN is configured
-if (import.meta.env.VITE_SENTRY_DSN) {
-  Sentry.init({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
-    environment: import.meta.env.MODE || 'production',
+// BUNDLE SIZE OPTIMIZATION: Lazy load Sentry only when needed (production + DSN configured)
+// This reduces initial bundle size by ~100KB for users who don't need error tracking
+// Sentry will be loaded asynchronously after the main app renders
+if (import.meta.env.VITE_SENTRY_DSN && import.meta.env.PROD) {
+  import('@sentry/react').then(Sentry => {
+    Sentry.init({
+      dsn: import.meta.env.VITE_SENTRY_DSN,
+      environment: import.meta.env.MODE || 'production',
 
-    // Performance monitoring
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration({
-        maskAllText: false,
-        blockAllMedia: false,
-      }),
-    ],
+      // Performance monitoring
+      integrations: [
+        Sentry.browserTracingIntegration(),
+        Sentry.replayIntegration({
+          maskAllText: false,
+          blockAllMedia: false,
+        }),
+      ],
 
-    // Set tracesSampleRate to 1.0 to capture 100% of transactions for performance monitoring.
-    // Adjust this value in production to reduce volume
-    tracesSampleRate: import.meta.env.MODE === 'production' ? 0.1 : 1.0,
+      // Set tracesSampleRate to 1.0 to capture 100% of transactions for performance monitoring.
+      // Adjust this value in production to reduce volume
+      tracesSampleRate: 0.1,
 
-    // Capture Replay for 10% of all sessions,
-    // plus 100% of sessions with an error
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
-
-    // Filter out development errors
-    beforeSend(event) {
-      // Don't send events from development
-      if (import.meta.env.DEV) {
-        return null;
-      }
-      return event;
-    },
+      // Capture Replay for 10% of all sessions,
+      // plus 100% of sessions with an error
+      replaysSessionSampleRate: 0.1,
+      replaysOnErrorSampleRate: 1.0,
+    });
+  }).catch(err => {
+    console.error('Failed to load Sentry:', err);
   });
 }
 

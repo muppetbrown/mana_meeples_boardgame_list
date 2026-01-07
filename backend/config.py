@@ -137,6 +137,19 @@ else:
         file=sys.stderr,
     )
 
+# Cache configuration (Performance Optimization)
+# TTL for in-memory cache (games query cache)
+CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "30"))
+# Fresh threshold: Serve from cache without refresh probability check
+CACHE_FRESH_THRESHOLD = float(os.getenv("CACHE_FRESH_THRESHOLD", "0.9"))  # 90% of TTL
+
+# Database connection pool configuration (Performance Tuning)
+# Tune these based on your deployment environment and load characteristics
+DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "15"))  # Permanent connections
+DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))  # Burst capacity
+DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))  # Connection wait timeout
+DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))  # Recycle every 30 min (more frequent than default)
+
 # Redis configuration (Sprint 8: Redis Session Storage)
 # For horizontal scaling and multi-instance deployments
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")

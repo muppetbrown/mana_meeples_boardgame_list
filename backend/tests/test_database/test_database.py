@@ -202,11 +202,11 @@ class TestDatabaseConfiguration:
         import importlib
         importlib.reload(database)
 
-        # Should have pool configuration
+        # Should have pool configuration (updated values from performance tuning)
         assert database.engine_kwargs['pool_size'] == 15
         assert database.engine_kwargs['max_overflow'] == 20
         assert database.engine_kwargs['pool_timeout'] == 30
-        assert database.engine_kwargs['pool_recycle'] == 3600
+        assert database.engine_kwargs['pool_recycle'] == 1800  # Changed from 3600 to 1800 (30min) for better connection hygiene
         assert database.engine_kwargs['pool_pre_ping'] is True
 
     @patch.dict('os.environ', {'READ_REPLICA_URL': 'postgresql://read:pass@replica/db'})

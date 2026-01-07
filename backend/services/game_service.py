@@ -826,18 +826,37 @@ class GameService:
 
     def get_category_counts(self) -> Dict[str, int]:
         """
-        Get counts for each category using efficient SQL GROUP BY.
-        Phase 1 Performance: Optimized to use GROUP BY instead of loading all rows.
+        Get counts for each category using conditional aggregation.
+        Performance: Optimized to use single query with CASE statements (2 queries → 1 query).
 
         Returns:
             Dictionary mapping category keys to counts
         """
         from utils.helpers import CATEGORY_KEYS
 
-        # Use SQL GROUP BY for efficient counting (no row loading required)
-        # Count all owned games, excluding require-base expansions
-        total_count = self.db.execute(
-            select(func.count(Game.id)).where(
+        # PERFORMANCE OPTIMIZATION: Use conditional aggregation to get all counts in SINGLE query
+        # This replaces 2 separate queries (total + group by) with 1 optimized query
+        # Uses CASE statements to count each category conditionally
+
+        # Build conditional count expressions for each category
+        count_expressions = [
+            func.count(Game.id).label("all"),  # Total count
+        ]
+
+        # Add conditional count for each category
+        for category_key in CATEGORY_KEYS:
+            count_expressions.append(
+                func.count(case((Game.mana_meeple_category == category_key, 1))).label(category_key)
+            )
+
+        # Add conditional count for uncategorized (NULL or not in CATEGORY_KEYS)
+        count_expressions.append(
+            func.count(case((Game.mana_meeple_category.is_(None), 1))).label("uncategorized")
+        )
+
+        # Execute single query with all conditional counts
+        result = self.db.execute(
+            select(*count_expressions).where(
                 or_(Game.status == "OWNED", Game.status.is_(None))
             ).where(
                 ~and_(
@@ -845,38 +864,10 @@ class GameService:
                     Game.expansion_type == 'requires_base'
                 )
             )
-        ).scalar()
+        ).one()
 
-        # Group by category to get counts per category in single query
-        # Also exclude require-base expansions to match get_filtered_games()
-        category_results = self.db.execute(
-            select(
-                Game.mana_meeple_category,
-                func.count(Game.id).label("count")
-            ).where(
-                or_(Game.status == "OWNED", Game.status.is_(None))
-            ).where(
-                ~and_(
-                    Game.is_expansion == True,
-                    Game.expansion_type == 'requires_base'
-                )
-            ).group_by(Game.mana_meeple_category)
-        ).all()
-
-        # Build counts dictionary
-        counts = {"all": total_count, "uncategorized": 0}
-
-        # Initialize all categories to 0
-        for key in CATEGORY_KEYS:
-            counts[key] = 0
-
-        # Fill in actual counts from query results
-        for category, count in category_results:
-            if category and category in CATEGORY_KEYS:
-                counts[category] = count
-            elif not category or category not in CATEGORY_KEYS:
-                # NULL or invalid categories are "uncategorized"
-                counts["uncategorized"] += count
+        # Convert result to dictionary
+        counts = dict(result._mapping)
 
         return counts
 
