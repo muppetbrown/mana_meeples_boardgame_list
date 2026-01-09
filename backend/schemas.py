@@ -93,6 +93,28 @@ class FixSequenceRequest(BaseModel):
 
 
 # ------------------------------------------------------------------------------
+# Printing Schemas
+# ------------------------------------------------------------------------------
+
+
+class PrintLabelsRequest(BaseModel):
+    """Schema for generating game labels"""
+
+    game_ids: List[int] = Field(..., min_length=1, max_length=100)
+
+    @field_validator("game_ids")
+    @classmethod
+    def validate_game_ids(cls, v):
+        if not v:
+            raise ValueError("At least one game ID required")
+        if len(v) > 100:
+            raise ValueError("Maximum 100 games per request")
+        if any(game_id <= 0 for game_id in v):
+            raise ValueError("All game IDs must be positive integers")
+        return v
+
+
+# ------------------------------------------------------------------------------
 # Buy List Schemas
 # ------------------------------------------------------------------------------
 

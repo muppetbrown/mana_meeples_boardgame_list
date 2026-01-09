@@ -525,3 +525,17 @@ export async function getGameSleeves(gameId) {
   const r = await api.get(`/admin/sleeves/game/${gameId}`);
   return r.data;
 }
+
+/**
+ * Generate PDF labels for selected games
+ * @param {Array<number>} gameIds - Array of game IDs to generate labels for
+ * @returns {Promise<Blob>} PDF blob ready for download
+ */
+export async function generateGameLabels(gameIds) {
+  const response = await api.post('/admin/print-labels', {
+    game_ids: gameIds
+  }, {
+    responseType: 'blob' // Important for PDF download
+  });
+  return response.data;
+}

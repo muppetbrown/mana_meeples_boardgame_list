@@ -544,6 +544,7 @@ from api.routers.bulk import router as bulk_router
 from api.routers.health import health_router, debug_router
 from api.routers.buy_list import router as buy_list_router
 from api.routers.sleeves import router as sleeves_router
+from api.routers.printing import router as printing_router
 from api.versioning import version_info
 
 # Register API routers (currently using /api prefix without versioning)
@@ -553,6 +554,7 @@ app.include_router(admin_router)
 app.include_router(bulk_router)
 app.include_router(buy_list_router)
 app.include_router(sleeves_router)
+app.include_router(printing_router)
 app.include_router(health_router)
 app.include_router(debug_router)
 

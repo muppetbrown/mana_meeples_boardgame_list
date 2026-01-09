@@ -3,7 +3,7 @@ import React, { useState, useMemo } from "react";
 import { useStaff } from "../../../context/StaffContext";
 import CategoryFilter from "../../CategoryFilter";
 import { CATEGORY_LABELS } from "../../../constants/categories";
-import { imageProxyUrl, generateSleeveShoppingList, triggerSleeveFetch } from "../../../api/client";
+import { imageProxyUrl, generateSleeveShoppingList, triggerSleeveFetch, generateGameLabels } from "../../../api/client";
 import GameEditModal from "../GameEditModal";
 import SleeveShoppingListModal from "../SleeveShoppingListModal";
 
@@ -133,6 +133,46 @@ export function ManageLibraryTab() {
     }
   };
 
+  const handlePrintLabels = async () => {
+    if (selectedGames.size === 0) {
+      showToast('Please select at least one game', 'error');
+      return;
+    }
+
+    try {
+      showToast(`Generating labels for ${selectedGames.size} game(s)...`, 'info');
+
+      // Call API to generate PDF
+      const pdfBlob = await generateGameLabels(Array.from(selectedGames));
+
+      // Create download link
+      const url = window.URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      link.download = `board-game-labels-${timestamp}.pdf`;
+
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      showToast(`Labels generated successfully for ${selectedGames.size} game(s)`, 'success');
+
+      // Optionally clear selection after successful generation
+      // setSelectedGames(new Set());
+    } catch (err) {
+      console.error('Failed to generate labels:', err);
+      const errorMsg = err.response?.data?.detail || 'Failed to generate labels';
+      showToast(errorMsg, 'error');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header with Stats */}
@@ -200,6 +240,14 @@ export function ManageLibraryTab() {
                 className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 📋 Generate Sleeve Shopping List
+              </button>
+              <button
+                onClick={handlePrintLabels}
+                disabled={selectedGames.size === 0}
+                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Generate PDF labels for printing"
+              >
+                🏷️ Print Labels
               </button>
             </div>
           </div>
