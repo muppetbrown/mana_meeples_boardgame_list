@@ -13,7 +13,14 @@
       "Bash(ls:*)",
       "Bash(python test_database_analysis.py:*)",
       "Bash(tee:*)",
-      "Bash(alembic upgrade:*)"
+      "Bash(alembic upgrade:*)",
+      "Bash(python -c:*)",
+      "Bash(python:*)",
+      "Bash(git add:*)",
+      "Bash(git restore:*)",
+      "Bash(git commit:*)",
+      "Bash(where.exe:*)",
+      "Bash(npm search:*)"
     ]
   }
 }
