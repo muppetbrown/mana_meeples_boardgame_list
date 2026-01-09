@@ -22,7 +22,7 @@ export function BuyListTab() {
   const [filters, setFilters] = useState({
     lpg_status: "",
     buy_filter: "",
-    sort_by: "rank",
+    sort_by: "title",
     sort_desc: false,
   });
   const [editingId, setEditingId] = useState(null);

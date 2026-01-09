@@ -24,6 +24,7 @@ export function ManageLibraryTab() {
   } = useStaff();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("date_added"); // default: date added
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingGame, setEditingGame] = useState(null);
 
@@ -32,17 +33,36 @@ export function ManageLibraryTab() {
   const [showSleeveShoppingList, setShowSleeveShoppingList] = useState(false);
   const [sleeveShoppingList, setSleeveShoppingList] = useState(null);
 
-  // Filter by search query
+  // Filter by search query and apply sorting
   const searchFilteredLibrary = useMemo(() => {
-    if (!searchQuery.trim()) return filteredLibrary;
-    const query = searchQuery.toLowerCase();
-    return filteredLibrary.filter(
-      (game) =>
-        game.title?.toLowerCase().includes(query) ||
-        game.bgg_id?.toString().includes(query) ||
-        game.designers?.some((d) => d.toLowerCase().includes(query))
-    );
-  }, [filteredLibrary, searchQuery]);
+    let filtered = filteredLibrary;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter(
+        (game) =>
+          game.title?.toLowerCase().includes(query) ||
+          game.bgg_id?.toString().includes(query) ||
+          game.designers?.some((d) => d.toLowerCase().includes(query))
+      );
+    }
+
+    // Apply sorting
+    const sorted = [...filtered].sort((a, b) => {
+      if (sortBy === "title") {
+        return (a.title || "").localeCompare(b.title || "");
+      } else if (sortBy === "date_added") {
+        // Sort by date_added descending (newest first)
+        const dateA = a.date_added ? new Date(a.date_added) : new Date(0);
+        const dateB = b.date_added ? new Date(b.date_added) : new Date(0);
+        return dateB - dateA;
+      }
+      return 0;
+    });
+
+    return sorted;
+  }, [filteredLibrary, searchQuery, sortBy]);
 
   const handleDelete = async (game) => {
     if (!window.confirm(`Delete "${game.title}"?`)) return;
@@ -185,15 +205,23 @@ export function ManageLibraryTab() {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-4">
+        {/* Search Bar and Sort Controls */}
+        <div className="mb-4 flex gap-3">
           <input
             type="text"
-            className="w-full border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-2 outline-none transition-all"
+            className="flex-1 border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-2 outline-none transition-all"
             placeholder="Search by title, BGG ID, or designer..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-2 outline-none transition-all"
+          >
+            <option value="date_added">Sort: Date Added (Newest)</option>
+            <option value="title">Sort: Title (A-Z)</option>
+          </select>
         </div>
 
         {/* Category Filter */}
