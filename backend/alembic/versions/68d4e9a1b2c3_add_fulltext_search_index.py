@@ -66,7 +66,10 @@ def upgrade():
             NEW.search_vector :=
                 setweight(to_tsvector('english', coalesce(NEW.title, '')), 'A') ||
                 setweight(to_tsvector('english', coalesce(NEW.description, '')), 'B') ||
-                setweight(to_tsvector('english', coalesce(array_to_string(NEW.designers, ' '), '')), 'C');
+                setweight(to_tsvector('english', coalesce(
+                    array_to_string(ARRAY(SELECT jsonb_array_elements_text(NEW.designers)), ' '),
+                    ''
+                )), 'C');
             RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
@@ -84,7 +87,10 @@ def upgrade():
         SET search_vector =
             setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
             setweight(to_tsvector('english', coalesce(description, '')), 'B') ||
-            setweight(to_tsvector('english', coalesce(array_to_string(designers, ' '), '')), 'C')
+            setweight(to_tsvector('english', coalesce(
+                array_to_string(ARRAY(SELECT jsonb_array_elements_text(designers)), ' '),
+                ''
+            )), 'C')
     """)
 
 
