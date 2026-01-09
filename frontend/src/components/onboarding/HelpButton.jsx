@@ -1,4 +1,4 @@
-import { HelpCircle } from 'lucide-react';
+import { HelpCircle } from '../icons/HelpCircle';
 
 /**
  * Floating help button - always accessible

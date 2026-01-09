@@ -1,0 +1,498 @@
+
+================================================================================
+  1. DATABASE OVERVIEW
+================================================================================
+
+
+--- PostgreSQL Version ---
+Query: SELECT version();
+
+('PostgreSQL 17.6 (Debian 17.6-2.pgdg12+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit',)
+
+--- Total Games Count ---
+Query: SELECT COUNT(*) as total_games FROM boardgames;
+
+(334,)
+
+--- Database Size ---
+Query: 
+            SELECT
+                pg_size_pretty(pg_database_size('tcg_singles')) as database_size,
+                pg_size_pretty(pg_total_relation_size('boardgames')) as boardgames_table_size;
+   ...
+
+('18 MB', '1896 kB')
+
+================================================================================
+  2. TABLE STRUCTURE & SCHEMA
+================================================================================
+
+
+--- Boardgames Table Columns ---
+Query: 
+            SELECT
+                column_name,
+                data_type,
+                is_nullable,
+                column_default
+            FROM information_schema.columns
+            WHERE ta...
+
+('id', 'integer', 'NO', "nextval('boardgames_id_seq'::regclass)")
+('title', 'character varying', 'NO', None)
+('categories', 'text', 'NO', None)
+('year', 'integer', 'YES', None)
+('players_min', 'integer', 'YES', None)
+('players_max', 'integer', 'YES', None)
+('playtime_min', 'integer', 'YES', None)
+('playtime_max', 'integer', 'YES', None)
+('thumbnail_url', 'character varying', 'YES', None)
+('created_at', 'timestamp without time zone', 'NO', None)
+('bgg_id', 'integer', 'YES', None)
+('thumbnail_file', 'character varying', 'YES', None)
+('mana_meeple_category', 'text', 'YES', None)
+('description', 'text', 'YES', None)
+('designers', 'jsonb', 'YES', None)
+('publishers', 'jsonb', 'YES', None)
+('mechanics', 'jsonb', 'YES', None)
+('artists', 'jsonb', 'YES', None)
+('average_rating', 'real', 'YES', None)
+('complexity', 'real', 'YES', None)
+('bgg_rank', 'integer', 'YES', None)
+('users_rated', 'integer', 'YES', None)
+('min_age', 'integer', 'YES', None)
+('is_cooperative', 'boolean', 'YES', None)
+('image', 'character varying', 'YES', None)
+('nz_designer', 'boolean', 'YES', 'false')
+('game_type', 'character varying', 'YES', None)
+('date_added', 'timestamp without time zone', 'YES', None)
+('status', 'character varying', 'YES', "'OWNED'::character varying")
+('is_expansion', 'boolean', 'NO', 'false')
+('base_game_id', 'integer', 'YES', None)
+('expansion_type', 'character varying', 'YES', None)
+('modifies_players_min', 'integer', 'YES', None)
+('modifies_players_max', 'integer', 'YES', None)
+('has_sleeves', 'character varying', 'YES', None)
+('is_sleeved', 'boolean', 'YES', 'false')
+('aftergame_game_id', 'character varying', 'YES', None)
+('cloudinary_url', 'character varying', 'YES', None)
+
+================================================================================
+  3. CURRENT INDEXES
+================================================================================
+
+
+--- All Indexes on Boardgames Table ---
+Query: 
+            SELECT
+                indexname,
+                indexdef
+            FROM pg_indexes
+            WHERE tablename = 'boardgames'
+            ORDER BY indexname;
+            
+
+('boardgames_pkey', 'CREATE UNIQUE INDEX boardgames_pkey ON public.boardgames USING btree (id)')
+('idx_boardgames_aftergame_game_id', 'CREATE INDEX idx_boardgames_aftergame_game_id ON public.boardgames USING btree (aftergame_game_id)')
+('idx_boardgames_status', 'CREATE INDEX idx_boardgames_status ON public.boardgames USING btree (status)')
+('idx_category_rating_date', "CREATE INDEX idx_category_rating_date ON public.boardgames USING btree (mana_meeple_category, average_rating, date_added) WHERE ((status)::text = 'OWNED'::text)")
+('idx_designers_gin', 'CREATE INDEX idx_designers_gin ON public.boardgames USING gin (designers jsonb_path_ops)')
+('idx_expansion_lookup', 'CREATE INDEX idx_expansion_lookup ON public.boardgames USING btree (is_expansion, base_game_id)')
+('idx_game_type', 'CREATE INDEX idx_game_type ON public.boardgames USING btree (game_type)')
+('idx_mechanics_gin', 'CREATE INDEX idx_mechanics_gin ON public.boardgames USING gin (mechanics jsonb_path_ops)')
+('idx_public_games_covering', 'CREATE INDEX idx_public_games_covering ON public.boardgames USING btree (status, is_expansion, expansion_type, mana_meeple_category) INCLUDE (title, year, players_min, players_max, average_rating, thumbnail_url, image)')
+('idx_status_date_nz', 'CREATE INDEX idx_status_date_nz ON public.boardgames USING btree (status, date_added, nz_designer)')
+('ix_games_bgg_id', 'CREATE UNIQUE INDEX ix_games_bgg_id ON public.boardgames USING btree (bgg_id)')
+('ix_games_title', 'CREATE INDEX ix_games_title ON public.boardgames USING btree (title)')
+
+--- Index Sizes ---
+Query: 
+            SELECT
+                schemaname,
+                relname as tablename,
+                indexrelname as indexname,
+                pg_size_pretty(pg_relation_size(indexrelid)) AS index_s...
+
+('public', 'boardgames', 'idx_public_games_covering', '224 kB')
+('public', 'boardgames', 'idx_boardgames_aftergame_game_id', '40 kB')
+('public', 'boardgames', 'idx_category_rating_date', '40 kB')
+('public', 'boardgames', 'idx_designers_gin', '40 kB')
+('public', 'boardgames', 'idx_mechanics_gin', '40 kB')
+('public', 'boardgames', 'ix_games_title', '32 kB')
+('public', 'boardgames', 'idx_game_type', '16 kB')
+('public', 'boardgames', 'idx_expansion_lookup', '16 kB')
+('public', 'boardgames', 'idx_status_date_nz', '16 kB')
+('public', 'boardgames', 'boardgames_pkey', '16 kB')
+('public', 'boardgames', 'ix_games_bgg_id', '16 kB')
+('public', 'boardgames', 'idx_boardgames_status', '16 kB')
+
+================================================================================
+  4. DATA STATISTICS
+================================================================================
+
+
+--- Games by Category ---
+Query: 
+            SELECT
+                mana_meeple_category,
+                COUNT(*) as game_count
+            FROM boardgames
+            GROUP BY mana_meeple_category
+            ORDER BY game_count D...
+
+('GATEWAY_STRATEGY', 84)
+('PARTY_ICEBREAKERS', 79)
+('CORE_STRATEGY', 55)
+('COOP_ADVENTURE', 54)
+('KIDS_FAMILIES', 40)
+(None, 22)
+
+--- NZ Designer Statistics ---
+Query: 
+            SELECT
+                COUNT(*) FILTER (WHERE nz_designer = true) as nz_designer_games,
+                COUNT(*) FILTER (WHERE nz_designer = false OR nz_designer IS NULL) as non_nz_games,...
+
+(16, 318, 334)
+
+--- Data Completeness ---
+Query: 
+            SELECT
+                COUNT(*) FILTER (WHERE designers IS NOT NULL) as games_with_designers,
+                COUNT(*) FILTER (WHERE mechanics IS NOT NULL) as games_with_mechanics,
+      ...
+
+(334, 334, 332, 334)
+
+================================================================================
+  5. SAMPLE DATA
+================================================================================
+
+
+--- First 5 Games ---
+Query: 
+            SELECT
+                id, title, mana_meeple_category, nz_designer,
+                complexity, average_rating,
+                designers::text as designers_json
+            FROM boardga...
+
+(1, 'Azul', 'GATEWAY_STRATEGY', False, 1.7744, 7.72058, '["Michael Kiesling"]')
+(2, 'Wingspan', 'GATEWAY_STRATEGY', False, 2.4762, 8.00491, '["Elizabeth Hargrave"]')
+(3, 'Cascadia', 'GATEWAY_STRATEGY', False, 1.8433, 7.89987, '["Randy Flynn"]')
+(4, '7 Wonders', 'GATEWAY_STRATEGY', False, 2.3145, 7.66576, '["Antoine Bauza"]')
+(5, '7 Wonders Duel', 'GATEWAY_STRATEGY', False, 2.2274, 8.08115, '["Antoine Bauza", "Bruno Cathala"]')
+
+================================================================================
+  6. QUERY PERFORMANCE - BASIC FILTERS
+================================================================================
+
+
+--- Category Filter Performance (Should use index) ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title, mana_meeple_category, complexity
+            FROM boardgames
+            WHERE mana_meeple_category = 'CORE_STRATEGY'
+            ORDER BY ti...
+
+('Limit  (cost=0.27..56.29 rows=20 width=41) (actual time=0.040..0.184 rows=20 loops=1)',)
+('  ->  Index Scan using ix_games_title on boardgames  (cost=0.27..151.51 rows=54 width=41) (actual time=0.038..0.181 rows=20 loops=1)',)
+("        Filter: (mana_meeple_category = 'CORE_STRATEGY'::text)",)
+('        Rows Removed by Filter: 138',)
+('Planning Time: 0.110 ms',)
+('Execution Time: 0.227 ms',)
+
+--- NZ Designer Filter Performance (Should use index) ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title, nz_designer
+            FROM boardgames
+            WHERE nz_designer = true
+            ORDER BY title
+            LIMIT 20;
+            
+
+('Limit  (cost=21.90..21.95 rows=17 width=22) (actual time=0.108..0.111 rows=16 loops=1)',)
+('  ->  Sort  (cost=21.90..21.95 rows=17 width=22) (actual time=0.107..0.108 rows=16 loops=1)',)
+('        Sort Key: title',)
+('        Sort Method: quicksort  Memory: 25kB',)
+('        ->  Index Scan using idx_status_date_nz on boardgames  (cost=0.15..21.56 rows=17 width=22) (actual time=0.022..0.056 rows=16 loops=1)',)
+('              Index Cond: (nz_designer = true)',)
+('Planning Time: 0.115 ms',)
+('Execution Time: 0.129 ms',)
+
+================================================================================
+  7. QUERY PERFORMANCE - SEARCH
+================================================================================
+
+
+--- Title Search Performance (ILIKE pattern) ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title, description
+            FROM boardgames
+            WHERE LOWER(title) LIKE LOWER('%catan%')
+            ORDER BY title
+            LIMIT 20;...
+
+('Limit  (cost=133.19..133.19 rows=1 width=367) (actual time=2.123..2.125 rows=7 loops=1)',)
+('  ->  Sort  (cost=133.19..133.19 rows=1 width=367) (actual time=2.121..2.123 rows=7 loops=1)',)
+('        Sort Key: title',)
+('        Sort Method: quicksort  Memory: 27kB',)
+('        ->  Seq Scan on boardgames  (cost=0.00..133.18 rows=1 width=367) (actual time=0.013..0.198 rows=7 loops=1)',)
+("              Filter: (lower((title)::text) ~~ '%catan%'::text)",)
+('              Rows Removed by Filter: 327',)
+('Planning Time: 0.303 ms',)
+('Execution Time: 2.146 ms',)
+
+--- Title Search with ILIKE ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title
+            FROM boardgames
+            WHERE title ILIKE '%pandemic%'
+            ORDER BY title
+            LIMIT 20;
+            
+
+('Limit  (cost=132.32..132.33 rows=1 width=21) (actual time=0.370..0.371 rows=1 loops=1)',)
+('  ->  Sort  (cost=132.32..132.33 rows=1 width=21) (actual time=0.369..0.369 rows=1 loops=1)',)
+('        Sort Key: title',)
+('        Sort Method: quicksort  Memory: 25kB',)
+('        ->  Seq Scan on boardgames  (cost=0.00..132.31 rows=1 width=21) (actual time=0.044..0.364 rows=1 loops=1)',)
+("              Filter: ((title)::text ~~* '%pandemic%'::text)",)
+('              Rows Removed by Filter: 333',)
+('Planning Time: 0.216 ms',)
+('Execution Time: 0.389 ms',)
+
+================================================================================
+  8. QUERY PERFORMANCE - JSON QUERIES
+================================================================================
+
+
+--- Designer JSON Search (Exact match with @> operator) ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title, designers
+            FROM boardgames
+            WHERE designers @> '["Reiner Knizia"]'::jsonb
+            LIMIT 20;
+            
+
+('Limit  (cost=4.14..12.84 rows=8 width=50) (actual time=0.028..0.047 rows=8 loops=1)',)
+('  ->  Bitmap Heap Scan on boardgames  (cost=4.14..12.84 rows=8 width=50) (actual time=0.027..0.045 rows=8 loops=1)',)
+('        Recheck Cond: (designers @> \'["Reiner Knizia"]\'::jsonb)',)
+('        Heap Blocks: exact=10',)
+('        ->  Bitmap Index Scan on idx_designers_gin  (cost=0.00..4.14 rows=8 width=0) (actual time=0.017..0.017 rows=12 loops=1)',)
+('              Index Cond: (designers @> \'["Reiner Knizia"]\'::jsonb)',)
+('Planning Time: 0.193 ms',)
+('Execution Time: 0.069 ms',)
+
+--- Designer JSON Search (Text cast with ILIKE) ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title, designers
+            FROM boardgames
+            WHERE designers::text ILIKE '%knizia%'
+            LIMIT 20;
+            
+
+('Limit  (cost=0.00..134.04 rows=1 width=50) (actual time=0.082..0.632 rows=8 loops=1)',)
+('  ->  Seq Scan on boardgames  (cost=0.00..134.04 rows=1 width=50) (actual time=0.081..0.629 rows=8 loops=1)',)
+("        Filter: ((designers)::text ~~* '%knizia%'::text)",)
+('        Rows Removed by Filter: 326',)
+('Planning Time: 0.095 ms',)
+('Execution Time: 0.650 ms',)
+
+--- Mechanics JSON Search (Exact match) ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title, mechanics
+            FROM boardgames
+            WHERE mechanics @> '["Deck, Bag, and Pool Building"]'::jsonb
+            LIMIT 20;
+        ...
+
+('Limit  (cost=4.20..24.61 rows=20 width=158) (actual time=0.035..0.075 rows=20 loops=1)',)
+('  ->  Bitmap Heap Scan on boardgames  (cost=4.20..24.61 rows=20 width=158) (actual time=0.034..0.072 rows=20 loops=1)',)
+('        Recheck Cond: (mechanics @> \'["Deck, Bag, and Pool Building"]\'::jsonb)',)
+('        Heap Blocks: exact=20',)
+('        ->  Bitmap Index Scan on idx_mechanics_gin  (cost=0.00..4.19 rows=20 width=0) (actual time=0.023..0.023 rows=27 loops=1)',)
+('              Index Cond: (mechanics @> \'["Deck, Bag, and Pool Building"]\'::jsonb)',)
+('Planning Time: 0.145 ms',)
+('Execution Time: 0.098 ms',)
+
+================================================================================
+  9. COMPLEX MULTI-FILTER QUERIES
+================================================================================
+
+
+--- Category + Complexity Range Filter ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title, mana_meeple_category, complexity, designers
+            FROM boardgames
+            WHERE
+                mana_meeple_category = 'GATEWAY_STR...
+
+('Limit  (cost=109.48..109.53 rows=20 width=70) (actual time=0.312..0.316 rows=20 loops=1)',)
+('  ->  Sort  (cost=109.48..109.57 rows=34 width=70) (actual time=0.311..0.313 rows=20 loops=1)',)
+('        Sort Key: complexity DESC',)
+('        Sort Method: top-N heapsort  Memory: 30kB',)
+('        ->  Index Scan using idx_public_games_covering on boardgames  (cost=0.27..108.62 rows=34 width=70) (actual time=0.022..0.264 rows=42 loops=1)',)
+("              Index Cond: (mana_meeple_category = 'GATEWAY_STRATEGY'::text)",)
+("              Filter: ((designers IS NOT NULL) AND (complexity >= '2'::double precision) AND (complexity <= '3'::double precision))",)
+('              Rows Removed by Filter: 42',)
+('Planning Time: 0.203 ms',)
+('Execution Time: 0.337 ms',)
+
+--- NZ Designer + Text Search Combined ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title, nz_designer, designers
+            FROM boardgames
+            WHERE
+                nz_designer = true
+                AND (
+               ...
+
+('Limit  (cost=22.12..22.16 rows=17 width=51) (actual time=0.071..0.073 rows=16 loops=1)',)
+('  ->  Sort  (cost=22.12..22.16 rows=17 width=51) (actual time=0.070..0.071 rows=16 loops=1)',)
+('        Sort Key: title',)
+('        Sort Method: quicksort  Memory: 26kB',)
+('        ->  Index Scan using idx_status_date_nz on boardgames  (cost=0.15..21.77 rows=17 width=51) (actual time=0.019..0.057 rows=16 loops=1)',)
+('              Index Cond: (nz_designer = true)',)
+("              Filter: (((title)::text ~~* '%%'::text) OR (description ~~* '%game%'::text) OR ((designers)::text ~~* '%%%'::text))",)
+('Planning Time: 0.894 ms',)
+('Execution Time: 0.095 ms',)
+
+================================================================================
+  10. SORTING PERFORMANCE
+================================================================================
+
+
+--- Sort by Year ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title, year
+            FROM boardgames
+            ORDER BY year DESC NULLS LAST
+            LIMIT 20;
+            
+
+('Limit  (cost=140.63..140.68 rows=20 width=25) (actual time=0.262..0.265 rows=20 loops=1)',)
+('  ->  Sort  (cost=140.63..141.49 rows=345 width=25) (actual time=0.261..0.262 rows=20 loops=1)',)
+('        Sort Key: year DESC NULLS LAST',)
+('        Sort Method: top-N heapsort  Memory: 27kB',)
+('        ->  Seq Scan on boardgames  (cost=0.00..131.45 rows=345 width=25) (actual time=0.011..0.197 rows=334 loops=1)',)
+('Planning Time: 0.162 ms',)
+('Execution Time: 0.283 ms',)
+
+--- Sort by Rating (with NULL filter) ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title, average_rating
+            FROM boardgames
+            WHERE average_rating IS NOT NULL
+            ORDER BY average_rating DESC
+            ...
+
+('Limit  (cost=140.63..140.68 rows=20 width=25) (actual time=0.326..0.329 rows=20 loops=1)',)
+('  ->  Sort  (cost=140.63..141.49 rows=345 width=25) (actual time=0.325..0.327 rows=20 loops=1)',)
+('        Sort Key: average_rating DESC',)
+('        Sort Method: top-N heapsort  Memory: 27kB',)
+('        ->  Seq Scan on boardgames  (cost=0.00..131.45 rows=345 width=25) (actual time=0.012..0.279 rows=334 loops=1)',)
+('              Filter: (average_rating IS NOT NULL)',)
+('Planning Time: 0.096 ms',)
+('Execution Time: 0.346 ms',)
+
+--- Sort by Playtime ---
+Query: 
+            EXPLAIN ANALYZE
+            SELECT id, title, playtime_min
+            FROM boardgames
+            WHERE playtime_min IS NOT NULL
+            ORDER BY playtime_min ASC
+            LIMIT 2...
+
+('Limit  (cost=140.60..140.65 rows=20 width=25) (actual time=0.351..0.354 rows=20 loops=1)',)
+('  ->  Sort  (cost=140.60..141.46 rows=344 width=25) (actual time=0.350..0.352 rows=20 loops=1)',)
+('        Sort Key: playtime_min',)
+('        Sort Method: top-N heapsort  Memory: 26kB',)
+('        ->  Seq Scan on boardgames  (cost=0.00..131.45 rows=344 width=25) (actual time=0.012..0.231 rows=333 loops=1)',)
+('              Filter: (playtime_min IS NOT NULL)',)
+('              Rows Removed by Filter: 1',)
+('Planning Time: 0.239 ms',)
+('Execution Time: 0.376 ms',)
+
+================================================================================
+  11. TABLE STATISTICS & HEALTH
+================================================================================
+
+
+--- Table Statistics (Vacuum & Analyze Status) ---
+Query: 
+            SELECT
+                schemaname,
+                relname as tablename,
+                n_live_tup as live_rows,
+                n_dead_tup as dead_rows,
+                n_tup_ins as ins...
+
+('public', 'boardgames', 334, 53, 404, 4216, 7, None, datetime.datetime(2026, 1, 2, 6, 37, 21, 711729, tzinfo=datetime.timezone.utc), None, datetime.datetime(2026, 1, 2, 23, 27, 36, 294703, tzinfo=datetime.timezone.utc))
+
+================================================================================
+  12. REAL-WORLD QUERY EXAMPLES
+================================================================================
+
+
+--- Top 10 Core Strategy Games by Rating ---
+Query: 
+            SELECT id, title, designers, average_rating, complexity
+            FROM boardgames
+            WHERE mana_meeple_category = 'CORE_STRATEGY'
+            ORDER BY average_rating DESC NULLS...
+
+(355, 'Twilight Imperium: Fourth Edition – Prophecy of Kings', ['Dane Beltrami'], 9.1869, 4.4087)
+(206, 'Brass: Birmingham', ['Gavan Brown', 'Matt Tolman', 'Martin Wallace'], 8.57, 3.8671)
+(164, 'Twilight Imperium: Fourth Edition', ['Dane Beltrami', 'Corey Konieczka', 'Christian T. Petersen'], 8.56555, 4.3452)
+(204, 'Ark Nova', ['Mathias Wigge'], 8.54065, 3.7904)
+(304, 'Wingspan: Oceania Expansion', ['Elizabeth Hargrave'], 8.45192, 2.6632)
+(213, 'Star Wars: Rebellion', ['Corey Konieczka'], 8.41979, 3.7488)
+(283, 'Gaia Project', ['Jens Drögemüller', 'Helge Ostertag'], 8.35583, 4.4018)
+(203, 'Terraforming Mars', ['Jacob Fryxelius'], 8.34077, 3.267)
+(165, 'Twilight Struggle', ['Ananda Gupta', 'Jason Matthews'], 8.23092, 3.6135)
+(356, 'Wingspan Asia', ['Elizabeth Hargrave'], 8.2219, 2.6515)
+
+--- Recent NZ Designer Games ---
+Query: 
+            SELECT id, title, designers, year
+            FROM boardgames
+            WHERE nz_designer = true
+            ORDER BY year DESC NULLS LAST
+            LIMIT 10;
+            
+
+(94, 'Glimstone Grab!', ['Jonathan McGarvey', 'Julia Schiller'], 2025)
+(166, 'Ulterior Design', ['Andy Bell'], 2023)
+(109, 'Lindyhop', ['Mark Kaneko', 'James Smeal'], 2023)
+(171, 'World Changers', ['THEKI'], 2021)
+(198, "Hadrian's Wall", ['Bobby Hill'], 2021)
+(136, 'Regicide', ['Paul Abrahams', 'Luke Badger', 'Andy Richdale'], 2020)
+(158, 'The Hobbit: An Unexpected Party', ['Jarratt Gray', 'Ian Luxmoore'], 2020)
+(90, 'Flipology', ['Rachel Reilly'], 2019)
+(61, 'Paladins of the West Kingdom', ['S J Macdonald', 'Shem Phillips'], 2019)
+(89, 'Flaming Pyramids', ['Norbert Abel'], 2018)
+
+================================================================================
+  ANALYSIS COMPLETE
+================================================================================
+
+Key things to look for in EXPLAIN ANALYZE output:
+  - 'Index Scan' = Good (using index)
+  - 'Seq Scan' = May need optimization (full table scan)
+  - 'Bitmap Index Scan' = Good for multiple conditions
+  - Execution time < 10ms = Excellent
+  - Execution time 10-50ms = Good
+  - Execution time > 50ms = May need optimization

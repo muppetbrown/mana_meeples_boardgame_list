@@ -9,6 +9,7 @@ from config import (
     DB_MAX_OVERFLOW,
     DB_POOL_TIMEOUT,
     DB_POOL_RECYCLE,
+    SLOW_QUERY_THRESHOLD_SECONDS,
 )
 from models import Base
 from datetime import datetime
@@ -84,8 +85,8 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
     """Log slow queries (>1 second) with optional Sentry integration"""
     total = time.time() - conn.info['query_start_time'].pop(-1)
 
-    # Log slow queries (>1 second)
-    if total > 1.0:
+    # Log slow queries (configurable threshold, default 1 second)
+    if total > SLOW_QUERY_THRESHOLD_SECONDS:
         # Truncate query for readability in logs
         query_preview = statement[:200] + "..." if len(statement) > 200 else statement
 

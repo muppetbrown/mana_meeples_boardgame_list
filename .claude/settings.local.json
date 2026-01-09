@@ -10,7 +10,10 @@
       "Bash(npx vite build)",
       "Bash(npm install:*)",
       "Bash(npm ci:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(python test_database_analysis.py:*)",
+      "Bash(tee:*)",
+      "Bash(alembic upgrade:*)"
     ]
   }
 }

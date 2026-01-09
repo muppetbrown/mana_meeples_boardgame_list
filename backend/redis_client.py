@@ -31,6 +31,9 @@ class RedisClient:
         self.url = url
         self.decode_responses = decode_responses
         self._client = None
+        self._availability_cache = None  # Cache availability status
+        self._availability_cache_time = 0  # Timestamp of last availability check
+        self._availability_cache_ttl = 5  # Cache TTL in seconds (5s)
         self._connect()
 
     def _connect(self):
@@ -53,13 +56,32 @@ class RedisClient:
 
     @property
     def is_available(self) -> bool:
-        """Check if Redis connection is available"""
+        """
+        Check if Redis connection is available (with 5s cache).
+
+        This property is called before every Redis operation, so we cache
+        the availability status for 5 seconds to reduce network overhead.
+        The cache prevents doubling latency on every Redis operation.
+        """
         if not self._client:
             return False
+
+        # Check cache first
+        import time
+        current_time = time.time()
+        if (self._availability_cache is not None and
+                current_time - self._availability_cache_time < self._availability_cache_ttl):
+            return self._availability_cache
+
+        # Cache miss - check actual availability
         try:
             self._client.ping()
+            self._availability_cache = True
+            self._availability_cache_time = current_time
             return True
         except (RedisError, RedisConnectionError):
+            self._availability_cache = False
+            self._availability_cache_time = current_time
             return False
 
     def get(self, key: str) -> Optional[str]:

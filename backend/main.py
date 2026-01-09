@@ -475,14 +475,15 @@ cors_origins = cors_origins_from_env if cors_origins_from_env else [
     "https://mana-meeples-library-web.onrender.com",
 ]
 
-# Always add localhost for development
-if "http://localhost:3000" not in cors_origins:
-    cors_origins = cors_origins + [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",  # Vite default port
-        "http://127.0.0.1:5173",  # Vite default port
-    ]
+# Only add localhost for development (not in production)
+if os.getenv("ENVIRONMENT") != "production":
+    if "http://localhost:3000" not in cors_origins:
+        cors_origins = cors_origins + [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:5173",  # Vite default port
+            "http://127.0.0.1:5173",  # Vite default port
+        ]
 
 logger.info(f"CORS origins from environment: {cors_origins_from_env}")
 logger.info(f"CORS origins configured: {cors_origins}")

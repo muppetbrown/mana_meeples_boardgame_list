@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { X } from '../icons/X';
 
 /**
  * Mobile-first help modal explaining game card interactions and AfterGame
