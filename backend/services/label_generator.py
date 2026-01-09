@@ -14,9 +14,9 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Image
 
-# Label dimensions (4" x 2.5")
+# Label dimensions - aspect ratio of 3:1 (width:height)
 LABEL_WIDTH = 4 * inch
-LABEL_HEIGHT = 2.5 * inch
+LABEL_HEIGHT = LABEL_WIDTH / 3  # ~1.33 inches
 
 # Page settings for Letter size (8.5" x 11")
 PAGE_WIDTH, PAGE_HEIGHT = letter
@@ -26,9 +26,9 @@ MARGIN = 0.25 * inch
 LOGO_WIDTH = LABEL_WIDTH / 3  # 33.3% for logo
 INFO_WIDTH = (LABEL_WIDTH * 2) / 3  # 66.7% for info
 
-# Grid layout (3 columns x 4 rows = 12 labels per page)
-LABELS_PER_ROW = 3
-LABELS_PER_COL = 4
+# Grid layout (2 columns x 7 rows = 14 labels per page)
+LABELS_PER_ROW = 2
+LABELS_PER_COL = 7
 
 # Colors (matching frontend theme)
 COLOR_COOP_BG = colors.HexColor('#10b981')  # Green
@@ -43,7 +43,16 @@ class LabelGenerator:
     """Service for generating PDF labels for board games"""
 
     def __init__(self):
-        self.logo_path = Path(__file__).parent.parent / "assets" / "mana_meeples_logo.png"
+        self.assets_path = Path(__file__).parent.parent / "assets"
+        self.logo_path = self.assets_path / "mana_meeples_logo_v3.svg"
+
+        # Icon paths for stats
+        self.icon_players = self.assets_path / "group.png"
+        self.icon_time = self.assets_path / "clock.png"
+        self.icon_age = self.assets_path / "cake.png"
+        self.icon_complexity = self.assets_path / "puzzle.png"
+        self.icon_coop = self.assets_path / "partners.png"
+        self.icon_competitive = self.assets_path / "swords.png"
 
     def generate_pdf(self, games: List[dict]) -> BytesIO:
         """
@@ -192,19 +201,38 @@ class LabelGenerator:
         badge_height = 14
         badge_y = y - badge_height
         current_x = x
+        icon_size = 10  # Icon size in points
 
         # Cooperative/Competitive badge
         is_coop = game.get('is_cooperative', False)
-        coop_text = 'Co-op 🤝' if is_coop else 'Comp ⚔️'
+        coop_text = 'Co-op' if is_coop else 'Comp'
         coop_color = COLOR_COOP_BG if is_coop else COLOR_COMPETITIVE_BG
+        icon_path = self.icon_coop if is_coop else self.icon_competitive
 
         c.setFillColor(coop_color)
-        badge_width = len(coop_text) * 6 + 8
+        badge_width = len(coop_text) * 6 + icon_size + 12  # Text + icon + padding
         c.roundRect(current_x, badge_y, badge_width, badge_height, 4, fill=1, stroke=0)
 
+        # Draw text
         c.setFillColor(colors.white)
         c.setFont('Helvetica-Bold', 8)
         c.drawString(current_x + 4, badge_y + 4, coop_text)
+
+        # Draw icon if exists
+        if icon_path.exists():
+            try:
+                icon_x = current_x + len(coop_text) * 6 + 6
+                icon_y = badge_y + 2
+                c.drawImage(
+                    str(icon_path),
+                    icon_x, icon_y,
+                    width=icon_size,
+                    height=icon_size,
+                    preserveAspectRatio=True,
+                    mask='auto'
+                )
+            except Exception:
+                pass  # If icon fails, just show text
 
         current_x += badge_width + 4
 
@@ -231,11 +259,11 @@ class LabelGenerator:
 
         # Players
         players = self._format_player_count(game.get('players_min'), game.get('players_max'))
-        self._draw_stat(c, col1_x, stat_y, '👥', players, 10)
+        self._draw_stat(c, col1_x, stat_y, self.icon_players, players, 10)
 
         # Time
         playtime = self._format_playtime(game.get('playtime_min'), game.get('playtime_max'))
-        self._draw_stat(c, col2_x, stat_y, '⏱️', playtime, 10)
+        self._draw_stat(c, col2_x, stat_y, self.icon_time, playtime, 10)
 
         # Second row: Age and Complexity
         stat_y -= 20
@@ -243,24 +271,35 @@ class LabelGenerator:
         # Age
         age = self._format_age(game.get('min_age'))
         if age:
-            self._draw_stat(c, col1_x, stat_y, '🎂', age, 10)
+            self._draw_stat(c, col1_x, stat_y, self.icon_age, age, 10)
 
         # Complexity
         complexity = self._create_star_display(game.get('complexity'))
-        self._draw_stat(c, col2_x, stat_y, '🧩', complexity, 10)
+        self._draw_stat(c, col2_x, stat_y, self.icon_complexity, complexity, 10)
 
-    def _draw_stat(self, c: canvas.Canvas, x: float, y: float, icon: str, value: str, font_size: int):
+    def _draw_stat(self, c: canvas.Canvas, x: float, y: float, icon_path: Path, value: str, font_size: int):
         """Draw a single stat with icon and value"""
 
-        c.setFillColor(COLOR_TEXT_LIGHT)
-        c.setFont('Helvetica', font_size)
+        icon_size = 12  # Icon size in points (0.17 inches)
 
-        # Draw icon
-        c.drawString(x, y, icon)
+        # Draw icon if exists
+        if icon_path.exists():
+            try:
+                c.drawImage(
+                    str(icon_path),
+                    x, y,
+                    width=icon_size,
+                    height=icon_size,
+                    preserveAspectRatio=True,
+                    mask='auto'
+                )
+            except Exception:
+                pass  # If icon fails, skip it
 
         # Draw value
         c.setFillColor(COLOR_TEXT)
-        c.drawString(x + 15, y, value)
+        c.setFont('Helvetica', font_size)
+        c.drawString(x + icon_size + 3, y, value)
 
     def _format_player_count(self, min_players: Optional[int], max_players: Optional[int]) -> str:
         """Format player count range"""
