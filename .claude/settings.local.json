@@ -20,7 +20,10 @@
       "Bash(git restore:*)",
       "Bash(git commit:*)",
       "Bash(where.exe:*)",
-      "Bash(npm search:*)"
+      "Bash(npm search:*)",
+      "Bash(claude --version:*)",
+      "Bash(echo:*)",
+      "Bash(Select-String -Pattern \"mcp\")"
     ]
   }
 }
