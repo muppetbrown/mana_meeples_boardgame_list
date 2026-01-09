@@ -51,7 +51,7 @@ export function AddGamesTab() {
 
         <div className="flex flex-wrap gap-2 items-center">
           <input
-            className="flex-1 min-w-[280px] border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-3 text-base outline-none transition-all"
+            className="flex-1 min-w-70 border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-3 text-base outline-none transition-all"
             placeholder="Enter BoardGameGeek ID (e.g., 30549 for Pandemic)"
             value={bggIdInput}
             onChange={(e) => setBggIdInput(e.target.value)}

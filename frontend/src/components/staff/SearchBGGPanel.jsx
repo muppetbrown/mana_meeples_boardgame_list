@@ -15,7 +15,7 @@ export default function SearchBGGPanel({
       <h2 className="text-xl font-semibold mb-3">Search BoardGameGeek</h2>
       <div className="flex flex-wrap gap-2 items-center">
         <input
-          className="flex-1 min-w-[240px] border rounded-lg px-3 py-2"
+          className="flex-1 min-w-60 border rounded-lg px-3 py-2"
           placeholder="Search title…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}

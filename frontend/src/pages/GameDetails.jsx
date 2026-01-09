@@ -148,7 +148,7 @@ export default function GameDetails() {
           <article className="bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl border border-white/50 overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-[400px,1fr] gap-0">
               {/* Image Section */}
-              <div className="relative bg-linear-to-br from-slate-100 to-slate-200 aspect-[4/3] sm:aspect-square lg:aspect-square">
+              <div className="relative bg-linear-to-br from-slate-100 to-slate-200 aspect-4/3 sm:aspect-square lg:aspect-square">
                 <GameImage
                   url={img}
                   alt={`${game?.title || 'Board game'} board game cover`}

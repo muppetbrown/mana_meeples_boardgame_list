@@ -9,7 +9,7 @@ import React from "react";
 export default function GameCardSkeleton() {
   return (
     <article
-      className="game-card-container bg-white rounded-2xl overflow-hidden shadow-md border-2 border-slate-200 animate-pulse flex flex-row aspect-[2/1] w-full"
+      className="game-card-container bg-white rounded-2xl overflow-hidden shadow-md border-2 border-slate-200 animate-pulse flex flex-row aspect-2/1 w-full"
       aria-hidden="true"
     >
       {/* Image Skeleton - Square aspect ratio, matches GameCardPublic minimized state */}
