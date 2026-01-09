@@ -13,6 +13,8 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Image
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF
 
 # Label dimensions - aspect ratio of 3:1 (width:height)
 LABEL_WIDTH = 4 * inch
@@ -115,20 +117,23 @@ class LabelGenerator:
         # Logo image (if exists)
         if self.logo_path.exists():
             try:
-                # Center the logo in the section
-                logo_size = min(LOGO_WIDTH * 0.8, LABEL_HEIGHT * 0.8)
-                logo_x = x + (LOGO_WIDTH - logo_size) / 2
-                logo_y = y + (LABEL_HEIGHT - logo_size) / 2
+                # Convert SVG to ReportLab drawing
+                drawing = svg2rlg(str(self.logo_path))
+                if drawing:
+                    # Scale to fit in logo section (80% of available space)
+                    target_size = min(LOGO_WIDTH * 0.8, LABEL_HEIGHT * 0.8)
+                    scale = target_size / max(drawing.width, drawing.height)
+                    drawing.width *= scale
+                    drawing.height *= scale
+                    drawing.scale(scale, scale)
 
-                c.drawImage(
-                    str(self.logo_path),
-                    logo_x, logo_y,
-                    width=logo_size,
-                    height=logo_size,
-                    preserveAspectRatio=True,
-                    mask='auto'
-                )
-            except Exception as e:
+                    # Center the logo
+                    logo_x = x + (LOGO_WIDTH - drawing.width) / 2
+                    logo_y = y + (LABEL_HEIGHT - drawing.height) / 2
+
+                    # Render SVG
+                    renderPDF.draw(drawing, c, logo_x, logo_y)
+            except Exception:
                 # If logo fails to load, just leave the background
                 pass
 
@@ -149,35 +154,30 @@ class LabelGenerator:
         """Draw game title and badges"""
 
         padding = 0.1 * inch
+        available_width = width - (2 * padding)
 
         # Game title
         title = game.get('title', 'Unknown Game')
         c.setFillColor(COLOR_TEXT)
 
-        # Calculate font size based on title length
-        if len(title) > 30:
-            font_size = 12
-        elif len(title) > 20:
-            font_size = 14
-        else:
-            font_size = 16
-
+        # Dynamic font sizing to fit title on one line
+        font_size = 16  # Start with max
+        min_font_size = 8
         c.setFont('Helvetica-Bold', font_size)
+        title_width = c.stringWidth(title, 'Helvetica-Bold', font_size)
 
-        # Draw title with wrapping if needed
-        title_y = y + height - padding - font_size
-        if len(title) > 25:
-            # Split into two lines if too long
-            words = title.split()
-            line1, line2 = self._split_title(words, 25)
-            c.drawString(x + padding, title_y, line1)
-            c.drawString(x + padding, title_y - font_size - 2, line2)
-            badge_y = title_y - font_size * 2 - 10
-        else:
-            c.drawString(x + padding, title_y, title)
-            badge_y = title_y - font_size - 6
+        # Reduce font size until it fits
+        while title_width > available_width and font_size > min_font_size:
+            font_size -= 1
+            c.setFont('Helvetica-Bold', font_size)
+            title_width = c.stringWidth(title, 'Helvetica-Bold', font_size)
 
-        # Badges (Co-op/Competitive • Game Type)
+        # Draw title on single line
+        title_y = y + height - padding - font_size - 2
+        c.drawString(x + padding, title_y, title)
+
+        # Badges positioned with fixed spacing below title
+        badge_y = title_y - 20  # Fixed 20pt spacing below title
         self._draw_badges(c, game, x + padding, badge_y)
 
     def _split_title(self, words: List[str], max_length: int) -> tuple:
@@ -199,7 +199,6 @@ class LabelGenerator:
         """Draw cooperative/competitive and game type badges"""
 
         badge_height = 14
-        badge_y = y - badge_height
         current_x = x
         icon_size = 10  # Icon size in points
 
@@ -211,18 +210,18 @@ class LabelGenerator:
 
         c.setFillColor(coop_color)
         badge_width = len(coop_text) * 6 + icon_size + 12  # Text + icon + padding
-        c.roundRect(current_x, badge_y, badge_width, badge_height, 4, fill=1, stroke=0)
+        c.roundRect(current_x, y, badge_width, badge_height, 4, fill=1, stroke=0)
 
         # Draw text
         c.setFillColor(colors.white)
         c.setFont('Helvetica-Bold', 8)
-        c.drawString(current_x + 4, badge_y + 4, coop_text)
+        c.drawString(current_x + 4, y + 4, coop_text)
 
         # Draw icon if exists
         if icon_path.exists():
             try:
                 icon_x = current_x + len(coop_text) * 6 + 6
-                icon_y = badge_y + 2
+                icon_y = y + 2
                 c.drawImage(
                     str(icon_path),
                     icon_x, icon_y,
@@ -241,11 +240,11 @@ class LabelGenerator:
         if game_type:
             c.setFillColor(COLOR_TYPE_BG)
             type_badge_width = len(game_type) * 6 + 8
-            c.roundRect(current_x, badge_y, type_badge_width, badge_height, 4, fill=1, stroke=0)
+            c.roundRect(current_x, y, type_badge_width, badge_height, 4, fill=1, stroke=0)
 
             c.setFillColor(colors.white)
             c.setFont('Helvetica-Bold', 8)
-            c.drawString(current_x + 4, badge_y + 4, game_type)
+            c.drawString(current_x + 4, y + 4, game_type)
 
     def _draw_stats_grid(self, c: canvas.Canvas, game: dict, x: float, y: float, width: float, height: float):
         """Draw stats grid (players, time, age, complexity)"""
@@ -274,7 +273,7 @@ class LabelGenerator:
             self._draw_stat(c, col1_x, stat_y, self.icon_age, age, 10)
 
         # Complexity
-        complexity = self._create_star_display(game.get('complexity'))
+        complexity = self._create_complexity_display(game.get('complexity'))
         self._draw_stat(c, col2_x, stat_y, self.icon_complexity, complexity, 10)
 
     def _draw_stat(self, c: canvas.Canvas, x: float, y: float, icon_path: Path, value: str, font_size: int):
@@ -304,15 +303,15 @@ class LabelGenerator:
     def _format_player_count(self, min_players: Optional[int], max_players: Optional[int]) -> str:
         """Format player count range"""
         if not min_players and not max_players:
-            return "?p"
+            return "? players"
 
         if min_players == max_players:
-            return f"{min_players}p"
+            return f"{min_players} player" if min_players == 1 else f"{min_players} players"
 
         if min_players and max_players:
-            return f"{min_players}-{max_players}p"
+            return f"{min_players}-{max_players} players"
 
-        return f"{min_players or max_players}p"
+        return f"{min_players or max_players} players"
 
     def _format_playtime(self, min_time: Optional[int], max_time: Optional[int]) -> str:
         """Format playtime range"""
@@ -336,31 +335,11 @@ class LabelGenerator:
             return ""
         return f"Age {min_age}+"
 
-    def _create_star_display(self, complexity: Optional[float]) -> str:
-        """Create star display for complexity rating"""
+    def _create_complexity_display(self, complexity: Optional[float]) -> str:
+        """Create numeric display for complexity rating (X.X/5.0)"""
         if complexity is None:
-            return "☆☆☆☆☆"
+            return "?/5.0"
 
         # Clamp to 0-5 range
         w = max(0.0, min(5.0, complexity))
-
-        full_stars = int(w)
-        remainder = w - full_stars
-
-        if remainder >= 0.75:
-            full_stars += 1
-            half_stars = 0
-        elif remainder >= 0.25:
-            half_stars = 1
-        else:
-            half_stars = 0
-
-        empty_stars = 5 - full_stars - half_stars
-
-        # Unicode stars
-        stars = ""
-        stars += "★" * full_stars        # Full stars (filled)
-        stars += "✩" * half_stars         # Half stars
-        stars += "☆" * empty_stars        # Empty stars (outline)
-
-        return stars
+        return f"{w:.1f}/5.0"
