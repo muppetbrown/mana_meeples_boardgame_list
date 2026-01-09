@@ -8,6 +8,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from api.dependencies import require_admin_auth
@@ -47,7 +48,8 @@ async def generate_labels(
         logger.info(f"Generating labels for {len(request.game_ids)} games")
 
         # Query games from database
-        games = db.query(Game).filter(Game.id.in_(request.game_ids)).all()
+        stmt = select(Game).where(Game.id.in_(request.game_ids))
+        games = db.execute(stmt).scalars().all()
 
         # Check if all games were found
         if len(games) != len(request.game_ids):

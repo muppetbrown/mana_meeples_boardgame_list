@@ -399,10 +399,11 @@ async def image_proxy(
                     hash_part = hash_match.group(1)
                     # Find game with this hash in image or thumbnail_url
                     from models import Game
-                    game = db.query(Game).filter(
+                    stmt = select(Game).where(
                         (Game.image.like(f'%{hash_part}%')) |
                         (Game.thumbnail_url.like(f'%{hash_part}%'))
-                    ).first()
+                    )
+                    game = db.execute(stmt).scalars().first()
 
                     if game and game.cloudinary_url:
                         # We have a cached Cloudinary URL! Use it directly
@@ -459,10 +460,11 @@ async def image_proxy(
                             hash_part = hash_match.group(1)
                             # Find game with this hash in image or thumbnail_url
                             from models import Game
-                            game = db.query(Game).filter(
+                            stmt = select(Game).where(
                                 (Game.image.like(f'%{hash_part}%')) |
                                 (Game.thumbnail_url.like(f'%{hash_part}%'))
-                            ).first()
+                            )
+                            game = db.execute(stmt).scalars().first()
 
                             if game:
                                 # Save the base Cloudinary URL (without width/height transformations)

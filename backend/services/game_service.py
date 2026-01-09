@@ -7,7 +7,7 @@ import logging
 from typing import Any, Dict, List, Optional, Tuple
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, func, or_, and_, case, inspect, cast, String
+from sqlalchemy import select, func, or_, and_, case, inspect, cast, String, delete
 from sqlalchemy.orm import Session, selectinload
 
 from models import Game
@@ -891,7 +891,8 @@ class GameService:
         game.has_sleeves = sleeve_data.get('status', 'not_found')
 
         # Delete existing sleeve records for this game
-        self.db.query(Sleeve).filter(Sleeve.game_id == game.id).delete()
+        stmt = delete(Sleeve).where(Sleeve.game_id == game.id)
+        self.db.execute(stmt)
 
         # Save new sleeve records if found
         if sleeve_data.get('status') == 'found' and sleeve_data.get('card_types'):

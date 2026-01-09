@@ -229,7 +229,8 @@ async def import_from_bgg(
 
                             # Save to database for fast-path serving
                             from models import Game
-                            db_game = db.query(Game).filter(Game.id == game.id).first()
+                            stmt = select(Game).where(Game.id == game.id)
+                            db_game = db.execute(stmt).scalars().first()
                             if db_game:
                                 db_game.cloudinary_url = cloudinary_url
                                 db.commit()
@@ -449,7 +450,8 @@ async def fix_sequence(
         model_class = table_models[table_name]
 
         # Type-safe query using SQLAlchemy ORM
-        max_id = db.query(func.max(model_class.id)).scalar()
+        stmt = select(func.max(model_class.id))
+        max_id = db.execute(stmt).scalar()
 
         if max_id is None:
             max_id = 0
