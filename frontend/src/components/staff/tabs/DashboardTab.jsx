@@ -143,7 +143,7 @@ export function DashboardTab({ onTabChange }) {
       </div>
 
       {/* Tips & Shortcuts */}
-      <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-6 border border-purple-100">
+      <div className="bg-linear-to-r from-purple-50 to-blue-50 rounded-2xl p-6 border border-purple-100">
         <h3 className="text-lg font-semibold text-gray-800 mb-3">💡 Quick Tips</h3>
         <ul className="space-y-2 text-sm text-gray-700">
           <li className="flex items-start gap-2">

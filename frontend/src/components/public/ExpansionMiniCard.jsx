@@ -19,12 +19,12 @@ export default function ExpansionMiniCard({ expansion }) {
     >
       <div className="flex gap-3">
         {/* Thumbnail */}
-        <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+        <div className="shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-linear-to-br from-slate-100 to-slate-200">
           <GameImage
             url={imgSrc}
             alt={`Cover for ${expansion?.title || 'expansion'}`}
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-200"
-            fallbackClass="w-full h-full flex items-center justify-center text-slate-400 bg-gradient-to-br from-slate-100 to-slate-200"
+            fallbackClass="w-full h-full flex items-center justify-center text-slate-400 bg-linear-to-br from-slate-100 to-slate-200"
             loading="lazy"
             aspectRatio="1/1"
           />

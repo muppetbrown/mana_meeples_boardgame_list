@@ -131,18 +131,18 @@ const GameCardPublic = memo(function GameCardPublic({
       {!isExpanded && (
         <div className="w-full h-full flex flex-row">
           {/* Image Section - Minimized */}
-          <div className="w-1/2 h-full flex-shrink-0 overflow-hidden">
+          <div className="w-1/2 h-full shrink-0 overflow-hidden">
             <Link
               to={href}
               className="block focus:outline-none w-full h-full"
               aria-label={`View details for ${game.title}`}
             >
-              <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 w-full h-full">
+              <div className="relative overflow-hidden bg-linear-to-br from-slate-100 to-slate-200 w-full h-full">
           <GameImage
             url={imgSrc}
             alt={`Cover art for ${game.title}`}
             className={`w-full h-full object-cover ${transitionClass} group-hover:scale-110`}
-            fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-gradient-to-br from-slate-100 to-slate-200"
+            fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-linear-to-br from-slate-100 to-slate-200"
             loading={lazy ? "lazy" : "eager"}
             fetchPriority={priority ? "high" : "auto"}  // Optimize first images for LCP
             fetchPriority={priority ? "high" : "auto"}
@@ -256,7 +256,7 @@ const GameCardPublic = memo(function GameCardPublic({
               className={`flex flex-col items-center justify-center gap-0.5 md:gap-1 rounded-lg py-1.5 md:py-2 px-1 text-xs font-bold transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500 border-2 ${
                 isExpanded
                   ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-300'
-                  : 'bg-gradient-to-br from-emerald-50 to-teal-50 text-emerald-700 hover:from-emerald-100 hover:to-teal-100 border-emerald-200 hover:border-emerald-300'
+                  : 'bg-linear-to-br from-emerald-50 to-teal-50 text-emerald-700 hover:from-emerald-100 hover:to-teal-100 border-emerald-200 hover:border-emerald-300'
               } ${shouldShowCardHint && showHints && !isExpanded ? 'animate-pulse ring-2 ring-emerald-500' : ''}`}
               aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
               aria-expanded={isExpanded}
@@ -295,12 +295,12 @@ const GameCardPublic = memo(function GameCardPublic({
         className="block focus:outline-none w-full aspect-square"
         aria-label={`View details for ${game.title}`}
       >
-        <div className="relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 w-full h-full">
+        <div className="relative overflow-hidden bg-linear-to-br from-slate-100 to-slate-200 w-full h-full">
           <GameImage
             url={imgSrc}
             alt={`Cover art for ${game.title}`}
             className={`w-full h-full object-cover ${transitionClass} group-hover:scale-110`}
-            fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-gradient-to-br from-slate-100 to-slate-200"
+            fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-linear-to-br from-slate-100 to-slate-200"
             loading={lazy ? "lazy" : "eager"}
             fetchPriority={priority ? "high" : "auto"}  // Optimize first images for LCP
             fetchPriority={priority ? "high" : "auto"}
@@ -515,7 +515,7 @@ const GameCardPublic = memo(function GameCardPublic({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => markAfterGameClicked()}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-semibold text-sm hover:from-teal-600 hover:to-emerald-600 transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-linear-to-r from-teal-500 to-emerald-500 text-white font-semibold text-sm hover:from-teal-600 hover:to-emerald-600 transition-all shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                 aria-label="Plan a game session on AfterGame"
                 title={shouldShowAfterGameHint ? "Schedule a game session with the Mana & Meeples community" : undefined}
               >

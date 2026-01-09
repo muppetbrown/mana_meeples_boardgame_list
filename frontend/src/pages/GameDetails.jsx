@@ -65,22 +65,22 @@ export default function GameDetails() {
 
   // Category color mapping with fallback
   const getCategoryStyle = (category) => {
-    if (!category) return "bg-gradient-to-r from-slate-500 to-gray-500 text-white";
+    if (!category) return "bg-linear-to-r from-slate-500 to-gray-500 text-white";
 
     const styles = {
-      "GATEWAY_STRATEGY": "bg-gradient-to-r from-emerald-500 to-teal-500 text-white",
-      "KIDS_FAMILIES": "bg-gradient-to-r from-purple-500 to-pink-500 text-white",
-      "CORE_STRATEGY": "bg-gradient-to-r from-blue-600 to-indigo-600 text-white",
-      "COOP_ADVENTURE": "bg-gradient-to-r from-orange-500 to-red-500 text-white",
-      "PARTY_ICEBREAKERS": "bg-gradient-to-r from-yellow-500 to-amber-500 text-white",
-      "default": "bg-gradient-to-r from-slate-500 to-gray-500 text-white"
+      "GATEWAY_STRATEGY": "bg-linear-to-r from-emerald-500 to-teal-500 text-white",
+      "KIDS_FAMILIES": "bg-linear-to-r from-purple-500 to-pink-500 text-white",
+      "CORE_STRATEGY": "bg-linear-to-r from-blue-600 to-indigo-600 text-white",
+      "COOP_ADVENTURE": "bg-linear-to-r from-orange-500 to-red-500 text-white",
+      "PARTY_ICEBREAKERS": "bg-linear-to-r from-yellow-500 to-amber-500 text-white",
+      "default": "bg-linear-to-r from-slate-500 to-gray-500 text-white"
     };
     return styles[category] || styles.default;
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-emerald-50 to-teal-50">
+      <div className="min-h-screen bg-linear-to-br from-amber-50 via-emerald-50 to-teal-50">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <GameDetailsSkeleton />
         </div>
@@ -97,7 +97,7 @@ export default function GameDetails() {
       "Failed to load game details";
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-emerald-50 to-teal-50">
+      <div className="min-h-screen bg-linear-to-br from-amber-50 via-emerald-50 to-teal-50">
         <div className="max-w-6xl mx-auto px-4 py-8">
           <div className="text-center py-16">
             <div className="bg-red-50 border border-red-200 rounded-xl p-8 max-w-md mx-auto" role="alert">
@@ -127,13 +127,13 @@ export default function GameDetails() {
   const cat = labelFor(game?.mana_meeple_category);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-emerald-50 to-teal-50">
+    <div className="min-h-screen bg-linear-to-br from-amber-50 via-emerald-50 to-teal-50">
       <div className="mx-auto max-w-6xl px-3 sm:px-4 py-4 sm:py-8">
         {/* Back Button */}
         <nav className="mb-4 sm:mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="group inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-white/80 backdrop-blur-sm rounded-xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 min-h-[44px] touch-manipulation"
+            className="group inline-flex items-center px-4 sm:px-6 py-2.5 sm:py-3 bg-white/80 backdrop-blur-sm rounded-xl border border-white/50 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 min-h-11 touch-manipulation"
             aria-label="Go back to previous page"
           >
             <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2 sm:mr-3 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -148,12 +148,12 @@ export default function GameDetails() {
           <article className="bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl border border-white/50 overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-[400px,1fr] gap-0">
               {/* Image Section */}
-              <div className="relative bg-gradient-to-br from-slate-100 to-slate-200 aspect-[4/3] sm:aspect-square lg:aspect-square">
+              <div className="relative bg-linear-to-br from-slate-100 to-slate-200 aspect-[4/3] sm:aspect-square lg:aspect-square">
                 <GameImage
                   url={img}
                   alt={`${game?.title || 'Board game'} board game cover`}
                   className="w-full h-full object-cover"
-                  fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-600 bg-gradient-to-br from-slate-100 to-slate-200"
+                  fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-600 bg-linear-to-br from-slate-100 to-slate-200"
                   loading="eager"
                   fetchPriority="high"
                   aspectRatio="1/1"
@@ -173,13 +173,13 @@ export default function GameDetails() {
               <div className="p-4 sm:p-6 lg:p-8 xl:p-12">
                 {/* Title and Basic Info */}
                 <header className="mb-6 sm:mb-8">
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3 sm:mb-4">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-bold bg-linear-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-3 sm:mb-4">
                     {game?.title || "Untitled Game"}
                   </h1>
                   
                   {/* Game Stats */}
                   <div className="flex flex-wrap gap-2 sm:gap-3 lg:gap-4 text-sm">
-                    <div className="flex items-center bg-emerald-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-[44px] sm:min-h-auto">
+                    <div className="flex items-center bg-emerald-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-11 sm:min-h-auto">
                       <span className="w-2 h-2 rounded-full bg-emerald-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-emerald-800">Players: </span>
                       <span className="font-bold text-emerald-900 ml-1">
@@ -190,7 +190,7 @@ export default function GameDetails() {
                       </span>
                     </div>
                     
-                    <div className="flex items-center bg-amber-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-[44px] sm:min-h-auto">
+                    <div className="flex items-center bg-amber-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-11 sm:min-h-auto">
                       <span className="w-2 h-2 rounded-full bg-amber-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-amber-800">Time: </span>
                       <span className="font-bold text-amber-900 ml-1">
@@ -200,7 +200,7 @@ export default function GameDetails() {
                       </span>
                     </div>
 
-                    <div className="flex items-center bg-blue-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-[44px] sm:min-h-auto">
+                    <div className="flex items-center bg-blue-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-11 sm:min-h-auto">
                       <span className="w-2 h-2 rounded-full bg-blue-500 mr-2" aria-hidden="true"></span>
                       <span className="font-medium text-blue-800">Year: </span>
                       <span className="font-bold text-blue-900 ml-1">
@@ -209,7 +209,7 @@ export default function GameDetails() {
                     </div>
 
                     {game?.game_type && (
-                      <div className="flex items-center bg-purple-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-[44px] sm:min-h-auto">
+                      <div className="flex items-center bg-purple-100 rounded-full px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 min-h-11 sm:min-h-auto">
                         <span className="w-2 h-2 rounded-full bg-purple-500 mr-2" aria-hidden="true"></span>
                         <span className="font-medium text-purple-800">Type: </span>
                         <span className="font-bold text-purple-900 ml-1">
@@ -357,7 +357,7 @@ export default function GameDetails() {
                         href={getAfterGameCreateUrl(game.aftergame_game_id)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-medium rounded-xl hover:from-teal-600 hover:to-emerald-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
+                        className="inline-flex items-center px-6 py-3 bg-linear-to-r from-teal-500 to-emerald-500 text-white font-medium rounded-xl hover:from-teal-600 hover:to-emerald-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                         aria-label="Plan a game session on AfterGame (opens in new tab)"
                       >
                         <img
@@ -375,7 +375,7 @@ export default function GameDetails() {
                           href={`https://boardgamegeek.com/boardgame/${game.bgg_id}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
+                          className="inline-flex items-center px-6 py-3 bg-linear-to-r from-amber-500 to-orange-500 text-white font-medium rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2"
                           aria-label={`View ${game?.title || 'game'} on BoardGameGeek (opens in new tab)`}
                         >
                           <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">

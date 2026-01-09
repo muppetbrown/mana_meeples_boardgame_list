@@ -84,7 +84,7 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-t-2xl">
+        <div className="bg-linear-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-t-2xl">
           <h2 className="text-2xl font-bold">Edit Game</h2>
           <p className="text-purple-100 mt-1 text-sm">{game.title}</p>
         </div>
@@ -306,7 +306,7 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
           {/* AfterGame Integration Tab */}
           {activeTab === 'integration' && (
             <div className="space-y-4">
-              <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
+              <div className="p-4 bg-linear-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
                 <p className="text-sm text-gray-700 mb-2">
                   <strong>🎲 AfterGame Integration</strong>
                 </p>
@@ -362,7 +362,7 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-medium hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
+              className="px-6 py-2.5 rounded-lg bg-linear-to-r from-purple-600 to-indigo-600 text-white font-medium hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
             >
               Save Changes
             </button>

@@ -14,7 +14,7 @@ export function HelpButton({ onClick, showPulse = false }) {
         md:left-6 md:bottom-6 md:translate-x-0
         flex items-center gap-2
         px-4 py-3 md:px-5 md:py-3
-        bg-gradient-to-r from-emerald-600 to-teal-600
+        bg-linear-to-r from-emerald-600 to-teal-600
         text-white font-medium
         rounded-full
         shadow-lg hover:shadow-xl

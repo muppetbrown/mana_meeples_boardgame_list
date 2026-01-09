@@ -46,7 +46,7 @@ export default function ErrorMessage({ error, onRetry, className = "" }) {
       <div className="flex items-start">
         {/* Error Icon */}
         <svg
-          className="w-6 h-6 text-red-500 mr-3 flex-shrink-0"
+          className="w-6 h-6 text-red-500 mr-3 shrink-0"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -93,7 +93,7 @@ export function InlineError({ message, className = "" }) {
       role="alert"
     >
       <svg
-        className="w-4 h-4 mr-1 flex-shrink-0"
+        className="w-4 h-4 mr-1 shrink-0"
         fill="currentColor"
         viewBox="0 0 20 20"
         aria-hidden="true"

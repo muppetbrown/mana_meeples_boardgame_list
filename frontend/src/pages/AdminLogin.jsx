@@ -37,7 +37,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-amber-50 via-emerald-50 to-teal-50 p-3 sm:p-6">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-amber-50 via-emerald-50 to-teal-50 p-3 sm:p-6">
       {/* Skip to main content link */}
       <a 
         href="#login-form" 
@@ -48,7 +48,7 @@ export default function AdminLogin() {
       
       <form onSubmit={submit} id="login-form" className="bg-white/90 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-xl border border-white/50 w-full max-w-sm space-y-4" role="main">
         <header className="text-center mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-linear-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-2">
             Staff Login
           </h1>
           <p className="text-slate-600 text-sm">Access the admin dashboard</p>
@@ -64,7 +64,7 @@ export default function AdminLogin() {
             type="password"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            className="w-full min-h-[48px] px-4 py-3 text-base border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white touch-manipulation"
+            className="w-full min-h-12 px-4 py-3 text-base border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white touch-manipulation"
             placeholder="Enter your admin token"
             required
             autoComplete="current-password"
@@ -80,7 +80,7 @@ export default function AdminLogin() {
             aria-live="polite"
           >
             <span className="flex items-center gap-2">
-              <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+              <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
               </svg>
               {err}
@@ -90,7 +90,7 @@ export default function AdminLogin() {
         
         <button 
           type="submit"
-          className="w-full min-h-[48px] bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl py-3 px-4 hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none touch-manipulation"
+          className="w-full min-h-12 bg-linear-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl py-3 px-4 hover:from-emerald-700 hover:to-teal-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none touch-manipulation"
           disabled={!token.trim()}
         >
           <span className="flex items-center justify-center gap-2">

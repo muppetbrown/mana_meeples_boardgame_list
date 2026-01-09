@@ -77,7 +77,7 @@ export default function CategorySelectModal({ open, gameTitle, onSelect, onClose
             <button
               key={c}
               ref={index === 0 ? firstButtonRef : null}
-              className="w-full text-left px-4 py-3 rounded-lg border-2 border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition min-h-[44px] focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full text-left px-4 py-3 rounded-lg border-2 border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition min-h-11 focus:outline-none focus:ring-2 focus:ring-purple-500"
               onClick={() => onSelect(c)}
               aria-label={`Assign to ${labelFor(c)} category`}
             >
@@ -87,7 +87,7 @@ export default function CategorySelectModal({ open, gameTitle, onSelect, onClose
         </div>
         <button
           onClick={onClose}
-          className="mt-4 w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 min-h-[44px] focus:outline-none focus:ring-2 focus:ring-gray-500"
+          className="mt-4 w-full px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 min-h-11 focus:outline-none focus:ring-2 focus:ring-gray-500"
           aria-label="Cancel and close dialog"
         >
           Cancel

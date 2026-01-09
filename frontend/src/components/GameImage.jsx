@@ -98,7 +98,7 @@ export default function GameImage({
       {/* Blur-up loading placeholder with gradient - always render to prevent CLS */}
       {!imageLoaded && (
         <div
-          className={`absolute inset-0 ${fallbackClass || "bg-gradient-to-br from-slate-200 via-slate-100 to-slate-200 rounded-xl flex items-center justify-center"}`}
+          className={`absolute inset-0 ${fallbackClass || "bg-linear-to-br from-slate-200 via-slate-100 to-slate-200 rounded-xl flex items-center justify-center"}`}
           style={{
             animation: shouldLoadImage ? 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' : 'none',
             backdropFilter: 'blur(10px)'

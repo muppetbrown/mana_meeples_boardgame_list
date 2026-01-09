@@ -85,7 +85,7 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
             bg-white text-slate-700
             hover:border-emerald-300 hover:bg-emerald-50
             focus:outline-none focus:ring-3 focus:ring-emerald-300 focus:ring-offset-2 focus:border-emerald-500
-            transition-all duration-200 min-h-[44px] cursor-pointer
+            transition-all duration-200 min-h-11 cursor-pointer
           "
           aria-label="Choose sort field"
           {...props}
@@ -105,7 +105,7 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
             bg-emerald-500 text-white border-emerald-500 shadow-lg
             hover:bg-emerald-600 hover:border-emerald-600
             focus:outline-none focus:ring-3 focus:ring-emerald-300 focus:ring-offset-2
-            transition-all duration-200 min-h-[44px] min-w-[44px]
+            transition-all duration-200 min-h-11 min-w-11
             flex items-center justify-center
           "
           title={`Currently sorting ${directionText}. Click to toggle direction.`}

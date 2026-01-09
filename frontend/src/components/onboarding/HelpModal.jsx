@@ -53,7 +53,7 @@ export function HelpModal({ isOpen, onClose }) {
       <div className="relative w-full h-full md:h-auto md:max-w-2xl md:max-h-[85vh] bg-white md:rounded-xl shadow-2xl flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-teal-50">
+        <div className="flex items-center justify-between p-4 md:p-6 border-b border-gray-200 bg-linear-to-r from-emerald-50 to-teal-50">
           <h2
             id="help-modal-title"
             className="text-2xl font-bold text-gray-900"
@@ -103,7 +103,7 @@ export function HelpModal({ isOpen, onClose }) {
         <div className="p-4 md:p-6 border-t border-gray-200 bg-gray-50">
           <button
             onClick={onClose}
-            className="w-full px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-700 hover:to-teal-700 transition-all shadow-md hover:shadow-lg"
+            className="w-full px-6 py-3 bg-linear-to-r from-emerald-600 to-teal-600 text-white font-medium rounded-lg hover:from-emerald-700 hover:to-teal-700 transition-all shadow-md hover:shadow-lg"
           >
             Got it, thanks!
           </button>
@@ -158,7 +158,7 @@ function GameCardsTab() {
         </h3>
         <div className="space-y-3">
           <div className="flex items-start">
-            <div className="w-12 flex-shrink-0">
+            <div className="w-12 shrink-0">
               <span className="text-2xl">👥</span>
             </div>
             <div>
@@ -170,7 +170,7 @@ function GameCardsTab() {
           </div>
 
           <div className="flex items-start">
-            <div className="w-12 flex-shrink-0">
+            <div className="w-12 shrink-0">
               <span className="text-2xl">⏱️</span>
             </div>
             <div>
@@ -182,7 +182,7 @@ function GameCardsTab() {
           </div>
 
           <div className="flex items-start">
-            <div className="w-12 flex-shrink-0">
+            <div className="w-12 shrink-0">
               <span className="text-2xl">⭐</span>
             </div>
             <div>
@@ -194,7 +194,7 @@ function GameCardsTab() {
           </div>
 
           <div className="flex items-start">
-            <div className="w-12 flex-shrink-0">
+            <div className="w-12 shrink-0">
               <span className="text-2xl">🧩</span>
             </div>
             <div>
@@ -238,32 +238,32 @@ function AfterGameTab() {
         </p>
       </section>
 
-      <section className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
+      <section className="bg-linear-to-r from-emerald-50 to-teal-50 rounded-lg p-4 border border-emerald-200">
         <h4 className="font-semibold text-gray-900 mb-3">✨ How it Works</h4>
         <ol className="space-y-3">
           <li className="flex items-start">
-            <span className="bg-emerald-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0 mt-0.5">1</span>
+            <span className="bg-emerald-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 shrink-0 mt-0.5">1</span>
             <div>
               <p className="font-medium text-gray-900">Find a game you want to play</p>
               <p className="text-sm text-gray-600">Browse the library and expand cards to see details</p>
             </div>
           </li>
           <li className="flex items-start">
-            <span className="bg-emerald-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0 mt-0.5">2</span>
+            <span className="bg-emerald-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 shrink-0 mt-0.5">2</span>
             <div>
               <p className="font-medium text-gray-900">Click "Plan a Game"</p>
               <p className="text-sm text-gray-600">This opens AfterGame with the game pre-selected</p>
             </div>
           </li>
           <li className="flex items-start">
-            <span className="bg-emerald-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0 mt-0.5">3</span>
+            <span className="bg-emerald-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 shrink-0 mt-0.5">3</span>
             <div>
               <p className="font-medium text-gray-900">Schedule your session</p>
               <p className="text-sm text-gray-600">Pick a date, time, and invite other players</p>
             </div>
           </li>
           <li className="flex items-start">
-            <span className="bg-emerald-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 flex-shrink-0 mt-0.5">4</span>
+            <span className="bg-emerald-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 shrink-0 mt-0.5">4</span>
             <div>
               <p className="font-medium text-gray-900">Meet up and play!</p>
               <p className="text-sm text-gray-600">Join your scheduled session at Mana & Meeples</p>

@@ -143,7 +143,7 @@ export function AdvancedToolsTab() {
       <AdminToolsPanel onToast={showToast} onLibraryReload={loadLibrary} />
 
       {/* Help & Documentation */}
-      <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
+      <div className="bg-linear-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
         <h3 className="text-lg font-semibold text-gray-800 mb-3">📖 Need Help?</h3>
         <div className="space-y-2 text-sm text-gray-700">
           <div className="flex items-start gap-2">

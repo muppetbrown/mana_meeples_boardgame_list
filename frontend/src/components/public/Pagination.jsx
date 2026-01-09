@@ -8,7 +8,7 @@ export default function Pagination({ page, pageSize, total, onPage, showResultsC
       <div className="flex flex-row items-center justify-between gap-2 sm:gap-3">
         {/* Results count */}
         {showResultsCount && (
-          <div className="text-xs sm:text-sm text-slate-600 text-left flex-shrink-0">
+          <div className="text-xs sm:text-sm text-slate-600 text-left shrink-0">
             <span className="font-bold text-emerald-600">
               {Math.min((page - 1) * pageSize + 1, total)}-{Math.min(page * pageSize, total)}
             </span>
@@ -20,13 +20,13 @@ export default function Pagination({ page, pageSize, total, onPage, showResultsC
         )}
 
         {/* Mobile-Optimized Pagination */}
-        <nav aria-label="Game results pagination" className="flex items-center justify-center gap-1 sm:gap-2 flex-shrink-0">
+        <nav aria-label="Game results pagination" className="flex items-center justify-center gap-1 sm:gap-2 shrink-0">
           {/* First page button - only show if not on first few pages */}
           {page > 3 && (
             <>
               <button
                 onClick={() => onPage(1)}
-                className="px-2 sm:px-3 py-2 text-sm border rounded hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
+                className="px-2 sm:px-3 py-2 text-sm border rounded hover:bg-emerald-50 min-h-10 sm:min-h-11 focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
                 aria-label="Go to first page"
               >
                 1
@@ -39,7 +39,7 @@ export default function Pagination({ page, pageSize, total, onPage, showResultsC
           <button
             onClick={() => onPage(page - 1)}
             disabled={page <= 1}
-            className="px-2 sm:px-3 py-2 text-sm border rounded disabled:opacity-50 hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
+            className="px-2 sm:px-3 py-2 text-sm border rounded disabled:opacity-50 hover:bg-emerald-50 min-h-10 sm:min-h-11 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
             aria-label="Previous page"
           >
             <span className="hidden sm:inline">← Prev</span>
@@ -55,7 +55,7 @@ export default function Pagination({ page, pageSize, total, onPage, showResultsC
               <button
                 key={pageNum}
                 onClick={() => onPage(pageNum)}
-                className={`px-2 sm:px-3 py-2 text-sm rounded min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 transition-colors ${
+                className={`px-2 sm:px-3 py-2 text-sm rounded min-h-10 sm:min-h-11 focus:outline-none focus:ring-2 transition-colors ${
                   pageNum === page
                     ? "bg-emerald-500 text-white focus:ring-emerald-300"
                     : "border hover:bg-emerald-50 focus:ring-emerald-300"
@@ -72,7 +72,7 @@ export default function Pagination({ page, pageSize, total, onPage, showResultsC
           <button
             onClick={() => onPage(page + 1)}
             disabled={page >= totalPages}
-            className="px-2 sm:px-3 py-2 text-sm border rounded disabled:opacity-50 hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
+            className="px-2 sm:px-3 py-2 text-sm border rounded disabled:opacity-50 hover:bg-emerald-50 min-h-10 sm:min-h-11 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
             aria-label="Next page"
           >
             <span className="hidden sm:inline">Next →</span>
@@ -85,7 +85,7 @@ export default function Pagination({ page, pageSize, total, onPage, showResultsC
               <span className="text-slate-400 px-1" aria-hidden="true">...</span>
               <button
                 onClick={() => onPage(totalPages)}
-                className="px-2 sm:px-3 py-2 text-sm border rounded hover:bg-emerald-50 min-h-[40px] sm:min-h-[44px] focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
+                className="px-2 sm:px-3 py-2 text-sm border rounded hover:bg-emerald-50 min-h-10 sm:min-h-11 focus:outline-none focus:ring-2 focus:ring-emerald-300 transition-colors"
                 aria-label="Go to last page"
               >
                 {totalPages}

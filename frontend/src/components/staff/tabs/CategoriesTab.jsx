@@ -204,7 +204,7 @@ export function CategoriesTab() {
       </div>
 
       {/* Category Distribution Visualization */}
-      <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-6 border border-purple-100">
+      <div className="bg-linear-to-r from-purple-50 to-blue-50 rounded-2xl p-6 border border-purple-100">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">📊 Category Distribution</h3>
         <div className="space-y-2">
           {CATEGORY_KEYS.map((key) => {

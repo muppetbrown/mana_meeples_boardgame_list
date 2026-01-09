@@ -27,7 +27,7 @@ export default function CategoryFilter({ selected, counts, onChange }) {
       aria-pressed={selected === value}
       tabIndex={selected === value ? 0 : -1}
       className={
-        "px-3 py-1 rounded-full text-sm border transition min-h-[44px] focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 " +
+        "px-3 py-1 rounded-full text-sm border transition min-h-11 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 " +
         (selected === value
           ? "bg-purple-600 text-white border-purple-600"
           : "bg-white text-gray-700 border-gray-300 hover:border-purple-400")

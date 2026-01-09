@@ -98,7 +98,7 @@ export default function UpdateNotification() {
 
   return (
     <div
-      className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg"
+      className="fixed top-0 left-0 right-0 z-50 bg-linear-to-r from-violet-600 to-purple-600 text-white shadow-lg"
       role="alert"
       aria-live="assertive"
       aria-atomic="true"
@@ -107,7 +107,7 @@ export default function UpdateNotification() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Message */}
           <div className="flex items-center gap-3 text-center sm:text-left">
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               <svg
                 className="w-6 h-6 animate-pulse"
                 fill="none"
@@ -141,10 +141,10 @@ export default function UpdateNotification() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={handleRefresh}
-              className="px-4 py-2 bg-white text-violet-700 rounded-md font-semibold hover:bg-violet-50 active:bg-violet-100 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-violet-600 min-w-[100px]"
+              className="px-4 py-2 bg-white text-violet-700 rounded-md font-semibold hover:bg-violet-50 active:bg-violet-100 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-violet-600 min-w-25"
               type="button"
             >
               {countdown !== null ? 'Refresh Now' : 'Refresh'}

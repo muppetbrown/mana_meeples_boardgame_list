@@ -346,7 +346,7 @@ export default function PublicCatalogue() {
   const transitionClass = prefersReducedMotion ? '' : 'transition-all duration-300';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-amber-50">
+    <div className="min-h-screen bg-linear-to-br from-slate-50 via-emerald-50 to-amber-50">
       <SkipNav />
       <LiveRegion message={announcement} />
 
@@ -368,7 +368,7 @@ export default function PublicCatalogue() {
               href="https://www.manaandmeeples.co.nz"
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded-lg transition-transform hover:scale-105"
+              className="shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded-lg transition-transform hover:scale-105"
               aria-label="Visit Mana & Meeples homepage"
             >
               <img
@@ -378,7 +378,7 @@ export default function PublicCatalogue() {
               />
             </a>
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-1">
+              <h1 className="text-2xl sm:text-4xl font-bold bg-linear-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-1">
                 Mana & Meeples
               </h1>
               <p className="text-sm sm:text-lg text-slate-600 mb-0.5">
@@ -389,7 +389,7 @@ export default function PublicCatalogue() {
               </p>
             </div>
             {/* Partner Logos - Desktop only */}
-            <div className="hidden lg:flex flex-col items-end gap-2 flex-shrink-0">
+            <div className="hidden lg:flex flex-col items-end gap-2 shrink-0">
               <p className="text-xs text-slate-500 font-medium">With help from:</p>
               <div className="flex gap-3 items-center">
                 <a
@@ -421,7 +421,7 @@ export default function PublicCatalogue() {
               </div>
             </div>
           </div>
-          <div className="w-12 sm:w-20 h-1 bg-gradient-to-r from-emerald-500 to-amber-500 rounded-full mb-4" aria-hidden="true"></div>
+          <div className="w-12 sm:w-20 h-1 bg-linear-to-r from-emerald-500 to-amber-500 rounded-full mb-4" aria-hidden="true"></div>
 
           {/* Category Pills */}
           <section id="category-filters" aria-labelledby="categories-heading" className="mt-4">
@@ -431,7 +431,7 @@ export default function PublicCatalogue() {
             <div className="flex gap-2 overflow-x-auto pb-3 snap-x scrollbar-hide" role="group" aria-label="Filter games by category">
               <button
                 onClick={() => updateCategory("all")}
-                className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
+                className={`shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-11 focus:outline-none focus:ring-3 focus:ring-offset-2 ${
                   category === "all"
                     ? "bg-emerald-500 text-white shadow-md focus:ring-emerald-300"
                     : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
@@ -446,7 +446,7 @@ export default function PublicCatalogue() {
                 <button
                   key={key}
                   onClick={() => updateCategory(key)}
-                  className={`flex-shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-[44px] focus:outline-none focus:ring-3 focus:ring-offset-2 ${
+                  className={`shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-11 focus:outline-none focus:ring-3 focus:ring-offset-2 ${
                     category === key
                       ? "bg-emerald-500 text-white shadow-md focus:ring-emerald-300"
                       : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
@@ -477,7 +477,7 @@ export default function PublicCatalogue() {
 
                 <button
                   onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-                  className="flex items-center gap-2 min-h-[44px] px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-xl shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-all"
+                  className="flex items-center gap-2 min-h-11 px-4 py-2 bg-linear-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 rounded-xl shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 transition-all"
                   aria-expanded={isFilterExpanded}
                   aria-label={`${isFilterExpanded ? 'Collapse' : 'Expand'} search and filters`}
                 >
@@ -485,7 +485,7 @@ export default function PublicCatalogue() {
                     Filters
                   </span>
                   {activeFiltersCount > 0 && (
-                    <span className="bg-white text-emerald-700 text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                    <span className="bg-white text-emerald-700 text-xs font-bold px-1.5 py-0.5 rounded-full min-w-5 text-center">
                       {activeFiltersCount}
                     </span>
                   )}
@@ -531,7 +531,7 @@ export default function PublicCatalogue() {
                       id="players-mobile"
                       value={players}
                       onChange={(e) => updatePlayers(e.target.value)}
-                      className="w-full min-h-[44px] px-3 py-2 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
+                      className="w-full min-h-11 px-3 py-2 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
                     >
                       <option value="">Any</option>
                       <option value="1">1 player</option>
@@ -555,7 +555,7 @@ export default function PublicCatalogue() {
                       id="complexity-mobile"
                       value={complexityRange}
                       onChange={(e) => updateComplexity(e.target.value)}
-                      className="w-full min-h-[44px] px-3 py-2 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
+                      className="w-full min-h-11 px-3 py-2 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
                     >
                       <option value="">Any</option>
                       <option value="1-1.5">Light (1-1.5)</option>
@@ -570,7 +570,7 @@ export default function PublicCatalogue() {
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={toggleNzDesigner}
-                      className={`min-h-[44px] px-3 py-2 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      className={`min-h-11 px-3 py-2 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                         nzDesigner
                           ? "bg-blue-600 text-white shadow-md focus:ring-blue-300"
                           : "bg-white text-blue-800 border-2 border-blue-200 hover:bg-blue-50 focus:ring-blue-300"
@@ -585,7 +585,7 @@ export default function PublicCatalogue() {
 
                     <button
                       onClick={toggleRecentlyAdded}
-                      className={`min-h-[44px] px-3 py-2 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                      className={`min-h-11 px-3 py-2 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                         recentlyAdded
                           ? "bg-purple-600 text-white shadow-md focus:ring-purple-300"
                           : "bg-white text-purple-800 border-2 border-purple-200 hover:bg-purple-50 focus:ring-purple-300"
@@ -603,7 +603,7 @@ export default function PublicCatalogue() {
                   {activeFiltersCount > 0 && (
                     <button
                       onClick={clearAllFilters}
-                      className="w-full min-h-[44px] px-4 py-2 text-sm font-medium rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                      className="w-full min-h-11 px-4 py-2 text-sm font-medium rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300"
                     >
                       <span className="flex items-center justify-center gap-2">
                         <span>Clear All Filters</span>
@@ -650,7 +650,7 @@ export default function PublicCatalogue() {
                     id="players-desktop"
                     value={players}
                     onChange={(e) => updatePlayers(e.target.value)}
-                    className="w-full min-h-[48px] px-3 py-2 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
+                    className="w-full min-h-12 px-3 py-2 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
                   >
                     <option value="">Any</option>
                     <option value="1">1p</option>
@@ -673,7 +673,7 @@ export default function PublicCatalogue() {
                     id="complexity-desktop"
                     value={complexityRange}
                     onChange={(e) => updateComplexity(e.target.value)}
-                    className="w-full min-h-[48px] px-3 py-2 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
+                    className="w-full min-h-12 px-3 py-2 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
                   >
                     <option value="">Any</option>
                     <option value="1-1.5">Light</option>
@@ -689,7 +689,7 @@ export default function PublicCatalogue() {
               <div className="flex gap-3 items-end">
                 <button
                   onClick={toggleNzDesigner}
-                  className={`min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-3 focus:ring-offset-2 ${
+                  className={`min-h-12 px-4 py-2.5 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-3 focus:ring-offset-2 ${
                     nzDesigner
                       ? "bg-blue-600 text-white shadow-md focus:ring-blue-300"
                       : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 focus:ring-blue-300"
@@ -704,7 +704,7 @@ export default function PublicCatalogue() {
 
                 <button
                   onClick={toggleRecentlyAdded}
-                  className={`min-h-[48px] px-4 py-2.5 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-3 focus:ring-offset-2 ${
+                  className={`min-h-12 px-4 py-2.5 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-3 focus:ring-offset-2 ${
                     recentlyAdded
                       ? "bg-purple-600 text-white shadow-md focus:ring-purple-300"
                       : "bg-purple-50 text-purple-800 hover:bg-purple-100 border-2 border-purple-200 focus:ring-purple-300"
@@ -731,7 +731,7 @@ export default function PublicCatalogue() {
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={clearAllFilters}
-                    className="min-h-[48px] px-4 py-2 text-sm font-medium rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    className="min-h-12 px-4 py-2 text-sm font-medium rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300"
                   >
                     <span className="flex items-center gap-2">
                       <span aria-hidden="true">🗑️</span>

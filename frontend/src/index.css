@@ -123,9 +123,9 @@ a:not([role="button"]):not(.btn) {
 
 /* High contrast mode support */
 @media (prefers-contrast: high) {
-  .bg-gradient-to-r,
-  .bg-gradient-to-br,
-  .bg-gradient-to-l {
+  .bg-linear-to-r,
+  .bg-linear-to-br,
+  .bg-linear-to-l {
     background: #000 !important;
     color: #fff !important;
   }
@@ -240,8 +240,8 @@ a:not([role="button"]):not(.btn) {
     color: black !important;
   }
   
-  .bg-gradient-to-r,
-  .bg-gradient-to-br,
+  .bg-linear-to-r,
+  .bg-linear-to-br,
   .backdrop-blur-sm {
     background: white !important;
     backdrop-filter: none !important;

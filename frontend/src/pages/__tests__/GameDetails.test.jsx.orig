@@ -662,7 +662,7 @@ describe('GameDetails Page', () => {
     });
 
     const categoryBadge = screen.getByText('Gateway Strategy');
-    expect(categoryBadge.className).toContain('bg-gradient-to-r');
+    expect(categoryBadge.className).toContain('bg-linear-to-r');
     expect(categoryBadge.className).toContain('from-emerald-500');
   });
 
