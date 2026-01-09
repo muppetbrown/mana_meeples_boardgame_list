@@ -74,6 +74,7 @@ async def generate_labels(
                 'complexity': game.complexity,
                 'game_type': game.game_type,
                 'is_cooperative': game.is_cooperative,
+                'mana_meeple_category': game.mana_meeple_category,
             }
             game_dicts.append(game_dict)
 

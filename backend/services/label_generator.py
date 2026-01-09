@@ -35,10 +35,21 @@ LABELS_PER_COL = 7
 # Colors (matching frontend theme)
 COLOR_COOP_BG = colors.HexColor('#10b981')  # Green
 COLOR_COMPETITIVE_BG = colors.HexColor('#ef4444')  # Red
-COLOR_TYPE_BG = colors.HexColor('#8b5cf6')  # Purple/indigo
 COLOR_LOGO_BG = colors.HexColor('#f3f4f6')  # Light gray
 COLOR_TEXT = colors.HexColor('#1f2937')  # Dark gray
 COLOR_TEXT_LIGHT = colors.HexColor('#6b7280')  # Medium gray
+
+# Category-specific colors (from mana_meeple_category)
+CATEGORY_COLORS = {
+    'KIDS_FAMILIES': colors.HexColor('#BA8AA4'),
+    'PARTY_ICEBREAKERS': colors.HexColor('#B43D37'),
+    'GATEWAY_STRATEGY': colors.HexColor('#9E8810'),
+    'COOP_ADVENTURE': colors.HexColor('#5E6424'),
+    'CORE_STRATEGY': colors.HexColor('#7196B0'),
+}
+
+# Default color for unknown categories
+DEFAULT_CATEGORY_COLOR = colors.HexColor('#8b5cf6')  # Purple/indigo
 
 
 class LabelGenerator:
@@ -55,6 +66,17 @@ class LabelGenerator:
         self.icon_complexity = self.assets_path / "puzzle.png"
         self.icon_coop = self.assets_path / "partners.png"
         self.icon_competitive = self.assets_path / "swords.png"
+
+    def _get_contrast_text_color(self, bg_color: colors.Color) -> colors.Color:
+        """Get contrasting text color (white or black) based on background color"""
+        # Get RGB values (0-1 range)
+        r, g, b = bg_color.red, bg_color.green, bg_color.blue
+
+        # Calculate relative luminance
+        luminance = 0.299 * r + 0.587 * g + 0.114 * b
+
+        # Return white for dark backgrounds, black for light backgrounds
+        return colors.white if luminance < 0.5 else colors.black
 
     def generate_pdf(self, games: List[dict]) -> BytesIO:
         """
@@ -204,23 +226,25 @@ class LabelGenerator:
 
         # Cooperative/Competitive badge
         is_coop = game.get('is_cooperative', False)
-        coop_text = 'Co-op' if is_coop else 'Comp'
+        coop_text = 'Co-op' if is_coop else 'Competitive'
         coop_color = COLOR_COOP_BG if is_coop else COLOR_COMPETITIVE_BG
         icon_path = self.icon_coop if is_coop else self.icon_competitive
 
         c.setFillColor(coop_color)
-        badge_width = len(coop_text) * 6 + icon_size + 12  # Text + icon + padding
+        c.setFont('Helvetica-Bold', 8)
+        # Calculate actual text width using stringWidth
+        text_width = c.stringWidth(coop_text, 'Helvetica-Bold', 8)
+        badge_width = text_width + icon_size + 12  # Text width + icon + padding
         c.roundRect(current_x, y, badge_width, badge_height, 4, fill=1, stroke=0)
 
         # Draw text
         c.setFillColor(colors.white)
-        c.setFont('Helvetica-Bold', 8)
         c.drawString(current_x + 4, y + 4, coop_text)
 
         # Draw icon if exists
         if icon_path.exists():
             try:
-                icon_x = current_x + len(coop_text) * 6 + 6
+                icon_x = current_x + text_width + 6
                 icon_y = y + 2
                 c.drawImage(
                     str(icon_path),
@@ -235,15 +259,23 @@ class LabelGenerator:
 
         current_x += badge_width + 4
 
-        # Game type badge
+        # Game type badge with category-based coloring
         game_type = game.get('game_type', 'Strategy')
         if game_type:
-            c.setFillColor(COLOR_TYPE_BG)
-            type_badge_width = len(game_type) * 6 + 8
+            # Get category color based on mana_meeple_category
+            category = game.get('mana_meeple_category')
+            category_color = CATEGORY_COLORS.get(category, DEFAULT_CATEGORY_COLOR)
+
+            c.setFillColor(category_color)
+            c.setFont('Helvetica-Bold', 8)
+            # Calculate actual text width
+            type_text_width = c.stringWidth(game_type, 'Helvetica-Bold', 8)
+            type_badge_width = type_text_width + 8  # Text width + padding
             c.roundRect(current_x, y, type_badge_width, badge_height, 4, fill=1, stroke=0)
 
-            c.setFillColor(colors.white)
-            c.setFont('Helvetica-Bold', 8)
+            # Use contrasting text color based on background
+            text_color = self._get_contrast_text_color(category_color)
+            c.setFillColor(text_color)
             c.drawString(current_x + 4, y + 4, game_type)
 
     def _draw_stats_grid(self, c: canvas.Canvas, game: dict, x: float, y: float, width: float, height: float):
@@ -316,18 +348,18 @@ class LabelGenerator:
     def _format_playtime(self, min_time: Optional[int], max_time: Optional[int]) -> str:
         """Format playtime range"""
         if not min_time and not max_time:
-            return "?min"
+            return "? min"
 
         if min_time == max_time:
-            return f"{min_time}min"
+            return f"{min_time} min"
 
         if min_time and max_time:
             # If times are very close, just show one
             if abs(min_time - max_time) <= 5:
-                return f"~{max_time}min"
-            return f"{min_time}-{max_time}min"
+                return f"~{max_time} min"
+            return f"{min_time}-{max_time} min"
 
-        return f"{min_time or max_time}min"
+        return f"{min_time or max_time} min"
 
     def _format_age(self, min_age: Optional[int]) -> str:
         """Format minimum age"""
