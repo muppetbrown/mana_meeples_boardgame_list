@@ -44,7 +44,7 @@ from database import get_db
 from exceptions import GameNotFoundError, ValidationError
 import schemas
 from services import GameService, ImageService
-from shared.rate_limiting import admin_attempt_tracker
+from shared.rate_limiting import rate_limit_tracker
 from utils.helpers import game_to_dict
 
 logger = logging.getLogger(__name__)
@@ -71,14 +71,15 @@ async def admin_login(
 
     # Clean old attempts from tracker
     cutoff_time = current_time - RATE_LIMIT_WINDOW
-    admin_attempt_tracker[client_ip] = [
+    attempts = rate_limit_tracker.get_attempts(client_ip)
+    attempts = [
         attempt_time
-        for attempt_time in admin_attempt_tracker[client_ip]
+        for attempt_time in attempts
         if attempt_time > cutoff_time
     ]
 
     # Check if rate limited
-    if len(admin_attempt_tracker[client_ip]) >= RATE_LIMIT_ATTEMPTS:
+    if len(attempts) >= RATE_LIMIT_ATTEMPTS:
         logger.warning(f"Rate limited admin login attempts from {client_ip}")
         raise HTTPException(
             status_code=429,
@@ -87,7 +88,8 @@ async def admin_login(
 
     # Validate admin token
     if not ADMIN_TOKEN or credentials.token != ADMIN_TOKEN:
-        admin_attempt_tracker[client_ip].append(current_time)
+        attempts.append(current_time)
+        rate_limit_tracker.set_attempts(client_ip, attempts, RATE_LIMIT_WINDOW)
         logger.warning(f"Invalid admin login attempt from {client_ip}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
 

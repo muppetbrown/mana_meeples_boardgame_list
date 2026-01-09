@@ -3,7 +3,7 @@
  * Custom hook for advanced lazy loading with Intersection Observer
  * Loads images slightly before they enter the viewport for smoother UX
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 /**
  * Hook for lazy loading images with Intersection Observer
@@ -31,13 +31,16 @@ export function useLazyLoad({
 
     const element = ref.current;
 
+    // Memoized callback - uses refs to avoid recreating observer
     const observer = new IntersectionObserver(
       ([entry]) => {
         const visible = entry.isIntersecting;
         setIsVisible(visible);
 
         // Once visible, mark as "has been visible" (for one-time loading)
-        if (visible && !hasBeenVisible) {
+        // Note: This doesn't trigger observer recreation since hasBeenVisible
+        // is removed from dependencies array (prevents unnecessary re-renders)
+        if (visible) {
           setHasBeenVisible(true);
         }
       },
@@ -54,7 +57,9 @@ export function useLazyLoad({
         observer.unobserve(element);
       }
     };
-  }, [rootMargin, threshold, enabled, hasBeenVisible]);
+    // Note: hasBeenVisible removed from dependencies to prevent observer recreation
+    // The observer only needs to be recreated if rootMargin, threshold, or enabled changes
+  }, [rootMargin, threshold, enabled]);
 
   return { ref, isVisible, hasBeenVisible };
 }

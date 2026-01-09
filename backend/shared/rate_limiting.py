@@ -257,7 +257,7 @@ session_storage = SessionStorage()
 # Rate limit tracker instance (replaces admin_attempt_tracker dict)
 rate_limit_tracker = RateLimitTracker()
 
-# Legacy in-memory storage for backward compatibility
-# These will be deprecated in favor of Redis-backed storage
+# Legacy dictionaries kept for backward compatibility with tests only
+# Main application code now uses session_storage and rate_limit_tracker
 admin_sessions: Dict[str, Dict[str, Any]] = {}
 admin_attempt_tracker: Dict[str, List[float]] = defaultdict(list)
