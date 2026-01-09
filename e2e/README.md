@@ -46,12 +46,41 @@ Check that Playwright is installed correctly:
 npx playwright --version
 ```
 
-## Running Tests
+## Test Data Setup
 
-**Important:** Before running tests, start the frontend dev server in a separate terminal:
+**Important:** E2E tests require test data in the database. If you're running tests locally:
+
+### Option 1: Use Existing Database
+If your local database already has games, the tests will use that data.
+
+### Option 2: Seed Test Data
+To seed the database with test data specifically for E2E tests:
 
 ```bash
-# Terminal 1: Start the frontend dev server
+# Set environment variables
+export DATABASE_URL="postgresql://user:password@localhost:5432/your_db"
+export PYTHONPATH=$(pwd)/backend
+
+# Run the seed script
+cd backend
+python scripts/seed_e2e_data.py
+```
+
+The seed script will:
+- Create 8 diverse test games covering all categories
+- Skip seeding if games already exist
+- Provide games for browsing, filtering, and detail view tests
+
+## Running Tests
+
+**Important:** Before running tests, start the frontend dev server and backend server in separate terminals:
+
+```bash
+# Terminal 1: Start the backend server
+cd backend
+uvicorn main:app --reload
+
+# Terminal 2: Start the frontend dev server
 cd frontend
 npm run dev
 ```
@@ -59,7 +88,7 @@ npm run dev
 Then run your tests in another terminal:
 
 ```bash
-# Terminal 2: Run tests
+# Terminal 3: Run tests
 cd e2e
 
 # Run all tests (headless)

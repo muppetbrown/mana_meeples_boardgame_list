@@ -155,6 +155,22 @@ jobs:
           cd frontend
           VITE_API_BASE=http://localhost:8000 npm run build
 
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: |
+          cd backend
+          alembic upgrade head
+
+      - name: Seed test data
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+          PYTHONPATH: ${{ github.workspace }}/backend
+        run: |
+          cd backend
+          python scripts/seed_e2e_data.py
+
       - name: Start backend server in background
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
@@ -163,7 +179,6 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}/backend
         run: |
           cd backend
-          alembic upgrade head
           uvicorn main:app --host 0.0.0.0 --port 8000 &
           echo $! > /tmp/backend.pid
           sleep 5  # Wait for server to start
