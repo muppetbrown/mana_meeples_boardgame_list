@@ -216,7 +216,6 @@ jobs:
 
       - name: Install Playwright
         run: |
-          cd e2e
           npm ci
           npx playwright install --with-deps chromium
 
@@ -224,7 +223,6 @@ jobs:
         env:
           BASE_URL: http://localhost:3000
         run: |
-          cd e2e
           npx playwright test --project=chromium --reporter=html
 
       - name: Upload Playwright report
@@ -232,7 +230,7 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: playwright-report
-          path: e2e/playwright-report/
+          path: playwright-report/
           retention-days: 7
 
       - name: Stop servers
