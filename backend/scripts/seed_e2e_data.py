@@ -60,7 +60,7 @@ def seed_test_data():
                 "is_cooperative": True,
                 "nz_designer": False,
                 "status": "OWNED",
-                "image_url": "https://cf.geekdo-images.com/S3ybV1LAp-8SnHIXLLjVqA__imagepage/img/kIBu-2Ljb_ml5n-S8uIbE6ehGFc=/fit-in/900x600/filters:no_upscale():strip_icc()/pic1534148.jpg"
+                "image": "https://cf.geekdo-images.com/S3ybV1LAp-8SnHIXLLjVqA__imagepage/img/kIBu-2Ljb_ml5n-S8uIbE6ehGFc=/fit-in/900x600/filters:no_upscale():strip_icc()/pic1534148.jpg"
             },
             {
                 "title": "Catan",
@@ -80,7 +80,7 @@ def seed_test_data():
                 "is_cooperative": False,
                 "nz_designer": False,
                 "status": "OWNED",
-                "image_url": "https://cf.geekdo-images.com/W3Bsga_uLP9kO91gZ7H8yw__imagepage/img/M_3Vg1j2HlNgkv7PL2xl2BJE2sE=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2419375.jpg"
+                "image": "https://cf.geekdo-images.com/W3Bsga_uLP9kO91gZ7H8yw__imagepage/img/M_3Vg1j2HlNgkv7PL2xl2BJE2sE=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2419375.jpg"
             },
             {
                 "title": "7 Wonders",
@@ -100,7 +100,7 @@ def seed_test_data():
                 "is_cooperative": False,
                 "nz_designer": False,
                 "status": "OWNED",
-                "image_url": "https://cf.geekdo-images.com/35h9Za_JvMMMtx_92kT0Jg__imagepage/img/i_8sN91g7S3t1l-0j8BaIdiOAoY=/fit-in/900x600/filters:no_upscale():strip_icc()/pic7149798.jpg"
+                "image": "https://cf.geekdo-images.com/35h9Za_JvMMMtx_92kT0Jg__imagepage/img/i_8sN91g7S3t1l-0j8BaIdiOAoY=/fit-in/900x600/filters:no_upscale():strip_icc()/pic7149798.jpg"
             },
             {
                 "title": "Codenames",
@@ -120,7 +120,7 @@ def seed_test_data():
                 "is_cooperative": False,
                 "nz_designer": False,
                 "status": "OWNED",
-                "image_url": "https://cf.geekdo-images.com/F_KDEu0GjdClml8N7c8Imw__imagepage/img/rc_Do8f0IeaIZKTa5lH4EDEJ5EI=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2582929.jpg"
+                "image": "https://cf.geekdo-images.com/F_KDEu0GjdClml8N7c8Imw__imagepage/img/rc_Do8f0IeaIZKTa5lH4EDEJ5EI=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2582929.jpg"
             },
             {
                 "title": "Ticket to Ride",
@@ -140,7 +140,7 @@ def seed_test_data():
                 "is_cooperative": False,
                 "nz_designer": False,
                 "status": "OWNED",
-                "image_url": "https://cf.geekdo-images.com/ZWJg0dCdrWHxbl4T7yOXVw__imagepage/img/bg5uLS74b6VVQ_2pCvhH5Q4hD6Y=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2108725.jpg"
+                "image": "https://cf.geekdo-images.com/ZWJg0dCdrWHxbl4T7yOXVw__imagepage/img/bg5uLS74b6VVQ_2pCvhH5Q4hD6Y=/fit-in/900x600/filters:no_upscale():strip_icc()/pic2108725.jpg"
             },
             {
                 "title": "Azul",
@@ -160,7 +160,7 @@ def seed_test_data():
                 "is_cooperative": False,
                 "nz_designer": False,
                 "status": "OWNED",
-                "image_url": "https://cf.geekdo-images.com/aPSHJO0d0XOpQR5X-wJonw__imagepage/img/q4uWd2nLPOyVlHCyXYi_VHi0gPE=/fit-in/900x600/filters:no_upscale():strip_icc()/pic6973671.png"
+                "image": "https://cf.geekdo-images.com/aPSHJO0d0XOpQR5X-wJonw__imagepage/img/q4uWd2nLPOyVlHCyXYi_VHi0gPE=/fit-in/900x600/filters:no_upscale():strip_icc()/pic6973671.png"
             },
             {
                 "title": "Wingspan",
@@ -180,7 +180,7 @@ def seed_test_data():
                 "is_cooperative": False,
                 "nz_designer": False,
                 "status": "OWNED",
-                "image_url": "https://cf.geekdo-images.com/yLZJCVLlIx4c7eJEWUNJ7w__imagepage/img/VNToqgS2wtBBhqsMqIyNKXEggHk=/fit-in/900x600/filters:no_upscale():strip_icc()/pic4458123.jpg"
+                "image": "https://cf.geekdo-images.com/yLZJCVLlIx4c7eJEWUNJ7w__imagepage/img/VNToqgS2wtBBhqsMqIyNKXEggHk=/fit-in/900x600/filters:no_upscale():strip_icc()/pic4458123.jpg"
             },
             {
                 "title": "Splendor",
@@ -200,7 +200,7 @@ def seed_test_data():
                 "is_cooperative": False,
                 "nz_designer": False,
                 "status": "OWNED",
-                "image_url": "https://cf.geekdo-images.com/rwOMxx4q5yuElIvo-1-OFw__imagepage/img/OQHA7dEW1Y0z6qV-V0lqMb6Hpgg=/fit-in/900x600/filters:no_upscale():strip_icc()/pic1904079.jpg"
+                "image": "https://cf.geekdo-images.com/rwOMxx4q5yuElIvo-1-OFw__imagepage/img/OQHA7dEW1Y0z6qV-V0lqMb6Hpgg=/fit-in/900x600/filters:no_upscale():strip_icc()/pic1904079.jpg"
             }
         ]
 

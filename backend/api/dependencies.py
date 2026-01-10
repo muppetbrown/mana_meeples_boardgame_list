@@ -158,8 +158,8 @@ def require_admin_auth(
                 ),
             )
 
-    # Validate direct admin token
-    if not ADMIN_TOKEN or x_admin_token != ADMIN_TOKEN:
+    # Validate direct admin token (using constant-time comparison to prevent timing attacks)
+    if not ADMIN_TOKEN or not secrets.compare_digest(x_admin_token or "", ADMIN_TOKEN):
         if not DISABLE_RATE_LIMITING:
             current_time = time.time()
             attempts = rate_limit_tracker.get_attempts(client_ip)

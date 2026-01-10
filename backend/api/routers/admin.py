@@ -458,12 +458,13 @@ async def fix_sequence(
         if max_id is None:
             max_id = 0
 
-        # Reset the sequence using func.setval (safer than raw SQL)
-        # Note: PostgreSQL's setval() requires literal sequence name, not a parameter
-        # We use the whitelisted sequence_name from VALID_SEQUENCES
-        # This is safe because sequence_name comes from a hardcoded dict, not user input
+        # Reset the sequence using parameterized SQL (defense-in-depth)
+        # sequence_name comes from VALID_SEQUENCES whitelist (see above)
+        # Using text() with bound parameters provides additional SQL injection protection
+        from sqlalchemy import text
         db.execute(
-            select(func.setval(sequence_name, max_id, True))
+            text("SELECT setval(:seq_name, :max_val, true)"),
+            {"seq_name": sequence_name, "max_val": max_id}
         )
         db.commit()
 

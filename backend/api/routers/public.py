@@ -3,9 +3,12 @@
 Public API endpoints for game catalogue browsing.
 Includes filtering, search, pagination, and image proxying.
 """
+import ipaddress
 import logging
 import random
+import socket
 from typing import Optional
+from urllib.parse import urlparse
 
 from fastapi import (
     APIRouter,
@@ -27,6 +30,117 @@ from utils.cache import cached_query
 from schemas import GameListItemResponse, GameDetailResponse
 
 logger = logging.getLogger(__name__)
+
+
+def validate_url_against_ssrf(url: str) -> bool:
+    """
+    Validate URL against SSRF (Server-Side Request Forgery) attacks.
+
+    Blocks requests to:
+    - Private IP ranges (10.x.x.x, 192.168.x.x, 172.16-31.x.x, 127.x.x.x)
+    - Link-local addresses (169.254.x.x)
+    - Loopback addresses (localhost, 127.0.0.1)
+    - Reserved/multicast IP ranges
+    - Non-HTTP/HTTPS protocols
+
+    Args:
+        url: URL to validate
+
+    Returns:
+        True if URL is safe
+
+    Raises:
+        HTTPException: If URL is potentially malicious
+    """
+    try:
+        parsed = urlparse(url)
+
+        # Only allow http/https protocols
+        if parsed.scheme not in ('http', 'https'):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid URL scheme: {parsed.scheme}. Only http/https allowed."
+            )
+
+        # Get hostname
+        hostname = parsed.hostname
+        if not hostname:
+            raise HTTPException(
+                status_code=400,
+                detail="URL must have a valid hostname"
+            )
+
+        # Resolve hostname to IP address
+        try:
+            ip_address_str = socket.gethostbyname(hostname)
+        except socket.gaierror:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot resolve hostname: {hostname}"
+            )
+
+        # Parse IP address
+        try:
+            ip_obj = ipaddress.ip_address(ip_address_str)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid IP address: {ip_address_str}"
+            )
+
+        # Block private IP ranges (10.x.x.x, 192.168.x.x, 172.16-31.x.x)
+        if ip_obj.is_private:
+            logger.warning(f"SSRF attempt blocked: private IP {ip_obj} for hostname {hostname}")
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot proxy requests to private IP addresses"
+            )
+
+        # Block loopback addresses (127.x.x.x, ::1)
+        if ip_obj.is_loopback:
+            logger.warning(f"SSRF attempt blocked: loopback IP {ip_obj} for hostname {hostname}")
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot proxy requests to loopback addresses"
+            )
+
+        # Block link-local addresses (169.254.x.x, fe80::/10)
+        if ip_obj.is_link_local:
+            logger.warning(f"SSRF attempt blocked: link-local IP {ip_obj} for hostname {hostname}")
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot proxy requests to link-local addresses"
+            )
+
+        # Block reserved IP ranges
+        if ip_obj.is_reserved:
+            logger.warning(f"SSRF attempt blocked: reserved IP {ip_obj} for hostname {hostname}")
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot proxy requests to reserved IP addresses"
+            )
+
+        # Block multicast addresses
+        if ip_obj.is_multicast:
+            logger.warning(f"SSRF attempt blocked: multicast IP {ip_obj} for hostname {hostname}")
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot proxy requests to multicast addresses"
+            )
+
+        logger.debug(f"SSRF validation passed for {hostname} ({ip_obj})")
+        return True
+
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        logger.error(f"SSRF validation error for URL {url}: {e}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"URL validation failed: {str(e)}"
+        )
+
 
 # Create router with prefix and tags
 router = APIRouter(prefix="/api/public", tags=["public"])
@@ -340,6 +454,9 @@ async def image_proxy(
                 status_code=400,
                 detail="Invalid image URL format"
             )
+
+        # SECURITY: SSRF protection - validate URL before proxying
+        validate_url_against_ssrf(url)
 
         # CRITICAL FIX: Detect if we're being asked to proxy a Cloudinary URL
         # This happens when cloudinary_url is used instead of the original BGG URL

@@ -95,13 +95,19 @@ if not SESSION_SECRET:
             "SESSION_SECRET environment variable is required in production. "
             "Generate with: python -c \"import secrets; print(secrets.token_hex(32))\""
         )
-    # Development: Generate temporary secret
+    # Development: Generate temporary secret with loud warning
     import secrets
     SESSION_SECRET = secrets.token_hex(32)
-    print(
-        "WARNING: SESSION_SECRET not set - generated temporary secret (not suitable for multi-instance deployment)",
-        file=sys.stderr,
-    )
+
+    # Multi-line warning that's hard to miss
+    print("\n" + "="*80, file=sys.stderr)
+    print("⚠️  SECURITY WARNING: SESSION_SECRET NOT CONFIGURED", file=sys.stderr)
+    print("="*80, file=sys.stderr)
+    print("Generated temporary secret (sessions will reset on restart)", file=sys.stderr)
+    print("Not suitable for multi-instance deployment!", file=sys.stderr)
+    print("\nSet SESSION_SECRET in .env or environment variables", file=sys.stderr)
+    print(f"Example: SESSION_SECRET={SESSION_SECRET}", file=sys.stderr)
+    print("="*80 + "\n", file=sys.stderr)
 
 # Session timeout (1 hour by default)
 SESSION_TIMEOUT_SECONDS = int(os.getenv("SESSION_TIMEOUT_SECONDS", "3600"))
