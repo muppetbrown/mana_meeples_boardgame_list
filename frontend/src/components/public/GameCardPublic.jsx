@@ -6,6 +6,8 @@ import { labelFor } from "../../constants/categories";
 import GameImage from "../GameImage";
 import { getAfterGameCreateUrl } from "../../constants/aftergame";
 import { useOnboarding } from "../../hooks/useOnboarding";
+import { getCategoryStyle } from "../../utils/categoryStyles";
+import { formatRating, formatComplexity, formatTime, formatPlayerCount } from "../../utils/gameFormatters";
 
 /**
  * GameCardPublic component - Displays a game card with expandable details
@@ -57,67 +59,6 @@ const GameCardPublic = memo(function GameCardPublic({
     }
   }, [isExpanded, prefersReducedMotion, markCardExpanded]);
 
-  // Enhanced category colors with WCAG AAA contrast ratios
-  const getCategoryStyle = (category) => {
-    const styles = {
-      "GATEWAY_STRATEGY": "bg-emerald-700 text-white border-emerald-800",
-      "KIDS_FAMILIES": "bg-purple-700 text-white border-purple-800", 
-      "CORE_STRATEGY": "bg-blue-800 text-white border-blue-900",
-      "COOP_ADVENTURE": "bg-orange-700 text-white border-orange-800",
-      "PARTY_ICEBREAKERS": "bg-amber-800 text-white border-amber-900",
-      "default": "bg-slate-700 text-white border-slate-800"
-    };
-    return styles[category] || styles.default;
-  };
-
-  // Format rating display
-  const formatRating = (rating) => {
-    if (!rating || rating === 0) return null;
-    return parseFloat(rating).toFixed(1);
-  };
-
-  // Format complexity display
-  const formatComplexity = (complexity) => {
-    if (!complexity || complexity === 0) return null;
-    return parseFloat(complexity).toFixed(1);
-  };
-
-  // Format time display with average calculation
-  const formatTime = () => {
-    const min = game.playtime_min;
-    const max = game.playtime_max;
-
-    if (min && max && min !== max) {
-      return `${min}-${max} min`;
-    } else if (min || max) {
-      return `${min || max} min`;
-    } else {
-      return "Time varies";
-    }
-  };
-
-  // Format player count with expansion notation
-  const formatPlayerCount = () => {
-    const baseMin = game.players_min;
-    const baseMax = game.players_max;
-    const expMin = game.players_min_with_expansions;
-    const expMax = game.players_max_with_expansions;
-    const hasExpansion = game.has_player_expansion;
-
-    if (!baseMin || !baseMax) return null;
-
-    // If expansion extends player count, show expanded range with asterisk
-    if (hasExpansion && expMax > baseMax) {
-      const displayMin = expMin || baseMin;
-      const displayMax = expMax;
-      const range = displayMin === displayMax ? `${displayMax}` : `${displayMin}-${displayMax}`;
-      return `${range}*`;
-    }
-
-    // Otherwise just show base range
-    return baseMin === baseMax ? `${baseMin}` : `${baseMin}-${baseMax}`;
-  };
-
   const transitionClass = prefersReducedMotion ? '' : 'transition-all duration-300';
 
   return (
@@ -145,7 +86,6 @@ const GameCardPublic = memo(function GameCardPublic({
             fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-linear-to-br from-slate-100 to-slate-200"
             loading={lazy ? "lazy" : "eager"}
             fetchPriority={priority ? "high" : "auto"}  // Optimize first images for LCP
-            fetchPriority={priority ? "high" : "auto"}
             aspectRatio=""
           />
 
@@ -200,7 +140,7 @@ const GameCardPublic = memo(function GameCardPublic({
           <div className="grid grid-cols-2 gap-1.5 md:gap-2">
             {/* Players */}
             {(() => {
-              const playerCount = formatPlayerCount();
+              const playerCount = formatPlayerCount(game);
 
               return (
                 <div
@@ -220,13 +160,13 @@ const GameCardPublic = memo(function GameCardPublic({
             {/* Time */}
             <div
               className="flex flex-col items-center justify-center gap-0.5 md:gap-1 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
-              aria-label={`Play time: ${formatTime()}`}
+              aria-label={`Play time: ${formatTime(game.playtime_min, game.playtime_max)}`}
             >
               <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
               </svg>
               <span className="font-semibold text-xs md:text-sm text-slate-700">
-                {formatTime()}
+                {formatTime(game.playtime_min, game.playtime_max)}
               </span>
             </div>
 
@@ -303,7 +243,6 @@ const GameCardPublic = memo(function GameCardPublic({
             fallbackClass="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-linear-to-br from-slate-100 to-slate-200"
             loading={lazy ? "lazy" : "eager"}
             fetchPriority={priority ? "high" : "auto"}  // Optimize first images for LCP
-            fetchPriority={priority ? "high" : "auto"}
             aspectRatio=""
           />
 
@@ -447,7 +386,7 @@ const GameCardPublic = memo(function GameCardPublic({
           {/* Time - Full text */}
           <div className="flex items-center gap-2">
             <span className="text-slate-700">
-              <span className="font-semibold">Play Time:</span> {formatTime()}
+              <span className="font-semibold">Play Time:</span> {formatTime(game.playtime_min, game.playtime_max)}
             </span>
           </div>
 

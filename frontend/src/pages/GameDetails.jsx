@@ -9,6 +9,7 @@ import { GameDetailsSkeleton } from "../components/common/SkeletonLoader";
 import ExpansionMiniCard from "../components/public/ExpansionMiniCard";
 import GameImage from "../components/GameImage";
 import { getAfterGameCreateUrl } from "../constants/aftergame";
+import { getCategoryStyle } from "../utils/categoryStyles";
 
 export default function GameDetails() {
   const { id } = useParams();
@@ -62,21 +63,6 @@ export default function GameDetails() {
       });
     }
   }, [isError, error, id]);
-
-  // Category color mapping with fallback
-  const getCategoryStyle = (category) => {
-    if (!category) return "bg-linear-to-r from-slate-500 to-gray-500 text-white";
-
-    const styles = {
-      "GATEWAY_STRATEGY": "bg-linear-to-r from-emerald-500 to-teal-500 text-white",
-      "KIDS_FAMILIES": "bg-linear-to-r from-purple-500 to-pink-500 text-white",
-      "CORE_STRATEGY": "bg-linear-to-r from-blue-600 to-indigo-600 text-white",
-      "COOP_ADVENTURE": "bg-linear-to-r from-orange-500 to-red-500 text-white",
-      "PARTY_ICEBREAKERS": "bg-linear-to-r from-yellow-500 to-amber-500 text-white",
-      "default": "bg-linear-to-r from-slate-500 to-gray-500 text-white"
-    };
-    return styles[category] || styles.default;
-  };
 
   if (loading) {
     return (
@@ -162,7 +148,7 @@ export default function GameDetails() {
                 {/* Category Badge */}
                 {cat && cat !== "—" && (
                   <div className="absolute top-2 right-2 sm:top-3 sm:right-3 lg:top-6 lg:right-6">
-                    <span className={`px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl ${getCategoryStyle(game?.mana_meeple_category)}`}>
+                    <span className={`px-2 py-1 sm:px-3 sm:py-1.5 lg:px-4 lg:py-2 rounded-full text-xs sm:text-sm font-bold shadow-xl ${getCategoryStyle(game?.mana_meeple_category, true)}`}>
                       {cat}
                     </span>
                   </div>
