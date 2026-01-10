@@ -347,8 +347,12 @@ export function ManageLibraryTab() {
                             alt={game.title}
                             className="w-full h-full object-cover"
                             onError={(e) => {
+                              // SECURITY: Use createElement instead of innerHTML to prevent XSS
                               e.target.style.display = 'none';
-                              e.target.parentElement.innerHTML = '<span class="text-xs text-gray-400">No img</span>';
+                              const fallback = document.createElement('span');
+                              fallback.className = 'text-xs text-gray-400';
+                              fallback.textContent = 'No img';
+                              e.target.parentElement.replaceChild(fallback, e.target);
                             }}
                           />
                         ) : (

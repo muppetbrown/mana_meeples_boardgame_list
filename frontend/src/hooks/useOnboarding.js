@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { safeStorage } from '../utils/storage';
 
 const STORAGE_KEY = 'mana_meeples_onboarding';
 const STORAGE_VERSION = '1.0';
@@ -20,7 +21,8 @@ const defaultState = {
 export function useOnboarding() {
   const [state, setState] = useState(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      // SECURITY: Use safeStorage instead of direct localStorage to handle tracking prevention
+      const stored = safeStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
         // Check version compatibility
@@ -44,7 +46,8 @@ export function useOnboarding() {
   // Persist to localStorage whenever state changes
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      // SECURITY: Use safeStorage instead of direct localStorage to handle tracking prevention
+      safeStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (error) {
       console.warn('Failed to save onboarding state:', error);
     }

@@ -499,23 +499,16 @@ app.add_middleware(OriginValidationMiddleware)  # CSRF protection via Origin/Ref
 # CORS middleware MUST be added last to wrap all other middleware
 # This ensures preflight OPTIONS requests are handled correctly
 # NOTE: When allow_credentials=True, we must use explicit headers (not wildcards)
+# SECURITY: Tightened CORS configuration - only essential methods and headers
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_origins,
+    allow_origins=cors_origins,  # Explicit origins only (no wildcards)
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Removed HEAD, PATCH (unused)
     allow_headers=[
-        "content-type",
-        "authorization",
-        "accept",
-        "origin",
-        "user-agent",
-        "dnt",
-        "cache-control",
-        "x-requested-with",
-        "x-admin-token",
-        "accept-language",
-        "accept-encoding",
+        "content-type",      # Required for JSON requests
+        "authorization",     # Required for JWT tokens
+        "x-admin-token",     # Required for admin authentication
     ],
     expose_headers=[
         "content-length",

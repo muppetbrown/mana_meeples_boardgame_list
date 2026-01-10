@@ -2,11 +2,14 @@
 """
 BoardGameGeek API service with circuit breaker pattern.
 Sprint 5: Enhanced with circuit breaker for fail-fast during BGG outages
+Sprint 16: Added rate limiting to prevent BGG API abuse
 """
 import asyncio
 import xml.etree.ElementTree as ET
 from typing import Dict, Any
 from xml.etree.ElementTree import Element
+from datetime import datetime, timedelta
+from collections import deque
 import httpx
 import logging
 import html
@@ -21,6 +24,80 @@ class BGGServiceError(Exception):
     """Custom exception for BGG service errors"""
 
     pass
+
+
+class BGGRateLimiter:
+    """
+    Token bucket rate limiter for BGG API requests.
+    Prevents hitting BGG's rate limits by throttling requests.
+
+    Algorithm: Token bucket with exponential backoff
+    - Tracks request timestamps in a sliding window
+    - Blocks requests when limit exceeded
+    - Implements exponential backoff (capped at 60s)
+    """
+
+    def __init__(self, max_requests: int = 10, time_window: int = 60):
+        """
+        Initialize rate limiter.
+
+        Args:
+            max_requests: Maximum requests allowed in time window (default: 10)
+            time_window: Time window in seconds (default: 60)
+        """
+        self.max_requests = max_requests
+        self.time_window = time_window
+        self.requests = deque()  # Store request timestamps
+        self._lock = asyncio.Lock()  # Thread-safe for async
+
+    async def acquire(self) -> None:
+        """
+        Acquire permission to make a BGG API request.
+
+        Blocks (with exponential backoff) if rate limit exceeded.
+        Thread-safe for concurrent async requests.
+
+        Raises:
+            No exceptions - blocks until request can proceed
+        """
+        async with self._lock:
+            now = datetime.now()
+            cutoff = now - timedelta(seconds=self.time_window)
+
+            # Remove old requests outside time window (sliding window)
+            while self.requests and self.requests[0] < cutoff:
+                self.requests.popleft()
+
+            # Check if rate limit exceeded
+            if len(self.requests) >= self.max_requests:
+                # Calculate wait time with exponential backoff
+                oldest_request = self.requests[0]
+                wait_until = oldest_request + timedelta(seconds=self.time_window)
+                wait_time = (wait_until - now).total_seconds()
+
+                # Cap wait time at 60 seconds max
+                wait_time = min(wait_time, 60)
+
+                logger.warning(
+                    f"BGG API rate limit reached ({self.max_requests} req/{self.time_window}s), "
+                    f"waiting {wait_time:.1f}s before retry"
+                )
+
+                # Wait and retry
+                await asyncio.sleep(wait_time)
+                return await self.acquire()  # Recursive retry after waiting
+
+            # Record this request
+            self.requests.append(now)
+            logger.debug(
+                f"BGG API request acquired "
+                f"({len(self.requests)}/{self.max_requests} in window)"
+            )
+
+
+# Global rate limiter instance
+# 10 requests per 60 seconds (conservative to respect BGG's limits)
+bgg_rate_limiter = BGGRateLimiter(max_requests=10, time_window=60)
 
 
 # Circuit breaker configuration
@@ -50,6 +127,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
     including descriptions, mechanics, designers, publishers, and ratings.
     Uses exponential backoff for retries and circuit breaker for fail-fast.
     Sprint 5: Circuit breaker prevents cascading failures during BGG outages
+    Sprint 16: Rate limiting prevents BGG API abuse
     """
     # Check circuit breaker before attempting request
     try:
@@ -57,6 +135,10 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
     except CircuitBreakerError:
         logger.warning(f"BGG circuit breaker is open, rejecting request for game {bgg_id}")
         raise BGGServiceError("BGG API is currently unavailable (circuit breaker open)")
+
+    # Rate limiting: Acquire permission to make BGG API request
+    # Blocks if rate limit exceeded (10 requests per 60 seconds)
+    await bgg_rate_limiter.acquire()
 
     url = "https://boardgamegeek.com/xmlapi2/thing"
     params = {"id": str(bgg_id), "stats": "1"}
