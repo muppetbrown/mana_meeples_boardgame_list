@@ -18,61 +18,61 @@ def diverse_games(db_session):
             title="Catan", bgg_id=13, year=1995, players_min=3, players_max=4,
             playtime_min=60, playtime_max=120, complexity=2.3, average_rating=7.2,
             mana_meeple_category="GATEWAY_STRATEGY", status="OWNED",
-            designers='["Klaus Teuber"]', nz_designer=False
+            designers=["Klaus Teuber"], nz_designer=False
         ),
         Game(
             title="Pandemic", bgg_id=30549, year=2008, players_min=2, players_max=4,
             playtime_min=45, playtime_max=45, complexity=2.4, average_rating=7.6,
             mana_meeple_category="COOP_ADVENTURE", status="OWNED",
-            designers='["Matt Leacock"]', nz_designer=False
+            designers=["Matt Leacock"], nz_designer=False
         ),
         Game(
             title="Wingspan", bgg_id=266192, year=2019, players_min=1, players_max=5,
             playtime_min=40, playtime_max=70, complexity=2.4, average_rating=8.0,
             mana_meeple_category="GATEWAY_STRATEGY", status="OWNED",
-            designers='["Elizabeth Hargrave"]', nz_designer=False
+            designers=["Elizabeth Hargrave"], nz_designer=False
         ),
         Game(
             title="Gloomhaven", bgg_id=174430, year=2017, players_min=1, players_max=4,
             playtime_min=60, playtime_max=120, complexity=3.9, average_rating=8.7,
             mana_meeple_category="COOP_ADVENTURE", status="OWNED",
-            designers='["Isaac Childres"]', nz_designer=False
+            designers=["Isaac Childres"], nz_designer=False
         ),
         Game(
             title="Azul", bgg_id=230802, year=2017, players_min=2, players_max=4,
             playtime_min=30, playtime_max=45, complexity=1.8, average_rating=7.8,
             mana_meeple_category="GATEWAY_STRATEGY", status="OWNED",
-            designers='["Michael Kiesling"]', nz_designer=False
+            designers=["Michael Kiesling"], nz_designer=False
         ),
         Game(
             title="Codenames", bgg_id=178900, year=2015, players_min=2, players_max=8,
             playtime_min=15, playtime_max=15, complexity=1.3, average_rating=7.7,
             mana_meeple_category="PARTY_ICEBREAKERS", status="OWNED",
-            designers='["Vlaada Chvátil"]', nz_designer=False
+            designers=["Vlaada Chvátil"], nz_designer=False
         ),
         Game(
             title="Ticket to Ride", bgg_id=9209, year=2004, players_min=2, players_max=5,
             playtime_min=30, playtime_max=60, complexity=1.9, average_rating=7.4,
             mana_meeple_category="GATEWAY_STRATEGY", status="OWNED",
-            designers='["Alan R. Moon"]', nz_designer=False
+            designers=["Alan R. Moon"], nz_designer=False
         ),
         Game(
             title="King of Tokyo", bgg_id=70323, year=2011, players_min=2, players_max=6,
             playtime_min=30, playtime_max=30, complexity=1.5, average_rating=7.2,
             mana_meeple_category="KIDS_FAMILIES", status="OWNED",
-            designers='["Richard Garfield"]', nz_designer=False
+            designers=["Richard Garfield"], nz_designer=False
         ),
         Game(
             title="7 Wonders", bgg_id=68448, year=2010, players_min=2, players_max=7,
             playtime_min=30, playtime_max=30, complexity=2.3, average_rating=7.7,
             mana_meeple_category="CORE_STRATEGY", status="OWNED",
-            designers='["Antoine Bauza"]', nz_designer=False
+            designers=["Antoine Bauza"], nz_designer=False
         ),
         Game(
             title="NZ Designer Game", bgg_id=999999, year=2023, players_min=2, players_max=4,
             playtime_min=45, playtime_max=60, complexity=2.5, average_rating=7.5,
             mana_meeple_category="GATEWAY_STRATEGY", status="OWNED",
-            designers='["Kiwi Designer"]', nz_designer=True
+            designers=["Kiwi Designer"], nz_designer=True
         ),
     ]
 

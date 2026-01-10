@@ -252,8 +252,8 @@ class TestGameToDict:
         game = Game(
             id=1,
             title="Test Game",
-            designers='["Designer 1", "Designer 2"]',
-            mechanics='["Worker Placement", "Deck Building"]',
+            designers=["Designer 1", "Designer 2"],
+            mechanics=["Worker Placement", "Deck Building"],
         )
 
         result = game_to_dict(mock_request, game)

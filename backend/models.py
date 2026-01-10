@@ -53,10 +53,10 @@ class Game(Base):
     thumbnail_file = Column(String(256), nullable=True)
     mana_meeple_category = Column(String(50), nullable=True, index=True)
     description = Column(Text, nullable=True)
-    designers = Column(JSONB.with_variant(JSON, "sqlite"), nullable=True)  # Store as JSONB array (JSON for SQLite)
-    publishers = Column(JSONB.with_variant(JSON, "sqlite"), nullable=True)  # Store as JSONB array (JSON for SQLite)
-    mechanics = Column(JSONB.with_variant(JSON, "sqlite"), nullable=True)  # Store as JSONB array (JSON for SQLite)
-    artists = Column(JSONB.with_variant(JSON, "sqlite"), nullable=True)  # Store as JSONB array (JSON for SQLite)
+    designers = Column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)  # Store as JSONB on PostgreSQL, JSON on SQLite
+    publishers = Column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)  # Store as JSONB on PostgreSQL, JSON on SQLite
+    mechanics = Column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)  # Store as JSONB on PostgreSQL, JSON on SQLite
+    artists = Column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)  # Store as JSONB on PostgreSQL, JSON on SQLite
     average_rating = Column(Float, nullable=True)
     complexity = Column(Float, nullable=True)
     bgg_rank = Column(Integer, nullable=True)

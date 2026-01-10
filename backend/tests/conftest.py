@@ -255,7 +255,7 @@ def sample_game(db_session):
         complexity=2.5,
         average_rating=7.5,
         status="OWNED",
-        designers='["Test Designer"]'
+        designers=["Test Designer"]
     )
     db_session.add(game)
     db_session.commit()
@@ -282,7 +282,7 @@ def large_game_dataset(db_session):
             average_rating=6.0 + (i % 4),
             mana_meeple_category=['GATEWAY_STRATEGY', 'COOP_ADVENTURE', 'PARTY_ICEBREAKERS', 'KIDS_FAMILIES'][i % 4],
             status="OWNED",
-            designers=f'["Designer {i % 100}"]',
+            designers=[f"Designer {i % 100}"],
             nz_designer=(i % 10 == 0)  # Every 10th game is NZ designer
         )
         games.append(game)

@@ -334,8 +334,8 @@ class TestGameService:
     def test_get_filtered_games_by_designer_param(self, db_session):
         """Test filtering by designer parameter"""
         games = [
-            Game(title="Game 1", designers='["Martin Wallace"]', status="OWNED"),
-            Game(title="Game 2", designers='["Reiner Knizia"]', status="OWNED"),
+            Game(title="Game 1", designers=["Martin Wallace"], status="OWNED"),
+            Game(title="Game 2", designers=["Reiner Knizia"], status="OWNED"),
         ]
         for game in games:
             db_session.add(game)
@@ -855,7 +855,7 @@ class TestGameService:
 
     def test_get_games_by_designer_no_matches(self, db_session):
         """Test designer search with no matches"""
-        game = Game(title="Game", designers='["Other Designer"]', status="OWNED")
+        game = Game(title="Game", designers=["Other Designer"], status="OWNED")
         db_session.add(game)
         db_session.commit()
 
