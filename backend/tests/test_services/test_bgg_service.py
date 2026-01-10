@@ -17,11 +17,19 @@ import xml.etree.ElementTree as ET
 
 from bgg_service import (
     fetch_bgg_thing,
-    _strip_namespace,
     _extract_comprehensive_game_data,
     _get_game_classification,
     BGGServiceError,
 )
+from services.bgg_parser import strip_namespace
+
+
+# Global fixture to mock rate limiter for all tests
+@pytest.fixture(autouse=True)
+async def mock_bgg_rate_limiter():
+    """Mock the BGG rate limiter to prevent tests from hanging"""
+    with patch("bgg_service.bgg_rate_limiter.acquire", new_callable=AsyncMock):
+        yield
 
 
 # Sample XML responses for testing
@@ -260,26 +268,26 @@ class TestFetchBGGThing:
 class TestXMLParsing:
     """Test XML parsing and data extraction"""
 
-    def test_strip_namespace_with_namespace(self):
+    def teststrip_namespace_with_namespace(self):
         """Should strip XML namespaces"""
         xml_with_ns = """<?xml version="1.0"?>
         <root xmlns:ns="http://example.com">
             <ns:child>test</ns:child>
         </root>"""
         root = ET.fromstring(xml_with_ns)
-        _strip_namespace(root)
+        strip_namespace(root)
 
         # After stripping, tags should not have namespace prefix
         assert "{" not in root.tag
 
-    def test_strip_namespace_without_namespace(self):
+    def teststrip_namespace_without_namespace(self):
         """Should handle XML without namespaces"""
         xml_no_ns = """<?xml version="1.0"?>
         <root>
             <child>test</child>
         </root>"""
         root = ET.fromstring(xml_no_ns)
-        _strip_namespace(root)
+        strip_namespace(root)
 
         # Should complete without errors
         assert root.tag == "root"

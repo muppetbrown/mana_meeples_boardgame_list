@@ -6,11 +6,11 @@ Separates business logic from HTTP routing concerns.
 
 from .game_service import GameService
 from .image_service import ImageService
-from .background_tasks import download_and_update_thumbnail, reimport_single_game
+
+# Note: background_tasks not imported here to avoid circular import
+# Import directly from services.background_tasks where needed
 
 __all__ = [
     "GameService",
     "ImageService",
-    "download_and_update_thumbnail",
-    "reimport_single_game",
 ]

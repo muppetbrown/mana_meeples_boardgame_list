@@ -23,7 +23,11 @@
       "Bash(npm search:*)",
       "Bash(claude --version:*)",
       "Bash(echo:*)",
-      "Bash(Select-String -Pattern \"mcp\")"
+      "Bash(Select-String -Pattern \"mcp\")",
+      "Bash(npm test:*)",
+      "Bash(npx playwright test)",
+      "mcp__plugin_serena_serena__read_file",
+      "mcp__plugin_serena_serena__activate_project"
     ]
   }
 }
