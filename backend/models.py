@@ -14,6 +14,7 @@ from sqlalchemy import (
     CheckConstraint,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, relationship, backref
 
 
@@ -52,10 +53,10 @@ class Game(Base):
     thumbnail_file = Column(String(256), nullable=True)
     mana_meeple_category = Column(String(50), nullable=True, index=True)
     description = Column(Text, nullable=True)
-    designers = Column(JSON, nullable=True)  # Store as JSON array
-    publishers = Column(JSON, nullable=True)  # Store as JSON array
-    mechanics = Column(JSON, nullable=True)  # Store as JSON array
-    artists = Column(JSON, nullable=True)  # Store as JSON array
+    designers = Column(JSONB.with_variant(JSON, "sqlite"), nullable=True)  # Store as JSONB array (JSON for SQLite)
+    publishers = Column(JSONB.with_variant(JSON, "sqlite"), nullable=True)  # Store as JSONB array (JSON for SQLite)
+    mechanics = Column(JSONB.with_variant(JSON, "sqlite"), nullable=True)  # Store as JSONB array (JSON for SQLite)
+    artists = Column(JSONB.with_variant(JSON, "sqlite"), nullable=True)  # Store as JSONB array (JSON for SQLite)
     average_rating = Column(Float, nullable=True)
     complexity = Column(Float, nullable=True)
     bgg_rank = Column(Integer, nullable=True)
