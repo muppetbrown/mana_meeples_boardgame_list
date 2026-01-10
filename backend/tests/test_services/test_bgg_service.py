@@ -26,7 +26,7 @@ from services.bgg_parser import strip_namespace
 
 # Global fixture to mock rate limiter for all tests
 @pytest.fixture(autouse=True)
-async def mock_bgg_rate_limiter():
+def mock_bgg_rate_limiter():
     """Mock the BGG rate limiter to prevent tests from hanging"""
     with patch("bgg_service.bgg_rate_limiter.acquire", new_callable=AsyncMock):
         yield
@@ -917,9 +917,11 @@ class TestGameTypeClassification:
         item = root.find("item")
         data = _extract_comprehensive_game_data(item, 12345)
 
-        # Should combine Strategy and Family categories
+        # Should select the best-ranked category (lowest rank number)
+        # After refactoring, returns raw BGG category names
         assert data["game_type"] is not None
-        assert "Strategy" in data["game_type"] or "Family" in data["game_type"]
+        assert data["game_type"] in ["strategygames", "familygames"]
+        # strategygames (rank 50) should be selected as it's the best rank
 
     def test_not_ranked_category_fallback(self):
         """Should handle 'Not Ranked' categories appropriately"""
