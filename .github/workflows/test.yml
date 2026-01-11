@@ -192,16 +192,31 @@ jobs:
 
       - name: Wait for servers to be ready
         run: |
-          # Wait for backend health check
-          echo "Waiting for backend to be ready..."
+          # Wait for backend health check (basic connectivity)
+          echo "Waiting for backend to respond..."
           for i in {1..30}; do
             if curl -s http://localhost:8000/api/health > /dev/null; then
-              echo "Backend is ready!"
+              echo "Backend is responding!"
               break
             fi
-            echo "Attempt $i: Backend not ready yet, waiting..."
+            echo "Attempt $i: Backend not responding yet, waiting..."
             sleep 2
           done
+
+          # Wait for database to be fully ready (with retries)
+          echo "Waiting for database to be ready..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8000/api/health/db | jq -e '.status == "healthy"' > /dev/null 2>&1; then
+              echo "Database is ready!"
+              break
+            fi
+            echo "Attempt $i: Database not ready yet, waiting..."
+            sleep 2
+          done
+
+          # Extra wait for connection pool and lifespan events
+          echo "Waiting for connection pool initialization..."
+          sleep 5
 
           # Wait for frontend to be ready
           echo "Waiting for frontend to be ready..."
