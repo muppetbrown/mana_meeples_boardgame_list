@@ -186,7 +186,7 @@ jobs:
       - name: Serve frontend in background
         run: |
           cd frontend
-          npx http-server build -p 3000 --proxy http://localhost:3000? &
+          npx serve -s build -l 3000 &
           echo $! > /tmp/frontend.pid
           sleep 3  # Wait for server to start
 
