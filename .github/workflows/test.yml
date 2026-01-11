@@ -214,6 +214,23 @@ jobs:
             sleep 2
           done
 
+      - name: Verify test data and API
+        run: |
+          echo "Checking if games were seeded..."
+          GAME_COUNT=$(curl -s http://localhost:8000/api/public/games | jq -r '.total // 0')
+          echo "Total games in database: $GAME_COUNT"
+
+          if [ "$GAME_COUNT" -eq "0" ]; then
+            echo "ERROR: No games found in database!"
+            echo "API Response:"
+            curl -s http://localhost:8000/api/public/games | jq '.'
+            exit 1
+          fi
+
+          echo "✓ Found $GAME_COUNT games"
+          echo "Sample game data:"
+          curl -s http://localhost:8000/api/public/games | jq '.items[0] | {id, title, mana_meeple_category}'
+
       - name: Install Playwright
         run: |
           npm ci
