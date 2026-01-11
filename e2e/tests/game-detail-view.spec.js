@@ -9,13 +9,29 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('Game Detail View', () => {
   test('should display game details when clicking on a game card', async ({ page }) => {
+    // Capture console logs and errors for debugging
+    const consoleLogs = [];
+    page.on('console', msg => consoleLogs.push(`${msg.type()}: ${msg.text()}`));
+    page.on('pageerror', err => consoleLogs.push(`ERROR: ${err.message}`));
+
     // Navigate to catalogue
     await page.goto('/');
 
-    // Wait for games to load
+    // Wait for games to load (with longer timeout to see if API is just slow)
     await page.waitForSelector('[data-testid="game-card"], .game-card, article', {
       timeout: 10000
     });
+
+    // Wait for actual game data to load (not just skeletons)
+    try {
+      await page.waitForSelector('article a[href^="/game/"]', {
+        timeout: 15000,
+        state: 'attached'
+      });
+    } catch (e) {
+      console.log('Console logs from browser:', consoleLogs.join('\n'));
+      throw new Error(`Game cards never loaded. Browser console: ${consoleLogs.join(' | ')}`);
+    }
 
     // Click on the first game card's link (not the expand button)
     const firstGameLink = page.locator('article a[href^="/game/"]').first();
