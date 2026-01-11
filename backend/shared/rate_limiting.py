@@ -26,7 +26,9 @@ def get_limiter() -> Limiter:
     # Disable rate limiting during tests if configured
     enabled = not DISABLE_RATE_LIMITING
     if not enabled:
-        logger.info("Rate limiting DISABLED (test mode)")
+        logger.warning(f"⚠️  RATE LIMITING DISABLED - DISABLE_RATE_LIMITING={DISABLE_RATE_LIMITING}, enabled={enabled}")
+    else:
+        logger.info(f"Rate limiting ENABLED - DISABLE_RATE_LIMITING={DISABLE_RATE_LIMITING}, enabled={enabled}")
     return Limiter(key_func=get_remote_address, enabled=enabled)
 
 

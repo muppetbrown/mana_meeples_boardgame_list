@@ -9,10 +9,25 @@ const { test, expect } = require('@playwright/test');
 
 test.describe('Game Detail View', () => {
   test('should display game details when clicking on a game card', async ({ page }) => {
-    // Capture console logs and errors for debugging
+    // Capture console logs, errors, and failed requests for debugging
     const consoleLogs = [];
+    const failedRequests = [];
+
     page.on('console', msg => consoleLogs.push(`${msg.type()}: ${msg.text()}`));
     page.on('pageerror', err => consoleLogs.push(`ERROR: ${err.message}`));
+    page.on('requestfailed', request => {
+      const failure = request.failure();
+      failedRequests.push({
+        url: request.url(),
+        method: request.method(),
+        errorText: failure ? failure.errorText : 'unknown error'
+      });
+    });
+    page.on('response', async response => {
+      if (response.status() >= 400) {
+        consoleLogs.push(`HTTP ${response.status()}: ${response.url()}`);
+      }
+    });
 
     // Navigate to catalogue
     await page.goto('/');
@@ -30,7 +45,8 @@ test.describe('Game Detail View', () => {
       });
     } catch (e) {
       console.log('Console logs from browser:', consoleLogs.join('\n'));
-      throw new Error(`Game cards never loaded. Browser console: ${consoleLogs.join(' | ')}`);
+      console.log('Failed requests:', JSON.stringify(failedRequests, null, 2));
+      throw new Error(`Game cards never loaded. Failed requests: ${JSON.stringify(failedRequests)} | Console: ${consoleLogs.slice(-10).join(' | ')}`);
     }
 
     // Click on the first game card's link (not the expand button)
