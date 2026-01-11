@@ -177,9 +177,11 @@ jobs:
           ADMIN_TOKEN: test_admin_token_for_e2e
           CORS_ORIGINS: http://localhost:3000,http://localhost:5173
           PYTHONPATH: ${{ github.workspace }}/backend
+          SESSION_SECRET: test-session-secret-for-ci
         run: |
           cd backend
-          uvicorn main:app --host 0.0.0.0 --port 8000 &
+          # Start with logging to file for debugging
+          uvicorn main:app --host 0.0.0.0 --port 8000 --log-level debug > /tmp/backend.log 2>&1 &
           echo $! > /tmp/backend.pid
           sleep 5  # Wait for server to start
 
@@ -229,6 +231,16 @@ jobs:
             sleep 2
           done
 
+      - name: Check backend logs for errors
+        run: |
+          echo "=== Backend Startup Logs ==="
+          if [ -f /tmp/backend.log ]; then
+            tail -50 /tmp/backend.log
+          else
+            echo "No backend log file found"
+          fi
+          echo "=========================="
+
       - name: Verify test data and API
         run: |
           echo "Checking if games were seeded..."
@@ -239,6 +251,8 @@ jobs:
             echo "ERROR: No games found in database!"
             echo "API Response:"
             curl -s http://localhost:8000/api/public/games | jq '.'
+            echo "=== Backend Logs ==="
+            tail -100 /tmp/backend.log || echo "Cannot read backend logs"
             exit 1
           fi
 
@@ -256,6 +270,17 @@ jobs:
           BASE_URL: http://localhost:3000
         run: |
           npx playwright test --project=chromium --reporter=html
+
+      - name: Dump backend logs on failure
+        if: failure()
+        run: |
+          echo "=== Full Backend Logs (Last 200 lines) ==="
+          if [ -f /tmp/backend.log ]; then
+            tail -200 /tmp/backend.log
+          else
+            echo "No backend log file found"
+          fi
+          echo "=========================================="
 
       - name: Upload Playwright report
         if: always()
