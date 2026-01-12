@@ -1,5 +1,0 @@
-continue work on performance improvements:
-C:\Git_Repos\mana_meeples_boardgame_list\docs\performance\COMPREHENSIVE_PERFORMANCE_REVIEW.md
-
-
-infinite scroll count when on all category.
