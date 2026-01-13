@@ -41,11 +41,11 @@ COLOR_TEXT_LIGHT = colors.HexColor('#6b7280')  # Medium gray
 
 # Category-specific colors (from mana_meeple_category)
 CATEGORY_COLORS = {
-    'KIDS_FAMILIES': colors.HexColor('#BA8AA4'),
-    'PARTY_ICEBREAKERS': colors.HexColor('#B43D37'),
-    'GATEWAY_STRATEGY': colors.HexColor('#9E8810'),
-    'COOP_ADVENTURE': colors.HexColor('#5E6424'),
-    'CORE_STRATEGY': colors.HexColor('#7196B0'),
+    'KIDS_FAMILIES': colors.HexColor('#9C7788'),
+    'PARTY_ICEBREAKERS': colors.HexColor('#9E2E28'),
+    'GATEWAY_STRATEGY': colors.HexColor('#A89A1E'),
+    'COOP_ADVENTURE': colors.HexColor('#8D9B47'),
+    'CORE_STRATEGY': colors.HexColor('#70949F'),
 }
 
 # Default color for unknown categories
@@ -76,7 +76,7 @@ class LabelGenerator:
         luminance = 0.299 * r + 0.587 * g + 0.114 * b
 
         # Return white for dark backgrounds, black for light backgrounds
-        return colors.white if luminance < 0.5 else colors.black
+        return colors.white #if luminance < 0.5 else colors.black
 
     def generate_pdf(self, games: List[dict]) -> BytesIO:
         """
