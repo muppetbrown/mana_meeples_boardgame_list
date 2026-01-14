@@ -42,15 +42,18 @@ def generate_sleeve_shopping_list(
     """
     Generate a sleeve shopping list for selected games
     Groups sleeves by size and counts variations
-    Excludes individual sleeve types that are already sleeved (Sleeve.is_sleeved=True)
+    Excludes games that are already fully sleeved (Game.is_sleeved=True)
+    Also excludes individual sleeve types that are marked as sleeved (Sleeve.is_sleeved=True)
     """
     from collections import defaultdict
 
-    # Fetch all UNSLEEVED sleeves for selected games
+    # Fetch all UNSLEEVED sleeves for selected UNSLEEVED games
+    # Exclude both: games marked as sleeved AND individual sleeve types marked as sleeved
     sleeves = db.execute(
-        select(Sleeve).where(
+        select(Sleeve).join(Game, Sleeve.game_id == Game.id).where(
             Sleeve.game_id.in_(request.game_ids),
-            (Sleeve.is_sleeved == False) | (Sleeve.is_sleeved.is_(None))
+            (Sleeve.is_sleeved == False) | (Sleeve.is_sleeved.is_(None)),
+            (Game.is_sleeved == False) | (Game.is_sleeved.is_(None))
         )
     ).scalars().all()
     
