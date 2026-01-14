@@ -4,7 +4,6 @@
  * Used in both collapsed and expanded views of GameCardPublic
  */
 import React from 'react';
-import PropTypes from 'prop-types';
 import { formatComplexity, formatTime, formatPlayerCount } from '../../../utils/gameFormatters';
 
 // SVG Icon Components (inline to avoid extra imports)
@@ -161,20 +160,5 @@ export function GameCardStats({
     </div>
   );
 }
-
-GameCardStats.propTypes = {
-  game: PropTypes.shape({
-    players_min: PropTypes.number,
-    players_max: PropTypes.number,
-    playtime_min: PropTypes.number,
-    playtime_max: PropTypes.number,
-    complexity: PropTypes.number,
-  }).isRequired,
-  isExpanded: PropTypes.bool,
-  onToggleExpand: PropTypes.func.isRequired,
-  showHint: PropTypes.bool,
-  variant: PropTypes.oneOf(['collapsed', 'expanded']),
-  className: PropTypes.string,
-};
 
 export default GameCardStats;
