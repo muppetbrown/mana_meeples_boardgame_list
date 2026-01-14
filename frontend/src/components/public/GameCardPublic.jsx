@@ -8,6 +8,7 @@ import { getAfterGameCreateUrl } from "../../constants/aftergame";
 import { useOnboarding } from "../../hooks/useOnboarding";
 import { getCategoryStyle } from "../../utils/categoryStyles";
 import { formatRating, formatComplexity, formatTime, formatPlayerCount } from "../../utils/gameFormatters";
+import { GameCardStats } from "./game-card/GameCardStats";
 
 /**
  * GameCardPublic component - Displays a game card with expandable details
@@ -137,87 +138,13 @@ const GameCardPublic = memo(function GameCardPublic({
           )}
 
           {/* 2x2 Grid: Stats + Expand Button */}
-          <div className="grid grid-cols-2 gap-1.5 md:gap-2">
-            {/* Players */}
-            {(() => {
-              const playerCount = formatPlayerCount(game);
-
-              return (
-                <div
-                  className="flex flex-col items-center justify-center gap-0.5 md:gap-1 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
-                  aria-label={playerCount ? `${playerCount} players` : 'Player count not available'}
-                >
-                  <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
-                  </svg>
-                  <span className="font-semibold text-xs md:text-sm text-slate-700">
-                    {playerCount || '—'}
-                  </span>
-                </div>
-              );
-            })()}
-
-            {/* Time */}
-            <div
-              className="flex flex-col items-center justify-center gap-0.5 md:gap-1 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
-              aria-label={`Play time: ${formatTime(game.playtime_min, game.playtime_max)}`}
-            >
-              <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-              </svg>
-              <span className="font-semibold text-xs md:text-sm text-slate-700">
-                {formatTime(game.playtime_min, game.playtime_max)}
-              </span>
-            </div>
-
-            {/* Complexity */}
-            {formatComplexity(game.complexity) ? (
-              <div
-                className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
-                aria-label={`Complexity: ${formatComplexity(game.complexity)} out of 5`}
-              >
-                <span className="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-wide">Complexity</span>
-                <span className="font-semibold text-xs md:text-sm text-slate-700">
-                  🧩 {formatComplexity(game.complexity)}/5
-                </span>
-              </div>
-            ) : (
-              <div
-                className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
-                aria-label="Complexity not available"
-              >
-                <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wide">Complexity</span>
-                <span className="font-semibold text-xs md:text-sm text-slate-400">🧩 —</span>
-              </div>
-            )}
-
-            {/* Expand Button */}
-            <button
-              className={`flex flex-col items-center justify-center gap-0.5 md:gap-1 rounded-lg py-1.5 md:py-2 px-1 text-xs font-bold transition-all shadow-sm hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500 border-2 ${
-                isExpanded
-                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-emerald-300'
-                  : 'bg-linear-to-br from-emerald-50 to-teal-50 text-emerald-700 hover:from-emerald-100 hover:to-teal-100 border-emerald-200 hover:border-emerald-300'
-              } ${shouldShowCardHint && showHints && !isExpanded ? 'animate-pulse ring-2 ring-emerald-500' : ''}`}
-              aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
-              aria-expanded={isExpanded}
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleExpand();
-              }}
-            >
-              <svg
-                className={`w-4 h-4 md:w-5 md:h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                viewBox="0 0 24 24"
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-              <span className="text-[10px] md:text-xs font-bold">{isExpanded ? 'Less' : 'More'}</span>
-            </button>
-          </div>
+          <GameCardStats
+            game={game}
+            isExpanded={isExpanded}
+            onToggleExpand={onToggleExpand}
+            showHint={shouldShowCardHint && showHints}
+            variant="collapsed"
+          />
         </div>
 
         {/* Phase 1 Performance: Removed duplicate hidden expanded details div */}
@@ -290,88 +217,20 @@ const GameCardPublic = memo(function GameCardPublic({
         </h3>
 
         {/* 2x2 Grid: Stats + Expand Button */}
-        <div className="grid grid-cols-2 gap-1.5 md:gap-2 mb-3">
-          {/* Players */}
-          {(() => {
-            const playerCount = formatPlayerCount();
-
-            return (
-              <div
-                className="flex flex-col items-center justify-center gap-0.5 md:gap-1 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
-                aria-label={playerCount ? `${playerCount} players` : 'Player count not available'}
-              >
-                <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-600" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
-                </svg>
-                <span className="font-semibold text-xs md:text-sm text-slate-700">
-                  {playerCount || '—'}
-                </span>
-              </div>
-            );
-          })()}
-
-          {/* Time */}
-          <div
-            className="flex flex-col items-center justify-center gap-0.5 md:gap-1 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
-            aria-label={`Play time: ${formatTime()}`}
-          >
-            <svg className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-            </svg>
-            <span className="font-semibold text-xs md:text-sm text-slate-700">
-              {formatTime()}
-            </span>
-          </div>
-
-          {/* Complexity */}
-          {formatComplexity(game.complexity) ? (
-            <div
-              className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
-              aria-label={`Complexity: ${formatComplexity(game.complexity)} out of 5`}
-            >
-              <span className="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-wide">Complexity</span>
-              <span className="font-semibold text-xs md:text-sm text-slate-700">
-                🧩 {formatComplexity(game.complexity)}/5
-              </span>
-            </div>
-          ) : (
-            <div
-              className="flex flex-col items-center justify-center gap-0.5 bg-slate-50 rounded-lg py-1.5 md:py-2 px-1"
-              aria-label="Complexity not available"
-            >
-              <span className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-wide">Complexity</span>
-              <span className="font-semibold text-xs md:text-sm text-slate-400">🧩 —</span>
-            </div>
-          )}
-
-          {/* Expand Button */}
-          <button
-            className="flex flex-col items-center justify-center gap-0.5 md:gap-1 rounded-lg py-1.5 md:py-2 px-1 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-            aria-label="Collapse details"
-            aria-expanded={true}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleExpand();
-            }}
-          >
-            <svg
-              className="w-3.5 h-3.5 md:w-4 md:h-4 transition-transform rotate-180"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-            </svg>
-            <span className="text-[10px] md:text-xs">Less</span>
-          </button>
-        </div>
+        <GameCardStats
+          game={game}
+          isExpanded={isExpanded}
+          onToggleExpand={onToggleExpand}
+          showHint={false}
+          variant="expanded"
+          className="mb-3"
+        />
 
         {/* Expanded Details - directly visible when expanded */}
         <div className="pt-3 border-t border-slate-200 space-y-2 text-sm">
           {/* Players - Full text */}
           {(() => {
-            const playerCount = formatPlayerCount();
+            const playerCount = formatPlayerCount(game);
             if (!playerCount) return null;
 
             return (
