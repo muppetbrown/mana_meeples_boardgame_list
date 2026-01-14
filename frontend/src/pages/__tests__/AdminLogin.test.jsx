@@ -322,7 +322,7 @@ describe('AdminLogin Page', () => {
       </BrowserRouter>
     );
 
-    const form = screen.getByRole('main');
+    const form = screen.getByRole('form');
     expect(form).toHaveAttribute('id', 'login-form');
   });
 

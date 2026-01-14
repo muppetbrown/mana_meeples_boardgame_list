@@ -47,9 +47,9 @@ export default function AdminLogin() {
       </a>
 
       <main role="main" id="main-content">
-        <form onSubmit={submit} id="login-form" className="bg-white/90 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-xl border border-white/50 w-full max-w-sm space-y-4">
+        <form onSubmit={submit} id="login-form" aria-labelledby="login-heading" className="bg-white/90 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-xl border border-white/50 w-full max-w-sm space-y-4">
         <header className="text-center mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold bg-linear-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-2">
+          <h1 id="login-heading" className="text-2xl sm:text-3xl font-bold bg-linear-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-2">
             Staff Login
           </h1>
           <p className="text-slate-600 text-sm">Access the admin dashboard</p>
