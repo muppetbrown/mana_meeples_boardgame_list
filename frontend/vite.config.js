@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import viteCompression from 'vite-plugin-compression';
+import { visualizer } from 'rollup-plugin-visualizer';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -20,7 +21,15 @@ export default defineConfig({
       threshold: 1024,
       deleteOriginFile: false,
     }),
-  ],
+    // Bundle size analyzer - run with: npm run build:analyze
+    process.env.ANALYZE && visualizer({
+      open: true,
+      filename: 'bundle-stats.html',
+      gzipSize: true,
+      brotliSize: true,
+      template: 'treemap', // 'treemap', 'sunburst', 'network'
+    }),
+  ].filter(Boolean),
 
   // Development server configuration
   server: {
