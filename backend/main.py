@@ -506,7 +506,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,  # Explicit origins only (no wildcards)
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],  # Removed HEAD, PATCH (unused)
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],  # PATCH used by sleeves endpoint
     allow_headers=[
         "content-type",      # Required for JSON requests
         "authorization",     # Required for JWT tokens
