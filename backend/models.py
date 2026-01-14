@@ -70,7 +70,6 @@ class Game(Base):
 
     # Sleeve information
     has_sleeves = Column(String(20), nullable=True)  # 'found', 'not_found', 'error', 'manual', or NULL (not checked)
-    is_sleeved = Column(Boolean, nullable=True, default=False)  # Whether the physical game is already sleeved
 
     # AfterGame integration
     aftergame_game_id = Column(String(36), nullable=True, index=True)  # UUID for AfterGame platform game ID
@@ -283,6 +282,7 @@ class Sleeve(Base):
     height_mm = Column(Integer, nullable=False)
     quantity = Column(Integer, nullable=False)
     notes = Column(Text, nullable=True)  # Special notes about this card type
+    is_sleeved = Column(Boolean, nullable=False, default=False)  # Whether this specific sleeve type is already sleeved
 
     # Relationship
     game = relationship("Game", back_populates="sleeves")
@@ -290,6 +290,7 @@ class Sleeve(Base):
     __table_args__ = (
         Index("idx_sleeve_game", "game_id"),
         Index("idx_sleeve_size", "width_mm", "height_mm"),
+        Index("idx_sleeve_sleeved", "is_sleeved"),
     )
 
     def __repr__(self):

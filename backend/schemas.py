@@ -334,7 +334,7 @@ class GameDetailResponse(BaseModel):
 
     # Sleeve data
     has_sleeves: Optional[str] = None
-    is_sleeved: Optional[bool] = None
+    fully_sleeved: Optional[bool] = None
 
     # Metadata (Pydantic automatically serializes datetime to ISO format)
     date_added: Optional[datetime] = None

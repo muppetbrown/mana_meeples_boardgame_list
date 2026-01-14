@@ -60,7 +60,9 @@ class GameService:
     def get_all_games(self) -> List[Game]:
         """Get all games for admin view - only OWNED games, excluding buy list and wishlist"""
         return self.db.execute(
-            select(Game).where(or_(Game.status == "OWNED", Game.status.is_(None)))
+            select(Game)
+            .where(or_(Game.status == "OWNED", Game.status.is_(None)))
+            .options(selectinload(Game.sleeves))
         ).scalars().all()
 
     def get_filtered_games(

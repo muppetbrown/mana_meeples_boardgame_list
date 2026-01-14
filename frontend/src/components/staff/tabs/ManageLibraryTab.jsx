@@ -363,7 +363,17 @@ export function ManageLibraryTab() {
 
                     {/* Name */}
                     <td className="px-4 py-3">
-                      <div className="text-sm font-medium text-gray-900">{game.title}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium text-gray-900">{game.title}</div>
+                        {game.fully_sleeved && (
+                          <span
+                            className="text-lg"
+                            title="All sleeve requirements marked as sleeved"
+                          >
+                            🃏
+                          </span>
+                        )}
+                      </div>
                       {game.year && (
                         <div className="text-xs text-gray-500">{game.year}</div>
                       )}

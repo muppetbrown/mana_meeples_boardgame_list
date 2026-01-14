@@ -9,7 +9,8 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import Request
-from models import Game
+from models import Game, Sleeve
+from sqlalchemy.orm import Session
 
 logger = logging.getLogger(__name__)
 
@@ -218,6 +219,27 @@ def parse_json_field(field_value: Optional[Any]) -> List[str]:
         return []
 
 
+def compute_fully_sleeved(game: Game) -> bool:
+    """
+    Check if all sleeve requirements for a game are marked as sleeved.
+
+    Args:
+        game: Game model instance (must have sleeves relationship loaded)
+
+    Returns:
+        True if all sleeve requirements are marked as sleeved, False otherwise
+        Returns False if game has no sleeve requirements
+
+    Note:
+        Requires the game's sleeves relationship to be loaded (not lazy-loaded)
+    """
+    if not hasattr(game, 'sleeves') or not game.sleeves:
+        return False
+
+    # All sleeves must be marked as sleeved
+    return all(sleeve.is_sleeved for sleeve in game.sleeves)
+
+
 def categorize_game(categories: List[str]) -> Optional[str]:
     """
     Automatically categorize a game based on its BGG categories.
@@ -393,6 +415,9 @@ def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         "modifies_players_max": getattr(game, "modifies_players_max", None),
         # AfterGame integration
         "aftergame_game_id": getattr(game, "aftergame_game_id", None),
+        # Sleeve data
+        "has_sleeves": getattr(game, "has_sleeves", None),
+        "fully_sleeved": compute_fully_sleeved(game),
     }
 
 

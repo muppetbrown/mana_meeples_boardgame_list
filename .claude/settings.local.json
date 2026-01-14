@@ -32,7 +32,10 @@
       "Bash(git push:*)",
       "Bash(Remove-Item -Recurse -Force venv)",
       "Bash(if exist .vscodesettings.json type .vscodesettings.json else echo \"No settings.json found\")",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "mcp__plugin_serena_serena__find_symbol",
+      "Bash(sqlite3:*)",
+      "Bash(dir /A nul)"
     ]
   }
 }

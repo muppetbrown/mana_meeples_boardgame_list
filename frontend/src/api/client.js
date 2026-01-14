@@ -527,6 +527,19 @@ export async function getGameSleeves(gameId) {
 }
 
 /**
+ * Update the sleeved status of a specific sleeve record
+ * @param {number} sleeveId - Sleeve record ID
+ * @param {boolean} isSleeved - Whether this sleeve type is sleeved
+ * @returns {Promise<Object>} Update confirmation
+ */
+export async function updateSleeveStatus(sleeveId, isSleeved) {
+  const r = await api.patch(`/admin/sleeves/sleeve/${sleeveId}`, {
+    is_sleeved: isSleeved
+  });
+  return r.data;
+}
+
+/**
  * Generate PDF labels for selected games
  * @param {Array<number>} gameIds - Array of game IDs to generate labels for
  * @returns {Promise<Blob>} PDF blob ready for download

@@ -1,6 +1,7 @@
 // src/components/staff/GameEditModal.jsx
 import React, { useState, useEffect } from 'react';
 import { CATEGORY_KEYS, CATEGORY_LABELS } from '../../constants/categories';
+import SleevesListTable from './SleevesListTable';
 
 /**
  * Unified modal for editing all game properties:
@@ -19,8 +20,6 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
     base_game_id: null,
     modifies_players_min: null,
     modifies_players_max: null,
-    // Sleeve status
-    is_sleeved: false,
     // AfterGame integration
     aftergame_game_id: null,
   });
@@ -35,7 +34,6 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
         base_game_id: game.base_game_id || null,
         modifies_players_min: game.modifies_players_min || null,
         modifies_players_max: game.modifies_players_max || null,
-        is_sleeved: game.is_sleeved || false,
         aftergame_game_id: game.aftergame_game_id || null,
       });
     }
@@ -66,7 +64,6 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
       base_game_id: formData.is_expansion && formData.base_game_id ? parseInt(formData.base_game_id) : null,
       modifies_players_min: formData.modifies_players_min ? parseInt(formData.modifies_players_min) : null,
       modifies_players_max: formData.modifies_players_max ? parseInt(formData.modifies_players_max) : null,
-      is_sleeved: formData.is_sleeved,
       aftergame_game_id: formData.aftergame_game_id || null,
     };
 
@@ -269,37 +266,19 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
           {/* Sleeves Tab */}
           {activeTab === 'sleeves' && (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
-                <input
-                  type="checkbox"
-                  id="is_sleeved"
-                  checked={formData.is_sleeved}
-                  onChange={(e) => handleChange('is_sleeved', e.target.checked)}
-                  className="w-5 h-5 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
-                />
-                <label htmlFor="is_sleeved" className="font-semibold text-gray-900 cursor-pointer">
-                  This game is already sleeved
-                </label>
-              </div>
+              <SleevesListTable
+                gameId={game.id}
+                onSleeveUpdate={() => {
+                  // Optionally refresh parent data
+                }}
+              />
 
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm text-gray-700">
-                  <strong>Note:</strong> Games marked as sleeved will be excluded from the sleeve shopping list calculation.
-                  This helps you track which games still need sleeves when generating a shopping list.
+                  <strong>Note:</strong> Mark individual sleeve types as sleeved above.
+                  The shopping list will only include unmarked sleeve types.
                 </p>
               </div>
-
-              {/* Show sleeve data if available */}
-              {game.has_sleeves === 'found' && (
-                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-sm text-gray-700 mb-2">
-                    <strong>Sleeve Data Available:</strong> This game has sleeve requirements in the database.
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    When generating a shopping list, this game's sleeve requirements will only be included if it's not marked as already sleeved.
-                  </p>
-                </div>
-              )}
             </div>
           )}
 
