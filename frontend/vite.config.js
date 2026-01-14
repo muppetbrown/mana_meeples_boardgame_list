@@ -38,7 +38,7 @@ export default defineConfig({
   // Build configuration
   build: {
     outDir: 'build',
-    sourcemap: true,
+    sourcemap: process.env.NODE_ENV === 'development', // Only generate source maps in dev mode
     // Optimize chunk splitting for better caching
     rollupOptions: {
       output: {

@@ -70,6 +70,7 @@ class Game(Base):
 
     # Sleeve information
     has_sleeves = Column(String(20), nullable=True)  # 'found', 'not_found', 'error', 'manual', or NULL (not checked)
+    is_sleeved = Column(Boolean, nullable=True, default=False, index=True)  # Whether the entire game is already sleeved
 
     # AfterGame integration
     aftergame_game_id = Column(String(36), nullable=True, index=True)  # UUID for AfterGame platform game ID

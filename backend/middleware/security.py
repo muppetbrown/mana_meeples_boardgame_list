@@ -77,7 +77,7 @@ class SecurityHeadersMiddleware:
                 if not is_api_endpoint and b"content-security-policy" not in headers_dict:
                     csp_policy = "; ".join([
                         "default-src 'self'",
-                        "script-src 'self' 'unsafe-inline' 'unsafe-eval'",  # Allow inline scripts for React
+                        "script-src 'self'",  # Vite builds are bundled, no inline scripts needed
                         "style-src 'self' 'unsafe-inline'",  # Allow inline styles for Tailwind
                         "img-src 'self' data: https://cf.geekdo-images.com https://cf.geekdo-static.com",  # BGG images
                         "font-src 'self' data:",
