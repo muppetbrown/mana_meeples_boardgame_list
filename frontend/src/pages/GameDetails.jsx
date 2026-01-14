@@ -130,7 +130,7 @@ export default function GameDetails() {
         </nav>
 
         {/* Main Content */}
-        <main>
+        <main role="main" id="main-content">
           <article className="bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl border border-white/50 overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-[400px,1fr] gap-0">
               {/* Image Section */}

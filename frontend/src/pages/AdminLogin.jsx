@@ -39,14 +39,15 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-amber-50 via-emerald-50 to-teal-50 p-3 sm:p-6">
       {/* Skip to main content link */}
-      <a 
-        href="#login-form" 
+      <a
+        href="#login-form"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded focus:font-medium"
       >
         Skip to login form
       </a>
-      
-      <form onSubmit={submit} id="login-form" className="bg-white/90 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-xl border border-white/50 w-full max-w-sm space-y-4" role="main">
+
+      <main role="main" id="main-content">
+        <form onSubmit={submit} id="login-form" className="bg-white/90 backdrop-blur-sm p-6 sm:p-8 rounded-2xl shadow-xl border border-white/50 w-full max-w-sm space-y-4">
         <header className="text-center mb-6">
           <h1 className="text-2xl sm:text-3xl font-bold bg-linear-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-2">
             Staff Login
@@ -111,6 +112,7 @@ export default function AdminLogin() {
           </button>
         </div>
       </form>
+      </main>
     </div>
   );
 }

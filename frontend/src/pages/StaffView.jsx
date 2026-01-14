@@ -135,7 +135,7 @@ function StaffViewContent() {
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} tabs={tabs} />
 
       {/* Tab Content */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
+      <main role="main" id="main-content" className="max-w-7xl mx-auto px-4 py-6">
         {renderTabContent()}
       </main>
 

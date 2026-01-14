@@ -350,7 +350,9 @@ export default function PublicCatalogue() {
       <SkipNav />
       <LiveRegion message={announcement} />
 
-      <div className="container mx-auto px-4 py-4 sm:py-8">
+      <main role="main" id="main-content" className="container mx-auto px-4 py-4 sm:py-8">
+        {/* Screen-reader-only h1 - always present for accessibility */}
+        <h1 className="sr-only">Mana & Meeples Board Game Library</h1>
 
         {/* Header */}
         <div className="mb-4">
@@ -378,9 +380,9 @@ export default function PublicCatalogue() {
               />
             </a>
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-4xl font-bold bg-linear-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-1">
+              <p className="text-2xl sm:text-4xl font-bold bg-linear-to-r from-emerald-700 via-teal-600 to-amber-600 bg-clip-text text-transparent mb-1" aria-hidden="true">
                 Mana & Meeples
-              </h1>
+              </p>
               <p className="text-sm sm:text-lg text-slate-600 mb-0.5">
                 Timaru's Board Game Community
               </p>
@@ -461,8 +463,6 @@ export default function PublicCatalogue() {
           </section>
         </header>
         </div>
-
-        <main id="main-content">
 
           {/* Mobile Sticky Toolbar */}
           <div ref={toolbarRef} className="md:hidden sticky top-0 z-40 mb-4">
@@ -847,7 +847,6 @@ export default function PublicCatalogue() {
               )}
             </>
           )}
-        </main>
 
         {/* Scroll to Top Button */}
         {showScrollTop && (
@@ -876,7 +875,7 @@ export default function PublicCatalogue() {
           isOpen={isHelpModalOpen}
           onClose={() => setIsHelpModalOpen(false)}
         />
-      </div>
+      </main>
     </div>
   );
 }

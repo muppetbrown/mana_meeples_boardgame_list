@@ -1,4 +1,5 @@
 import React from "react";
+import "./SkipNav.css";
 
 /**
  * Skip Navigation Links
@@ -17,38 +18,6 @@ export default function SkipNav() {
       <a href="#category-filters" className="skip-link">
         Skip to filters
       </a>
-      <style jsx>{`
-        .skip-nav {
-          position: relative;
-          z-index: 9999;
-        }
-
-        .skip-link {
-          position: absolute;
-          top: -100px;
-          left: 8px;
-          z-index: 10000;
-          padding: 12px 24px;
-          background-color: #7c3aed;
-          color: white;
-          text-decoration: none;
-          font-weight: 600;
-          font-size: 1rem;
-          border-radius: 4px;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-          transition: top 0.3s ease;
-        }
-
-        .skip-link:focus {
-          top: 8px;
-          outline: 3px solid #fbbf24;
-          outline-offset: 2px;
-        }
-
-        .skip-link:hover:focus {
-          background-color: #6d28d9;
-        }
-      `}</style>
     </div>
   );
 }
