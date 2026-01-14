@@ -43,8 +43,9 @@ from utils.jwt_utils import generate_jwt_token
 from database import get_db
 from exceptions import GameNotFoundError, ValidationError
 import schemas
+from models import Game, BuyListGame, PriceSnapshot, PriceOffer, Sleeve
 from services import GameService, ImageService
-from shared.rate_limiting import rate_limit_tracker
+from shared.rate_limiting import rate_limit_tracker, cleanup_expired_attempts, record_failed_attempt
 from utils.helpers import game_to_dict
 
 logger = logging.getLogger(__name__)
@@ -67,19 +68,10 @@ async def admin_login(
     JWT tokens are stateless and persist across server restarts.
     """
     client_ip = get_client_ip(request)
-    current_time = time.time()
 
-    # Clean old attempts from tracker
-    cutoff_time = current_time - RATE_LIMIT_WINDOW
-    attempts = rate_limit_tracker.get_attempts(client_ip)
-    attempts = [
-        attempt_time
-        for attempt_time in attempts
-        if attempt_time > cutoff_time
-    ]
-
-    # Check if rate limited
-    if len(attempts) >= RATE_LIMIT_ATTEMPTS:
+    # Check if rate limited (cleanup expired attempts and get current count)
+    attempt_count = cleanup_expired_attempts(client_ip, RATE_LIMIT_WINDOW)
+    if attempt_count >= RATE_LIMIT_ATTEMPTS:
         logger.warning(f"Rate limited admin login attempts from {client_ip}")
         raise HTTPException(
             status_code=429,
@@ -88,8 +80,7 @@ async def admin_login(
 
     # Validate admin token
     if not ADMIN_TOKEN or credentials.token != ADMIN_TOKEN:
-        attempts.append(current_time)
-        rate_limit_tracker.set_attempts(client_ip, attempts, RATE_LIMIT_WINDOW)
+        record_failed_attempt(client_ip, RATE_LIMIT_WINDOW)
         logger.warning(f"Invalid admin login attempt from {client_ip}")
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
@@ -436,11 +427,11 @@ async def fix_sequence(
 
         # Map table names to model classes for type-safe queries
         table_models = {
-            "boardgames": __import__('models', fromlist=['Game']).Game,
-            "buy_list_games": __import__('models', fromlist=['BuyListGame']).BuyListGame,
-            "price_snapshots": __import__('models', fromlist=['PriceSnapshot']).PriceSnapshot,
-            "price_offers": __import__('models', fromlist=['PriceOffer']).PriceOffer,
-            "sleeves": __import__('models', fromlist=['Sleeve']).Sleeve,
+            "boardgames": Game,
+            "buy_list_games": BuyListGame,
+            "price_snapshots": PriceSnapshot,
+            "price_offers": PriceOffer,
+            "sleeves": Sleeve,
         }
 
         if table_name not in table_models:

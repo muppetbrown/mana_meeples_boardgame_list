@@ -23,6 +23,8 @@ from shared.rate_limiting import (
     admin_sessions,  # Legacy - for backward compatibility
     session_storage,  # New Redis-backed storage
     rate_limit_tracker,  # New Redis-backed tracker
+    cleanup_expired_attempts,  # Utility to cleanup expired rate limit attempts
+    record_failed_attempt,  # Utility to record failed auth attempts
 )
 from utils.jwt_utils import verify_jwt_token, extract_token_from_header
 
@@ -138,17 +140,9 @@ def require_admin_auth(
     # 2. Fall back to direct admin token header (for backward compatibility)
     # Sprint 8: Use Redis-backed rate limiting (unless disabled for testing)
     if not DISABLE_RATE_LIMITING:
-        current_time = time.time()
-
-        # Get current attempts from Redis-backed tracker
-        attempts = rate_limit_tracker.get_attempts(client_ip)
-
-        # Clean old attempts from tracker
-        cutoff_time = current_time - RATE_LIMIT_WINDOW
-        attempts = [attempt_time for attempt_time in attempts if attempt_time > cutoff_time]
-
-        # Check if rate limited
-        if len(attempts) >= RATE_LIMIT_ATTEMPTS:
+        # Check if rate limited (cleanup expired attempts and get current count)
+        attempt_count = cleanup_expired_attempts(client_ip, RATE_LIMIT_WINDOW)
+        if attempt_count >= RATE_LIMIT_ATTEMPTS:
             logger.warning(f"Rate limited admin token attempts from {client_ip}")
             raise HTTPException(
                 status_code=429,
@@ -161,11 +155,6 @@ def require_admin_auth(
     # Validate direct admin token (using constant-time comparison to prevent timing attacks)
     if not ADMIN_TOKEN or not secrets.compare_digest(x_admin_token or "", ADMIN_TOKEN):
         if not DISABLE_RATE_LIMITING:
-            current_time = time.time()
-            attempts = rate_limit_tracker.get_attempts(client_ip)
-            cutoff_time = current_time - RATE_LIMIT_WINDOW
-            attempts = [attempt_time for attempt_time in attempts if attempt_time > cutoff_time]
-            attempts.append(current_time)
-            rate_limit_tracker.set_attempts(client_ip, attempts, RATE_LIMIT_WINDOW)
+            record_failed_attempt(client_ip, RATE_LIMIT_WINDOW)
         logger.warning(f"Invalid admin token attempt from {client_ip}")
         raise HTTPException(status_code=401, detail="Invalid admin token")

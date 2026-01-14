@@ -43,6 +43,7 @@ from middleware.logging import RequestLoggingMiddleware
 from middleware.security import SecurityHeadersMiddleware
 from middleware.cache import APICacheControlMiddleware
 from middleware.csrf_protection import OriginValidationMiddleware
+from middleware.request_id import RequestIDMiddleware
 
 # ------------------------------------------------------------------------------
 # Sentry initialization (Sprint 5: Enhanced with custom filtering)
@@ -493,6 +494,7 @@ logger.info(f"CORS origins configured: {cors_origins}")
 app.add_middleware(RequestLoggingMiddleware)
 app.add_middleware(CacheThumbsMiddleware)
 app.add_middleware(APICacheControlMiddleware)
+app.add_middleware(RequestIDMiddleware)  # Request ID propagation for distributed tracing
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(OriginValidationMiddleware)  # CSRF protection via Origin/Referer validation
 
@@ -514,6 +516,7 @@ app.add_middleware(
         "content-length",
         "content-type",
         "x-total-count",
+        "x-request-id",  # Request ID for distributed tracing
         "access-control-allow-origin",
         "access-control-allow-credentials",
     ],

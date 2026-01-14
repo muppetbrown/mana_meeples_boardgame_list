@@ -212,18 +212,20 @@ Advanced BGG image quality enhancement in `imageProxyUrl()`:
 - **Provider**: Render PostgreSQL (Singapore region)
 - **Database**: `tcg_singles`
 - **Table**: `boardgames` (migrated from SQLite November 2025)
-- **Connection pooling**: QueuePool with 5 permanent connections, 10 overflow
+- **Connection pooling**: QueuePool with 15 permanent connections, 20 overflow
 - **Health checks**: Pool pre-ping enabled for connection validation
 - **Driver**: psycopg2-binary 2.9.9
 
 **Connection Pool Settings** (database.py):
 ```python
-pool_size=5          # Permanent connections
-max_overflow=10      # Additional connections when busy
+pool_size=15         # Permanent connections (default)
+max_overflow=20      # Additional connections when busy (default)
 pool_timeout=30      # Wait time for available connection
-pool_recycle=3600    # Recycle connections hourly
+pool_recycle=900     # Recycle connections every 15 min (conservative for cloud PostgreSQL)
 pool_pre_ping=True   # Test connections before use
 ```
+
+**Note**: The 15-minute recycle interval is conservative for cloud PostgreSQL services (like Render or AWS RDS) which may have shorter idle connection timeouts. This prevents stale connections while avoiding excessive reconnection overhead.
 
 **Deployment with Render Blueprint**:
 - **File**: `render.yaml` - Infrastructure as code configuration

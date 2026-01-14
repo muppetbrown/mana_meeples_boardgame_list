@@ -154,7 +154,7 @@ CACHE_FRESH_THRESHOLD = float(os.getenv("CACHE_FRESH_THRESHOLD", "0.9"))  # 90% 
 DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "15"))  # Permanent connections
 DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))  # Burst capacity
 DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))  # Connection wait timeout
-DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "1800"))  # Recycle every 30 min (prevent stale connections)
+DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "900"))  # Recycle every 15 min (conservative for cloud PostgreSQL like Render)
 
 # Slow query threshold for logging (Performance Monitoring)
 SLOW_QUERY_THRESHOLD_SECONDS = float(os.getenv("SLOW_QUERY_THRESHOLD_SECONDS", "1.0"))

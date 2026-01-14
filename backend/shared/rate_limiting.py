@@ -250,6 +250,66 @@ class RateLimitTracker:
 
 
 # ============================================================================
+# ============================================================================
+# Utility Functions
+# ============================================================================
+
+def cleanup_expired_attempts(client_ip: str, window_seconds: int) -> int:
+    """
+    Remove rate limit attempts older than the window and return current count.
+
+    This utility function consolidates the duplicated rate limit cleanup logic
+    that appears in multiple places (admin_login, require_admin_auth).
+
+    Args:
+        client_ip: Client IP address
+        window_seconds: Rate limit window in seconds
+
+    Returns:
+        Number of valid (non-expired) attempts
+    """
+    import time
+
+    current_time = time.time()
+    cutoff_time = current_time - window_seconds
+
+    # Get current attempts
+    attempts = rate_limit_tracker.get_attempts(client_ip)
+
+    # Filter out expired attempts
+    valid_attempts = [attempt_time for attempt_time in attempts if attempt_time > cutoff_time]
+
+    # Update tracker with cleaned list
+    rate_limit_tracker.set_attempts(client_ip, valid_attempts, window_seconds)
+
+    return len(valid_attempts)
+
+
+def record_failed_attempt(client_ip: str, window_seconds: int) -> None:
+    """
+    Record a failed authentication attempt for rate limiting.
+
+    Args:
+        client_ip: Client IP address
+        window_seconds: Rate limit window in seconds
+    """
+    import time
+
+    current_time = time.time()
+    cutoff_time = current_time - window_seconds
+
+    # Get and clean current attempts
+    attempts = rate_limit_tracker.get_attempts(client_ip)
+    valid_attempts = [attempt_time for attempt_time in attempts if attempt_time > cutoff_time]
+
+    # Add new attempt
+    valid_attempts.append(current_time)
+
+    # Update tracker
+    rate_limit_tracker.set_attempts(client_ip, valid_attempts, window_seconds)
+
+
+# ============================================================================
 # Global instances
 # ============================================================================
 
