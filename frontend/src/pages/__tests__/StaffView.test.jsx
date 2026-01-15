@@ -212,8 +212,6 @@ describe('StaffView Page', () => {
 
   describe('Logout functionality', () => {
     test('shows confirmation dialog when logout clicked', async () => {
-
-
       window.confirm = vi.fn(() => false);
 
       render(
@@ -245,6 +243,198 @@ describe('StaffView Page', () => {
 
       // Note: Navigation testing is limited in this setup
       // Real navigation would be tested in E2E tests
+    });
+
+    test('does not navigate when logout cancelled', async () => {
+      window.confirm = vi.fn(() => false);
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      const logoutButton = screen.getByRole('button', { name: /logout/i });
+      await userEvent.click(logoutButton);
+
+      // Should still be on staff view
+      expect(screen.getByText(/Mana & Meeples — Admin Panel/i)).toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Accessibility', () => {
+    test('has accessible main landmark', () => {
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByRole('main')).toBeInTheDocument();
+    });
+
+    test('main content has correct ID for skip links', () => {
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      const main = screen.getByRole('main');
+      expect(main).toHaveAttribute('id', 'main-content');
+    });
+
+    test('header has sticky positioning for navigation', () => {
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      const header = screen.getByRole('banner');
+      expect(header).toHaveClass('sticky');
+    });
+
+    test('all tabs are keyboard accessible buttons', () => {
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      const tabButtons = screen.getAllByRole('button');
+      // Should have tab buttons plus logout button
+      expect(tabButtons.length).toBeGreaterThan(1);
+    });
+  });
+
+  describe('Validating state', () => {
+    test('shows loading spinner when validating', () => {
+      // Temporarily override the mock to show validating state
+      const originalIsValidating = mockStaffContext.isValidating;
+      mockStaffContext.isValidating = true;
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByText(/Validating credentials/i)).toBeInTheDocument();
+
+      // Restore original value
+      mockStaffContext.isValidating = originalIsValidating;
+    });
+  });
+
+  describe('Stats display variations', () => {
+    test('displays N/A for average rating when no rated games', () => {
+      const originalStats = { ...mockStaffContext.stats };
+      mockStaffContext.stats = { total: 10, avgRating: 'N/A' };
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByText(/N\/A/)).toBeInTheDocument();
+
+      mockStaffContext.stats = originalStats;
+    });
+
+    test('displays zero for empty library', () => {
+      const originalStats = { ...mockStaffContext.stats };
+      mockStaffContext.stats = { total: 0, avgRating: 'N/A' };
+
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      expect(screen.getByText(/0/)).toBeInTheDocument();
+
+      mockStaffContext.stats = originalStats;
+    });
+  });
+
+  describe('Tab content switching', () => {
+    test('shows only one tab content at a time', async () => {
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+
+      // Initially shows dashboard
+      expect(screen.getByText('Dashboard Tab')).toBeInTheDocument();
+      expect(screen.queryByText('Add Games Tab')).not.toBeInTheDocument();
+
+      // Switch to add games
+      const addGamesTab = screen.getByRole('button', { name: /add games/i });
+      await userEvent.click(addGamesTab);
+
+      await screen.findByText('Add Games Tab');
+      expect(screen.queryByText('Dashboard Tab')).not.toBeInTheDocument();
+    });
+
+    test('defaults to dashboard for unknown tab', async () => {
+      render(
+        <MemoryRouter initialEntries={['/staff?tab=nonexistent']}>
+          <StaffView />
+        </MemoryRouter>
+      );
+
+      await screen.findByText('Dashboard Tab');
+      expect(screen.getByText('Dashboard Tab')).toBeInTheDocument();
+    });
+  });
+
+  describe('URL parameter tests', () => {
+    test('loads categories tab from URL', async () => {
+      render(
+        <MemoryRouter initialEntries={['/staff?tab=categories']}>
+          <StaffView />
+        </MemoryRouter>
+      );
+
+      await screen.findByText('Categories Tab');
+      expect(screen.getByText('Categories Tab')).toBeInTheDocument();
+    });
+
+    test('loads manage-library tab from URL', async () => {
+      render(
+        <MemoryRouter initialEntries={['/staff?tab=manage-library']}>
+          <StaffView />
+        </MemoryRouter>
+      );
+
+      await screen.findByText('Manage Library Tab');
+      expect(screen.getByText('Manage Library Tab')).toBeInTheDocument();
+    });
+
+    test('loads buy-list tab from URL', async () => {
+      render(
+        <MemoryRouter initialEntries={['/staff?tab=buy-list']}>
+          <StaffView />
+        </MemoryRouter>
+      );
+
+      await screen.findByText('Buy List Tab');
+      expect(screen.getByText('Buy List Tab')).toBeInTheDocument();
+    });
+
+    test('loads advanced tab from URL', async () => {
+      render(
+        <MemoryRouter initialEntries={['/staff?tab=advanced']}>
+          <StaffView />
+        </MemoryRouter>
+      );
+
+      await screen.findByText('Advanced Tools Tab');
+      expect(screen.getByText('Advanced Tools Tab')).toBeInTheDocument();
     });
   });
 });
