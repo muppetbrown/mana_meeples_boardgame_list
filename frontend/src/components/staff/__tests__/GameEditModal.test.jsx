@@ -64,10 +64,11 @@ describe('GameEditModal', () => {
 
     test('renders all four tab buttons', () => {
       render(<GameEditModal {...defaultProps} />);
-      expect(screen.getByText(/Category/)).toBeInTheDocument();
-      expect(screen.getByText(/Expansion/)).toBeInTheDocument();
-      expect(screen.getByText(/Sleeves/)).toBeInTheDocument();
-      expect(screen.getByText(/AfterGame/)).toBeInTheDocument();
+      // Tab buttons contain emoji prefixes
+      expect(screen.getByRole('button', { name: /📑 Category/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /🎯 Expansion/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /🃏 Sleeves/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /🎲 AfterGame/i })).toBeInTheDocument();
     });
 
     test('renders Cancel and Save buttons', () => {
@@ -103,7 +104,7 @@ describe('GameEditModal', () => {
 
     test('active tab has visual distinction', () => {
       render(<GameEditModal {...defaultProps} />);
-      const categoryTab = screen.getByText(/Category/).closest('button');
+      const categoryTab = screen.getByRole('button', { name: /📑 Category/i });
       expect(categoryTab).toHaveClass('text-purple-600');
     });
   });
@@ -160,15 +161,18 @@ describe('GameEditModal', () => {
     });
 
     test('expansion type dropdown has three options', () => {
-      render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/Expansion/));
+      const { container } = render(<GameEditModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /🎯 Expansion/i }));
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       fireEvent.click(checkbox);
 
-      const select = screen.getByRole('combobox', { name: '' });
-      expect(select.querySelector('option[value="requires_base"]')).toBeInTheDocument();
-      expect(select.querySelector('option[value="standalone"]')).toBeInTheDocument();
-      expect(select.querySelector('option[value="both"]')).toBeInTheDocument();
+      // Find the select element by its label text
+      const selects = container.querySelectorAll('select');
+      const expansionTypeSelect = selects[0]; // First select is expansion type
+      expect(expansionTypeSelect).toBeInTheDocument();
+      expect(expansionTypeSelect.querySelector('option[value="requires_base"]')).toBeInTheDocument();
+      expect(expansionTypeSelect.querySelector('option[value="standalone"]')).toBeInTheDocument();
+      expect(expansionTypeSelect.querySelector('option[value="both"]')).toBeInTheDocument();
     });
 
     test('base game dropdown shows only non-expansions (excluding current game)', () => {

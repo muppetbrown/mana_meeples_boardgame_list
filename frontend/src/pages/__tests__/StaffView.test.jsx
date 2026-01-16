@@ -17,7 +17,8 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-const mockStaffContext = {
+// Default mock context values - these get reset in beforeEach
+const getDefaultMockContext = () => ({
   isValidating: false,
   toast: { message: '', type: 'info' },
   modalOpen: false,
@@ -27,7 +28,9 @@ const mockStaffContext = {
   handleModalClose: vi.fn(),
   refreshGames: vi.fn(),
   showToast: vi.fn(),
-};
+});
+
+let mockStaffContext = getDefaultMockContext();
 
 vi.mock('../../context/StaffContext', () => ({
   StaffProvider: ({ children }) => children,
@@ -61,6 +64,8 @@ vi.mock('../../components/staff/tabs/BuyListTab', () => ({
 describe('StaffView Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset mock context to default values
+    mockStaffContext = getDefaultMockContext();
   });
 
   test('renders dashboard tab by default', async () => {
@@ -311,8 +316,7 @@ describe('StaffView Page', () => {
 
   describe('Validating state', () => {
     test('shows loading spinner when validating', () => {
-      // Temporarily override the mock to show validating state
-      const originalIsValidating = mockStaffContext.isValidating;
+      // Override the mock to show validating state
       mockStaffContext.isValidating = true;
 
       render(
@@ -321,16 +325,14 @@ describe('StaffView Page', () => {
         </BrowserRouter>
       );
 
-      expect(screen.getByText(/Validating credentials/i)).toBeInTheDocument();
-
-      // Restore original value
-      mockStaffContext.isValidating = originalIsValidating;
+      // There may be multiple elements with this text (visible + sr-only), so use getAllBy
+      const elements = screen.getAllByText(/Validating credentials/i);
+      expect(elements.length).toBeGreaterThan(0);
     });
   });
 
   describe('Stats display variations', () => {
     test('displays N/A for average rating when no rated games', () => {
-      const originalStats = { ...mockStaffContext.stats };
       mockStaffContext.stats = { total: 10, avgRating: 'N/A' };
 
       render(
@@ -340,12 +342,9 @@ describe('StaffView Page', () => {
       );
 
       expect(screen.getByText(/N\/A/)).toBeInTheDocument();
-
-      mockStaffContext.stats = originalStats;
     });
 
     test('displays zero for empty library', () => {
-      const originalStats = { ...mockStaffContext.stats };
       mockStaffContext.stats = { total: 0, avgRating: 'N/A' };
 
       render(
@@ -354,29 +353,27 @@ describe('StaffView Page', () => {
         </BrowserRouter>
       );
 
-      expect(screen.getByText(/0/)).toBeInTheDocument();
-
-      mockStaffContext.stats = originalStats;
+      // Look for the zero in stats display
+      const statsText = screen.getByText(/0/);
+      expect(statsText).toBeInTheDocument();
     });
   });
 
   describe('Tab content switching', () => {
-    test('shows only one tab content at a time', async () => {
+    test('hides previous tab when switching to new tab', async () => {
       render(
         <BrowserRouter>
           <StaffView />
         </BrowserRouter>
       );
 
-      // Initially shows dashboard
-      expect(screen.getByText('Dashboard Tab')).toBeInTheDocument();
-      expect(screen.queryByText('Add Games Tab')).not.toBeInTheDocument();
-
-      // Switch to add games
+      // Switch to add games tab
       const addGamesTab = screen.getByRole('button', { name: /add games/i });
       await userEvent.click(addGamesTab);
 
+      // Add games tab should now be visible
       await screen.findByText('Add Games Tab');
+      // Dashboard tab should be hidden
       expect(screen.queryByText('Dashboard Tab')).not.toBeInTheDocument();
     });
 

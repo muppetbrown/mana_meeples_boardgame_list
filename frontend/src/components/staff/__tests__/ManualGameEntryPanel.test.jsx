@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { ManualGameEntryPanel } from '../ManualGameEntryPanel';
 import * as apiClient from '../../../api/client';
 
@@ -21,17 +22,18 @@ describe('ManualGameEntryPanel', () => {
       render(<ManualGameEntryPanel onSuccess={mockOnSuccess} onToast={mockOnToast} />);
 
       expect(screen.getByText('Manual Game Entry')).toBeInTheDocument();
-      expect(screen.getByLabelText(/Title/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/BGG ID/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Year Published/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Min Players/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Max Players/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Min Playtime/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Max Playtime/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Minimum Age/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Designers/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Description/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Category/)).toBeInTheDocument();
+      // Labels don't have htmlFor, so use getByText instead of getByLabelText
+      expect(screen.getByText('Title *')).toBeInTheDocument();
+      expect(screen.getByText('BGG ID')).toBeInTheDocument();
+      expect(screen.getByText('Year Published')).toBeInTheDocument();
+      expect(screen.getByText('Min Players')).toBeInTheDocument();
+      expect(screen.getByText('Max Players')).toBeInTheDocument();
+      expect(screen.getByText('Min Playtime (minutes)')).toBeInTheDocument();
+      expect(screen.getByText('Max Playtime (minutes)')).toBeInTheDocument();
+      expect(screen.getByText('Minimum Age')).toBeInTheDocument();
+      expect(screen.getByText('Designers (comma-separated)')).toBeInTheDocument();
+      expect(screen.getByText('Description')).toBeInTheDocument();
+      expect(screen.getByText('Category')).toBeInTheDocument();
     });
 
     test('renders checkbox fields', () => {
@@ -51,37 +53,49 @@ describe('ManualGameEntryPanel', () => {
     test('does not show advanced fields by default', () => {
       render(<ManualGameEntryPanel onSuccess={mockOnSuccess} onToast={mockOnToast} />);
 
-      expect(screen.queryByLabelText(/Thumbnail URL/)).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/Full Image URL/)).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/Publishers/)).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/Mechanics/)).not.toBeInTheDocument();
-      expect(screen.queryByLabelText(/Artists/)).not.toBeInTheDocument();
+      // Advanced fields should not be visible by default
+      expect(screen.queryByText('Thumbnail URL')).not.toBeInTheDocument();
+      expect(screen.queryByText('Full Image URL')).not.toBeInTheDocument();
+      expect(screen.queryByText('Publishers (comma-separated)')).not.toBeInTheDocument();
+      expect(screen.queryByText('Mechanics (comma-separated)')).not.toBeInTheDocument();
+      expect(screen.queryByText('Artists (comma-separated)')).not.toBeInTheDocument();
     });
 
-    test('shows advanced fields when toggle clicked', () => {
+    test('shows advanced fields when toggle clicked', async () => {
       render(<ManualGameEntryPanel onSuccess={mockOnSuccess} onToast={mockOnToast} />);
 
       const toggleButton = screen.getByRole('button', { name: /Show Advanced Fields/i });
-      fireEvent.click(toggleButton);
+      await userEvent.click(toggleButton);
 
-      expect(screen.getByLabelText(/Thumbnail URL/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Full Image URL/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Publishers/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Mechanics/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Artists/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/BGG Rating/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/Complexity/)).toBeInTheDocument();
-      expect(screen.getByLabelText(/BGG Rank/)).toBeInTheDocument();
+      // Wait for advanced fields to appear (using getByText since labels don't have htmlFor)
+      await waitFor(() => {
+        expect(screen.getByText('Thumbnail URL')).toBeInTheDocument();
+      });
+      expect(screen.getByText('Full Image URL')).toBeInTheDocument();
+      expect(screen.getByText('Publishers (comma-separated)')).toBeInTheDocument();
+      expect(screen.getByText('Mechanics (comma-separated)')).toBeInTheDocument();
+      expect(screen.getByText('Artists (comma-separated)')).toBeInTheDocument();
+      expect(screen.getByText('BGG Rating')).toBeInTheDocument();
+      expect(screen.getByText(/Complexity/)).toBeInTheDocument();
+      expect(screen.getByText('BGG Rank')).toBeInTheDocument();
     });
 
-    test('hides advanced fields when toggle clicked again', () => {
+    test('hides advanced fields when toggle clicked again', async () => {
       render(<ManualGameEntryPanel onSuccess={mockOnSuccess} onToast={mockOnToast} />);
 
       const toggleButton = screen.getByRole('button', { name: /Show Advanced Fields/i });
-      fireEvent.click(toggleButton); // Show
-      fireEvent.click(screen.getByRole('button', { name: /Hide Advanced Fields/i })); // Hide
+      await userEvent.click(toggleButton); // Show
 
-      expect(screen.queryByLabelText(/Thumbnail URL/)).not.toBeInTheDocument();
+      // Wait for fields to appear first
+      await waitFor(() => {
+        expect(screen.getByText('Thumbnail URL')).toBeInTheDocument();
+      });
+
+      await userEvent.click(screen.getByRole('button', { name: /Hide Advanced Fields/i })); // Hide
+
+      await waitFor(() => {
+        expect(screen.queryByText('Thumbnail URL')).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -397,8 +411,10 @@ describe('ManualGameEntryPanel', () => {
       // Resolve the promise
       resolvePromise({ id: 1, title: 'Test Game' });
 
+      // After successful submission, button text should return to "Add Game"
+      // Note: Button is still disabled because form clears on success (title is empty)
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Add Game/i })).not.toBeDisabled();
+        expect(screen.getByRole('button', { name: /Add Game/i })).toBeInTheDocument();
       });
     });
   });

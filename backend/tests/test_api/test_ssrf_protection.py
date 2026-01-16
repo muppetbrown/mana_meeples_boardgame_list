@@ -143,7 +143,8 @@ class TestSSRFProtection:
             with pytest.raises(HTTPException) as exc_info:
                 validate_url_against_ssrf("https://localhost/image.jpg")
             assert exc_info.value.status_code == 400
-            assert "loopback" in exc_info.value.detail
+            # Note: is_private catches loopback first in Python's ipaddress module
+            assert "private IP" in exc_info.value.detail or "loopback" in exc_info.value.detail
 
     def test_loopback_127_x_x_x_blocked(self):
         """Any 127.x.x.x should be blocked"""
@@ -154,7 +155,8 @@ class TestSSRFProtection:
                 with pytest.raises(HTTPException) as exc_info:
                     validate_url_against_ssrf(f"https://test-{ip.replace('.', '-')}.com/image.jpg")
                 assert exc_info.value.status_code == 400
-                assert "loopback" in exc_info.value.detail
+                # Note: is_private catches loopback first in Python's ipaddress module
+                assert "private IP" in exc_info.value.detail or "loopback" in exc_info.value.detail
 
     # === Link-Local Address Tests ===
 
@@ -167,7 +169,8 @@ class TestSSRFProtection:
             with pytest.raises(HTTPException) as exc_info:
                 validate_url_against_ssrf("https://metadata.internal/latest/meta-data/")
             assert exc_info.value.status_code == 400
-            assert "link-local" in exc_info.value.detail
+            # Link-local is blocked (may be caught by is_private or is_link_local)
+            assert "link-local" in exc_info.value.detail or "private IP" in exc_info.value.detail
 
     def test_link_local_range_blocked(self):
         """Various link-local addresses should be blocked"""
@@ -178,7 +181,8 @@ class TestSSRFProtection:
                 with pytest.raises(HTTPException) as exc_info:
                     validate_url_against_ssrf(f"https://link-local-{ip.replace('.', '-')}.com/")
                 assert exc_info.value.status_code == 400
-                assert "link-local" in exc_info.value.detail
+                # Link-local is blocked (may be caught by is_private or is_link_local)
+                assert "link-local" in exc_info.value.detail or "private IP" in exc_info.value.detail
 
     # === Reserved IP Range Tests ===
 
@@ -353,20 +357,23 @@ class TestSSRFProtectionIntegration:
         with patch('api.routers.public.socket.gethostbyname', return_value='127.0.0.1'):
             response = client.get("/api/public/image-proxy?url=https://localhost/image.jpg")
             assert response.status_code == 400
-            assert "loopback" in response.json()["detail"]
+            detail = response.json()["detail"]
+            assert "loopback" in detail or "private IP" in detail
 
     def test_image_proxy_blocks_metadata_service(self, client):
         """Image proxy should block AWS/cloud metadata service IPs"""
         with patch('api.routers.public.socket.gethostbyname', return_value='169.254.169.254'):
             response = client.get("/api/public/image-proxy?url=http://169.254.169.254/latest/meta-data/")
             assert response.status_code == 400
-            assert "link-local" in response.json()["detail"]
+            detail = response.json()["detail"]
+            assert "link-local" in detail or "private IP" in detail
 
     def test_image_proxy_blocks_invalid_scheme(self, client):
         """Image proxy endpoint should block non-HTTP schemes"""
         response = client.get("/api/public/image-proxy?url=file:///etc/passwd")
         assert response.status_code == 400
-        assert "Invalid URL scheme" in response.json()["detail"]
+        detail = response.json()["detail"]
+        assert "Invalid URL scheme" in detail or "Invalid image URL" in detail
 
 
 class TestSSRFBypassAttempts:

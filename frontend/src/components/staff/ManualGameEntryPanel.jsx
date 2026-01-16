@@ -88,9 +88,9 @@ export function ManualGameEntryPanel({ onSuccess, onToast }) {
     return isNaN(parsed) ? null : parsed;
   };
 
-  const parseFloat = (value) => {
+  const parseFloatValue = (value) => {
     if (!value || !value.trim()) return null;
-    const parsed = parseFloat(value);
+    const parsed = Number.parseFloat(value);
     return isNaN(parsed) ? null : parsed;
   };
 
@@ -116,8 +116,8 @@ export function ManualGameEntryPanel({ onSuccess, onToast }) {
     if (formData.bgg_rank) payload.bgg_rank = parseInteger(formData.bgg_rank);
     if (formData.users_rated) payload.users_rated = parseInteger(formData.users_rated);
 
-    if (formData.average_rating) payload.average_rating = parseFloat(formData.average_rating);
-    if (formData.complexity) payload.complexity = parseFloat(formData.complexity);
+    if (formData.average_rating) payload.average_rating = parseFloatValue(formData.average_rating);
+    if (formData.complexity) payload.complexity = parseFloatValue(formData.complexity);
 
     // Text fields
     if (formData.description) payload.description = formData.description.trim();

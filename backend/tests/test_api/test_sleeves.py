@@ -384,3 +384,281 @@ class TestSleeveShoppingListEdgeCases:
         item = data[0]
         assert item["total_quantity"] == 50  # 2 unsleeved games * 25
         assert item["games_count"] == 2
+
+
+class TestUpdateSleeveStatus:
+    """Test PATCH /api/admin/sleeves/sleeve/{sleeve_id} endpoint"""
+
+    def test_update_sleeve_to_sleeved(self, client, db_session, admin_headers):
+        """Should mark a sleeve as sleeved"""
+        # Create game and sleeve
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.flush()
+
+        sleeve = Sleeve(
+            game_id=game.id, card_name="Standard", width_mm=63, height_mm=88,
+            quantity=50, is_sleeved=False
+        )
+        db_session.add(sleeve)
+        db_session.commit()
+
+        response = client.patch(
+            f"/api/admin/sleeves/sleeve/{sleeve.id}",
+            headers=admin_headers,
+            json={"is_sleeved": True}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] == True
+        assert data["sleeve_id"] == sleeve.id
+        assert data["is_sleeved"] == True
+
+        # Verify in database
+        db_session.refresh(sleeve)
+        assert sleeve.is_sleeved == True
+
+    def test_update_sleeve_to_unsleeved(self, client, db_session, admin_headers):
+        """Should mark a sleeved sleeve as unsleeved"""
+        # Create game and already sleeved sleeve
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.flush()
+
+        sleeve = Sleeve(
+            game_id=game.id, card_name="Standard", width_mm=63, height_mm=88,
+            quantity=50, is_sleeved=True
+        )
+        db_session.add(sleeve)
+        db_session.commit()
+
+        response = client.patch(
+            f"/api/admin/sleeves/sleeve/{sleeve.id}",
+            headers=admin_headers,
+            json={"is_sleeved": False}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["success"] == True
+        assert data["is_sleeved"] == False
+
+        # Verify in database
+        db_session.refresh(sleeve)
+        assert sleeve.is_sleeved == False
+
+    def test_update_nonexistent_sleeve(self, client, admin_headers):
+        """Should return 404 for nonexistent sleeve"""
+        response = client.patch(
+            "/api/admin/sleeves/sleeve/999999",
+            headers=admin_headers,
+            json={"is_sleeved": True}
+        )
+
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+
+    def test_update_sleeve_requires_auth(self, client, csrf_headers):
+        """Should require admin authentication"""
+        response = client.patch(
+            "/api/admin/sleeves/sleeve/1",
+            headers=csrf_headers,
+            json={"is_sleeved": True}
+        )
+
+        assert response.status_code == 401
+
+    def test_update_sleeve_missing_is_sleeved(self, client, db_session, admin_headers):
+        """Should fail when is_sleeved field is missing"""
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.flush()
+
+        sleeve = Sleeve(
+            game_id=game.id, card_name="Standard", width_mm=63, height_mm=88, quantity=50
+        )
+        db_session.add(sleeve)
+        db_session.commit()
+
+        response = client.patch(
+            f"/api/admin/sleeves/sleeve/{sleeve.id}",
+            headers=admin_headers,
+            json={}
+        )
+
+        assert response.status_code == 422  # Validation error
+
+    def test_update_sleeve_invalid_is_sleeved_type(self, client, db_session, admin_headers):
+        """Should fail when is_sleeved is not a boolean-coercible value"""
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.flush()
+
+        sleeve = Sleeve(
+            game_id=game.id, card_name="Standard", width_mm=63, height_mm=88, quantity=50
+        )
+        db_session.add(sleeve)
+        db_session.commit()
+
+        # Note: Pydantic coerces "yes", "true", "1", etc. to True
+        # We need a truly invalid value that can't be coerced
+        response = client.patch(
+            f"/api/admin/sleeves/sleeve/{sleeve.id}",
+            headers=admin_headers,
+            json={"is_sleeved": [1, 2, 3]}  # Array cannot be coerced to boolean
+        )
+
+        assert response.status_code == 422  # Validation error
+
+
+class TestSleeveShoppingListWithIndividualSleeveStatus:
+    """Test sleeve shopping list with individual sleeve is_sleeved status"""
+
+    def test_excludes_individually_sleeved_sleeves(self, client, db_session, admin_headers):
+        """Should exclude sleeve types marked as sleeved individually"""
+        # Create unsleeved game
+        game = Game(title="Test Game", bgg_id=12345, is_sleeved=False)
+        db_session.add(game)
+        db_session.flush()
+
+        # Add two sleeves - one sleeved, one unsleeved
+        sleeved_sleeve = Sleeve(
+            game_id=game.id, card_name="Sleeved Type", width_mm=63, height_mm=88,
+            quantity=50, is_sleeved=True
+        )
+        unsleeved_sleeve = Sleeve(
+            game_id=game.id, card_name="Unsleeved Type", width_mm=45, height_mm=68,
+            quantity=30, is_sleeved=False
+        )
+        db_session.add_all([sleeved_sleeve, unsleeved_sleeve])
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/sleeves/shopping-list",
+            headers=admin_headers,
+            json={"game_ids": [game.id]},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should only include unsleeved sleeve
+        assert len(data) == 1
+        assert data[0]["width_mm"] == 45
+        assert data[0]["height_mm"] == 68
+        assert data[0]["total_quantity"] == 30
+
+    def test_includes_sleeves_with_null_is_sleeved(self, client, db_session, admin_headers):
+        """Should include sleeves where is_sleeved is None"""
+        game = Game(title="Test Game", bgg_id=12345, is_sleeved=False)
+        db_session.add(game)
+        db_session.flush()
+
+        sleeve = Sleeve(
+            game_id=game.id, card_name="Standard", width_mm=63, height_mm=88,
+            quantity=50, is_sleeved=None
+        )
+        db_session.add(sleeve)
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/sleeves/shopping-list",
+            headers=admin_headers,
+            json={"game_ids": [game.id]},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+        assert data[0]["total_quantity"] == 50
+
+
+class TestSleeveResponseFormat:
+    """Test sleeve response format and fields"""
+
+    def test_sleeve_response_includes_all_fields(self, client, db_session, admin_headers):
+        """Should return all sleeve fields in response"""
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.flush()
+
+        sleeve = Sleeve(
+            game_id=game.id,
+            card_name="Standard Cards",
+            width_mm=63,
+            height_mm=88,
+            quantity=50,
+            notes="Test notes",
+            is_sleeved=True
+        )
+        db_session.add(sleeve)
+        db_session.commit()
+
+        response = client.get(
+            f"/api/admin/sleeves/game/{game.id}", headers=admin_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+
+        sleeve_data = data[0]
+        assert "id" in sleeve_data
+        assert "game_id" in sleeve_data
+        assert sleeve_data["card_name"] == "Standard Cards"
+        assert sleeve_data["width_mm"] == 63
+        assert sleeve_data["height_mm"] == 88
+        assert sleeve_data["quantity"] == 50
+        assert sleeve_data["notes"] == "Test notes"
+        assert sleeve_data["is_sleeved"] == True
+
+    def test_sleeve_response_with_null_notes(self, client, db_session, admin_headers):
+        """Should handle null notes correctly"""
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.flush()
+
+        sleeve = Sleeve(
+            game_id=game.id,
+            card_name="Standard",
+            width_mm=63,
+            height_mm=88,
+            quantity=50,
+            notes=None
+        )
+        db_session.add(sleeve)
+        db_session.commit()
+
+        response = client.get(
+            f"/api/admin/sleeves/game/{game.id}", headers=admin_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data[0]["notes"] is None
+
+    def test_sleeve_response_is_sleeved_defaults_to_false(self, client, db_session, admin_headers):
+        """Should default is_sleeved to False when null"""
+        game = Game(title="Test Game", bgg_id=12345)
+        db_session.add(game)
+        db_session.flush()
+
+        sleeve = Sleeve(
+            game_id=game.id,
+            width_mm=63,
+            height_mm=88,
+            quantity=50,
+            is_sleeved=None
+        )
+        db_session.add(sleeve)
+        db_session.commit()
+
+        response = client.get(
+            f"/api/admin/sleeves/game/{game.id}", headers=admin_headers
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        # Should default to False in response
+        assert data[0]["is_sleeved"] == False

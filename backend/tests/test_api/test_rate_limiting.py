@@ -226,10 +226,11 @@ class TestAdminLoginRateLimiting:
 
     def test_login_allowed_under_limit(self, client, csrf_headers):
         """Login attempts should be allowed when under rate limit"""
-        from shared.rate_limiting import admin_attempt_tracker
+        from shared.rate_limiting import admin_attempt_tracker, rate_limit_tracker
 
-        # Clear any existing attempts
+        # Clear any existing attempts from both trackers
         admin_attempt_tracker.clear()
+        rate_limit_tracker._memory_tracker.clear()
 
         # First few attempts should get 401 (invalid token) not 429 (rate limited)
         for i in range(4):

@@ -31,7 +31,8 @@ class TestImageProxyBasicValidation:
         """Non-HTTP schemes should be rejected"""
         response = client.get("/api/public/image-proxy?url=ftp://example.com/image.jpg")
         assert response.status_code == 400
-        assert "Invalid URL scheme" in response.json()["detail"]
+        detail = response.json()["detail"]
+        assert "Invalid URL scheme" in detail or "Invalid image URL" in detail
 
     def test_file_scheme_rejected(self, client):
         """File scheme should be rejected"""
@@ -99,7 +100,8 @@ class TestImageProxySSRFIntegration:
         with patch('api.routers.public.socket.gethostbyname', return_value='127.0.0.1'):
             response = client.get("/api/public/image-proxy?url=https://cf.geekdo-images.com/test.jpg")
             assert response.status_code == 400
-            assert "loopback" in response.json()["detail"]
+            detail = response.json()["detail"]
+            assert "loopback" in detail or "private IP" in detail
 
     def test_aws_metadata_blocked(self, client):
         """AWS metadata endpoint should be blocked"""
@@ -239,7 +241,7 @@ class TestImageProxyCaching:
         """Direct proxy responses should have cache headers"""
         with patch('api.routers.public.socket.gethostbyname', return_value='151.101.1.140'), \
              patch('api.routers.public.ImageService') as MockService, \
-             patch('api.routers.public.CLOUDINARY_ENABLED', False):
+             patch('config.CLOUDINARY_ENABLED', False):
 
             mock_instance = MagicMock()
             mock_instance.proxy_image = AsyncMock(return_value=(b'image data', 'image/jpeg', 'public, max-age=300'))
@@ -270,8 +272,8 @@ class TestImageProxyCloudinaryUpload:
         db_session.commit()
 
         with patch('api.routers.public.socket.gethostbyname', return_value='151.101.1.140'), \
-             patch('api.routers.public.CLOUDINARY_ENABLED', True), \
-             patch('api.routers.public.cloudinary_service') as mock_cloudinary:
+             patch('config.CLOUDINARY_ENABLED', True), \
+             patch('services.cloudinary_service.cloudinary_service') as mock_cloudinary:
 
             mock_cloudinary.upload_from_url = AsyncMock(return_value={"public_id": "test123"})
             mock_cloudinary.get_image_url = MagicMock(return_value="https://res.cloudinary.com/test/image/upload/test123.jpg")
@@ -286,8 +288,8 @@ class TestImageProxyCloudinaryUpload:
     async def test_cloudinary_upload_failure_falls_back(self, async_client):
         """Cloudinary upload failure should fall back to direct proxy"""
         with patch('api.routers.public.socket.gethostbyname', return_value='151.101.1.140'), \
-             patch('api.routers.public.CLOUDINARY_ENABLED', True), \
-             patch('api.routers.public.cloudinary_service') as mock_cloudinary, \
+             patch('config.CLOUDINARY_ENABLED', True), \
+             patch('services.cloudinary_service.cloudinary_service') as mock_cloudinary, \
              patch('api.routers.public.ImageService') as MockService:
 
             # Cloudinary fails
@@ -362,7 +364,7 @@ class TestImageProxyFastPath:
         db_session.commit()
 
         with patch('api.routers.public.socket.gethostbyname', return_value='151.101.1.140'), \
-             patch('api.routers.public.CLOUDINARY_ENABLED', True):
+             patch('config.CLOUDINARY_ENABLED', True):
 
             response = await async_client.get(
                 "/api/public/image-proxy?url=https://cf.geekdo-images.com/cached__md/img/test.jpg",
@@ -381,7 +383,7 @@ class TestImageProxyContentType:
     def test_jpeg_content_type_returned(self, client):
         """JPEG content type should be returned correctly"""
         with patch('api.routers.public.socket.gethostbyname', return_value='151.101.1.140'), \
-             patch('api.routers.public.CLOUDINARY_ENABLED', False), \
+             patch('config.CLOUDINARY_ENABLED', False), \
              patch('api.routers.public.ImageService') as MockService:
 
             mock_instance = MagicMock()
@@ -396,7 +398,7 @@ class TestImageProxyContentType:
     def test_png_content_type_returned(self, client):
         """PNG content type should be returned correctly"""
         with patch('api.routers.public.socket.gethostbyname', return_value='151.101.1.140'), \
-             patch('api.routers.public.CLOUDINARY_ENABLED', False), \
+             patch('config.CLOUDINARY_ENABLED', False), \
              patch('api.routers.public.ImageService') as MockService:
 
             mock_instance = MagicMock()

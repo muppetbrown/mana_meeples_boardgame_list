@@ -43,7 +43,10 @@
       "mcp__plugin_serena_serena__search_for_pattern",
       "Bash(alembic revision:*)",
       "Bash(where:*)",
-      "Bash(npm run test:*)"
+      "Bash(npm run test:*)",
+      "Bash(pip install:*)",
+      "mcp__plugin_serena_serena__get_symbols_overview",
+      "Bash(npm run test:coverage:*)"
     ]
   }
 }
