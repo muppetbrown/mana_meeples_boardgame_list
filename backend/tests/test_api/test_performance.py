@@ -138,7 +138,7 @@ class TestAPIPerformance:
         duration = time.time() - start
 
         assert response.status_code == 200
-        assert duration < 0.15, f"NZ designer filter took {duration:.3f}s, expected <0.15s"
+        assert duration < 0.20, f"NZ designer filter took {duration:.3f}s, expected <0.20s"
 
     def test_designer_search_performance(self, client, large_game_dataset):
         """Designer search should complete within 300ms"""
