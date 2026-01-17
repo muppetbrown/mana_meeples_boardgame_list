@@ -50,7 +50,12 @@
       "Bash(npm run test:ci:*)",
       "Bash(grep:*)",
       "Bash(xargs:*)",
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(taskkill /F /PID 28432)",
+      "Bash(pytest:*)"
     ]
   }
 }
