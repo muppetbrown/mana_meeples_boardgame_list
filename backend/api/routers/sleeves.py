@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from database import get_db
 from models import Game, Sleeve
@@ -22,6 +22,8 @@ class SleeveShoppingListItem(BaseModel):
     game_names: List[str]
 
 class SleeveResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     game_id: int
     card_name: str | None
@@ -30,9 +32,6 @@ class SleeveResponse(BaseModel):
     quantity: int
     notes: str | None
     is_sleeved: bool
-
-    class Config:
-        from_attributes = True
 
 @router.post("/shopping-list", dependencies=[Depends(require_admin_auth)])
 def generate_sleeve_shopping_list(
