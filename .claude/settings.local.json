@@ -49,7 +49,8 @@
       "Bash(npm run test:coverage:*)",
       "Bash(npm run test:ci:*)",
       "Bash(grep:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(wc:*)"
     ]
   }
 }
