@@ -32,11 +32,25 @@ def clear_cache():
     # Clear admin rate limit tracker to prevent 429 errors in tests
     admin_attempt_tracker.clear()
 
+    # Clear BGG rate limiter to prevent test pollution
+    try:
+        from bgg_service import bgg_rate_limiter
+        bgg_rate_limiter.requests.clear()
+    except ImportError:
+        pass  # bgg_service might not be imported yet
+
     yield
 
     # Clear again after test to ensure clean state
     clear_cache_func()
     admin_attempt_tracker.clear()
+
+    # Clear BGG rate limiter after test
+    try:
+        from bgg_service import bgg_rate_limiter
+        bgg_rate_limiter.requests.clear()
+    except ImportError:
+        pass
 
 
 @pytest.fixture(scope="function")
