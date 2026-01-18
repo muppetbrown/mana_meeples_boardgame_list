@@ -55,7 +55,8 @@
       "Bash(findstr:*)",
       "Bash(taskkill:*)",
       "Bash(taskkill /F /PID 28432)",
-      "Bash(pytest:*)"
+      "Bash(pytest:*)",
+      "Bash(npx vitest:*)"
     ]
   }
 }
