@@ -107,7 +107,11 @@ class ImageService:
         self, url: str, filename_prefix: str
     ) -> Optional[str]:
         """
-        Download thumbnail from URL and save to local storage.
+        DEPRECATED: Download thumbnail from URL and save to local storage.
+        
+        This method is deprecated. Cloudinary handles all image resizing on-demand.
+        Local thumbnail caching is no longer needed.
+        
         Uses exponential backoff retry for network errors.
 
         Args:
@@ -117,6 +121,10 @@ class ImageService:
         Returns:
             Filename of saved thumbnail, or None if download failed
         """
+        logger.warning(
+            "download_thumbnail is deprecated. "
+            "Cloudinary handles all image resizing on-demand."
+        )
         try:
             response = await self.http_client.get(url)
             response.raise_for_status()
@@ -145,7 +153,11 @@ class ImageService:
         self, game_id: int, thumbnail_url: str, max_retries: int = 3
     ) -> bool:
         """
-        Background task to download and update game thumbnail with retry logic.
+        DEPRECATED: Background task to download and update game thumbnail with retry logic.
+        
+        This method is deprecated. Cloudinary handles all image resizing on-demand.
+        Local thumbnail caching is no longer needed.
+        
         Sprint 5: Enhanced with Sentry reporting and failure tracking
 
         Args:
@@ -156,6 +168,10 @@ class ImageService:
         Returns:
             True if successful, False otherwise
         """
+        logger.warning(
+            f"download_and_update_game_thumbnail is deprecated for game {game_id}. "
+            "Cloudinary handles all image resizing on-demand."
+        )
         game = self.db.get(Game, game_id)
         if not game:
             logger.warning(f"Game {game_id} not found for thumbnail update")

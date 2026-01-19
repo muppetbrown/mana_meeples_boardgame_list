@@ -260,9 +260,10 @@ class GameListItemResponse(BaseModel):
         """
         # If data is a SQLAlchemy model object
         if hasattr(data, '__dict__'):
-            # Prioritize image > thumbnail_url (NOT cloudinary_url to avoid double-proxy)
+            # Use main image field (thumbnail_url is deprecated - Cloudinary handles all resizing)
+            # NOT cloudinary_url to avoid double-proxy
             image = getattr(data, 'image', None)
-            thumbnail = getattr(data, 'thumbnail_url', None)
+            thumbnail = getattr(data, 'thumbnail_url', None)  # Backward compatibility only
 
             # Compute image_url field - use original BGG URL only
             image_url = image or thumbnail
@@ -363,7 +364,7 @@ class GameDetailResponse(BaseModel):
             return {
                 'id': v.id,
                 'title': v.title,
-                'thumbnail_url': v.image or v.thumbnail_url,
+                'image_url': v.image or v.thumbnail_url,  # Use main image (thumbnail_url for backward compatibility)
             }
         return v
 
@@ -416,9 +417,9 @@ class GameDetailResponse(BaseModel):
         # Also add image_url alias for frontend compatibility
         # IMPORTANT: Use original BGG URL only (NOT cloudinary_url to avoid double-proxy)
         if hasattr(data, '__dict__'):
-            # Prioritize image > thumbnail_url (NOT cloudinary_url to avoid double-proxy)
+            # Use main image field (thumbnail_url is deprecated - Cloudinary handles all resizing)
             image = getattr(data, 'image', None)
-            thumbnail = getattr(data, 'thumbnail_url', None)
+            thumbnail = getattr(data, 'thumbnail_url', None)  # Backward compatibility only
 
             # Compute image_url field - use original BGG URL only
             image_url = image or thumbnail

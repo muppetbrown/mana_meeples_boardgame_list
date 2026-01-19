@@ -56,7 +56,8 @@
       "Bash(taskkill:*)",
       "Bash(taskkill /F /PID 28432)",
       "Bash(pytest:*)",
-      "Bash(npx vitest:*)"
+      "Bash(npx vitest:*)",
+      "mcp__plugin_serena_serena__create_text_file"
     ]
   }
 }

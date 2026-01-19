@@ -630,8 +630,7 @@ class GameService:
             "min_age": "min_age",
             "is_cooperative": "is_cooperative",
             "game_type": "game_type",
-            "image": "image",
-            "thumbnail_url": "thumbnail",  # BGG uses 'thumbnail' key
+            "image": "image",  # Use main image only, Cloudinary handles resizing
             # Expansion fields
             "is_expansion": "is_expansion",
             "expansion_type": "expansion_type",
@@ -642,10 +641,6 @@ class GameService:
         for game_field, data_key in enhanced_fields.items():
             if hasattr(game, game_field) and data_key in data:
                 setattr(game, game_field, data.get(data_key))
-
-        # Handle thumbnail_url special case where data might have 'thumbnail_url' instead of 'thumbnail'
-        if hasattr(game, "thumbnail_url") and "thumbnail_url" in data:
-            game.thumbnail_url = data.get("thumbnail_url")
 
     def _determine_optimal_bgg_image_quality(self, game: Game) -> str:
         """
@@ -708,8 +703,8 @@ class GameService:
         if not CLOUDINARY_ENABLED:
             return
 
-        # Determine which image URL to use (prioritize full image over thumbnail)
-        source_url = game.image or game.thumbnail_url
+        # Use main image only - Cloudinary will handle all resizing
+        source_url = game.image
 
         if not source_url:
             return

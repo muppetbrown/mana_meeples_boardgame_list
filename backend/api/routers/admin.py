@@ -140,21 +140,8 @@ async def create_game(
         game_service = GameService(db)
         game = game_service.create_game(game_data)
 
-        # Download thumbnail in background if provided
-        thumbnail_url = (
-            game_data.get("image")
-            or game_data.get("thumbnail_url")
-            or game_data.get("image_url")
-        )
-        if thumbnail_url:
-
-            async def download_task():
-                image_service = ImageService(db, http_client=httpx_client)
-                await image_service.download_and_update_game_thumbnail(
-                    game.id, thumbnail_url
-                )
-
-            background_tasks.add_task(download_task)
+        # Note: Cloudinary will handle image optimization and resizing on-demand
+        # No need to download thumbnails locally - the image proxy handles this
 
         return game_to_dict(request, game)
 
@@ -202,8 +189,9 @@ async def import_from_bgg(
 
         # Upload image to Cloudinary in background (PROACTIVE vs on-demand during page loads)
         # This improves customer experience by pre-processing images during import
-        thumbnail_url = bgg_data.get("image") or bgg_data.get("thumbnail")
-        if thumbnail_url and background_tasks:
+        # Use main image field only - Cloudinary will handle all resizing
+        image_url = bgg_data.get("image")  # Full-size image, not thumbnail
+        if image_url and background_tasks:
             from config import CLOUDINARY_ENABLED
             from services.cloudinary_service import cloudinary_service
 
@@ -213,12 +201,12 @@ async def import_from_bgg(
                     try:
                         # Upload to Cloudinary (will compress to WebP at 1200px)
                         upload_result = await cloudinary_service.upload_from_url(
-                            thumbnail_url, httpx_client, game_id=game.id
+                            image_url, httpx_client, game_id=game.id
                         )
 
                         if upload_result:
                             # Generate base Cloudinary URL (without transformations)
-                            cloudinary_url = cloudinary_service.get_image_url(thumbnail_url)
+                            cloudinary_url = cloudinary_service.get_image_url(image_url)
 
                             # Save to database for fast-path serving
                             from models import Game
@@ -234,11 +222,9 @@ async def import_from_bgg(
                         logger.error(f"Cloudinary upload task failed for game {game.id}: {e}")
                         # Non-critical - image proxy will handle it on-demand if needed
                 else:
-                    # Cloudinary disabled - download thumbnail locally (legacy behavior)
-                    image_service = ImageService(db, http_client=httpx_client)
-                    await image_service.download_and_update_game_thumbnail(
-                        game.id, thumbnail_url
-                    )
+                    # Cloudinary disabled - no action needed
+                    # The image proxy endpoint will serve images directly from BGG on-demand
+                    logger.debug(f"Cloudinary disabled, images will be served via direct proxy for game {game.id}")
 
             background_tasks.add_task(cloudinary_upload_task)
 

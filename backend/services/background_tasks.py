@@ -18,13 +18,21 @@ logger = logging.getLogger(__name__)
 
 async def download_and_update_thumbnail(game_id: int, thumbnail_url: str):
     """
-    Background task to download and update game thumbnail.
+    DEPRECATED: Background task to download and update game thumbnail.
+    
+    This function is deprecated. Cloudinary now handles all image resizing on-demand.
+    Local thumbnail caching is no longer needed.
+    
     Wrapper around ImageService.download_and_update_game_thumbnail.
 
     Args:
         game_id: Database ID of the game
         thumbnail_url: URL of the thumbnail to download
     """
+    logger.warning(
+        "download_and_update_thumbnail is deprecated. "
+        "Cloudinary handles all image resizing on-demand."
+    )
     try:
         db = SessionLocal()
         image_service = ImageService(db)

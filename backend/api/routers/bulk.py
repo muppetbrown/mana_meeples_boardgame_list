@@ -25,7 +25,6 @@ logger = logging.getLogger(__name__)
 
 # Background task imports from services
 from services.background_tasks import (
-    download_and_update_thumbnail,
     reimport_single_game,
 )
 
@@ -187,29 +186,14 @@ async def bulk_import_csv(
                     if hasattr(game, "game_type"):
                         game.game_type = bgg_data.get("game_type")
                     if hasattr(game, "image"):
-                        # Store the full-size image URL
+                        # Store the full-size image URL (Cloudinary will handle resizing)
                         game.image = bgg_data.get("image")
-                    if hasattr(game, "thumbnail_url"):
-                        # Store the thumbnail URL separately
-                        game.thumbnail_url = bgg_data.get("thumbnail")
 
                     db.add(game)
                     db.commit()
                     db.refresh(game)
 
                     added.append(f"BGG ID {bgg_id}: {game.title}")
-
-                    # Download thumbnail in background
-                    # Prioritize image over thumbnail
-                    thumbnail_url = bgg_data.get("image") or bgg_data.get(
-                        "thumbnail"
-                    )
-                    if thumbnail_url and background_tasks:
-                        background_tasks.add_task(
-                            download_and_update_thumbnail,
-                            game.id,
-                            thumbnail_url,
-                        )
 
                 except Exception as e:
                     db.rollback()

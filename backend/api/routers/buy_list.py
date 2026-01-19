@@ -324,8 +324,7 @@ async def add_to_buy_list(
                 players_max=bgg_data.get("players_max"),
                 playtime_min=bgg_data.get("playtime_min"),
                 playtime_max=bgg_data.get("playtime_max"),
-                thumbnail_url=bgg_data.get("thumbnail"),
-                image=bgg_data.get("image"),
+                image=bgg_data.get("image"),  # Use main image only, Cloudinary handles resizing
                 bgg_id=data.bgg_id,
                 description=bgg_data.get("description"),
                 designers=bgg_data.get("designers"),
@@ -568,8 +567,7 @@ async def bulk_import_buy_list_csv(
                         players_max=bgg_data.get("players_max"),
                         playtime_min=bgg_data.get("playtime_min"),
                         playtime_max=bgg_data.get("playtime_max"),
-                        thumbnail_url=bgg_data.get("thumbnail"),
-                        image=bgg_data.get("image"),
+                        image=bgg_data.get("image"),  # Use main image only, Cloudinary handles resizing
                         bgg_id=bgg_id,
                         description=bgg_data.get("description"),
                         designers=bgg_data.get("designers"),
