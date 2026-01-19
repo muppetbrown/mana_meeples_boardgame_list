@@ -617,7 +617,7 @@ class TestGameExpansions:
         if "base_game" in data and data["base_game"]:
             assert data["base_game"]["id"] == base_game.id
             assert data["base_game"]["title"] == "Base Game"
-            assert "thumbnail_url" in data["base_game"]
+            assert "image_url" in data["base_game"]
 
     def test_get_game_without_expansions(self, client, db_session):
         """Test getting game without expansions returns empty list"""

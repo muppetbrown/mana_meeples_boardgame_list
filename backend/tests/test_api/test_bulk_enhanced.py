@@ -13,10 +13,9 @@ from models import Game, Sleeve
 class TestBulkImportCSVEnhanced:
     """Enhanced bulk import CSV tests for additional coverage"""
 
-    def test_bulk_import_with_background_task_scheduling(self, client, admin_headers):
-        """Test that background tasks are properly scheduled for thumbnail downloads"""
-        with patch("api.routers.bulk.fetch_bgg_thing") as mock_fetch, \
-             patch("api.routers.bulk.BackgroundTasks.add_task") as mock_add_task:
+    def test_bulk_import_with_bgg_fetch(self, client, admin_headers):
+        """Test that bulk import fetches BGG data correctly"""
+        with patch("api.routers.bulk.fetch_bgg_thing") as mock_fetch:
 
             mock_fetch.return_value = {
                 "title": "Test Game",
@@ -32,8 +31,10 @@ class TestBulkImportCSVEnhanced:
             )
 
             if response.status_code == 200:
-                # Background task should be scheduled for thumbnail download
-                assert mock_add_task.call_count >= 1
+                # BGG fetch should be called
+                assert mock_fetch.call_count >= 1
+                data = response.json()
+                assert len(data["added"]) == 1
 
     def test_bulk_import_csv_with_whitespace_in_ids(self, client, admin_headers):
         """Test bulk import handles BGG IDs with whitespace"""
