@@ -97,7 +97,7 @@ export default function GameDetails() {
 
   // Helper function to format player count
   const formatPlayerCount = (min, max) => {
-    if (!min && !max) return "?";
+    if (!min && !max) return "?-?";  // Show range placeholder when both are missing
     if (!max) return `${min}`;
     if (!min) return `${max}`;
     // If min equals max, show single number
