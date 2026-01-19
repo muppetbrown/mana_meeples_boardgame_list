@@ -76,9 +76,7 @@ def backfill_cloudinary_urls(
         query = db.query(Game)
 
         # Filter: only games with image URLs
-        query = query.filter(
-            (Game.image != None) | (Game.thumbnail_url != None)
-        )
+        query = query.filter(Game.image != None)
 
         # Filter: only games missing cloudinary_url (unless force)
         if not force:
@@ -111,8 +109,8 @@ def backfill_cloudinary_urls(
             stats['processed'] += 1
 
             try:
-                # Determine which image URL to use (prefer image over thumbnail_url)
-                source_url = game.image or game.thumbnail_url
+                # Use the game's image URL
+                source_url = game.image
 
                 if not source_url:
                     logger.debug(f"[{idx}/{stats['total_games']}] Skipping game {game.id} ({game.title}) - no image URL")
