@@ -14,19 +14,7 @@ import { getCategoryStyle } from "../utils/categoryStyles";
 export default function GameDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [DOMPurify, setDOMPurify] = React.useState(null);
-  const handleDesignerClick = (designerName) => {navigate(`/?designer=${encodeURIComponent(designerName)}`);};
-
-  // Lazy load DOMPurify (only needed for game description)
-  React.useEffect(() => {
-    import('dompurify')
-      .then(module => {
-        setDOMPurify(module.default);
-      })
-      .catch(err => {
-        console.error('Failed to load DOMPurify:', err);
-      });
-  }, []);
+  const handleDesignerClick = (designerName) => {navigate(`/?designer=${encodeURIComponent(designerName)}`);};;
 
   // Phase 2 Performance: React Query for game details with caching
   const { data: game, isLoading: loading, isError, error } = useQuery({
@@ -107,9 +95,37 @@ export default function GameDetails() {
 
   if (!game) return null;
 
+  // Helper function to format player count
+  const formatPlayerCount = (min, max) => {
+    if (!min && !max) return "?";
+    if (!max) return `${min}`;
+    if (!min) return `${max}`;
+    // If min equals max, show single number
+    if (min === max) return `${min}`;
+    // Otherwise show range
+    return `${min}-${max}`;
+  };
+
+  // Helper function to add cache-busting parameter to image URLs
+  const getImageWithCacheBust = (url, updatedAt) => {
+    if (!url) return null;
+
+    // Use updated_at timestamp or current time as cache buster
+    // This forces browser to fetch new image when game is updated
+    const cacheBust = updatedAt
+      ? new Date(updatedAt).getTime()
+      : Date.now();
+
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}v=${cacheBust}`;
+  };
+
   // Safely extract values with fallbacks
   // Performance: Use cloudinary_url if available (skips backend proxy)
-  const img = game?.cloudinary_url || game?.image_url || null;
+  const img = getImageWithCacheBust(
+    game?.cloudinary_url || game?.image_url,
+    game?.updated_at
+  );
   const cat = labelFor(game?.mana_meeple_category);
 
   return (
@@ -170,8 +186,8 @@ export default function GameDetails() {
                       <span className="font-medium text-emerald-800">Players: </span>
                       <span className="font-bold text-emerald-900 ml-1">
                         {game?.has_player_expansion && game?.players_max_with_expansions > (game?.players_max || 0)
-                          ? `${game?.players_min_with_expansions ?? game?.players_min ?? "?"}-${game?.players_max_with_expansions ?? "?"}*`
-                          : `${game?.players_min ?? "?"}-${game?.players_max ?? "?"}`
+                          ? `${formatPlayerCount(game?.players_min_with_expansions ?? game?.players_min, game?.players_max_with_expansions)}*`
+                          : formatPlayerCount(game?.players_min, game?.players_max)
                         }
                       </span>
                     </div>
@@ -248,24 +264,9 @@ export default function GameDetails() {
                   {/* Description */}
                   <section>
                     <h2 className="font-bold text-slate-800 mb-4">About This Game</h2>
-                    {game?.description && DOMPurify && typeof game.description === 'string' ? (
-                      <div className="prose prose-slate max-w-none">
-                        <div
-                          className="text-slate-700 leading-relaxed"
-                          dangerouslySetInnerHTML={{
-                            __html: (() => {
-                              try {
-                                return DOMPurify.sanitize(game.description, {
-                                  ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'em', 'strong', 'a', 'ul', 'ol', 'li'],
-                                  ALLOWED_ATTR: ['href', 'target', 'rel']
-                                });
-                              } catch (err) {
-                                console.error('DOMPurify sanitize error:', err);
-                                return '<p class="text-slate-500 italic">Description unavailable due to formatting error</p>';
-                              }
-                            })()
-                          }}
-                        />
+                    {game?.description && typeof game.description === 'string' && game.description.trim() ? (
+                      <div className="text-slate-700 leading-relaxed whitespace-pre-line">
+                        {game.description}
                       </div>
                     ) : (
                       <div className="text-slate-500 italic bg-slate-50 rounded-lg p-4 border border-slate-200">

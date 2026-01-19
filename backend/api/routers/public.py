@@ -617,7 +617,7 @@ async def image_proxy(
         # Fallback to direct proxy if Cloudinary fails or is disabled
         # Determine cache max age based on URL
         cache_max_age = (
-            31536000 if url.startswith(API_BASE + "/thumbs/") else 300
+            31536000 if url.startswith(API_BASE + "/thumbs/") else 86400  # 24 hours for external images
         )
 
         # Use service layer for image proxying
@@ -626,9 +626,15 @@ async def image_proxy(
             url, cache_max_age
         )
 
+        # Update cache control headers to include must-revalidate for better cache behavior
+        # This ensures browsers respect updated timestamps when games are edited
+        if not url.startswith(API_BASE + "/thumbs/"):
+            cache_control = "public, max-age=86400, must-revalidate"
+
         headers = {
             "Content-Type": content_type,
             "Cache-Control": cache_control,
+            "Access-Control-Allow-Origin": "*",
         }
 
         return Response(content=content, headers=headers)

@@ -32,8 +32,20 @@ const GameCardPublic = memo(function GameCardPublic({
 }) {
   const { shouldShowCardHint, shouldShowAfterGameHint, markCardExpanded, markAfterGameClicked } = useOnboarding();
   const href = `/game/${game.id}`;
+
+  // Helper function to add cache-busting parameter to image URLs
+  const getImageWithCacheBust = (url, updatedAt) => {
+    if (!url) return null;
+    const cacheBust = updatedAt ? new Date(updatedAt).getTime() : Date.now();
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}v=${cacheBust}`;
+  };
+
   // Performance optimization: Use Cloudinary URL directly if available (skips backend proxy)
-  const imgSrc = game.cloudinary_url || game.image_url;
+  const imgSrc = getImageWithCacheBust(
+    game.cloudinary_url || game.image_url,
+    game.updated_at
+  );
   const categoryLabel = labelFor(game.mana_meeple_category);
   const cardRef = useRef(null);
 
