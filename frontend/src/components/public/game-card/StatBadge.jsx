@@ -3,7 +3,6 @@
  * Displays an icon with a label in a consistent styled container
  */
 import React from 'react';
-import PropTypes from 'prop-types';
 
 export function StatBadge({ icon: Icon, label, ariaLabel, className = '' }) {
   return (
@@ -23,12 +22,5 @@ export function StatBadge({ icon: Icon, label, ariaLabel, className = '' }) {
     </div>
   );
 }
-
-StatBadge.propTypes = {
-  icon: PropTypes.elementType,
-  label: PropTypes.string,
-  ariaLabel: PropTypes.string,
-  className: PropTypes.string,
-};
 
 export default StatBadge;
