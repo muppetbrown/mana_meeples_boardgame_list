@@ -113,7 +113,7 @@ class TestBuildBuyListResponse:
             id=1,
             title="Test Game",
             bgg_id=12345,
-            thumbnail_url="http://example.com/thumb.jpg",
+            image="http://example.com/thumb.jpg",
         )
         db_session.add(game)
         db_session.flush()
@@ -152,7 +152,7 @@ class TestBuildBuyListResponse:
             id=1,
             title="Test Game",
             bgg_id=12345,
-            thumbnail_url="http://example.com/thumb.jpg",
+            image="http://example.com/thumb.jpg",
         )
         db_session.add(game)
         db_session.flush()
@@ -211,7 +211,7 @@ class TestListBuyListGames:
         game = Game(
             title="Test Game",
             bgg_id=12345,
-            thumbnail_url="http://example.com/thumb.jpg",
+            image="http://example.com/thumb.jpg",
         )
         db_session.add(game)
         db_session.flush()

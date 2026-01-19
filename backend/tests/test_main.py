@@ -256,7 +256,7 @@ class TestBackgroundTasks:
             id=1,
             title="Test Game",
             bgg_id=12345,
-            thumbnail_url="https://example.com/old.jpg"
+            image="https://example.com/old.jpg"
         )
         db_session.add(game)
         db_session.commit()

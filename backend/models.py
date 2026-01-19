@@ -42,7 +42,6 @@ class Game(Base):
     players_max = Column(Integer, nullable=True)
     playtime_min = Column(Integer, nullable=True)
     playtime_max = Column(Integer, nullable=True)
-    thumbnail_url = Column(String(512), nullable=True)  # DEPRECATED: Use 'image' field - Cloudinary handles resizing
     image = Column(String(512), nullable=True)  # Full-size image URL from BGG (main image field)
     cloudinary_url = Column(String(512), nullable=True)  # Pre-generated Cloudinary CDN URL (cached)
     created_at = Column(DateTime, default=utc_now, nullable=False)
@@ -50,7 +49,6 @@ class Game(Base):
         DateTime, default=utc_now, nullable=True, index=True
     )  # Date game was added to physical collection
     bgg_id = Column(Integer, unique=True, nullable=True, index=True)
-    thumbnail_file = Column(String(256), nullable=True)  # DEPRECATED: Local thumbnail cache no longer used
     mana_meeple_category = Column(String(50), nullable=True, index=True)
     description = Column(Text, nullable=True)
     designers = Column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)  # Store as JSONB on PostgreSQL, JSON on SQLite
@@ -151,7 +149,7 @@ class Game(Base):
         Index("idx_public_games_covering",
               "status", "is_expansion", "expansion_type", "mana_meeple_category",
               postgresql_include=["title", "year", "players_min", "players_max",
-                                 "average_rating", "thumbnail_url", "image"]),
+                                 "average_rating", "image"]),
 
         # Sprint 4 Data Integrity Constraints
         # NOTE: All constraints must allow NULL values since fields are nullable

@@ -349,20 +349,10 @@ def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
     mechanics = parse_json_field(getattr(game, "mechanics", None))
     artists = parse_json_field(getattr(game, "artists", None))
 
-    # Handle thumbnail URL - prioritize BGG URLs over local files (Render has ephemeral filesystem)
+    # Handle image URL - use the BGG image field (Cloudinary handles resizing)
     thumbnail_url = None
-    if hasattr(game, "image") and game.image:  # Use the larger BGG image first
+    if hasattr(game, "image") and game.image:
         thumbnail_url = game.image
-    elif (
-        hasattr(game, "thumbnail_url") and game.thumbnail_url
-    ):  # Fall back to BGG thumbnail
-        thumbnail_url = game.thumbnail_url
-    elif hasattr(game, "thumbnail_file") and game.thumbnail_file:
-        # Only use local files if they're external URLs (not local paths starting with /thumbs/)
-        if not game.thumbnail_file.startswith("/thumbs/"):
-            thumbnail_url = make_absolute_url(
-                request, f"/thumbs/{game.thumbnail_file}"
-            )
 
     return {
         "id": game.id,

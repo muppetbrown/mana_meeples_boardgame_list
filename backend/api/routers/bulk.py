@@ -618,7 +618,7 @@ async def backfill_cloudinary_urls(
         # Find all games with images but missing cloudinary_url
         games = db.execute(
             select(Game).where(
-                (Game.image.isnot(None)) | (Game.thumbnail_url.isnot(None))
+                Game.image.isnot(None)
             ).where(
                 (Game.cloudinary_url.is_(None)) | (Game.cloudinary_url == '')
             )
@@ -634,8 +634,8 @@ async def backfill_cloudinary_urls(
 
         for game in games:
             try:
-                # Prefer image over thumbnail_url (higher quality)
-                source_url = game.image or game.thumbnail_url
+                # Use image field (thumbnail_url deprecated and removed)
+                source_url = game.image
 
                 if not source_url:
                     skipped += 1

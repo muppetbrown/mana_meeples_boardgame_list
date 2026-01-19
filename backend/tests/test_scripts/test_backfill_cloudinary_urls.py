@@ -71,15 +71,14 @@ class TestBackfillCloudinaryUrlsScript:
         assert stats['total_games'] == 3
         assert stats['processed'] == 3
 
-    def test_backfill_prefers_image_over_thumbnail(self, mock_db, mock_cloudinary):
-        """Test backfill prefers image field over thumbnail_url"""
+    def test_backfill_uses_image_field(self, mock_db, mock_cloudinary):
+        """Test backfill uses image field"""
         from scripts.backfill_cloudinary_urls import backfill_cloudinary_urls
 
         game = Game(
             title="Test Game",
             bgg_id=1001,
             image="https://cf.geekdo-images.com/original/img/full.jpg",
-            thumbnail_url="https://cf.geekdo-images.com/thumb/img/thumb.jpg",
             cloudinary_url=None
         )
         mock_db.add(game)
@@ -99,8 +98,7 @@ class TestBackfillCloudinaryUrlsScript:
         game = Game(
             title="Game Without Images",
             bgg_id=1001,
-            image=None,
-            thumbnail_url=None
+            image=None
         )
         mock_db.add(game)
         mock_db.commit()

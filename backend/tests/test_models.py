@@ -69,7 +69,6 @@ class TestGameModel:
             players_max=4,
             playtime_min=60,
             playtime_max=120,
-            thumbnail_url="https://example.com/thumb.jpg",
             image="https://example.com/image.jpg",
             bgg_id=174430,
             mana_meeple_category="CORE_STRATEGY",

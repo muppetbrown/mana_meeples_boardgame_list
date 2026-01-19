@@ -514,11 +514,10 @@ async def image_proxy(
                 hash_match = re.search(r'geekdo-images\.com/([^/_]+)__', url)
                 if hash_match:
                     hash_part = hash_match.group(1)
-                    # Find game with this hash in image or thumbnail_url
+                    # Find game with this hash in image field
                     from models import Game
                     stmt = select(Game).where(
-                        (Game.image.like(f'%{hash_part}%')) |
-                        (Game.thumbnail_url.like(f'%{hash_part}%'))
+                        Game.image.like(f'%{hash_part}%')
                     )
                     game = db.execute(stmt).scalars().first()
 
@@ -575,11 +574,10 @@ async def image_proxy(
                         hash_match = re.search(r'geekdo-images\.com/([^/_]+)__', url)
                         if hash_match:
                             hash_part = hash_match.group(1)
-                            # Find game with this hash in image or thumbnail_url
+                            # Find game with this hash in image field
                             from models import Game
                             stmt = select(Game).where(
-                                (Game.image.like(f'%{hash_part}%')) |
-                                (Game.thumbnail_url.like(f'%{hash_part}%'))
+                                Game.image.like(f'%{hash_part}%')
                             )
                             game = db.execute(stmt).scalars().first()
 

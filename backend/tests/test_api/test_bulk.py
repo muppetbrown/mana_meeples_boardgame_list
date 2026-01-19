@@ -816,7 +816,7 @@ class TestBackfillCloudinaryUrls:
         game2 = Game(
             title="Game 2",
             bgg_id=1002,
-            thumbnail_url="https://cf.geekdo-images.com/thumb/img/test2.jpg",
+            image="https://cf.geekdo-images.com/thumb/img/test2.jpg",
             cloudinary_url=""
         )
         db_session.add_all([game1, game2])
@@ -918,13 +918,12 @@ class TestBackfillCloudinaryUrls:
                 assert data["failed"] == 1
                 assert len(data["errors"]) > 0
 
-    def test_backfill_cloudinary_prefers_image_over_thumbnail(self, client, db_session, admin_headers):
-        """Test backfill prefers full image over thumbnail_url"""
+    def test_backfill_cloudinary_uses_image_field(self, client, db_session, admin_headers):
+        """Test backfill uses image field"""
         game = Game(
             title="Game",
             bgg_id=1001,
             image="https://cf.geekdo-images.com/original/img/full.jpg",
-            thumbnail_url="https://cf.geekdo-images.com/thumb/img/thumb.jpg",
             cloudinary_url=None
         )
         db_session.add(game)
