@@ -1,6 +1,6 @@
 // frontend/src/pages/__tests__/PublicCatalogue.test.jsx
-import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, screen, waitFor, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -80,6 +80,13 @@ describe('PublicCatalogue Page', () => {
     vi.useRealTimers();
   });
 
+  afterEach(() => {
+    // Cleanup rendered components
+    cleanup();
+    // Clear React Query cache
+    queryClient.clear();
+  });
+
   test('renders games after loading', async () => {
     renderWithQuery(
       <BrowserRouter>
@@ -157,10 +164,14 @@ describe('PublicCatalogue Page', () => {
       </BrowserRouter>
     );
 
+    // First wait for error state to be established
     await waitFor(() => {
-      const retryButton = screen.getByRole('button', { name: /retry/i });
-      expect(retryButton).toBeInTheDocument();
+      expect(screen.getByText(/Network error/i)).toBeInTheDocument();
     });
+
+    // Then verify retry button is present
+    const retryButton = screen.getByRole('button', { name: /retry/i });
+    expect(retryButton).toBeInTheDocument();
   });
 
   test('handles category counts fetch failure gracefully', async () => {
