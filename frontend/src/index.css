@@ -142,6 +142,11 @@ a:not([role="button"]):not(.btn) {
   }
 }
 
+/* Optimize spinner animation performance - enables GPU compositing */
+.animate-spin {
+  will-change: transform;
+}
+
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,

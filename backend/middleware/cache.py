@@ -61,7 +61,8 @@ class APICacheControlMiddleware:
 
                 elif path.startswith("/api/admin/"):
                     # Admin endpoints - never cache (private data)
-                    cache_control = b"private, no-cache, no-store, must-revalidate"
+                    # Note: no-store alone is sufficient; adding must-revalidate is redundant
+                    cache_control = b"private, no-store"
 
                 elif path.startswith("/api/"):
                     # Other API endpoints - short cache

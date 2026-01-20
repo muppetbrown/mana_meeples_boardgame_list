@@ -23,10 +23,11 @@
   Content-Type: text/css; charset=utf-8
   Cache-Control: public, max-age=31536000, immutable
 
-# HTML files
+# HTML files - must revalidate on each visit for SPA routing
 /*.html
   Content-Type: text/html; charset=utf-8
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
 
 # Version file - NEVER cache (critical for auto-refresh)
 /version.json
