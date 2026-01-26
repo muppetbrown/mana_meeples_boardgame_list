@@ -58,9 +58,9 @@
   },
   "devDependencies": {
     "@axe-core/react": "^4.11.0",
-    "@playwright/test": "^1.57.0",
+    "@playwright/test": "^1.58.0",
     "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/coverage-v8": "^4.0.17",
+    "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "^4.0.14",
     "autoprefixer": "^10.4.23",
     "jsdom": "^27.4.0",
