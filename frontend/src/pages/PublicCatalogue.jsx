@@ -50,6 +50,10 @@ export default function PublicCatalogue() {
   const ticking = useRef(false);
   const loadMoreTriggerRef = useRef(null);
 
+  // Track filter changes to trigger scroll reset
+  const isFilterChangeRef = useRef(false);
+  const prevQueryParamsRef = useRef(null);
+
   // Build query parameters
   const queryParams = useMemo(() => {
     const params = { q, page_size: pageSize, sort };
@@ -116,6 +120,35 @@ export default function PublicCatalogue() {
     setIsSticky(false);
   }, []);
 
+  // Scroll to top when filters change (NOT on initial mount)
+  useEffect(() => {
+    // Skip on initial mount
+    if (prevQueryParamsRef.current === null) {
+      prevQueryParamsRef.current = queryParams;
+      return;
+    }
+
+    // Compare filter-relevant params (exclude page-related fields)
+    const getFilterKey = (params) => JSON.stringify({
+      q: params.q,
+      category: params.category,
+      designer: params.designer,
+      nz_designer: params.nz_designer,
+      players: params.players,
+      complexity_min: params.complexity_min,
+      complexity_max: params.complexity_max,
+      recently_added: params.recently_added,
+      sort: params.sort,
+    });
+
+    if (getFilterKey(queryParams) !== getFilterKey(prevQueryParamsRef.current)) {
+      isFilterChangeRef.current = true;
+      scrollToTopOnFilterChange();
+    }
+
+    prevQueryParamsRef.current = queryParams;
+  }, [queryParams, scrollToTopOnFilterChange]);
+
   // Handle scroll for header hide/show and sticky toolbar
   useEffect(() => {
     const handleScroll = () => {
@@ -177,24 +210,19 @@ export default function PublicCatalogue() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [isFetchingNextPage]);
 
-  // Update URL when filters change
+  // Update URL when filters change (no debounce needed - SearchBox already debounces at 300ms)
   useEffect(() => {
-    const updateURL = () => {
-      const params = new URLSearchParams();
-      if (q) params.set("q", q);
-      if (category !== "all") params.set("category", category);
-      if (designer) params.set("designer", designer);
-      if (nzDesigner) params.set("nz_designer", "true");
-      if (players) params.set("players", players);
-      if (complexityRange) params.set("complexity", complexityRange);
-      if (recentlyAdded) params.set("recently_added", "30");
-      if (sort !== "year_desc") params.set("sort", sort);
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (category !== "all") params.set("category", category);
+    if (designer) params.set("designer", designer);
+    if (nzDesigner) params.set("nz_designer", "true");
+    if (players) params.set("players", players);
+    if (complexityRange) params.set("complexity", complexityRange);
+    if (recentlyAdded) params.set("recently_added", "30");
+    if (sort !== "year_desc") params.set("sort", sort);
 
-      setSearchParams(params, { replace: true });
-    };
-
-    const timer = setTimeout(updateURL, 100);
-    return () => clearTimeout(timer);
+    setSearchParams(params, { replace: true });
   }, [q, category, designer, nzDesigner, players, complexityRange, recentlyAdded, sort, setSearchParams]);
 
   // Infinite scroll: Intersection Observer
@@ -205,7 +233,14 @@ export default function PublicCatalogue() {
     const observer = new IntersectionObserver(
       (entries) => {
         const [entry] = entries;
-        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage) {
+
+        // Skip if we just changed filters (scroll is in progress)
+        if (isFilterChangeRef.current) {
+          isFilterChangeRef.current = false;
+          return;
+        }
+
+        if (entry.isIntersecting && hasNextPage && !isFetchingNextPage && !isLoading) {
           fetchNextPage();
         }
       },
@@ -221,7 +256,7 @@ export default function PublicCatalogue() {
     return () => {
       observer.disconnect();
     };
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, isLoading]);
 
   // Helper functions with accessibility announcements (wrapped in useCallback)
   const updateCategory = useCallback((newCategory) => {
@@ -324,6 +359,20 @@ export default function PublicCatalogue() {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Scroll to top on filter change with accessibility support
+  const scrollToTopOnFilterChange = useCallback(() => {
+    const shouldAnimate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    window.scrollTo({
+      top: 0,
+      behavior: shouldAnimate ? 'smooth' : 'instant'
+    });
+
+    setIsHeaderVisible(true);
+    setIsSticky(false);
+    setExpandedCards(new Set());
+  }, []);
 
   // Active filters count
   const activeFiltersCount = useMemo(() => {
@@ -833,7 +882,7 @@ export default function PublicCatalogue() {
               )}
 
               {/* End of results message */}
-              {!hasNextPage && total > pageSize && (
+              {!hasNextPage && total >= pageSize && allLoadedItems.length > 0 && (
                 <div className="mt-8 py-4 text-center">
                   <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full">
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
