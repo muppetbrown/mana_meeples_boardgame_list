@@ -359,10 +359,10 @@ class TestImageEdgeCases:
     async def test_record_background_task_failure_error_handling(self, db_session):
         """Test error handling when recording background task failure itself fails"""
         service = ImageService(db_session)
-        
+
         # Create a mock error
         test_error = Exception("Test error")
-        
+
         # Mock db.add to raise an exception
         with patch.object(db_session, "add", side_effect=Exception("Database error")), \
              patch("services.image_service.sentry_sdk.capture_exception") as mock_sentry:
@@ -374,11 +374,45 @@ class TestImageEdgeCases:
                 url="https://example.com/test.jpg",
                 retry_count=3
             )
-            
+
             # Sentry should still be called with the original error
             mock_sentry.assert_called_once_with(test_error)
 
     @pytest.mark.asyncio
+    async def test_proxy_image_http_error(self, db_session):
+        """Test proxy_image raises HTTPError on failure"""
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=httpx.HTTPStatusError(
+            "Not Found",
+            request=Mock(),
+            response=Mock(status_code=404)
+        ))
+
+        service = ImageService(db_session, http_client=mock_client)
+
+        with pytest.raises(httpx.HTTPStatusError):
+            await service.proxy_image("https://example.com/missing.jpg")
+
+    @pytest.mark.asyncio
+    async def test_download_thumbnail_with_query_params(self, db_session):
+        """Test thumbnail download with URL query parameters"""
+        mock_response = Mock()
+        mock_response.content = b"image data"
+        mock_response.raise_for_status = Mock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        service = ImageService(db_session, http_client=mock_client)
+
+        with patch("builtins.open", mock_open()):
+            result = await service.download_thumbnail(
+                "https://example.com/image.jpg?size=large&v=2",
+                "test_game"
+            )
+
+        assert result is not None
+        assert result.endswith(".jpg")
 
     @pytest.mark.asyncio
     async def test_download_thumbnail_with_invalid_extension(self, db_session):
@@ -458,6 +492,299 @@ class TestImageEdgeCases:
             result = await service.reimport_game_thumbnail(1, 12345)
 
             assert result is False
+
+
+class TestBackgroundTaskFailure:
+    """Tests for _record_background_task_failure method"""
+
+    @pytest.mark.asyncio
+    async def test_record_background_task_failure_success(self, db_session):
+        """Test successful recording of background task failure"""
+        from models import BackgroundTaskFailure
+
+        service = ImageService(db_session)
+        test_error = ValueError("Test error message")
+
+        await service._record_background_task_failure(
+            task_type="thumbnail_download",
+            game_id=123,
+            error=test_error,
+            url="https://example.com/image.jpg",
+            retry_count=3
+        )
+
+        # Verify the failure was recorded in the database
+        failures = db_session.query(BackgroundTaskFailure).all()
+        assert len(failures) == 1
+        assert failures[0].task_type == "thumbnail_download"
+        assert failures[0].game_id == 123
+        assert "Test error message" in failures[0].error_message
+        assert failures[0].error_type == "ValueError"
+        assert failures[0].retry_count == 3
+        assert failures[0].url == "https://example.com/image.jpg"
+        assert failures[0].resolved is False
+
+    @pytest.mark.asyncio
+    async def test_record_background_task_failure_without_url(self, db_session):
+        """Test recording failure without URL"""
+        from models import BackgroundTaskFailure
+
+        service = ImageService(db_session)
+        test_error = RuntimeError("No URL error")
+
+        await service._record_background_task_failure(
+            task_type="image_processing",
+            game_id=456,
+            error=test_error,
+            retry_count=1
+        )
+
+        failures = db_session.query(BackgroundTaskFailure).all()
+        assert len(failures) == 1
+        assert failures[0].url is None
+
+
+class TestCleanupOldThumbnailsDetailed:
+    """Detailed tests for cleanup_old_thumbnails method"""
+
+    def test_cleanup_skips_recent_files(self, db_session):
+        """Test that recent files are not deleted"""
+        import time
+
+        service = ImageService(db_session)
+
+        with patch("pathlib.Path.glob") as mock_glob:
+            # Create a file that's only 1 day old
+            mock_file = Mock()
+            mock_file.is_file.return_value = True
+            mock_file.stat.return_value.st_mtime = time.time() - (1 * 24 * 60 * 60)
+            mock_file.unlink = Mock()
+
+            mock_glob.return_value = [mock_file]
+
+            # Cleanup files older than 30 days
+            count = service.cleanup_old_thumbnails(days=30)
+
+            assert count == 0
+            mock_file.unlink.assert_not_called()
+
+    def test_cleanup_skips_directories(self, db_session):
+        """Test that directories are skipped during cleanup"""
+        service = ImageService(db_session)
+
+        with patch("pathlib.Path.glob") as mock_glob:
+            mock_dir = Mock()
+            mock_dir.is_file.return_value = False  # It's a directory
+
+            mock_glob.return_value = [mock_dir]
+
+            count = service.cleanup_old_thumbnails(days=30)
+
+            assert count == 0
+
+    def test_cleanup_multiple_files(self, db_session):
+        """Test cleanup of multiple files with mixed ages"""
+        import time
+
+        service = ImageService(db_session)
+
+        with patch("pathlib.Path.glob") as mock_glob:
+            # Old file (should be deleted)
+            old_file = Mock()
+            old_file.is_file.return_value = True
+            old_file.stat.return_value.st_mtime = 0
+            old_file.unlink = Mock()
+
+            # Recent file (should be kept)
+            recent_file = Mock()
+            recent_file.is_file.return_value = True
+            recent_file.stat.return_value.st_mtime = time.time()
+            recent_file.unlink = Mock()
+
+            mock_glob.return_value = [old_file, recent_file]
+
+            count = service.cleanup_old_thumbnails(days=30)
+
+            assert count == 1
+            old_file.unlink.assert_called_once()
+            recent_file.unlink.assert_not_called()
+
+
+class TestProxyImageHeaders:
+    """Tests for proxy_image HTTP headers"""
+
+    @pytest.mark.asyncio
+    async def test_proxy_image_sends_browser_headers(self, db_session):
+        """Test that proxy_image sends proper browser headers for BGG"""
+        mock_response = Mock()
+        mock_response.content = b"image data"
+        mock_response.headers = {"content-type": "image/jpeg"}
+        mock_response.raise_for_status = Mock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        service = ImageService(db_session, http_client=mock_client)
+        await service.proxy_image("https://cf.geekdo-images.com/test.jpg")
+
+        # Verify headers were passed
+        call_args = mock_client.get.call_args
+        headers = call_args.kwargs.get('headers', {})
+
+        assert "User-Agent" in headers
+        assert "Mozilla" in headers["User-Agent"]
+        assert "Referer" in headers
+        assert "boardgamegeek.com" in headers["Referer"]
+        assert "Accept" in headers
+        assert "image" in headers["Accept"]
+
+    @pytest.mark.asyncio
+    async def test_proxy_image_avif_format(self, db_session):
+        """Test proxying AVIF images"""
+        mock_response = Mock()
+        mock_response.content = b"AVIF data"
+        mock_response.headers = {"content-type": "image/avif"}
+        mock_response.raise_for_status = Mock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        service = ImageService(db_session, http_client=mock_client)
+        content, content_type, _ = await service.proxy_image("https://example.com/img.avif")
+
+        assert content_type == "image/avif"
+
+
+class TestDownloadThumbnailExtensions:
+    """Tests for download_thumbnail file extension handling"""
+
+    @pytest.mark.asyncio
+    async def test_download_thumbnail_png_extension(self, db_session):
+        """Test PNG file extension is preserved"""
+        mock_response = Mock()
+        mock_response.content = b"PNG data"
+        mock_response.raise_for_status = Mock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        service = ImageService(db_session, http_client=mock_client)
+
+        with patch("builtins.open", mock_open()):
+            result = await service.download_thumbnail(
+                "https://example.com/image.png",
+                "test_game"
+            )
+
+        assert result.endswith(".png")
+
+    @pytest.mark.asyncio
+    async def test_download_thumbnail_webp_extension(self, db_session):
+        """Test WebP file extension is preserved"""
+        mock_response = Mock()
+        mock_response.content = b"WebP data"
+        mock_response.raise_for_status = Mock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        service = ImageService(db_session, http_client=mock_client)
+
+        with patch("builtins.open", mock_open()):
+            result = await service.download_thumbnail(
+                "https://example.com/image.webp",
+                "test_game"
+            )
+
+        assert result.endswith(".webp")
+
+    @pytest.mark.asyncio
+    async def test_download_thumbnail_jpeg_extension(self, db_session):
+        """Test JPEG file extension is preserved"""
+        mock_response = Mock()
+        mock_response.content = b"JPEG data"
+        mock_response.raise_for_status = Mock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        service = ImageService(db_session, http_client=mock_client)
+
+        with patch("builtins.open", mock_open()):
+            result = await service.download_thumbnail(
+                "https://example.com/image.jpeg",
+                "test_game"
+            )
+
+        assert result.endswith(".jpeg")
+
+
+class TestReimportGameThumbnailDetailed:
+    """Detailed tests for reimport_game_thumbnail method"""
+
+    @pytest.mark.asyncio
+    async def test_reimport_updates_game_fields(self, db_session):
+        """Test that reimport properly updates game fields via GameService"""
+        game = Game(title="Original Title", bgg_id=12345)
+        db_session.add(game)
+        db_session.commit()
+        game_id = game.id
+
+        mock_bgg_data = {
+            "title": "Updated Title",
+            "description": "New description",
+            "year": 2024,
+            "thumbnail": "https://example.com/new-thumb.jpg",
+            "image": "https://example.com/new-image.jpg",
+        }
+
+        service = ImageService(db_session)
+
+        with patch("bgg_service.fetch_bgg_thing", new_callable=AsyncMock) as mock_fetch, \
+             patch("services.game_service.GameService") as MockGameService:
+
+            mock_fetch.return_value = mock_bgg_data
+
+            mock_game_service = MockGameService.return_value
+            mock_game_service.update_game_from_bgg_data = Mock()
+
+            result = await service.reimport_game_thumbnail(game_id, 12345)
+
+            assert result is True
+
+            # Verify GameService was instantiated with correct db session
+            MockGameService.assert_called_once_with(db_session)
+
+            # Verify update_game_from_bgg_data was called
+            mock_game_service.update_game_from_bgg_data.assert_called_once()
+            call_args = mock_game_service.update_game_from_bgg_data.call_args
+            assert call_args.kwargs.get('commit') is True
+
+
+class TestProxyImageNetworkErrors:
+    """Tests for proxy_image network error handling"""
+
+    @pytest.mark.asyncio
+    async def test_proxy_image_connection_error(self, db_session):
+        """Test proxy_image handles connection errors"""
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=httpx.ConnectError("Connection refused"))
+
+        service = ImageService(db_session, http_client=mock_client)
+
+        with pytest.raises(httpx.ConnectError):
+            await service.proxy_image("https://unreachable.example.com/image.jpg")
+
+    @pytest.mark.asyncio
+    async def test_proxy_image_timeout(self, db_session):
+        """Test proxy_image handles timeout"""
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(side_effect=httpx.TimeoutException("Request timed out"))
+
+        service = ImageService(db_session, http_client=mock_client)
+
+        with pytest.raises(httpx.TimeoutException):
+            await service.proxy_image("https://slow.example.com/image.jpg")
 
 
 if __name__ == "__main__":

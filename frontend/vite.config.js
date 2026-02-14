@@ -125,18 +125,18 @@ export default defineConfig({
         'src/**/*.{js,jsx,ts,tsx}'
       ],
       all: true, // Include all files, not just tested ones
-      // Coverage thresholds - Set to current baseline to prevent regression
-      // Can be gradually increased as test coverage improves
-      statements: 40,
-      branches: 40,
-      functions: 45,
-      lines: 40,
+      // Coverage thresholds - Increased to ensure quality (code review recommendation)
+      // Target: 60% coverage across all metrics
+      statements: 60,
+      branches: 55,
+      functions: 60,
+      lines: 60,
       // Fail build if coverage is below thresholds
       thresholds: {
-        statements: 40,
-        branches: 40,
-        functions: 45,
-        lines: 40,
+        statements: 60,
+        branches: 55,
+        functions: 60,
+        lines: 60,
       },
     },
   }

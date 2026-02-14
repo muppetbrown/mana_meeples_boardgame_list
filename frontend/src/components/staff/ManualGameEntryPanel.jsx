@@ -94,10 +94,94 @@ export function ManualGameEntryPanel({ onSuccess, onToast }) {
     return isNaN(parsed) ? null : parsed;
   };
 
+  const isValidUrl = (url) => {
+    if (!url) return true; // Empty is valid (optional field)
+    try {
+      new URL(url);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const validateAndPrepare = () => {
+    const errors = [];
+
     // Title is required
     if (!formData.title.trim()) {
-      onToast("Title is required", "error");
+      errors.push("Title is required");
+    }
+
+    // Validate BGG ID if provided (must be positive integer)
+    if (formData.bgg_id) {
+      const bggId = parseInteger(formData.bgg_id);
+      if (bggId === null || bggId < 1 || bggId > 999999) {
+        errors.push("BGG ID must be a number between 1 and 999999");
+      }
+    }
+
+    // Validate year if provided (reasonable range)
+    if (formData.year) {
+      const year = parseInteger(formData.year);
+      const currentYear = new Date().getFullYear();
+      if (year === null || year < 1900 || year > currentYear + 2) {
+        errors.push(`Year must be between 1900 and ${currentYear + 2}`);
+      }
+    }
+
+    // Validate player counts
+    const playersMin = parseInteger(formData.players_min);
+    const playersMax = parseInteger(formData.players_max);
+    if (playersMin !== null && (playersMin < 1 || playersMin > 99)) {
+      errors.push("Min players must be between 1 and 99");
+    }
+    if (playersMax !== null && (playersMax < 1 || playersMax > 99)) {
+      errors.push("Max players must be between 1 and 99");
+    }
+    if (playersMin !== null && playersMax !== null && playersMin > playersMax) {
+      errors.push("Min players cannot be greater than max players");
+    }
+
+    // Validate playtime
+    const playtimeMin = parseInteger(formData.playtime_min);
+    const playtimeMax = parseInteger(formData.playtime_max);
+    if (playtimeMin !== null && playtimeMin < 0) {
+      errors.push("Min playtime cannot be negative");
+    }
+    if (playtimeMax !== null && playtimeMax < 0) {
+      errors.push("Max playtime cannot be negative");
+    }
+    if (playtimeMin !== null && playtimeMax !== null && playtimeMin > playtimeMax) {
+      errors.push("Min playtime cannot be greater than max playtime");
+    }
+
+    // Validate rating (0-10)
+    if (formData.average_rating) {
+      const rating = parseFloatValue(formData.average_rating);
+      if (rating === null || rating < 0 || rating > 10) {
+        errors.push("BGG Rating must be between 0 and 10");
+      }
+    }
+
+    // Validate complexity (1-5)
+    if (formData.complexity) {
+      const complexity = parseFloatValue(formData.complexity);
+      if (complexity === null || complexity < 1 || complexity > 5) {
+        errors.push("Complexity must be between 1 and 5");
+      }
+    }
+
+    // Validate URLs
+    if (formData.thumbnail_url && !isValidUrl(formData.thumbnail_url.trim())) {
+      errors.push("Thumbnail URL is not a valid URL");
+    }
+    if (formData.image && !isValidUrl(formData.image.trim())) {
+      errors.push("Image URL is not a valid URL");
+    }
+
+    // Show errors if any
+    if (errors.length > 0) {
+      errors.forEach(err => onToast(err, "error"));
       return null;
     }
 

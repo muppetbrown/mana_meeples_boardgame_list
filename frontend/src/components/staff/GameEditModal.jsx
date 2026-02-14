@@ -53,8 +53,44 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
     }));
   };
 
+  // UUID validation pattern
+  const isValidUUID = (str) => {
+    if (!str) return true; // Empty is valid (optional field)
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    return uuidPattern.test(str);
+  };
+
+  const [validationErrors, setValidationErrors] = React.useState([]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
+    const errors = [];
+
+    // Validate player counts if provided
+    const minPlayers = formData.modifies_players_min ? parseInt(formData.modifies_players_min) : null;
+    const maxPlayers = formData.modifies_players_max ? parseInt(formData.modifies_players_max) : null;
+
+    if (minPlayers !== null && (minPlayers < 1 || minPlayers > 99)) {
+      errors.push("Min players must be between 1 and 99");
+    }
+    if (maxPlayers !== null && (maxPlayers < 1 || maxPlayers > 99)) {
+      errors.push("Max players must be between 1 and 99");
+    }
+    if (minPlayers !== null && maxPlayers !== null && minPlayers > maxPlayers) {
+      errors.push("Min players cannot be greater than max players");
+    }
+
+    // Validate AfterGame UUID format
+    if (formData.aftergame_game_id && !isValidUUID(formData.aftergame_game_id)) {
+      errors.push("AfterGame ID must be a valid UUID format (e.g., ac3a5f77-3e19-47af-a61a-d648d04b02e2)");
+    }
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors([]);
 
     // Prepare data - convert empty strings to null
     const saveData = {
@@ -327,6 +363,18 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
                   </p>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Validation Errors */}
+          {validationErrors.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <p className="text-sm font-semibold text-red-800 mb-2">Please fix the following errors:</p>
+              <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+                {validationErrors.map((error, index) => (
+                  <li key={index}>{error}</li>
+                ))}
+              </ul>
             </div>
           )}
 

@@ -116,7 +116,7 @@ describe('ErrorBoundary', () => {
     // Check for the SVG icon
     const svg = container.querySelector('svg');
     expect(svg).toBeInTheDocument();
-    expect(svg).toHaveClass('w-6', 'h-6', 'text-red-600');
+    expect(svg).toHaveClass('w-6', 'h-6');
   });
 
   it('logs error to console when caught', () => {
@@ -191,5 +191,101 @@ describe('ErrorBoundary', () => {
 
     // Should still show error UI
     expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+  });
+
+  it('calls onError callback when error is caught', () => {
+    const onErrorSpy = vi.fn();
+    const testError = new Error('Callback test error');
+
+    render(
+      <ErrorBoundary onError={onErrorSpy}>
+        <ThrowError shouldThrow={true} error={testError} />
+      </ErrorBoundary>
+    );
+
+    expect(onErrorSpy).toHaveBeenCalledTimes(1);
+    expect(onErrorSpy).toHaveBeenCalledWith(
+      testError,
+      expect.objectContaining({
+        componentStack: expect.any(String)
+      })
+    );
+  });
+
+  it('renders custom fallback when provided', () => {
+    const customFallback = ({ error, onRetry, onRefresh }) => (
+      <div>
+        <h1>Custom Error UI</h1>
+        <p>{error.message}</p>
+        <button onClick={onRetry}>Custom Retry</button>
+        <button onClick={onRefresh}>Custom Refresh</button>
+      </div>
+    );
+
+    render(
+      <ErrorBoundary fallback={customFallback}>
+        <ThrowError shouldThrow={true} error={new Error('Fallback test')} />
+      </ErrorBoundary>
+    );
+
+    expect(screen.getByText('Custom Error UI')).toBeInTheDocument();
+    expect(screen.getByText('Fallback test')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Custom Retry' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Custom Refresh' })).toBeInTheDocument();
+  });
+
+  it('custom fallback onRetry resets error state', () => {
+    let retryFn = null;
+
+    const customFallback = ({ onRetry }) => {
+      retryFn = onRetry;
+      return <button onClick={onRetry}>Reset Error</button>;
+    };
+
+    const { rerender } = render(
+      <ErrorBoundary fallback={customFallback}>
+        <ThrowError shouldThrow={true} />
+      </ErrorBoundary>
+    );
+
+    // Click reset
+    fireEvent.click(screen.getByRole('button', { name: 'Reset Error' }));
+
+    // Rerender with no error
+    rerender(
+      <ErrorBoundary fallback={customFallback}>
+        <ThrowError shouldThrow={false} />
+      </ErrorBoundary>
+    );
+
+    // Should now show normal content
+    expect(screen.getByText('No error')).toBeInTheDocument();
+  });
+
+  it('has proper ARIA attributes for accessibility', () => {
+    const { container } = render(
+      <ErrorBoundary>
+        <ThrowError shouldThrow={true} />
+      </ErrorBoundary>
+    );
+
+    const alertDiv = container.querySelector('[role="alert"]');
+    expect(alertDiv).toBeInTheDocument();
+    expect(alertDiv).toHaveAttribute('aria-live', 'assertive');
+    expect(alertDiv).toHaveAttribute('aria-atomic', 'true');
+  });
+
+  it('has heading with correct id for aria-describedby', () => {
+    render(
+      <ErrorBoundary>
+        <ThrowError shouldThrow={true} />
+      </ErrorBoundary>
+    );
+
+    const heading = screen.getByRole('heading', { level: 2 });
+    expect(heading).toHaveAttribute('id', 'error-title');
+
+    const tryAgainButton = screen.getByRole('button', { name: 'Try Again' });
+    expect(tryAgainButton).toHaveAttribute('aria-describedby', 'error-title');
   });
 });

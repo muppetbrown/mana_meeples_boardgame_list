@@ -25,6 +25,30 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-y: scroll;
+  /* Smooth transition for theme changes */
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* Dark mode styles - applied when prefers-color-scheme is dark */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) body {
+    background: linear-gradient(to bottom right, #0f1419, #1a1f26, #0d1117);
+    color: #e7e9ea;
+  }
+}
+
+/* Manual dark mode override with .dark class on html/body */
+.dark body,
+html.dark body {
+  background: linear-gradient(to bottom right, #0f1419, #1a1f26, #0d1117);
+  color: #e7e9ea;
+}
+
+/* Force light mode when .light class is present */
+.light body,
+html.light body {
+  background: linear-gradient(to bottom right, #fef7dc, #d6f5d6, #ccf2f4);
+  color: #1f2f2d;
 }
 
 code {
@@ -121,6 +145,48 @@ a:not([role="button"]):not(.btn) {
   min-width: auto;
 }
 
+/* Dark mode focus styles */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) button:focus-visible,
+  :root:not(.light) a:focus-visible,
+  :root:not(.light) input:focus-visible,
+  :root:not(.light) select:focus-visible,
+  :root:not(.light) textarea:focus-visible,
+  :root:not(.light) summary:focus-visible,
+  :root:not(.light) [tabindex]:focus-visible {
+    outline-color: #60a5fa !important; /* Lighter blue for dark backgrounds */
+    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.2) !important;
+  }
+}
+
+.dark button:focus-visible,
+.dark a:focus-visible,
+.dark input:focus-visible,
+.dark select:focus-visible,
+.dark textarea:focus-visible,
+.dark summary:focus-visible,
+.dark [tabindex]:focus-visible {
+  outline-color: #60a5fa !important;
+  box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.2) !important;
+}
+
+/* Dark mode code blocks */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) code {
+    background-color: #1f2937;
+    color: #e5e7eb;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+  }
+}
+
+.dark code {
+  background-color: #1f2937;
+  color: #e5e7eb;
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+}
+
 /* High contrast mode support */
 @media (prefers-contrast: high) {
   .bg-linear-to-r,
@@ -129,16 +195,30 @@ a:not([role="button"]):not(.btn) {
     background: #000 !important;
     color: #fff !important;
   }
-  
+
   .text-slate-600,
   .text-slate-700,
   .text-slate-800 {
     color: #000 !important;
   }
-  
+
   .border-slate-200,
   .border-white\/50 {
     border-color: #000 !important;
+  }
+}
+
+/* High contrast in dark mode */
+@media (prefers-contrast: high) and (prefers-color-scheme: dark) {
+  :root:not(.light) body {
+    background: #000 !important;
+    color: #fff !important;
+  }
+
+  :root:not(.light) .text-slate-600,
+  :root:not(.light) .text-slate-700,
+  :root:not(.light) .text-slate-800 {
+    color: #fff !important;
   }
 }
 
