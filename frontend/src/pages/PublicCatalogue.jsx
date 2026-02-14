@@ -120,6 +120,21 @@ export default function PublicCatalogue() {
     setIsSticky(false);
   }, []);
 
+  // Scroll to top on filter change with accessibility support
+  // Defined here before the useEffect that uses it
+  const scrollToTopOnFilterChange = useCallback(() => {
+    const shouldAnimate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    window.scrollTo({
+      top: 0,
+      behavior: shouldAnimate ? 'smooth' : 'instant'
+    });
+
+    setIsHeaderVisible(true);
+    setIsSticky(false);
+    setExpandedCards(new Set());
+  }, []);
+
   // Scroll to top when filters change (NOT on initial mount)
   useEffect(() => {
     // Skip on initial mount
@@ -359,20 +374,6 @@ export default function PublicCatalogue() {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-
-  // Scroll to top on filter change with accessibility support
-  const scrollToTopOnFilterChange = useCallback(() => {
-    const shouldAnimate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    window.scrollTo({
-      top: 0,
-      behavior: shouldAnimate ? 'smooth' : 'instant'
-    });
-
-    setIsHeaderVisible(true);
-    setIsSticky(false);
-    setExpandedCards(new Set());
-  }, []);
 
   // Active filters count
   const activeFiltersCount = useMemo(() => {
