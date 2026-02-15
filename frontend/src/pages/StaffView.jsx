@@ -21,6 +21,7 @@ import { ManageLibraryTab } from "../components/staff/tabs/ManageLibraryTab";
 import { CategoriesTab } from "../components/staff/tabs/CategoriesTab";
 import { AdvancedToolsTab } from "../components/staff/tabs/AdvancedToolsTab";
 import { BuyListTab } from "../components/staff/tabs/BuyListTab";
+import { SleeveInventoryTab } from "../components/staff/tabs/SleeveInventoryTab";
 
 /**
  * Staff view content - uses StaffContext for all state management
@@ -53,6 +54,7 @@ function StaffViewContent() {
     { id: "manage-library", label: "Manage Library", icon: "📚" },
     { id: "categories", label: "Categories", icon: "🏷️" },
     { id: "buy-list", label: "Buy List", icon: "🛒" },
+    { id: "sleeve-inventory", label: "Sleeve Inventory", icon: "🃏" },
     { id: "advanced", label: "Advanced Tools", icon: "⚙️" },
   ];
 
@@ -102,6 +104,8 @@ function StaffViewContent() {
         return <CategoriesTab />;
       case "buy-list":
         return <BuyListTab />;
+      case "sleeve-inventory":
+        return <SleeveInventoryTab />;
       case "advanced":
         return <AdvancedToolsTab />;
       default:

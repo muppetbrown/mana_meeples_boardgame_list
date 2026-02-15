@@ -266,6 +266,41 @@ class PriceOffer(Base):
     )
 
 
+class SleeveProduct(Base):
+    """
+    Sleeve product inventory - tracks available sleeve products from distributors.
+    Used for matching game sleeve requirements to purchasable products.
+    """
+
+    __tablename__ = "sleeve_products"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    distributor = Column(String(200), nullable=False)
+    item_id = Column(String(100), nullable=True)  # Distributor SKU
+    name = Column(String(300), nullable=False)  # Product name
+    width_mm = Column(Integer, nullable=False)  # Sleeve inner width
+    height_mm = Column(Integer, nullable=False)  # Sleeve inner height
+    sleeves_per_pack = Column(Integer, nullable=False)  # Sleeves in one pack
+    price = Column(Numeric(10, 2), nullable=False)  # Price per pack
+    in_stock = Column(Integer, nullable=False, default=0)  # Individual sleeves in stock
+    ordered = Column(Integer, nullable=False, default=0)  # Packs on order
+
+    # Relationships
+    matched_sleeves = relationship("Sleeve", back_populates="matched_product")
+
+    __table_args__ = (
+        Index("idx_sleeve_product_size", "width_mm", "height_mm"),
+        Index("idx_sleeve_product_distributor", "distributor"),
+        CheckConstraint("in_stock >= 0", name="valid_product_stock"),
+        CheckConstraint("ordered >= 0", name="valid_product_ordered"),
+        CheckConstraint("sleeves_per_pack > 0", name="valid_pack_size"),
+        CheckConstraint("price > 0", name="valid_product_price"),
+    )
+
+    def __repr__(self):
+        return f"<SleeveProduct {self.name} {self.width_mm}x{self.height_mm}>"
+
+
 class Sleeve(Base):
     """
     Stores sleeve/card protector requirements for games.
@@ -282,9 +317,11 @@ class Sleeve(Base):
     quantity = Column(Integer, nullable=False)
     notes = Column(Text, nullable=True)  # Special notes about this card type
     is_sleeved = Column(Boolean, nullable=False, default=False)  # Whether this specific sleeve type is already sleeved
+    matched_product_id = Column(Integer, ForeignKey("sleeve_products.id", ondelete="SET NULL"), nullable=True, index=True)
 
-    # Relationship
+    # Relationships
     game = relationship("Game", back_populates="sleeves")
+    matched_product = relationship("SleeveProduct", back_populates="matched_sleeves")
 
     __table_args__ = (
         Index("idx_sleeve_game", "game_id"),

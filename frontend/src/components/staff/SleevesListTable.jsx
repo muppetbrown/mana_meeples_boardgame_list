@@ -4,6 +4,7 @@ import { getGameSleeves, updateSleeveStatus } from '../../api/client';
 export default function SleevesListTable({ gameId, onSleeveUpdate }) {
   const [sleeves, setSleeves] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [stockFeedback, setStockFeedback] = useState(null);
 
   useEffect(() => {
     loadSleeves();
@@ -23,8 +24,17 @@ export default function SleevesListTable({ gameId, onSleeveUpdate }) {
 
   const handleToggleSleeve = async (sleeveId, currentStatus) => {
     try {
-      await updateSleeveStatus(sleeveId, !currentStatus);
-      await loadSleeves(); // Reload to get updated status
+      const result = await updateSleeveStatus(sleeveId, !currentStatus);
+      // Show stock deduction feedback
+      if (result.stock_info) {
+        const info = result.stock_info;
+        const msg = info.warning
+          ? `${info.warning}`
+          : `${info.product_name}: stock now ${info.new_stock}`;
+        setStockFeedback(msg);
+        setTimeout(() => setStockFeedback(null), 3000);
+      }
+      await loadSleeves();
       if (onSleeveUpdate) {
         onSleeveUpdate();
       }
@@ -62,6 +72,13 @@ export default function SleevesListTable({ gameId, onSleeveUpdate }) {
         </div>
       )}
 
+      {/* Stock feedback */}
+      {stockFeedback && (
+        <div className="p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+          {stockFeedback}
+        </div>
+      )}
+
       {/* Sleeves Table */}
       <div className="overflow-x-auto border rounded-lg">
         <table className="w-full">
@@ -78,6 +95,9 @@ export default function SleevesListTable({ gameId, onSleeveUpdate }) {
               </th>
               <th className="px-4 py-2 text-right text-xs font-semibold text-gray-700 uppercase">
                 Quantity
+              </th>
+              <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase">
+                Matched Product
               </th>
               <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase">
                 Notes
@@ -114,6 +134,20 @@ export default function SleevesListTable({ gameId, onSleeveUpdate }) {
                   <div className="text-sm font-semibold text-gray-900">
                     {sleeve.quantity}
                   </div>
+                </td>
+                <td className="px-4 py-3">
+                  {sleeve.matched_product_name ? (
+                    <div className="text-xs">
+                      <span className="text-purple-700 font-medium">{sleeve.matched_product_name}</span>
+                      <span className="text-gray-400 ml-1">
+                        (stock: <span className={sleeve.matched_product_stock >= sleeve.quantity ? 'text-green-600' : 'text-red-500'}>
+                          {sleeve.matched_product_stock}
+                        </span>)
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">No match</span>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <div className="text-xs text-gray-600">

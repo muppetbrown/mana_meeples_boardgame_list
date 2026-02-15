@@ -528,14 +528,88 @@ export async function getGameSleeves(gameId) {
 
 /**
  * Update the sleeved status of a specific sleeve record
+ * When marking as sleeved, auto-deducts stock from matched product
  * @param {number} sleeveId - Sleeve record ID
  * @param {boolean} isSleeved - Whether this sleeve type is sleeved
- * @returns {Promise<Object>} Update confirmation
+ * @returns {Promise<Object>} Update confirmation with stock_info
  */
 export async function updateSleeveStatus(sleeveId, isSleeved) {
   const r = await api.patch(`/admin/sleeves/sleeve/${sleeveId}`, {
     is_sleeved: isSleeved
   });
+  return r.data;
+}
+
+// ============================================================================
+// SLEEVE INVENTORY API METHODS
+// ============================================================================
+
+/**
+ * Get all sleeve products (inventory)
+ * @param {string} [distributor] - Optional distributor filter
+ * @returns {Promise<Array>} Array of sleeve products
+ */
+export async function getSleeveProducts(distributor) {
+  const params = distributor ? { distributor } : {};
+  const r = await api.get("/admin/sleeves/products", { params });
+  return r.data;
+}
+
+/**
+ * Create a new sleeve product
+ * @param {Object} data - Product data
+ * @returns {Promise<Object>} Created product
+ */
+export async function createSleeveProduct(data) {
+  const r = await api.post("/admin/sleeves/products", data);
+  return r.data;
+}
+
+/**
+ * Update an existing sleeve product
+ * @param {number} id - Product ID
+ * @param {Object} data - Fields to update
+ * @returns {Promise<Object>} Updated product
+ */
+export async function updateSleeveProduct(id, data) {
+  const r = await api.put(`/admin/sleeves/products/${id}`, data);
+  return r.data;
+}
+
+/**
+ * Delete a sleeve product
+ * @param {number} id - Product ID
+ * @returns {Promise<Object>} Deletion confirmation
+ */
+export async function deleteSleeveProduct(id) {
+  const r = await api.delete(`/admin/sleeves/products/${id}`);
+  return r.data;
+}
+
+/**
+ * Run matching across all unsleeved games
+ * @returns {Promise<Object>} Matching results (matched, unmatched, total)
+ */
+export async function runSleeveMatching() {
+  const r = await api.post("/admin/sleeves/match-all");
+  return r.data;
+}
+
+/**
+ * Get aggregated to-order list
+ * @returns {Promise<Array>} Sleeve sizes needing orders with product recommendations
+ */
+export async function getToOrderList() {
+  const r = await api.get("/admin/sleeves/to-order");
+  return r.data;
+}
+
+/**
+ * Get games ready to sleeve (all requirements covered by stock)
+ * @returns {Promise<Array>} Games with full stock coverage
+ */
+export async function getToSleeveList() {
+  const r = await api.get("/admin/sleeves/to-sleeve");
   return r.data;
 }
 

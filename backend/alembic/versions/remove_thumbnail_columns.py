@@ -17,7 +17,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'pending_remove_thumbnails'
-down_revision = 'f37582e531b4'  # UPDATE THIS before running
+down_revision = 'a1b2c3d4e5f6'  # UPDATE THIS before running
 branch_labels = None
 depends_on = None
 
