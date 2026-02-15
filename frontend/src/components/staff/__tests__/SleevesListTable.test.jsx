@@ -25,6 +25,9 @@ describe('SleevesListTable', () => {
       quantity: 100,
       is_sleeved: false,
       notes: 'Main deck',
+      matched_product_id: null,
+      matched_product_name: null,
+      matched_product_stock: null,
     },
     {
       id: 2,
@@ -34,13 +37,16 @@ describe('SleevesListTable', () => {
       quantity: 50,
       is_sleeved: true,
       notes: null,
+      matched_product_id: 1,
+      matched_product_name: 'Test Sleeves',
+      matched_product_stock: 200,
     },
   ];
 
   beforeEach(() => {
     vi.clearAllMocks();
     apiClient.getGameSleeves.mockResolvedValue(mockSleeves);
-    apiClient.updateSleeveStatus.mockResolvedValue({});
+    apiClient.updateSleeveStatus.mockResolvedValue({ success: true, sleeve_id: 1, is_sleeved: true, stock_info: null });
   });
 
   describe('Loading State', () => {
@@ -119,6 +125,7 @@ describe('SleevesListTable', () => {
       expect(screen.getByText('Card Type')).toBeInTheDocument();
       expect(screen.getByText('Size (mm)')).toBeInTheDocument();
       expect(screen.getByText('Quantity')).toBeInTheDocument();
+      expect(screen.getByText('Matched Product')).toBeInTheDocument();
       expect(screen.getByText('Notes')).toBeInTheDocument();
     });
 

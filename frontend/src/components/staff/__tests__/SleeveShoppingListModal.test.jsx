@@ -2,9 +2,16 @@
  * SleeveShoppingListModal tests - Aggregated sleeve shopping list modal
  */
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SleeveShoppingListModal from '../SleeveShoppingListModal';
+
+// Mock the API client to prevent real HTTP requests
+vi.mock('../../../api/client', () => ({
+  getSleeveProducts: vi.fn().mockResolvedValue([]),
+}));
+
+import { getSleeveProducts } from '../../../api/client';
 
 describe('SleeveShoppingListModal', () => {
   const mockOnClose = vi.fn();
@@ -30,6 +37,7 @@ describe('SleeveShoppingListModal', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    getSleeveProducts.mockResolvedValue([]);
 
     // Mock DOM APIs for CSV download
     global.URL.createObjectURL = vi.fn(() => 'mock-url');
@@ -60,9 +68,11 @@ describe('SleeveShoppingListModal', () => {
       render(<SleeveShoppingListModal shoppingList={mockShoppingList} onClose={mockOnClose} />);
 
       expect(screen.getByText('Size (mm)')).toBeInTheDocument();
-      expect(screen.getByText('Total Quantity')).toBeInTheDocument();
+      expect(screen.getByText('Total Qty')).toBeInTheDocument();
       expect(screen.getByText('Games')).toBeInTheDocument();
-      expect(screen.getByText('Variations')).toBeInTheDocument();
+      expect(screen.getByText('Matched Product')).toBeInTheDocument();
+      expect(screen.getByText('Stock')).toBeInTheDocument();
+      expect(screen.getByText('Price/Pack')).toBeInTheDocument();
       expect(screen.getByText('Game Names')).toBeInTheDocument();
     });
 
@@ -73,13 +83,10 @@ describe('SleeveShoppingListModal', () => {
       expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
     });
 
-    test('renders note about variations', () => {
+    test('renders note about product matching', () => {
       render(<SleeveShoppingListModal shoppingList={mockShoppingList} onClose={mockOnClose} />);
 
-      // "Variations" appears in both table header and note
-      const variationsElements = screen.getAllByText(/Variations/);
-      expect(variationsElements.length).toBeGreaterThan(0);
-      expect(screen.getByText(/Double-check sleeve compatibility/)).toBeInTheDocument();
+      expect(screen.getByText(/Product matches use tolerance/)).toBeInTheDocument();
     });
   });
 
@@ -102,7 +109,6 @@ describe('SleeveShoppingListModal', () => {
       render(<SleeveShoppingListModal shoppingList={mockShoppingList} onClose={mockOnClose} />);
 
       const gamesCountCells = screen.getAllByText(/^[0-9]+$/);
-      // Should find 150, 2, 100, 3, plus variations
       expect(gamesCountCells.length).toBeGreaterThan(0);
     });
 
@@ -113,30 +119,37 @@ describe('SleeveShoppingListModal', () => {
       expect(screen.getByText('Game A, Game B, Game C')).toBeInTheDocument();
     });
 
-    test('shows variations number when greater than 1', () => {
+    test('shows "No match" when no products loaded', () => {
       render(<SleeveShoppingListModal shoppingList={mockShoppingList} onClose={mockOnClose} />);
 
-      // The second item has variations_grouped = 2 (also games_count = 2 in first row)
-      const cellsWithTwo = screen.getAllByText('2');
-      expect(cellsWithTwo.length).toBeGreaterThan(0);
+      const noMatchElements = screen.getAllByText('No match');
+      expect(noMatchElements.length).toBe(2);
     });
 
-    test('shows dash when variations equals 1', () => {
+    test('shows matched product info when products match', async () => {
+      getSleeveProducts.mockResolvedValue([
+        {
+          id: 1,
+          distributor: 'TestCo',
+          name: 'Standard Sleeves',
+          width_mm: 64,
+          height_mm: 89,
+          sleeves_per_pack: 100,
+          price: 5.99,
+          in_stock: 200,
+          ordered: 0,
+          ordered_sleeves: 0,
+        },
+      ]);
+
       render(<SleeveShoppingListModal shoppingList={mockShoppingList} onClose={mockOnClose} />);
 
-      const dashes = screen.getAllByText('—');
-      expect(dashes.length).toBeGreaterThan(0);
-    });
-
-    test('applies warning styling to variations when greater than 1', () => {
-      const { container } = render(
-        <SleeveShoppingListModal shoppingList={mockShoppingList} onClose={mockOnClose} />
-      );
-
-      // Find the variation cell with warning styling (in the Variations column)
-      const variationCells = container.querySelectorAll('.text-orange-600');
-      expect(variationCells.length).toBeGreaterThan(0);
-      expect(variationCells[0]).toHaveClass('font-semibold');
+      await waitFor(() => {
+        expect(screen.getByText('Standard Sleeves')).toBeInTheDocument();
+        expect(screen.getByText('TestCo')).toBeInTheDocument();
+        expect(screen.getByText('200')).toBeInTheDocument();
+        expect(screen.getByText('$5.99')).toBeInTheDocument();
+      });
     });
   });
 
@@ -225,45 +238,6 @@ describe('SleeveShoppingListModal', () => {
     });
   });
 
-  describe('Multiple Variations Scenarios', () => {
-    test('handles single variation correctly', () => {
-      const singleVariation = [
-        {
-          width_mm: 70,
-          height_mm: 120,
-          total_quantity: 50,
-          games_count: 1,
-          variations_grouped: 1,
-          game_names: ['Single Game'],
-        },
-      ];
-
-      render(<SleeveShoppingListModal shoppingList={singleVariation} onClose={mockOnClose} />);
-
-      expect(screen.getByText('—')).toBeInTheDocument();
-    });
-
-    test('highlights high variation count', () => {
-      const highVariation = [
-        {
-          width_mm: 70,
-          height_mm: 120,
-          total_quantity: 50,
-          games_count: 5,
-          variations_grouped: 5,
-          game_names: ['Game 1', 'Game 2', 'Game 3', 'Game 4', 'Game 5'],
-        },
-      ];
-
-      const { container } = render(<SleeveShoppingListModal shoppingList={highVariation} onClose={mockOnClose} />);
-
-      // Find the variation cell with warning styling
-      const variationCells = container.querySelectorAll('.text-orange-600');
-      expect(variationCells.length).toBeGreaterThan(0);
-      expect(variationCells[0]).toHaveTextContent('5');
-    });
-  });
-
   describe('Long Game Names', () => {
     test('handles long list of game names', () => {
       const manyGames = [
@@ -319,7 +293,7 @@ describe('SleeveShoppingListModal', () => {
       expect(table).toBeInTheDocument();
 
       expect(screen.getByRole('columnheader', { name: 'Size (mm)' })).toBeInTheDocument();
-      expect(screen.getByRole('columnheader', { name: 'Total Quantity' })).toBeInTheDocument();
+      expect(screen.getByRole('columnheader', { name: 'Total Qty' })).toBeInTheDocument();
     });
   });
 
