@@ -171,11 +171,12 @@ export function SleeveInventoryTab() {
     }
   };
 
-  // ---- Mark game as fully sleeved ----
+  // ---- Mark ready sleeves as sleeved ----
 
-  const handleMarkAllSleeved = async (game) => {
+  const handleSleeveReady = async (game) => {
+    const readySleeves = game.sleeves.filter((s) => s.ready);
     const results = { success: 0, failed: 0 };
-    for (const sleeve of game.sleeves) {
+    for (const sleeve of readySleeves) {
       try {
         await updateSleeveStatus(sleeve.sleeve_id, true);
         results.success++;
@@ -185,11 +186,12 @@ export function SleeveInventoryTab() {
     }
     if (results.failed > 0) {
       showMessage(
-        `Partially complete: ${results.success} marked, ${results.failed} failed (insufficient stock?)`,
+        `${results.success} sleeved, ${results.failed} failed (insufficient stock?)`,
         "error"
       );
     } else {
-      showMessage(`"${game.game_title}" marked as sleeved`);
+      const label = game.all_ready ? "fully" : `partially (${results.success}/${game.total_count})`;
+      showMessage(`"${game.game_title}" ${label} sleeved`);
     }
     loadToSleeve();
   };
@@ -294,7 +296,7 @@ export function SleeveInventoryTab() {
         <ReadyToSleeveSection
           list={toSleeveList}
           loading={loading}
-          onMarkSleeved={handleMarkAllSleeved}
+          onSleeveReady={handleSleeveReady}
         />
       )}
       {activeSection === "to-order" && (
@@ -438,13 +440,13 @@ function ProductInventorySection({
 }
 
 
-function ReadyToSleeveSection({ list, loading, onMarkSleeved }) {
+function ReadyToSleeveSection({ list, loading, onSleeveReady }) {
   if (loading) return <div className="text-center py-8 text-gray-500">Loading...</div>;
 
   if (list.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
-        No games are currently ready to sleeve. Either stock is insufficient or matching hasn't been run.
+        No games have sleevable requirements in stock. Either stock is insufficient or matching hasn't been run.
       </div>
     );
   }
@@ -452,24 +454,36 @@ function ReadyToSleeveSection({ list, loading, onMarkSleeved }) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-gray-600">
-        These games have all sleeve requirements covered by current stock.
+        Games with at least one sleeve requirement covered by stock. Sleeve what you can now.
       </p>
 
       {list.map((game) => (
-        <div key={game.game_id} className="border rounded-lg p-4 bg-white hover:shadow-sm transition-shadow">
+        <div key={game.game_id} className={`border rounded-lg p-4 bg-white hover:shadow-sm transition-shadow ${game.all_ready ? "border-green-300" : ""}`}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-lg">{game.game_title}</h3>
+            <div>
+              <h3 className="font-semibold text-lg">{game.game_title}</h3>
+              <span className={`text-xs ${game.all_ready ? "text-green-600" : "text-amber-600"}`}>
+                {game.all_ready
+                  ? "All sleeves ready"
+                  : `${game.ready_count} of ${game.total_count} sleeve types ready`}
+              </span>
+            </div>
             <button
-              onClick={() => onMarkSleeved(game)}
-              className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+              onClick={() => onSleeveReady(game)}
+              className={`px-3 py-1.5 text-white rounded-lg text-sm font-medium ${
+                game.all_ready
+                  ? "bg-green-600 hover:bg-green-700"
+                  : "bg-amber-600 hover:bg-amber-700"
+              }`}
             >
-              Mark All Sleeved
+              {game.all_ready ? "Sleeve All" : `Sleeve ${game.ready_count} Ready`}
             </button>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-gray-500 text-xs uppercase">
+                  <th className="pb-1">Status</th>
                   <th className="pb-1">Card Type</th>
                   <th className="pb-1">Size</th>
                   <th className="pb-1 text-right">Qty</th>
@@ -479,12 +493,24 @@ function ReadyToSleeveSection({ list, loading, onMarkSleeved }) {
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {game.sleeves.map((s, i) => (
-                  <tr key={i}>
+                  <tr key={i} className={s.ready ? "" : "opacity-50"}>
+                    <td className="py-1">
+                      {s.ready
+                        ? <span className="text-green-600 font-semibold text-xs">READY</span>
+                        : <span className="text-gray-400 text-xs">{s.product_name ? "Low stock" : "No match"}</span>
+                      }
+                    </td>
                     <td className="py-1">{s.card_name || "Standard Cards"}</td>
                     <td className="py-1 font-mono">{s.width_mm} x {s.height_mm}</td>
                     <td className="py-1 text-right">{s.quantity}</td>
-                    <td className="py-1 text-purple-700">{s.product_name}</td>
-                    <td className="py-1 text-right text-green-700">{s.product_stock}</td>
+                    <td className="py-1 text-purple-700">{s.product_name || "—"}</td>
+                    <td className="py-1 text-right">
+                      {s.product_stock != null ? (
+                        <span className={s.ready ? "text-green-700" : "text-red-500"}>
+                          {s.product_stock}
+                        </span>
+                      ) : "—"}
+                    </td>
                   </tr>
                 ))}
               </tbody>

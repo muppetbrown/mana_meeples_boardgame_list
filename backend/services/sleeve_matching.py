@@ -94,10 +94,10 @@ def run_matching_for_all_games(db: Session) -> dict:
 
 def compute_to_sleeve_games(db: Session) -> list[dict]:
     """
-    Returns games where ALL sleeve requirements have a matched product with sufficient stock.
-    Each game includes its sleeve requirements and matched products.
+    Returns games that have at least one sleeve requirement coverable by stock.
+    Each sleeve is marked as ready or not, so partial sleeving is supported.
+    Games are sorted: fully coverable first, then by number of ready sleeves descending.
     """
-    # Get all unsleeved games that have sleeve data
     games = db.execute(
         select(Game).where(
             Game.has_sleeves == "found",
@@ -112,19 +112,28 @@ def compute_to_sleeve_games(db: Session) -> list[dict]:
         if not unsleeved:
             continue
 
-        # Check if ALL unsleeved requirements have a matched product with enough stock
-        all_covered = True
         sleeve_details = []
+        any_ready = False
 
         for sleeve in unsleeved:
             if not sleeve.matched_product_id:
-                all_covered = False
-                break
+                sleeve_details.append({
+                    "sleeve_id": sleeve.id,
+                    "card_name": sleeve.card_name,
+                    "width_mm": sleeve.width_mm,
+                    "height_mm": sleeve.height_mm,
+                    "quantity": sleeve.quantity,
+                    "product_id": None,
+                    "product_name": None,
+                    "product_stock": None,
+                    "ready": False,
+                })
+                continue
 
             product = db.get(SleeveProduct, sleeve.matched_product_id)
-            if not product or product.in_stock < sleeve.quantity:
-                all_covered = False
-                break
+            has_stock = product is not None and product.in_stock >= sleeve.quantity
+            if has_stock:
+                any_ready = True
 
             sleeve_details.append({
                 "sleeve_id": sleeve.id,
@@ -132,18 +141,25 @@ def compute_to_sleeve_games(db: Session) -> list[dict]:
                 "width_mm": sleeve.width_mm,
                 "height_mm": sleeve.height_mm,
                 "quantity": sleeve.quantity,
-                "product_id": product.id,
-                "product_name": product.name,
-                "product_stock": product.in_stock,
+                "product_id": product.id if product else None,
+                "product_name": product.name if product else None,
+                "product_stock": product.in_stock if product else None,
+                "ready": has_stock,
             })
 
-        if all_covered and sleeve_details:
+        if any_ready:
+            ready_count = sum(1 for s in sleeve_details if s["ready"])
             ready_games.append({
                 "game_id": game.id,
                 "game_title": game.title,
                 "sleeves": sleeve_details,
+                "all_ready": ready_count == len(sleeve_details),
+                "ready_count": ready_count,
+                "total_count": len(sleeve_details),
             })
 
+    # Fully coverable games first, then by ready count descending
+    ready_games.sort(key=lambda g: (-int(g["all_ready"]), -g["ready_count"]))
     return ready_games
 
 
