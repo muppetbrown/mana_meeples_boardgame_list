@@ -476,7 +476,7 @@ function ReadyToSleeveSection({ list, loading, onSleeveReady }) {
                   : "bg-amber-600 hover:bg-amber-700"
               }`}
             >
-              {game.all_ready ? "Sleeve All" : `Sleeve ${game.ready_count} Ready`}
+              {game.all_ready ? "Mark All Sleeved" : `Mark ${game.ready_count} of ${game.total_count} Sleeved`}
             </button>
           </div>
           <div className="overflow-x-auto">
