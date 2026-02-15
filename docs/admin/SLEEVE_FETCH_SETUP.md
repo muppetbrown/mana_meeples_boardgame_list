@@ -66,6 +66,20 @@ You can also manually trigger the workflow from GitHub:
 3. Leave "game_ids" field empty to fetch for all games
 4. Click "Run workflow" button
 
+## `has_sleeves` Field Values
+
+The `has_sleeves` column on the `boardgames` table tracks the sleeve lookup status for each game:
+
+| Value | Meaning | Admin Icon |
+|-------|---------|------------|
+| `found` | Sleeve data exists in the `sleeves` table. Game shows as sleeved when all sleeve entries are marked `is_sleeved`. | 🃏 (when fully sleeved) |
+| `none` | Game has been checked and has no sleeve requirements (e.g. no cards). | 🚫🃏 |
+| `not_found` | BGG scraper ran but couldn't find sleeve data. Needs manual investigation. | ❓🃏 |
+| `check` | Flagged for manual review. | ❓🃏 |
+| `NULL` | Not yet checked. Sleeve fetch has not been run for this game. | ❓🃏 |
+| `error` | Scraper encountered an error. May need retry or manual entry. | — |
+| `manual` | Sleeve data was entered manually (not from BGG scraper). | — |
+
 ## Technical Details
 
 ### Backend Endpoint

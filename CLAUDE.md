@@ -51,7 +51,16 @@ users_rated = Column(Integer, nullable=True)  # Number of BGG users who rated
 min_age = Column(Integer, nullable=True)  # Minimum recommended age
 is_cooperative = Column(Boolean, nullable=True)  # Cooperative game flag
 nz_designer = Column(Boolean, nullable=True, default=False, index=True)  # New Zealand designer flag
+has_sleeves = Column(String(20), nullable=True)  # Sleeve status: 'found', 'none', 'not_found', 'check', NULL, 'error', 'manual'
+is_sleeved = Column(Boolean, nullable=True, default=False, index=True)  # Whether all sleeve requirements are fulfilled
 ```
+
+### Sleeve Status Values (`has_sleeves`)
+- **`found`**: Sleeve data exists in the `sleeves` table. Admin icon: 🃏 (when fully sleeved)
+- **`none`**: Game checked, no sleeve requirements (no cards). Admin icon: 🚫🃏
+- **`not_found`** / **`check`** / **`NULL`**: Needs investigation. Admin icon: ❓🃏
+- **`error`**: Scraper error, may need retry
+- **`manual`**: Sleeve data entered manually
 
 ## BoardGameGeek Integration
 

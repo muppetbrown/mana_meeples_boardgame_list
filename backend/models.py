@@ -67,7 +67,7 @@ class Game(Base):
     status = Column(String(20), nullable=True, default="OWNED", index=True)
 
     # Sleeve information
-    has_sleeves = Column(String(20), nullable=True)  # 'found', 'not_found', 'error', 'manual', or NULL (not checked)
+    has_sleeves = Column(String(20), nullable=True)  # Values: 'found' (sleeve data exists), 'none' (no sleeves required), 'not_found'/'check'/NULL (needs investigation), 'error', 'manual'
     is_sleeved = Column(Boolean, nullable=True, default=False, index=True)  # Whether the entire game is already sleeved
 
     # AfterGame integration

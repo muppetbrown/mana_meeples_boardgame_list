@@ -373,12 +373,20 @@ export function ManageLibraryTab() {
                             🃏
                           </span>
                         )}
-                        {game.has_sleeves === 'not_found' && (
+                        {game.has_sleeves === 'none' && (
                           <span
                             className="text-sm"
                             title="No sleeve requirements for this game"
                           >
                             🚫🃏
+                          </span>
+                        )}
+                        {(game.has_sleeves === 'not_found' || game.has_sleeves === 'check' || !game.has_sleeves) && (
+                          <span
+                            className="text-sm"
+                            title="Sleeve status needs investigation"
+                          >
+                            ❓🃏
                           </span>
                         )}
                       </div>
