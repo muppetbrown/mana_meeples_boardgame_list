@@ -480,31 +480,31 @@ function ReadyToSleeveSection({ list, loading, onSleeveReady }) {
             </button>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-auto">
               <thead>
-                <tr className="text-left text-gray-500 text-xs uppercase">
-                  <th className="pb-1">Status</th>
-                  <th className="pb-1">Card Type</th>
-                  <th className="pb-1">Size</th>
-                  <th className="pb-1 text-right">Qty</th>
-                  <th className="pb-1">Matched Product</th>
-                  <th className="pb-1 text-right">Stock</th>
+                <tr className="text-left text-gray-500 text-xs uppercase border-b border-gray-200">
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-3 py-2">Card Type</th>
+                  <th className="px-3 py-2">Size</th>
+                  <th className="px-3 py-2 text-right">Qty</th>
+                  <th className="px-3 py-2">Matched Product</th>
+                  <th className="px-3 py-2 text-right">Stock</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {game.sleeves.map((s, i) => (
                   <tr key={i} className={s.ready ? "" : "opacity-50"}>
-                    <td className="py-1">
+                    <td className="px-3 py-2">
                       {s.ready
                         ? <span className="text-green-600 font-semibold text-xs">READY</span>
                         : <span className="text-gray-400 text-xs">{s.product_name ? "Low stock" : "No match"}</span>
                       }
                     </td>
-                    <td className="py-1">{s.card_name || "Standard Cards"}</td>
-                    <td className="py-1 font-mono">{s.width_mm} x {s.height_mm}</td>
-                    <td className="py-1 text-right">{s.quantity}</td>
-                    <td className="py-1 text-purple-700">{s.product_name || "—"}</td>
-                    <td className="py-1 text-right">
+                    <td className="px-3 py-2">{s.card_name || "Standard Cards"}</td>
+                    <td className="px-3 py-2 font-mono">{s.width_mm} x {s.height_mm}</td>
+                    <td className="px-3 py-2 text-right">{s.quantity}</td>
+                    <td className="px-3 py-2 text-purple-700">{s.product_name || "—"}</td>
+                    <td className="px-3 py-2 text-right">
                       {s.product_stock != null ? (
                         <span className={s.ready ? "text-green-700" : "text-red-500"}>
                           {s.product_stock}
