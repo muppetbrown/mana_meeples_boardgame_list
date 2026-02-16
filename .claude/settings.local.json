@@ -59,7 +59,8 @@
       "Bash(npx vitest:*)",
       "mcp__plugin_serena_serena__create_text_file",
       "Bash(npm ls:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "mcp__plugin_github_github__list_pull_requests"
     ]
   }
 }
