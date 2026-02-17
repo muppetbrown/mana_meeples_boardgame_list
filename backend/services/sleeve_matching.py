@@ -48,10 +48,11 @@ def best_match_in_stock(width_mm: int, height_mm: int, db: Session) -> SleevePro
     in_stock = [p for p in products if p.in_stock > 0]
     if not in_stock:
         return None
-    # Sort by best size fit (smallest overshoot), then highest stock
+    # Best size fit first, then highest stock for same-size products
     return min(in_stock, key=lambda p: (
         (p.width_mm - width_mm) + (p.height_mm - height_mm),
         -p.in_stock,
+        float(p.price) / p.sleeves_per_pack,
     ))
 
 
@@ -83,9 +84,10 @@ def run_matching_for_all_games(db: Session) -> dict:
         ]
 
         if candidates:
-            # Best size fit first, then cheapest per sleeve for same-size products
+            # Best size fit, then prefer in-stock, then cheapest per sleeve
             best = min(candidates, key=lambda p: (
                 (p.width_mm - sleeve.width_mm) + (p.height_mm - sleeve.height_mm),
+                0 if p.in_stock > 0 else 1,
                 float(p.price) / p.sleeves_per_pack,
             ))
             sleeve.matched_product_id = best.id
