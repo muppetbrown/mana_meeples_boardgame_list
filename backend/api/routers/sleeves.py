@@ -177,13 +177,8 @@ def update_sleeve_status(
 
         if product:
             if new_status:
-                # Marking as sleeved -> deduct stock
-                if product.in_stock < sleeve.quantity:
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"Insufficient stock for {product.name}: have {product.in_stock}, need {sleeve.quantity}"
-                    )
-                product.in_stock -= sleeve.quantity
+                # Marking as sleeved -> deduct stock (use all available if insufficient)
+                product.in_stock = max(0, product.in_stock - sleeve.quantity)
             else:
                 # Unmarking -> restore stock
                 product.in_stock += sleeve.quantity

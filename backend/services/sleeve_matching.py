@@ -31,12 +31,15 @@ def find_matching_products(width_mm: int, height_mm: int, db: Session) -> list[S
 
 
 def best_match_for_order(width_mm: int, height_mm: int, db: Session) -> SleeveProduct | None:
-    """Find the cheapest-per-sleeve product that fits the given card size."""
+    """Find the best-fitting product, using cheapest-per-sleeve as tiebreaker."""
     products = find_matching_products(width_mm, height_mm, db)
     if not products:
         return None
-    # Sort by price per sleeve (lowest first)
-    return min(products, key=lambda p: float(p.price) / p.sleeves_per_pack)
+    # Best size fit first, then cheapest per sleeve for same-size products
+    return min(products, key=lambda p: (
+        (p.width_mm - width_mm) + (p.height_mm - height_mm),
+        float(p.price) / p.sleeves_per_pack,
+    ))
 
 
 def best_match_in_stock(width_mm: int, height_mm: int, db: Session) -> SleeveProduct | None:
@@ -80,8 +83,11 @@ def run_matching_for_all_games(db: Session) -> dict:
         ]
 
         if candidates:
-            # Pick cheapest per sleeve
-            best = min(candidates, key=lambda p: float(p.price) / p.sleeves_per_pack)
+            # Best size fit first, then cheapest per sleeve for same-size products
+            best = min(candidates, key=lambda p: (
+                (p.width_mm - sleeve.width_mm) + (p.height_mm - sleeve.height_mm),
+                float(p.price) / p.sleeves_per_pack,
+            ))
             sleeve.matched_product_id = best.id
             matched += 1
         else:
