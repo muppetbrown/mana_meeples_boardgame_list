@@ -182,6 +182,7 @@ def compute_to_order_list(db: Session) -> list[dict]:
         select(Sleeve).join(Game, Sleeve.game_id == Game.id).where(
             (Sleeve.is_sleeved == False) | (Sleeve.is_sleeved.is_(None)),
             (Game.is_sleeved == False) | (Game.is_sleeved.is_(None)),
+            Game.status == "OWNED",
         )
     ).scalars().all()
 
