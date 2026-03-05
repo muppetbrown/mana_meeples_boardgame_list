@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-03-05T08:55:06+00:00",
+  "checked_at": "2026-03-05T13:24:42+00:00",
   "games": [
     {
       "bgg_id": 167791,
@@ -656,7 +656,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 96.11,
+          "price_nzd": 95.93,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=67f7c5ee51af69ea4b762952&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fkpase6kheF%2Froot",
           "in_stock": true
@@ -1571,15 +1571,15 @@
       "name": "A Fake Artist Goes to New York",
       "low_price": 43.4,
       "mean_price": 50.0,
-      "best_price": 43.62,
+      "best_price": 43.54,
       "best_store": "Amazon AU",
-      "discount_pct": 12.75,
+      "discount_pct": 12.91,
       "disc_mean_pct": null,
-      "delta": -0.43,
+      "delta": -0.27,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 43.62,
+          "price_nzd": 43.54,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=69454e26949eff2aff33da65&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F_EYQLtWuZC%2Fa-fake-artist-goes-to-new-york",
           "in_stock": true
@@ -1778,76 +1778,12 @@
       "name": "Cascadia: Landmarks",
       "low_price": 65.28,
       "mean_price": 76.3,
-      "best_price": 65.61,
-      "best_store": "Gameology",
-      "discount_pct": 14.01,
+      "best_price": null,
+      "best_store": null,
+      "discount_pct": null,
       "disc_mean_pct": null,
-      "delta": -0.44,
-      "offers": [
-        {
-          "store": "Gameology",
-          "price_nzd": 65.61,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=649c4da83b430c000806a6e2&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FnieCowQmCo%2Fcascadia-landmarks",
-          "in_stock": true
-        },
-        {
-          "store": "Amazon AU",
-          "price_nzd": 68.24,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68c96918f640ce8cbd6d4c44&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FnieCowQmCo%2Fcascadia-landmarks",
-          "in_stock": true
-        },
-        {
-          "store": "Pop Stop",
-          "price_nzd": 69.99,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68f0ee31068ace38b612d3df&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FnieCowQmCo%2Fcascadia-landmarks",
-          "in_stock": true
-        },
-        {
-          "store": "Gameology",
-          "price_nzd": 71.57,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=6682f464cfb474be02e1b950&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FnieCowQmCo%2Fcascadia-landmarks",
-          "in_stock": true
-        },
-        {
-          "store": "Escape Board-Em with Solve It & Escape",
-          "price_nzd": 79.0,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=668d43b0bbc51ebbe654936a&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FnieCowQmCo%2Fcascadia-landmarks",
-          "in_stock": true
-        },
-        {
-          "store": "Gamersphere",
-          "price_nzd": 79.99,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=68839bcd2b28ecc59041e3bc&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FnieCowQmCo%2Fcascadia-landmarks",
-          "in_stock": true
-        },
-        {
-          "store": "HobbyMaster",
-          "price_nzd": 80.0,
-          "availability": "Out of stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=66fd47f02ed3e94ad061b419&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FnieCowQmCo%2Fcascadia-landmarks",
-          "in_stock": false
-        },
-        {
-          "store": "Ironhorse Hobbies",
-          "price_nzd": 83.95,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=66ed7e602ed3e94ad0071363&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FnieCowQmCo%2Fcascadia-landmarks",
-          "in_stock": true
-        },
-        {
-          "store": "The Nile NZ",
-          "price_nzd": 92.75,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=67a0c2e1f922cbbbe45e4d32&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FnieCowQmCo%2Fcascadia-landmarks",
-          "in_stock": true
-        }
-      ]
+      "delta": null,
+      "offers": []
     },
     {
       "bgg_id": 410291,
@@ -2697,15 +2633,15 @@
       "name": "Planet Unknown",
       "low_price": 141.69,
       "mean_price": 170.35,
-      "best_price": 140.57,
+      "best_price": 136.23,
       "best_store": "Amazon AU",
-      "discount_pct": 17.48,
+      "discount_pct": 20.03,
       "disc_mean_pct": null,
-      "delta": 0.66,
+      "delta": 3.21,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 140.57,
+          "price_nzd": 136.23,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=692c4aefea3b561f8d9e416e&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2F671dyiG6Dw%2Fplanet-unknown",
           "in_stock": true
@@ -2903,7 +2839,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 44.54,
+          "price_nzd": 44.96,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6984965a8df58ff816b1c39b&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fkgox9xGtaa%2Fpoint-city",
           "in_stock": true
@@ -3326,7 +3262,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 37.43,
+          "price_nzd": 37.36,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=676442b23cdf8a95a0c7a6ca&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FnWQ3P8Ufah%2Fskull-king",
           "in_stock": true
@@ -3585,13 +3521,6 @@
           "in_stock": true
         },
         {
-          "store": "Amazon AU",
-          "price_nzd": 112.61,
-          "availability": "In stock",
-          "store_link": "https://jump.boardgameoracle.com/price-search?pid=696f846752c51487be99c5c3&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FDMDhmm1Mi0%2Fistanbul-big-box",
-          "in_stock": true
-        },
-        {
           "store": "Game Centre",
           "price_nzd": 115.0,
           "availability": "In stock",
@@ -3611,6 +3540,13 @@
           "availability": "Out of stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=665878b056e9b10008f15cd4&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FDMDhmm1Mi0%2Fistanbul-big-box",
           "in_stock": false
+        },
+        {
+          "store": "Amazon AU",
+          "price_nzd": 142.66,
+          "availability": "In stock",
+          "store_link": "https://jump.boardgameoracle.com/price-search?pid=696f846752c51487be99c5c3&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FDMDhmm1Mi0%2Fistanbul-big-box",
+          "in_stock": true
         },
         {
           "store": "Gamersphere",
@@ -4096,7 +4032,7 @@
         },
         {
           "store": "Amazon AU",
-          "price_nzd": 67.23,
+          "price_nzd": 67.21,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=694fe1e1e06886d118cfc5d3&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FKZdLev9-7v%2Fthe-bloody-inn",
           "in_stock": true
@@ -4198,15 +4134,15 @@
       "name": "Bomb Busters",
       "low_price": 78.34,
       "mean_price": 84.27,
-      "best_price": 78.73,
+      "best_price": 78.58,
       "best_store": "Amazon AU",
-      "discount_pct": 6.57,
+      "discount_pct": 6.75,
       "disc_mean_pct": null,
-      "delta": -0.46,
+      "delta": -0.28,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 78.73,
+          "price_nzd": 78.58,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6928568eea3b561f8dd9c066&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2Fz-UXtOXfR5%2Fbomb-busters",
           "in_stock": true
@@ -4267,15 +4203,15 @@
       "name": "Cascadia Junior",
       "low_price": 68.18,
       "mean_price": 81.3,
-      "best_price": 68.59,
+      "best_price": 68.46,
       "best_store": "Amazon AU",
-      "discount_pct": 15.63,
+      "discount_pct": 15.79,
       "disc_mean_pct": null,
-      "delta": -0.5,
+      "delta": -0.34,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 68.59,
+          "price_nzd": 68.46,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=6942b459949eff2affff6a00&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FJlmYPKk4rV%2Fcascadia-junior",
           "in_stock": true
@@ -4499,15 +4435,15 @@
       "name": "SETI: Search for Extraterrestrial Intelligence",
       "low_price": 135.96,
       "mean_price": 151.5,
-      "best_price": 129.62,
+      "best_price": 129.97,
       "best_store": "Amazon AU",
-      "discount_pct": 14.44,
+      "discount_pct": 14.21,
       "disc_mean_pct": null,
-      "delta": 4.18,
+      "delta": 3.95,
       "offers": [
         {
           "store": "Amazon AU",
-          "price_nzd": 129.62,
+          "price_nzd": 129.97,
           "availability": "In stock",
           "store_link": "https://jump.boardgameoracle.com/price-search?pid=68c96844f640ce8cbd6ccb11&r=nz&dl=https%3A%2F%2Fwww.boardgameoracle.com%2Fen-NZ%2Fboardgame%2Fprice%2FyZxOK4Xt-p%2Fseti-search-for-extraterrestrial-intelligence",
           "in_stock": true
