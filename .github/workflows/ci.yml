@@ -69,14 +69,14 @@ jobs:
 
       - name: Upload backend test results
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: backend-test-results
           path: backend/pytest-report.xml
 
       - name: Upload backend coverage HTML
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage-html
           path: backend/htmlcov/
@@ -116,7 +116,7 @@ jobs:
 
       - name: Upload frontend coverage HTML
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage-html
           path: frontend/coverage/
@@ -197,14 +197,14 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download backend coverage
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: backend-coverage-html
           path: coverage/backend
 
       - name: Download frontend coverage
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: frontend-coverage-html
@@ -238,7 +238,7 @@ jobs:
           EOF
 
       - name: Upload combined coverage
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: combined-coverage-html
           path: coverage/
