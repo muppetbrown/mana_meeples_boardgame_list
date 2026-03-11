@@ -22,17 +22,14 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2-dev pkg-config chromium-browser chromium-chromedriver
+
       - name: Install dependencies
         run: |
           pip install -r backend/requirements.txt
-
-      - name: Install Chrome and ChromeDriver
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y chromium-browser chromium-chromedriver
-          # Verify installation
-          which chromedriver || echo "ChromeDriver not found in PATH"
-          chromedriver --version || true
 
       - name: Run sleeve fetch script
         env:
