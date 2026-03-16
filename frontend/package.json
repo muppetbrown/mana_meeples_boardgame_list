@@ -61,7 +61,7 @@
     "@axe-core/react": "^4.11.1",
     "@playwright/test": "^1.58.2",
     "@vitejs/plugin-react": "^5.1.4",
-    "@vitest/coverage-v8": "^4.0.18",
+    "@vitest/coverage-v8": "^4.1.0",
     "@vitest/ui": "^4.0.14",
     "autoprefixer": "^10.4.27",
     "jsdom": "^28.1.0",
