@@ -1,4 +1,4 @@
-SQLAlchemy==2.0.47
+SQLAlchemy==2.0.48
 psycopg2-binary==2.9.11
 python-dotenv==1.2.2
 selenium==4.41.0
