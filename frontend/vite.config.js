@@ -51,9 +51,13 @@ export default defineConfig({
     // Optimize chunk splitting for better caching
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'dompurify': ['dompurify'], // Separate chunk for lazy-loaded dependency
+        manualChunks(id) {
+          if (id.includes('/node_modules/react/') || id.includes('/node_modules/react-dom/') || id.includes('/node_modules/react-router-dom/')) {
+            return 'react-vendor';
+          }
+          if (id.includes('/node_modules/dompurify/')) {
+            return 'dompurify';
+          }
         },
         // Optimize chunk naming for better caching
         chunkFileNames: 'assets/[name]-[hash].js',
