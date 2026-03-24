@@ -387,20 +387,33 @@ def parse_statistics(item: Element) -> Dict[str, Any]:
                     ):
                         not_ranked_category = rank_name
 
+        # Mapping from BGG internal rank names to human-readable display labels
+        rank_name_labels = {
+            "strategygames": "Strategy",
+            "familygames": "Family",
+            "partygames": "Party",
+            "childrensgames": "Children's",
+            "thematic": "Thematic",
+            "abstracts": "Abstract",
+            "wargames": "War Game",
+            "cgs": "Card Game",
+        }
+
         # Process results
         if game_types:
-            # Sort by rank value and take the best (lowest) rank
+            # Sort by rank value (best/lowest first), map to friendly labels, join with " • "
             game_types.sort(key=lambda x: x[0])
-            best_type = game_types[0][1]
-            data["game_type"] = best_type
+            friendly = [rank_name_labels.get(name, name) for _, name in game_types]
+            data["game_type"] = " • ".join(friendly)
 
-            # Determine if cooperative based on game type
-            if best_type in ("thematic", "cgs"):
+            # Determine if cooperative based on best-ranked game type
+            best_raw = game_types[0][1]
+            if best_raw in ("thematic", "cgs"):
                 data["is_cooperative"] = None  # Can't determine
             else:
                 data["is_cooperative"] = False
         elif not_ranked_category:
-            data["game_type"] = not_ranked_category
+            data["game_type"] = rank_name_labels.get(not_ranked_category, not_ranked_category)
             data["is_cooperative"] = None  # Can't determine
 
         # Parse main BGG rank
