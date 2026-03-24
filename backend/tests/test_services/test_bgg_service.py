@@ -917,11 +917,9 @@ class TestGameTypeClassification:
         item = root.find("item")
         data = _extract_comprehensive_game_data(item, 12345)
 
-        # Should select the best-ranked category (lowest rank number)
-        # After refactoring, returns raw BGG category names
+        # Returns all ranked categories as friendly labels sorted by rank (best first), joined with " • "
         assert data["game_type"] is not None
-        assert data["game_type"] in ["strategygames", "familygames"]
-        # strategygames (rank 50) should be selected as it's the best rank
+        assert data["game_type"] in ["Strategy", "Family", "Strategy • Family", "Family • Strategy"]
 
     def test_not_ranked_category_fallback(self):
         """Should handle 'Not Ranked' categories appropriately"""

@@ -486,7 +486,7 @@ class TestParseStatistics:
         assert result['average_rating'] == 7.5
         assert result['complexity'] == 2.8
         assert result['bgg_rank'] == 100
-        assert result['game_type'] == 'strategygames'
+        assert result['game_type'] == 'Strategy'
 
     def test_parse_not_ranked_game(self):
         """Should handle not ranked games"""
@@ -506,7 +506,7 @@ class TestParseStatistics:
         result = parse_statistics(item)
 
         assert result['bgg_rank'] is None
-        assert result['game_type'] == 'partygames'  # Uses not ranked category
+        assert result['game_type'] == 'Party'  # Uses not ranked category
 
     def test_parse_missing_statistics(self):
         """Should handle missing statistics section"""
@@ -537,7 +537,7 @@ class TestParseStatistics:
 
         result = parse_statistics(item)
 
-        assert result['game_type'] == 'strategygames'  # Best rank (10)
+        assert result['game_type'] == 'Strategy • Thematic'  # Sorted by rank: strategygames(10), thematic(50)
 
     def test_parse_invalid_rating_values(self):
         """Should handle invalid rating values"""

@@ -490,7 +490,7 @@ class TestParseStatistics:
         assert result["complexity"] == 3.2
         assert result["users_rated"] == 1000
         assert result["bgg_rank"] == 150
-        assert result["game_type"] == "strategygames"
+        assert result["game_type"] == "Strategy"
 
     def test_parse_zero_rating(self):
         """Test handling zero rating (should be None)"""
@@ -539,8 +539,8 @@ class TestParseStatistics:
 
         result = parse_statistics(item)
 
-        # Should select the lowest rank (best) = familygames
-        assert result["game_type"] == "familygames"
+        # Returns all ranked categories sorted by rank (best first), joined with " • "
+        assert result["game_type"] == "Family • Strategy • Thematic"
 
     def test_parse_not_ranked_category(self):
         """Test handling 'Not Ranked' category without consensus"""
@@ -553,7 +553,7 @@ class TestParseStatistics:
 
         result = parse_statistics(item)
 
-        assert result["game_type"] == "partygames"
+        assert result["game_type"] == "Party"
 
     def test_parse_cooperative_game_type(self):
         """Test is_cooperative flag for thematic/cgs games"""
