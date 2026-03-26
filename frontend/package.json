@@ -68,7 +68,7 @@
     "postcss": "^8.5.8",
     "rollup-plugin-visualizer": "^7.0.1",
     "terser": "^5.46.1",
-    "vite": "^8.0.2",
+    "vite": "^8.0.3",
     "vite-plugin-compression": "^0.5.1",
     "vitest": "^4.0.16"
   }
