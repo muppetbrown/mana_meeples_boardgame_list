@@ -486,7 +486,7 @@ export default function PublicCatalogue() {
                 className={`shrink-0 snap-start rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap ${transitionClass} min-h-11 focus:outline-none focus:ring-3 focus:ring-offset-2 ${
                   category === "all"
                     ? "bg-emerald-500 text-white shadow-md focus:ring-emerald-300"
-                    : "bg-white/90 text-slate-700 border border-slate-200 hover:border-emerald-300 focus:ring-emerald-300"
+                    : "bg-white text-slate-900 border border-slate-300 hover:border-emerald-400 focus:ring-emerald-300"
                 }`}
                 aria-pressed={category === "all"}
                 aria-label={`Show all games. ${counts?.all ?? 0} total games.`}
@@ -516,7 +516,7 @@ export default function PublicCatalogue() {
 
           {/* Mobile Sticky Toolbar */}
           <div ref={toolbarRef} className="md:hidden sticky top-0 z-40 mb-4">
-            <div className="bg-white/95 backdrop-blur-sm border-b border-slate-200 shadow-md">
+            <div className="bg-white border-b border-slate-200 shadow-md">
 
               <div className="flex items-center gap-2 p-3">
                 <SortSelect
@@ -552,11 +552,11 @@ export default function PublicCatalogue() {
 
               {/* Expanded Filter Panel - Mobile */}
               {isFilterExpanded && (
-                <div className="p-3 space-y-3 border-t border-slate-200 bg-slate-50">
+                <div className="p-3 space-y-3 border-t border-slate-200 bg-white">
 
                   {/* Search */}
                   <div>
-                    <label htmlFor="search-box" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    <label htmlFor="search-box" className="block text-sm font-semibold text-slate-900 mb-1.5">
                       Search Games
                     </label>
                     <SearchBox
@@ -574,14 +574,14 @@ export default function PublicCatalogue() {
 
                   {/* Player Count */}
                   <div>
-                    <label htmlFor="players-mobile" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    <label htmlFor="players-mobile" className="block text-sm font-semibold text-slate-900 mb-1.5">
                       Player Count
                     </label>
                     <select
                       id="players-mobile"
                       value={players}
                       onChange={(e) => updatePlayers(e.target.value)}
-                      className="w-full min-h-11 px-3 py-2 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
+                      className="w-full min-h-11 px-3 py-2 text-sm text-slate-900 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
                     >
                       <option value="">Any</option>
                       <option value="1">1 player</option>
@@ -598,14 +598,14 @@ export default function PublicCatalogue() {
 
                   {/* Complexity */}
                   <div>
-                    <label htmlFor="complexity-mobile" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    <label htmlFor="complexity-mobile" className="block text-sm font-semibold text-slate-900 mb-1.5">
                       Complexity
                     </label>
                     <select
                       id="complexity-mobile"
                       value={complexityRange}
                       onChange={(e) => updateComplexity(e.target.value)}
-                      className="w-full min-h-11 px-3 py-2 text-sm border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
+                      className="w-full min-h-11 px-3 py-2 text-sm text-slate-900 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
                     >
                       <option value="">Any</option>
                       <option value="1-1.5">Light (1-1.5)</option>
@@ -623,7 +623,7 @@ export default function PublicCatalogue() {
                       className={`min-h-11 px-3 py-2 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                         nzDesigner
                           ? "bg-blue-600 text-white shadow-md focus:ring-blue-300"
-                          : "bg-white text-blue-800 border-2 border-blue-200 hover:bg-blue-50 focus:ring-blue-300"
+                          : "bg-white text-blue-900 border-2 border-blue-300 hover:bg-blue-50 focus:ring-blue-300"
                       }`}
                       aria-pressed={nzDesigner}
                     >
@@ -638,7 +638,7 @@ export default function PublicCatalogue() {
                       className={`min-h-11 px-3 py-2 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                         recentlyAdded
                           ? "bg-purple-600 text-white shadow-md focus:ring-purple-300"
-                          : "bg-white text-purple-800 border-2 border-purple-200 hover:bg-purple-50 focus:ring-purple-300"
+                          : "bg-white text-purple-900 border-2 border-purple-300 hover:bg-purple-50 focus:ring-purple-300"
                       }`}
                       aria-pressed={recentlyAdded}
                     >
@@ -653,7 +653,7 @@ export default function PublicCatalogue() {
                   {activeFiltersCount > 0 && (
                     <button
                       onClick={clearAllFilters}
-                      className="w-full min-h-11 px-4 py-2 text-sm font-medium rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                      className="w-full min-h-11 px-4 py-2 text-sm font-medium rounded-xl bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300"
                     >
                       <span className="flex items-center justify-center gap-2">
                         <span>Clear All Filters</span>
@@ -670,7 +670,7 @@ export default function PublicCatalogue() {
 
           {/* Desktop Filter Section */}
           <section
-            className="hidden md:block bg-white/90 backdrop-blur-sm rounded-2xl p-5 shadow-lg border border-slate-200/50 mb-6"
+            className="hidden md:block bg-white rounded-2xl p-5 shadow-lg border border-slate-200 mb-6"
             aria-labelledby="search-filters-heading"
           >
             <h2 id="search-filters-heading" className="sr-only">
@@ -681,7 +681,7 @@ export default function PublicCatalogue() {
               {/* Row 1: Search + Players + Complexity */}
               <div className="flex gap-3 items-end">
                 <div className="flex-1">
-                  <label htmlFor="search-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  <label htmlFor="search-desktop" className="block text-sm font-semibold text-slate-900 mb-1.5">
                     Search Games
                   </label>
                   <SearchBox
@@ -693,14 +693,14 @@ export default function PublicCatalogue() {
                 </div>
 
                 <div className="w-40">
-                  <label htmlFor="players-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  <label htmlFor="players-desktop" className="block text-sm font-semibold text-slate-900 mb-1.5">
                     Players
                   </label>
                   <select
                     id="players-desktop"
                     value={players}
                     onChange={(e) => updatePlayers(e.target.value)}
-                    className="w-full min-h-12 px-3 py-2 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
+                    className="w-full min-h-12 px-3 py-2 text-slate-900 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
                   >
                     <option value="">Any</option>
                     <option value="1">1p</option>
@@ -716,14 +716,14 @@ export default function PublicCatalogue() {
                 </div>
 
                 <div className="w-48">
-                  <label htmlFor="complexity-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  <label htmlFor="complexity-desktop" className="block text-sm font-semibold text-slate-900 mb-1.5">
                     Complexity
                   </label>
                   <select
                     id="complexity-desktop"
                     value={complexityRange}
                     onChange={(e) => updateComplexity(e.target.value)}
-                    className="w-full min-h-12 px-3 py-2 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
+                    className="w-full min-h-12 px-3 py-2 text-slate-900 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none bg-white"
                   >
                     <option value="">Any</option>
                     <option value="1-1.5">Light</option>
@@ -742,7 +742,7 @@ export default function PublicCatalogue() {
                   className={`min-h-12 px-4 py-2.5 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-3 focus:ring-offset-2 ${
                     nzDesigner
                       ? "bg-blue-600 text-white shadow-md focus:ring-blue-300"
-                      : "bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 focus:ring-blue-300"
+                      : "bg-white text-blue-900 hover:bg-blue-50 border-2 border-blue-300 focus:ring-blue-300"
                   }`}
                   aria-pressed={nzDesigner}
                 >
@@ -757,7 +757,7 @@ export default function PublicCatalogue() {
                   className={`min-h-12 px-4 py-2.5 text-sm font-medium rounded-xl ${transitionClass} focus:outline-none focus:ring-3 focus:ring-offset-2 ${
                     recentlyAdded
                       ? "bg-purple-600 text-white shadow-md focus:ring-purple-300"
-                      : "bg-purple-50 text-purple-800 hover:bg-purple-100 border-2 border-purple-200 focus:ring-purple-300"
+                      : "bg-white text-purple-900 hover:bg-purple-50 border-2 border-purple-300 focus:ring-purple-300"
                   }`}
                   aria-pressed={recentlyAdded}
                 >
@@ -768,7 +768,7 @@ export default function PublicCatalogue() {
                 </button>
 
                 <div className="w-40">
-                  <label htmlFor="sort-desktop" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  <label htmlFor="sort-desktop" className="block text-sm font-semibold text-slate-900 mb-1.5">
                     Sort By
                   </label>
                   <SortSelect
@@ -781,7 +781,7 @@ export default function PublicCatalogue() {
                 {activeFiltersCount > 0 && (
                   <button
                     onClick={clearAllFilters}
-                    className="min-h-12 px-4 py-2 text-sm font-medium rounded-xl bg-slate-100 text-slate-800 hover:bg-slate-200 border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300"
+                    className="min-h-12 px-4 py-2 text-sm font-medium rounded-xl bg-slate-100 text-slate-900 hover:bg-slate-200 border-2 border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-300"
                   >
                     <span className="flex items-center gap-2">
                       <span aria-hidden="true">🗑️</span>
