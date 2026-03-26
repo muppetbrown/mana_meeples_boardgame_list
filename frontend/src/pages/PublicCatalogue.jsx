@@ -564,7 +564,6 @@ export default function PublicCatalogue() {
                       value={q}
                       onChange={updateSearch}
                       placeholder="Search by title, designer, or description..."
-                      className="w-full"
                       aria-describedby="search-help"
                     />
                     <p id="search-help" className="sr-only">
