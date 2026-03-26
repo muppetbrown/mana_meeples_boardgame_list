@@ -82,7 +82,7 @@ export default function SortSelect({ sort, onChange, className, id, ...props }) 
           onChange={handleFieldChange}
           className="
             flex-1 px-3 py-2.5 text-sm font-medium rounded-lg border-2 border-slate-300
-            bg-white text-slate-700
+            bg-white text-slate-900
             hover:border-emerald-300 hover:bg-emerald-50
             focus:outline-none focus:ring-3 focus:ring-emerald-300 focus:ring-offset-2 focus:border-emerald-500
             transition-all duration-200 min-h-11 cursor-pointer

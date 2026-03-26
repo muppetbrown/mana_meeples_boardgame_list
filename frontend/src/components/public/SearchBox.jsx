@@ -58,7 +58,7 @@ export default function SearchBox({ value, onChange, placeholder="Search games..
   return (
     <input
       id={id}
-      className={className || "w-full min-h-11 px-4 py-3 text-base border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white touch-manipulation"}
+      className={className || "w-full min-h-11 px-4 py-3 text-base text-slate-900 placeholder:text-slate-500 border-2 border-slate-300 rounded-xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 focus:outline-none transition-all bg-white touch-manipulation"}
       type="search"
       value={searchTerm}
       onChange={handleSearchChange}
