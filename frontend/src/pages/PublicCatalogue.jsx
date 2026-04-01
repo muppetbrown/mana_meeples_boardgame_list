@@ -333,6 +333,9 @@ export default function PublicCatalogue() {
     setRecentlyAdded(prev => {
       const newValue = !prev;
       setAnnouncement(newValue ? "Showing recently added games" : "Recently added filter removed");
+      if (newValue) {
+        setSort("date_added_desc");
+      }
       return newValue;
     });
   }, []);
