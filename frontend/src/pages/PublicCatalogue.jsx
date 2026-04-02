@@ -646,7 +646,7 @@ export default function PublicCatalogue() {
                     >
                       <span className="flex items-center justify-center gap-1.5">
                         <span aria-hidden="true">✨</span>
-                        <span>Recent (30d)</span>
+                        <span>Recently Added</span>
                       </span>
                     </button>
                   </div>
@@ -765,7 +765,7 @@ export default function PublicCatalogue() {
                 >
                   <span className="flex items-center gap-1.5">
                     <span aria-hidden="true">✨</span>
-                    <span>Recent</span>
+                    <span>Recently Added</span>
                   </span>
                 </button>
 
