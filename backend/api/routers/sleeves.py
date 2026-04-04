@@ -54,8 +54,8 @@ class SleeveProductCreate(BaseModel):
     distributor: str
     item_id: str | None = None
     name: str
-    width_mm: int
-    height_mm: int
+    width_mm: float
+    height_mm: float
     sleeves_per_pack: int
     price: float
     in_stock: int = 0
@@ -65,8 +65,8 @@ class SleeveProductUpdate(BaseModel):
     distributor: str | None = None
     item_id: str | None = None
     name: str | None = None
-    width_mm: int | None = None
-    height_mm: int | None = None
+    width_mm: float | None = None
+    height_mm: float | None = None
     sleeves_per_pack: int | None = None
     price: float | None = None
     in_stock: int | None = None
@@ -79,8 +79,8 @@ class SleeveProductResponse(BaseModel):
     distributor: str
     item_id: str | None
     name: str
-    width_mm: int
-    height_mm: int
+    width_mm: float
+    height_mm: float
     sleeves_per_pack: int
     price: float
     in_stock: int

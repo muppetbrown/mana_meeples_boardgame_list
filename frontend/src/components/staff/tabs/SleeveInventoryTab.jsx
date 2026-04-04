@@ -103,8 +103,8 @@ export function SleeveInventoryTab() {
         distributor: addForm.distributor,
         item_id: addForm.item_id || null,
         name: addForm.name,
-        width_mm: parseInt(addForm.width_mm),
-        height_mm: parseInt(addForm.height_mm),
+        width_mm: parseFloat(addForm.width_mm),
+        height_mm: parseFloat(addForm.height_mm),
         sleeves_per_pack: parseInt(addForm.sleeves_per_pack),
         price: parseFloat(addForm.price),
         in_stock: parseInt(addForm.in_stock) || 0,
@@ -341,8 +341,8 @@ function ProductInventorySection({
             <input placeholder="Distributor *" required value={addForm.distributor} onChange={(e) => setAddForm({ ...addForm, distributor: e.target.value })} className="border rounded px-3 py-2 text-sm" />
             <input placeholder="Item ID / SKU" value={addForm.item_id} onChange={(e) => setAddForm({ ...addForm, item_id: e.target.value })} className="border rounded px-3 py-2 text-sm" />
             <input placeholder="Product Name *" required value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} className="border rounded px-3 py-2 text-sm col-span-2" />
-            <input placeholder="Width (mm) *" required type="number" min="1" value={addForm.width_mm} onChange={(e) => setAddForm({ ...addForm, width_mm: e.target.value })} className="border rounded px-3 py-2 text-sm" />
-            <input placeholder="Height (mm) *" required type="number" min="1" value={addForm.height_mm} onChange={(e) => setAddForm({ ...addForm, height_mm: e.target.value })} className="border rounded px-3 py-2 text-sm" />
+            <input placeholder="Width (mm) *" required type="number" min="1" step="any" value={addForm.width_mm} onChange={(e) => setAddForm({ ...addForm, width_mm: e.target.value })} className="border rounded px-3 py-2 text-sm" />
+            <input placeholder="Height (mm) *" required type="number" min="1" step="any" value={addForm.height_mm} onChange={(e) => setAddForm({ ...addForm, height_mm: e.target.value })} className="border rounded px-3 py-2 text-sm" />
             <input placeholder="Sleeves/Pack *" required type="number" min="1" value={addForm.sleeves_per_pack} onChange={(e) => setAddForm({ ...addForm, sleeves_per_pack: e.target.value })} className="border rounded px-3 py-2 text-sm" />
             <input placeholder="Price/Pack *" required type="number" step="0.01" min="0" value={addForm.price} onChange={(e) => setAddForm({ ...addForm, price: e.target.value })} className="border rounded px-3 py-2 text-sm" />
             <input placeholder="In Stock (sleeves)" type="number" min="0" value={addForm.in_stock} onChange={(e) => setAddForm({ ...addForm, in_stock: e.target.value })} className="border rounded px-3 py-2 text-sm" />

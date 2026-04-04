@@ -16,7 +16,7 @@ WIDTH_TOLERANCE_MM = 1   # Sleeve width must be >= card width and <= card width 
 HEIGHT_TOLERANCE_MM = 5  # Sleeve height must be >= card height and <= card height + 5mm
 
 
-def find_matching_products(width_mm: int, height_mm: int, db: Session) -> list[SleeveProduct]:
+def find_matching_products(width_mm: float, height_mm: float, db: Session) -> list[SleeveProduct]:
     """Find all sleeve products that fit a given card size within tolerances."""
     return db.execute(
         select(SleeveProduct).where(
@@ -30,7 +30,7 @@ def find_matching_products(width_mm: int, height_mm: int, db: Session) -> list[S
     ).scalars().all()
 
 
-def best_match_for_order(width_mm: int, height_mm: int, db: Session) -> SleeveProduct | None:
+def best_match_for_order(width_mm: float, height_mm: float, db: Session) -> SleeveProduct | None:
     """Find the best-fitting product, using cheapest-per-sleeve as tiebreaker."""
     products = find_matching_products(width_mm, height_mm, db)
     if not products:
@@ -42,7 +42,7 @@ def best_match_for_order(width_mm: int, height_mm: int, db: Session) -> SleevePr
     ))
 
 
-def best_match_in_stock(width_mm: int, height_mm: int, db: Session) -> SleeveProduct | None:
+def best_match_in_stock(width_mm: float, height_mm: float, db: Session) -> SleeveProduct | None:
     """Find the best-fitting in-stock product for the given card size."""
     products = find_matching_products(width_mm, height_mm, db)
     in_stock = [p for p in products if p.in_stock > 0]

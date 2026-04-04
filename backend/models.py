@@ -278,8 +278,8 @@ class SleeveProduct(Base):
     distributor = Column(String(200), nullable=False)
     item_id = Column(String(100), nullable=True)  # Distributor SKU
     name = Column(String(300), nullable=False)  # Product name
-    width_mm = Column(Integer, nullable=False)  # Sleeve inner width
-    height_mm = Column(Integer, nullable=False)  # Sleeve inner height
+    width_mm = Column(Numeric(6, 2), nullable=False)  # Sleeve inner width
+    height_mm = Column(Numeric(6, 2), nullable=False)  # Sleeve inner height
     sleeves_per_pack = Column(Integer, nullable=False)  # Sleeves in one pack
     price = Column(Numeric(10, 2), nullable=False)  # Price per pack
     in_stock = Column(Integer, nullable=False, default=0)  # Individual sleeves in stock
