@@ -59,16 +59,16 @@
   },
   "devDependencies": {
     "@axe-core/react": "^4.11.1",
-    "@playwright/test": "^1.58.2",
+    "@playwright/test": "^1.59.1",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitest/coverage-v8": "^4.1.2",
+    "@vitest/coverage-v8": "^4.1.4",
     "@vitest/ui": "^4.0.14",
     "autoprefixer": "^10.4.27",
-    "jsdom": "^29.0.1",
-    "postcss": "^8.5.8",
+    "jsdom": "^29.0.2",
+    "postcss": "^8.5.9",
     "rollup-plugin-visualizer": "^7.0.1",
     "terser": "^5.46.1",
-    "vite": "^8.0.3",
+    "vite": "^8.0.8",
     "vite-plugin-compression": "^0.5.1",
     "vitest": "^4.0.16"
   }
