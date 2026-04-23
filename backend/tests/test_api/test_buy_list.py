@@ -307,8 +307,8 @@ class TestAddToBuyList:
     @patch("bgg_service.fetch_bgg_thing")
     def test_add_existing_game(self, mock_fetch, client, db_session, admin_headers):
         """Should add existing game to buy list"""
-        # Create game
-        game = Game(title="Test Game", bgg_id=12345)
+        # Create game with no OWNED status so it can be added to the buy list
+        game = Game(title="Test Game", bgg_id=12345, status=None)
         db_session.add(game)
         db_session.commit()
 
@@ -359,8 +359,8 @@ class TestAddToBuyList:
 
     def test_duplicate_game_returns_error(self, client, db_session, admin_headers):
         """Should return error when game already on buy list"""
-        # Create game and add to buy list
-        game = Game(title="Test Game", bgg_id=12345)
+        # Create game with BUY_LIST status (consistent with having a BuyListGame entry)
+        game = Game(title="Test Game", bgg_id=12345, status="BUY_LIST")
         db_session.add(game)
         db_session.flush()
 

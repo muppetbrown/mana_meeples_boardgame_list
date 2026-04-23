@@ -300,8 +300,8 @@ class TestAddToBuyListEdgeCases:
         self, mock_fetch, client, db_session, admin_headers
     ):
         """Test that HTTPException is re-raised (line 383-384)"""
-        # Create game that already exists on buy list
-        game = Game(title="Duplicate", bgg_id=12354)
+        # Create game with BUY_LIST status (consistent with having a BuyListGame entry)
+        game = Game(title="Duplicate", bgg_id=12354, status="BUY_LIST")
         db_session.add(game)
         db_session.flush()
 
