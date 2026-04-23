@@ -79,7 +79,7 @@ describe('AddGamesTab', () => {
       render(<AddGamesTab />);
 
       expect(screen.getByText('How to find BGG IDs:')).toBeInTheDocument();
-      expect(screen.getByText(/boardgamegeek.com/)).toBeInTheDocument();
+      expect(screen.getByText('boardgamegeek.com')).toBeInTheDocument();
       expect(screen.getByText(/Search for your game/)).toBeInTheDocument();
     });
 
@@ -353,7 +353,7 @@ describe('AddGamesTab', () => {
     test('external link has proper attributes', () => {
       render(<AddGamesTab />);
 
-      const link = screen.getByRole('link', { name: /boardgamegeek.com/ });
+      const link = screen.getByRole('link', { name: 'boardgamegeek.com' });
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     });
