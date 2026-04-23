@@ -106,7 +106,7 @@ if not SESSION_SECRET:
     print("Generated temporary secret (sessions will reset on restart)", file=sys.stderr)
     print("Not suitable for multi-instance deployment!", file=sys.stderr)
     print("\nSet SESSION_SECRET in .env or environment variables", file=sys.stderr)
-    print(f"Example: SESSION_SECRET={SESSION_SECRET}", file=sys.stderr)
+    print("Example: SESSION_SECRET=$(python -c \"import secrets; print(secrets.token_hex(32))\")", file=sys.stderr)
     print("="*80 + "\n", file=sys.stderr)
 
 # Session timeout (1 hour by default)

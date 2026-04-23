@@ -247,7 +247,7 @@ def parse_expansion_relationships(item: Element, title: str, is_expansion: bool)
         title_lower = title.lower()
 
         # Look for patterns like "5-6 Player" or "5-6 Extension" in title
-        player_expansion_pattern = r"(\d+)[-–](\d+)\s*(player|extension)"
+        player_expansion_pattern = r"(\d+)[-–](\d+)\s{0,5}(player|extension)"
         match = re.search(player_expansion_pattern, title_lower)
         if match:
             try:

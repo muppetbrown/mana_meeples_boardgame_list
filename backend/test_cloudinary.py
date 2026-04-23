@@ -37,7 +37,7 @@ try:
     config = cloudinary.config()
     print(f"✅ Cloudinary SDK imported successfully")
     print(f"   Cloud Name: {config.cloud_name}")
-    print(f"   API Key: {config.api_key[:4]}...{config.api_key[-4:]}")
+    print(f"   API Key: {'set' if config.api_key else 'NOT SET'}")
     print(f"   API Secret: {'*' * 20} (hidden)")
 except Exception as e:
     print(f"❌ Failed to import/configure Cloudinary: {e}")
