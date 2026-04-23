@@ -653,16 +653,14 @@ async def import_prices_from_json(
     Uses batch processing to prevent blocking and improve performance.
     """
     try:
-        # Load JSON file
-        price_data_dir = (Path(__file__).parent.parent.parent / "price_data").resolve()
-        json_file = (price_data_dir / source_file).resolve()
+        # Load JSON file — sanitize input to a bare filename before joining to the
+        # safe root dir, preventing path traversal via "../" segments.
+        safe_filename = Path(source_file).name
+        if not safe_filename or safe_filename != source_file:
+            raise HTTPException(status_code=400, detail="Invalid filename.")
 
-        # Prevent path traversal: ensure resolved path stays inside price_data_dir
-        if not json_file.is_relative_to(price_data_dir):
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid filename.",
-            )
+        price_data_dir = (Path(__file__).parent.parent.parent / "price_data").resolve()
+        json_file = price_data_dir / safe_filename
 
         if not json_file.exists():
             raise HTTPException(
