@@ -411,6 +411,11 @@ function fetchAndCache(request, cacheName) {
 
 // Message handling for cache control from the app
 self.addEventListener('message', (event) => {
+  // Only handle messages from clients on this origin
+  if (!event.source || !event.source.url.startsWith(self.location.origin)) {
+    return;
+  }
+
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }

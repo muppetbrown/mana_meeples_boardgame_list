@@ -37,9 +37,11 @@ function resolveApiBase() {
   }
 
   // 4. Production fallback - if running on Render's domain
-  if (typeof window !== "undefined" &&
-      (window.location.hostname.includes('onrender.com') ||
-       window.location.hostname.includes('manaandmeeples.co.nz'))) {
+  const hostname = typeof window !== "undefined" ? window.location.hostname : "";
+  const isProductionHost =
+    hostname === 'onrender.com' || hostname.endsWith('.onrender.com') ||
+    hostname === 'manaandmeeples.co.nz' || hostname.endsWith('.manaandmeeples.co.nz');
+  if (isProductionHost) {
     const productionUrl = "https://mana-meeples-boardgame-list-opgf.onrender.com";
     console.warn('[API Config] VITE_API_BASE not set, using production fallback:', productionUrl);
     return productionUrl;
