@@ -155,14 +155,16 @@ def check_malformed_urls() -> Dict[str, List[str]]:
             if game.image:
                 if '/fit-in/' in game.image or '/filters:' in game.image or '/c_limit' in game.image:
                     malformed['cloudinary_params'].append(f"Game {game.id} ({game.title}): {game.image[:100]}")
-                if 'cloudinary.com' in game.image:
+                _h = urlparse(game.image).hostname or ""
+                if _h == 'cloudinary.com' or _h.endswith('.cloudinary.com'):
                     malformed['cloudinary_in_bgg_url'].append(f"Game {game.id} ({game.title}): image field")
 
             # Check thumbnail_url field
             if game.thumbnail_url:
                 if '/fit-in/' in game.thumbnail_url or '/filters:' in game.thumbnail_url or '/c_limit' in game.thumbnail_url:
                     malformed['cloudinary_params'].append(f"Game {game.id} ({game.title}): {game.thumbnail_url[:100]}")
-                if 'cloudinary.com' in game.thumbnail_url:
+                _h = urlparse(game.thumbnail_url).hostname or ""
+                if _h == 'cloudinary.com' or _h.endswith('.cloudinary.com'):
                     malformed['cloudinary_in_bgg_url'].append(f"Game {game.id} ({game.title}): thumbnail_url field")
 
             # Check if both are missing

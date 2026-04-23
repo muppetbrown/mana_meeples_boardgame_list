@@ -6,6 +6,7 @@ Focus: Initialization, upload, compression, URL generation, error handling
 import pytest
 import io
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
+from urllib.parse import urlparse
 import httpx
 from PIL import Image
 
@@ -204,7 +205,8 @@ class TestImageUpload:
         headers = call_args[1]['headers']
         assert 'User-Agent' in headers
         assert 'Referer' in headers
-        assert 'boardgamegeek.com' in headers['Referer']
+        _ref_host = urlparse(headers['Referer']).hostname or ""
+        assert _ref_host == 'boardgamegeek.com' or _ref_host.endswith('.boardgamegeek.com')
 
     @pytest.mark.asyncio
     @patch('services.cloudinary_service.cloudinary.config')

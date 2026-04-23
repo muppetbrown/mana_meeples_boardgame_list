@@ -5,6 +5,7 @@ Separates business logic from HTTP routing concerns.
 """
 import logging
 from typing import Any, Dict, List, Optional, Tuple
+from urllib.parse import urlparse
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select, func, or_, and_, case, inspect, cast, String, delete
@@ -720,7 +721,8 @@ class GameService:
             optimal_quality = self._determine_optimal_bgg_image_quality(game)
 
             # Optimize source URL to use the best quality for this game
-            if 'cf.geekdo-images.com' in source_url:
+            _src_host = (urlparse(source_url).hostname or "").lower()
+            if _src_host == 'cf.geekdo-images.com' or _src_host.endswith('.geekdo-images.com'):
                 # BGG uses NEW format with double underscores in path: __SIZE/
                 # Example: https://cf.geekdo-images.com/HASH__d/pic123.jpg
                 quality_map_new = {

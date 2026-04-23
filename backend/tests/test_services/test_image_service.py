@@ -1,6 +1,7 @@
 """Tests for ImageService business logic layer."""
 import pytest
 from unittest.mock import Mock, AsyncMock, MagicMock, patch, mock_open
+from urllib.parse import urlparse
 import httpx
 
 from services.image_service import ImageService
@@ -634,7 +635,8 @@ class TestProxyImageHeaders:
         assert "User-Agent" in headers
         assert "Mozilla" in headers["User-Agent"]
         assert "Referer" in headers
-        assert "boardgamegeek.com" in headers["Referer"]
+        _ref_host = urlparse(headers["Referer"]).hostname or ""
+        assert _ref_host == "boardgamegeek.com" or _ref_host.endswith(".boardgamegeek.com")
         assert "Accept" in headers
         assert "image" in headers["Accept"]
 

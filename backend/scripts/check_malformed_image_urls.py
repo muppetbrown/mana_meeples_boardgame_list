@@ -21,6 +21,7 @@ import sys
 import os
 import logging
 import argparse
+from urllib.parse import urlparse
 
 # Ensure we're running from the correct directory
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -52,7 +53,8 @@ def check_url_malformed(url: str) -> tuple[bool, str]:
         return False, ""
 
     # Check for Cloudinary URLs (these should ONLY be in cloudinary_url column)
-    if 'cloudinary.com' in url or 'res.cloudinary.com' in url:
+    _host = (urlparse(url).hostname or "").lower()
+    if _host == 'res.cloudinary.com' or _host.endswith('.cloudinary.com'):
         return True, "Contains Cloudinary domain (should be in cloudinary_url column)"
 
     # Check for Cloudinary transformation parameters embedded in URL

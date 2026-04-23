@@ -458,10 +458,13 @@ async def image_proxy(
         # SECURITY: SSRF protection - validate URL before proxying
         validate_url_against_ssrf(url)
 
+        # Parse hostname once; reused for all host checks below
+        _url_host = (urlparse(url).hostname or "").lower()
+
         # CRITICAL FIX: Detect if we're being asked to proxy a Cloudinary URL
         # This happens when cloudinary_url is used instead of the original BGG URL
         # Redirect directly to Cloudinary instead of double-proxying
-        if 'res.cloudinary.com' in url or 'cloudinary.com' in url:
+        if _url_host == 'res.cloudinary.com' or _url_host.endswith('.cloudinary.com'):
             logger.warning(f"Image proxy received Cloudinary URL (should receive BGG URL): {url[:100]}")
             # Redirect directly to the Cloudinary URL
             return Response(
@@ -479,15 +482,13 @@ async def image_proxy(
         #
         # We do NOT strip /img/ parts - they are part of BGG's legitimate URL format
 
-        # Validate URL - only allow trusted sources
-        trusted_domains = [
-            'cf.geekdo-images.com',  # BGG CDN
-            'cf.geekdo-static.com',  # BGG static
-            API_BASE,  # Our own API base
-        ]
-
-        # Check if URL is from a trusted domain
-        is_trusted = any(domain in url for domain in trusted_domains)
+        # Validate URL - only allow trusted sources (check parsed hostname, not substring)
+        _api_host = (urlparse(API_BASE).hostname or "").lower()
+        is_trusted = (
+            _url_host == 'cf.geekdo-images.com' or _url_host.endswith('.geekdo-images.com') or
+            _url_host == 'cf.geekdo-static.com' or _url_host.endswith('.geekdo-static.com') or
+            (_api_host and _url_host == _api_host)
+        )
         if not is_trusted:
             logger.warning(f"Attempted to proxy untrusted URL: {url}")
             raise HTTPException(
@@ -499,7 +500,7 @@ async def image_proxy(
         # BGG may block __original downloads with 400/403 errors
         # Use __md (medium, ~400px) as safer alternative - confirmed working
         # This is a safety check in case frontend doesn't transform
-        if 'cf.geekdo-images.com' in url and '__original/' in url:
+        if (_url_host == 'cf.geekdo-images.com' or _url_host.endswith('.geekdo-images.com')) and '__original/' in url:
             logger.warning(f"Transforming __original URL to __md: {url[:100]}...")
             import re
             url = re.sub(r'__original/', '__md/', url)
@@ -507,7 +508,7 @@ async def image_proxy(
 
         # PERFORMANCE FAST-PATH: Check if we have a cached Cloudinary URL in database
         # This avoids re-uploading images that are already in Cloudinary
-        if CLOUDINARY_ENABLED and 'cf.geekdo-images.com' in url:
+        if CLOUDINARY_ENABLED and (_url_host == 'cf.geekdo-images.com' or _url_host.endswith('.geekdo-images.com')):
             try:
                 import re
                 # Extract hash from URL (part before __SIZE)
@@ -547,7 +548,7 @@ async def image_proxy(
         # Fast-path above checks for cached cloudinary_url first
         # This section only runs if cache miss or fast-path disabled
         # Cloudinary's overwrite=False handles duplicates efficiently
-        if CLOUDINARY_ENABLED and 'cf.geekdo-images.com' in url:
+        if CLOUDINARY_ENABLED and (_url_host == 'cf.geekdo-images.com' or _url_host.endswith('.geekdo-images.com')):
             try:
                 # Try to upload image to Cloudinary (will skip if already exists)
                 # This ensures the Cloudinary URL actually works

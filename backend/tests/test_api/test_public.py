@@ -2,6 +2,7 @@
 Tests for public API endpoints
 """
 import pytest
+from urllib.parse import urlparse
 from models import Game
 
 
@@ -724,7 +725,8 @@ class TestImageProxyCloudinary:
 
             if response.status_code == 302:
                 # Check redirect to Cloudinary
-                assert "cloudinary.com" in response.headers.get("Location", "")
+                _loc_host = urlparse(response.headers.get("Location", "")).hostname or ""
+                assert _loc_host == "cloudinary.com" or _loc_host.endswith(".cloudinary.com")
 
     def test_image_proxy_cloudinary_fallback(self, client):
         """Test image proxy falls back to direct proxy when Cloudinary fails"""

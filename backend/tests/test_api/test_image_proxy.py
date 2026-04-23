@@ -6,6 +6,7 @@ URL validation, caching, and fallback behavior.
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi import Response
+from urllib.parse import urlparse
 
 
 class TestImageProxyBasicValidation:
@@ -121,7 +122,8 @@ class TestImageProxyCloudinaryRedirect:
             response = client.get(f"/api/public/image-proxy?url={cloudinary_url}", follow_redirects=False)
             # Should redirect (302) to the Cloudinary URL
             if response.status_code == 302:
-                assert "cloudinary.com" in response.headers.get("location", "")
+                _loc_host = urlparse(response.headers.get("location", "")).hostname or ""
+                assert _loc_host == "cloudinary.com" or _loc_host.endswith(".cloudinary.com")
 
     def test_double_proxy_prevention(self, client):
         """Should prevent double-proxying through Cloudinary"""
