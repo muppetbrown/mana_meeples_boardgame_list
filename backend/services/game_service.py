@@ -558,9 +558,11 @@ class GameService:
         # Auto-link to base game if this is an expansion
         self._auto_link_expansion(game, bgg_data)
 
-        # Re-categorize based on BGG categories (unless manually categorized)
-        categories = parse_categories(game.categories)
-        game.mana_meeple_category = categorize_game(categories)
+        # Auto-categorize based on BGG categories only if not already manually set.
+        # Preserves intentional category assignments through force reimports and status transitions.
+        if not game.mana_meeple_category:
+            categories = parse_categories(game.categories)
+            game.mana_meeple_category = categorize_game(categories)
 
         # Add to session
         self.db.add(game)
