@@ -339,8 +339,11 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                 if not stripped_response.startswith(
                     "<?xml"
                 ) and not stripped_response.startswith("<"):
+                    safe_preview = repr(
+                        stripped_response[:100].replace("\n", " ").replace("\r", " ")
+                    )
                     logger.error(
-                        f"BGG response doesn't look like XML for game {bgg_id}: {repr(stripped_response[:100])}"
+                        f"BGG response doesn't look like XML for game {bgg_id}: {safe_preview}"
                     )
                     raise BGGServiceError(
                         f"Game ID {bgg_id} returned non-XML content from BoardGameGeek"
@@ -426,7 +429,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
             logger.error(
                 f"No item found in BGG response for game {bgg_id}. Response root tag: {root.tag}"
             )
-            logger.error(f"Full response content: {response_text}")
+            logger.error(f"Full response content: {response_text.replace(chr(10), ' ').replace(chr(13), ' ')}")
 
             # Check if this is a "things" response with no items (empty response for non-existent game)
             if root.tag == "things" and len(list(root)) == 0:
