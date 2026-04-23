@@ -15,6 +15,8 @@ down_revision = 'f37582e531b4'
 branch_labels = None
 depends_on = None
 
+__all__ = ['revision', 'down_revision', 'branch_labels', 'depends_on']
+
 
 def upgrade():
     """

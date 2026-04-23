@@ -17,6 +17,8 @@ down_revision: Union[str, None] = 'a879cc066239'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
+__all__ = ['revision', 'down_revision', 'branch_labels', 'depends_on']
+
 
 def upgrade() -> None:
     """Add cloudinary_url column to boardgames table"""

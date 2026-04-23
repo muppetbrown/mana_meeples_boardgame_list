@@ -17,6 +17,8 @@ down_revision: Union[str, None] = '69e5f1b3d4e5'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
+__all__ = ['revision', 'down_revision', 'branch_labels', 'depends_on']
+
 
 def upgrade() -> None:
     """Add is_sleeved column to sleeves table and remove from boardgames table"""
