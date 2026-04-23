@@ -172,10 +172,25 @@ async def import_from_bgg(
     try:
         game_service = GameService(db)
 
-        # Check if game exists and return cached version if force=false
-        if not force:
-            existing = game_service.get_game_by_bgg_id(bgg_id)
-            if existing:
+        # Check if game exists and handle based on status
+        existing = game_service.get_game_by_bgg_id(bgg_id)
+        if existing:
+            if existing.status == "BUY_LIST":
+                # Game is on buy list — promote it to owned
+                from datetime import datetime
+                existing.status = "OWNED"
+                existing.date_added = datetime.utcnow()
+                # Mark the buy list entry as no longer active
+                buy_list_entry = db.execute(
+                    select(BuyListGame).where(BuyListGame.game_id == existing.id)
+                ).scalar_one_or_none()
+                if buy_list_entry:
+                    buy_list_entry.on_buy_list = False
+                db.commit()
+                logger.info(f"Promoted '{existing.title}' from BUY_LIST to OWNED via BGG import")
+                response.status_code = 200
+                return game_to_dict(request, existing)
+            elif not force:
                 response.status_code = 200
                 return game_to_dict(request, existing)
 

@@ -10,6 +10,7 @@ import {
   bulkImportBuyListCSV,
   imageProxyUrl,
   updateGame,
+  importFromBGG,
 } from "../../../api/client";
 
 /**
@@ -165,6 +166,17 @@ export function BuyListTab() {
       await updateBuyListGame(item.id, {
         on_buy_list: false,
       });
+
+      // Force a BGG reimport to ensure all derived fields (nz_designer, mana_meeple_category,
+      // etc.) are fully populated — buy list additions may have used an older import path
+      if (item.bgg_id) {
+        try {
+          await importFromBGG(item.bgg_id, true);
+        } catch (reimportErr) {
+          // Non-critical — game is still moved to owned, data refresh just failed
+          console.warn("BGG data refresh failed after move-to-owned:", reimportErr);
+        }
+      }
 
       setSuccess(`"${item.title}" moved to owned collection!`);
       await loadBuyList();

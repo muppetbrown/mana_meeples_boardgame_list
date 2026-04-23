@@ -303,7 +303,7 @@ async def add_to_buy_list(
         ).scalar_one_or_none()
 
         if not game:
-            # Game doesn't exist - import from BGG
+            # Game doesn't exist - import from BGG using the game service for full data population
             logger.info(f"Game with BGG ID {data.bgg_id} not found, importing from BGG...")
 
             try:
@@ -315,37 +315,24 @@ async def add_to_buy_list(
                     detail=f"Failed to import game from BGG ID {data.bgg_id}: {str(e)}"
                 )
 
-            # Create new game entry with BUY_LIST status
-            game = Game(
-                title=bgg_data.get("title", "Unknown"),
-                categories=", ".join(bgg_data.get("categories", [])),
-                year=bgg_data.get("year"),
-                players_min=bgg_data.get("players_min"),
-                players_max=bgg_data.get("players_max"),
-                playtime_min=bgg_data.get("playtime_min"),
-                playtime_max=bgg_data.get("playtime_max"),
-                image=bgg_data.get("image"),  # Use main image only, Cloudinary handles resizing
-                bgg_id=data.bgg_id,
-                description=bgg_data.get("description"),
-                designers=bgg_data.get("designers"),
-                publishers=bgg_data.get("publishers"),
-                mechanics=bgg_data.get("mechanics"),
-                artists=bgg_data.get("artists"),
-                average_rating=bgg_data.get("average_rating"),
-                complexity=bgg_data.get("complexity"),
-                bgg_rank=bgg_data.get("bgg_rank"),
-                users_rated=bgg_data.get("users_rated"),
-                min_age=bgg_data.get("min_age"),
-                is_cooperative=bgg_data.get("is_cooperative"),
-                status="BUY_LIST",  # Mark as buy list item
-            )
-            db.add(game)
-            db.flush()  # Get the game ID
-            logger.info(f"Imported game '{game.title}' from BGG ID {data.bgg_id}")
+            # Use the game service so all derived fields (nz_designer, mana_meeple_category, etc.)
+            # are populated the same way as the main import flow
+            from services.game_service import GameService
+            game_service = GameService(db)
+            game, _ = game_service.create_or_update_from_bgg(bgg_id=data.bgg_id, bgg_data=bgg_data)
+            # Override the default OWNED status — this game is being added to the buy list
+            game.status = "BUY_LIST"
+            db.flush()
+            logger.info(f"Imported game '{game.title}' from BGG ID {data.bgg_id} for buy list")
 
         else:
-            # Game exists - update status to BUY_LIST if it's not already
-            if game.status != "BUY_LIST":
+            # Game exists - guard against silently demoting an owned game
+            if game.status == "OWNED":
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"'{game.title}' is already in your owned collection. Remove it from the library first if you want to add it to the buy list."
+                )
+            elif game.status != "BUY_LIST":
                 game.status = "BUY_LIST"
                 logger.info(f"Updated game '{game.title}' status to BUY_LIST")
 
