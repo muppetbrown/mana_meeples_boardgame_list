@@ -654,8 +654,15 @@ async def import_prices_from_json(
     """
     try:
         # Load JSON file
-        price_data_dir = Path(__file__).parent.parent.parent / "price_data"
-        json_file = price_data_dir / source_file
+        price_data_dir = (Path(__file__).parent.parent.parent / "price_data").resolve()
+        json_file = (price_data_dir / source_file).resolve()
+
+        # Prevent path traversal: ensure resolved path stays inside price_data_dir
+        if not json_file.is_relative_to(price_data_dir):
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid filename.",
+            )
 
         if not json_file.exists():
             raise HTTPException(

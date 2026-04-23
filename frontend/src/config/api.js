@@ -85,6 +85,19 @@ export function getApiUrl(path) {
 }
 
 /**
+ * Safely checks whether a URL's hostname matches an expected hostname or is a subdomain of it.
+ * Avoids false positives from substring matching (e.g. evil.com/cf.geekdo-images.com/path).
+ */
+function hasHostname(url, expectedHostname) {
+  try {
+    const { hostname } = new URL(url);
+    return hostname === expectedHostname || hostname.endsWith(`.${expectedHostname}`);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Generate BGG image URL at specific size
  *
  * @param {string} url - The original image URL
@@ -92,7 +105,7 @@ export function getApiUrl(path) {
  * @returns {string} - URL with size suffix
  */
 function getBGGImageVariant(url, size) {
-  if (!url || !url.includes('cf.geekdo-images.com')) return url;
+  if (!url || !hasHostname(url, 'cf.geekdo-images.com')) return url;
 
   // BGG uses two URL formats:
   // New format: https://cf.geekdo-images.com/HASH__SIZE/picID.EXT  (double underscore in path)
@@ -153,12 +166,12 @@ export function imageProxyUrl(url, size = 'medium', width = null, height = null)
   if (!url) return null;
 
   // PERFORMANCE OPTIMIZATION: If already a Cloudinary URL, use it directly (no proxy needed)
-  if (url.includes('res.cloudinary.com')) {
+  if (hasHostname(url, 'res.cloudinary.com')) {
     return url;
   }
 
   // For BGG images, optimize for requested quality
-  if (url.includes('cf.geekdo-images.com')) {
+  if (hasHostname(url, 'cf.geekdo-images.com')) {
     const optimizedUrl = getBGGImageVariant(url, size);
     let proxyUrl = `${API_BASE}/api/public/image-proxy?url=${encodeURIComponent(optimizedUrl)}`;
 
@@ -185,12 +198,12 @@ export function imageProxyUrl(url, size = 'medium', width = null, height = null)
  */
 export function generateSrcSet(url) {
   // Don't generate srcset for Cloudinary URLs (already optimized)
-  if (!url || url.includes('res.cloudinary.com')) {
+  if (!url || hasHostname(url, 'res.cloudinary.com')) {
     return null;
   }
 
   // Only generate srcset for BGG images
-  if (!url.includes('cf.geekdo-images.com')) {
+  if (!hasHostname(url, 'cf.geekdo-images.com')) {
     return null;
   }
 
