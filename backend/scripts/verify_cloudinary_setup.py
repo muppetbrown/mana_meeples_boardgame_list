@@ -13,6 +13,7 @@ Usage:
 import sys
 import os
 import logging
+from urllib.parse import urlparse
 from typing import Dict, List
 
 # Setup paths
@@ -232,7 +233,8 @@ def check_cloudinary_service() -> bool:
         logger.info(f"  Test URL: {test_url[:60]}...")
         logger.info(f"  Generated Cloudinary URL: {generated_url[:60]}...")
 
-        if 'cloudinary.com' in generated_url:
+        parsed_host = urlparse(generated_url).hostname or ""
+        if parsed_host == 'cloudinary.com' or parsed_host.endswith('.cloudinary.com'):
             logger.info("✓ Cloudinary URL generation working")
         else:
             logger.warning("⚠️  Generated URL does not contain cloudinary.com")

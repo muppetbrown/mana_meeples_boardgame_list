@@ -237,15 +237,15 @@ self.addEventListener('fetch', (event) => {
 // Helper: Check if request is an API call
 function isAPIRequest(url) {
   return url.pathname.startsWith('/api/') ||
-         url.hostname.includes('mana-meeples-boardgame-list');
+         url.hostname.endsWith('.onrender.com');
 }
 
 // Helper: Check if request is an image
 function isImageRequest(url) {
   // Cloudinary images, BGG images, or local images
   return url.pathname.match(/\.(jpg|jpeg|png|gif|webp|avif|svg|ico)$/i) ||
-         url.hostname.includes('cloudinary.com') ||
-         url.hostname.includes('geekdo-images.com') ||
+         url.hostname === 'res.cloudinary.com' || url.hostname.endsWith('.cloudinary.com') ||
+         url.hostname === 'cf.geekdo-images.com' || url.hostname.endsWith('.geekdo-images.com') ||
          url.pathname.includes('/image-proxy');
 }
 
