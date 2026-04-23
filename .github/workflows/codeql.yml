@@ -33,6 +33,7 @@ jobs:
           languages: ${{ matrix.language }}
           # Override the default behavior to detect more security issues
           queries: +security-and-quality
+          config-file: ./.github/codeql/codeql-config.yml
 
       # For Python, we need to set up the environment
       - name: Set up Python

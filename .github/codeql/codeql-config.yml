@@ -1,0 +1,7 @@
+paths-ignore:
+  - playwright-report
+  - test-results
+  - frontend/dist
+  - frontend/build
+  - htmlcov
+  - "**/*.min.js"

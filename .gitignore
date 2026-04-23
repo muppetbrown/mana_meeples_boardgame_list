@@ -74,3 +74,7 @@ coverage/
 coverage.json
 htmlcov/
 .pytest_cache/
+
+# Playwright generated output
+playwright-report/
+test-results/
