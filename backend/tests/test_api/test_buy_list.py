@@ -307,8 +307,8 @@ class TestAddToBuyList:
     @patch("bgg_service.fetch_bgg_thing")
     def test_add_existing_game(self, mock_fetch, client, db_session, admin_headers):
         """Should add existing game to buy list"""
-        # Create game with no OWNED status so it can be added to the buy list
-        game = Game(title="Test Game", bgg_id=12345, status=None)
+        # Create game with BUY_LIST status (game known to system but no buy list entry yet)
+        game = Game(title="Test Game", bgg_id=12345, status="BUY_LIST")
         db_session.add(game)
         db_session.commit()
 
