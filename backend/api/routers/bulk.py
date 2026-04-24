@@ -212,6 +212,8 @@ async def bulk_import_csv(
             "errors": errors,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Bulk import failed: {e}")
         raise HTTPException(
@@ -323,6 +325,8 @@ async def bulk_categorize_csv(
             "errors": errors,
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         db.rollback()
         logger.error(f"Bulk categorize failed: {e}")
