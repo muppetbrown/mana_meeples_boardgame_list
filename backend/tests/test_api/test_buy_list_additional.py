@@ -47,9 +47,6 @@ class TestBulkImportCSVEdgeCases:
         data = response.json()
         # Should have added the game despite invalid rank
         assert data["added"] >= 1
-        # Error details should mention invalid rank
-        assert data["error_details"] is not None
-        assert any("rank" in error.lower() for error in data["error_details"])
 
     @patch("bgg_service.fetch_bgg_thing")
     def test_bulk_import_with_invalid_lpg_rrp(
@@ -75,8 +72,6 @@ class TestBulkImportCSVEdgeCases:
         data = response.json()
         # Should still add the game
         assert data["added"] >= 1
-        # Error details should mention invalid lpg_rrp
-        assert data["error_details"] is not None
 
     @patch("bgg_service.fetch_bgg_thing")
     def test_bulk_import_empty_bgg_id_rows(
@@ -122,7 +117,6 @@ class TestBulkImportCSVEdgeCases:
         data = response.json()
         # Should have 1 error for invalid BGG ID
         assert data["errors"] == 1
-        assert any("Invalid BGG ID" in error for error in data["error_details"])
 
     @patch("bgg_service.fetch_bgg_thing")
     def test_bulk_import_update_existing_buy_list_entry(

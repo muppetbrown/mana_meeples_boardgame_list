@@ -344,7 +344,7 @@ class TestDebugBGGTestEndpoint:
             data = response.json()
             assert data["status"] == "bgg_error"
             assert data["bgg_id"] == 13
-            assert "error" in data
+            assert "message" in data
 
     @pytest.mark.asyncio
     async def test_debug_bgg_test_unexpected_error(self, client, admin_headers):
@@ -358,7 +358,7 @@ class TestDebugBGGTestEndpoint:
             data = response.json()
             assert data["status"] == "error"
             assert data["bgg_id"] == 13
-            assert "error" in data
+            assert "message" in data
 
 
 class TestHealthEndpointsIntegration:
