@@ -224,21 +224,15 @@ async def debug_bgg_api_call(
         return {
             "status": "bgg_error",
             "bgg_id": bgg_id,
-            "error": str(e),
-            "message": (
-                "BGG service error occurred - check logs for detailed "
-                "debugging info"
-            ),
+            "message": "BGG service error occurred - check logs for detailed debugging info",
         }
 
     except Exception as e:
         logger.error(
-            f"Unexpected error during BGG debug test for game "
-            f"{bgg_id}: {str(e)}"
+            f"Unexpected error during BGG debug test for game {bgg_id}: {str(e)}"
         )
         return {
             "status": "error",
             "bgg_id": bgg_id,
-            "error": str(e),
             "message": "Unexpected error occurred - check logs for details",
         }
