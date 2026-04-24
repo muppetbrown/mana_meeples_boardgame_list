@@ -49,6 +49,7 @@ from shared.rate_limiting import rate_limit_tracker, cleanup_expired_attempts, r
 from utils.helpers import game_to_dict
 
 logger = logging.getLogger(__name__)
+_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
 
 # Create router with prefix and tags
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -256,7 +257,7 @@ async def import_from_bgg(
         raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         db.rollback()
-        logger.error(f"Failed to import BGG game {bgg_id}: {e}", exc_info=True)
+        logger.error(f"Failed to import BGG game {_sl(bgg_id)}: {e}", exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to import game: {str(e)}"
         )
@@ -314,7 +315,7 @@ async def update_admin_game(
     except Exception as e:
         db.rollback()
         logger.error(
-            f"Failed to update game {game_id}: {e}", extra={"game_id": game_id}, exc_info=True
+            f"Failed to update game {_sl(game_id)}: {e}", extra={"game_id": game_id}, exc_info=True
         )
         raise handle_generic_error(e, f"update game {game_id}")
 
@@ -345,7 +346,7 @@ async def update_admin_game_post(
     except Exception as e:
         db.rollback()
         logger.error(
-            f"Failed to update game {game_id} via POST: {e}",
+            f"Failed to update game {_sl(game_id)} via POST: {e}",
             extra={"game_id": game_id},
         )
         raise HTTPException(status_code=500, detail="Failed to update game")
@@ -369,7 +370,7 @@ async def delete_admin_game(
     except Exception as e:
         db.rollback()
         logger.error(
-            f"Failed to delete game {game_id}: {e}", extra={"game_id": game_id}
+            f"Failed to delete game {_sl(game_id)}: {e}", extra={"game_id": game_id}
         )
         raise HTTPException(status_code=500, detail="Failed to delete game")
 
@@ -689,7 +690,7 @@ async def resolve_background_failure(
 
         db.commit()
 
-        logger.info(f"Marked background failure {failure_id} as resolved")
+        logger.info(f"Marked background failure {_sl(failure_id)} as resolved")
 
         return {
             "success": True,

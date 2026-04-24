@@ -10,6 +10,7 @@ from typing import Dict, List, Any, Optional
 from xml.etree.ElementTree import Element
 
 logger = logging.getLogger(__name__)
+_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
 
 
 def parse_basic_info(item: Element) -> Dict[str, Any]:
@@ -254,7 +255,7 @@ def parse_expansion_relationships(item: Element, title: str, is_expansion: bool)
                 data["modifies_players_min"] = int(match.group(1))
                 data["modifies_players_max"] = int(match.group(2))
                 logger.info(
-                    f"Auto-detected player modification for {title}: "
+                    f"Auto-detected player modification for {_sl(title)}: "
                     f"{data['modifies_players_min']}-{data['modifies_players_max']}"
                 )
             except (ValueError, TypeError):
@@ -272,7 +273,7 @@ def parse_expansion_relationships(item: Element, title: str, is_expansion: bool)
 
         if is_standalone:
             data["expansion_type"] = "both"
-            logger.info(f"Auto-detected standalone expansion for {title}")
+            logger.info(f"Auto-detected standalone expansion for {_sl(title)}")
         else:
             data["expansion_type"] = "requires_base"
 

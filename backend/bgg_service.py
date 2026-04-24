@@ -144,7 +144,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
     try:
         bgg_circuit_breaker.call(lambda: None)  # Check if circuit is open
     except CircuitBreakerError:
-        logger.warning(f"BGG circuit breaker is open, rejecting request for game {bgg_id}")
+        logger.warning(f"BGG circuit breaker is open, rejecting request for game {_sl(bgg_id)}")
         raise BGGServiceError("BGG API is currently unavailable (circuit breaker open)")
 
     # Rate limiting: Acquire permission to make BGG API request
@@ -170,12 +170,12 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
         for attempt in range(retries):
             try:
                 logger.info(
-                    f"Fetching BGG data for game {bgg_id} (attempt {attempt + 1})"
+                    f"Fetching BGG data for game {_sl(bgg_id)} (attempt {attempt + 1})"
                 )
 
                 # Special debugging for problematic IDs
                 if bgg_id in [314421, 13]:  # 13 = Catan (known good ID)
-                    logger.info(f"=== SPECIAL DEBUG FOR BGG ID {bgg_id} ===")
+                    logger.info(f"=== SPECIAL DEBUG FOR BGG ID {_sl(bgg_id)} ===")
                     logger.info(f"Request URL: {url}")
                     logger.info(f"Request params: {params}")
 
@@ -201,7 +201,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                         f"Raw response text (first 500 chars): {repr(response.text[:500])}"
                     )
                     logger.info(
-                        f"=== END SPECIAL DEBUG FOR BGG ID {bgg_id} ==="
+                        f"=== END SPECIAL DEBUG FOR BGG ID {_sl(bgg_id)} ==="
                     )
 
                 # Handle BGG's queue system and rate limiting
@@ -212,7 +212,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                         attempt * 0.5
                     )  # Exponential backoff with jitter
                     logger.warning(
-                        f"BGG returned {response.status_code} for game {bgg_id}, retrying in {delay:.1f}s..."
+                        f"BGG returned {response.status_code} for game {_sl(bgg_id)}, retrying in {delay:.1f}s..."
                     )
                     await asyncio.sleep(delay)
                     continue
@@ -239,7 +239,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
 
                 # Special debugging for test IDs during validation
                 if bgg_id in [314421, 13]:
-                    logger.info(f"=== BGG ID {bgg_id} VALIDATION DEBUG ===")
+                    logger.info(f"=== BGG ID {_sl(bgg_id)} VALIDATION DEBUG ===")
                     logger.info(
                         f"Original response.text length: {len(response.text)}"
                     )
@@ -263,13 +263,13 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                         f"response_text.startswith('<?xml'): {response_text.startswith('<?xml')}"
                     )
                     logger.info(
-                        f"=== END BGG ID {bgg_id} VALIDATION DEBUG ==="
+                        f"=== END BGG ID {_sl(bgg_id)} VALIDATION DEBUG ==="
                     )
 
                 # Check for truly empty response
                 if not response_text:
                     logger.error(
-                        f"BGG returned truly empty response for game {bgg_id}"
+                        f"BGG returned truly empty response for game {_sl(bgg_id)}"
                     )
                     raise BGGServiceError(
                         f"Game ID {bgg_id} does not exist on BoardGameGeek (empty response)"
@@ -278,7 +278,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                 # Check for whitespace-only response
                 if not response_text.strip():
                     logger.error(
-                        f"BGG returned whitespace-only response for game {bgg_id}"
+                        f"BGG returned whitespace-only response for game {_sl(bgg_id)}"
                     )
                     raise BGGServiceError(
                         f"Game ID {bgg_id} does not exist on BoardGameGeek (whitespace-only response)"
@@ -287,7 +287,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                 # Check for extremely short responses (less than 20 chars is suspicious)
                 if len(response_text.strip()) < 20:
                     logger.error(
-                        f"BGG returned suspiciously short response for game {bgg_id}: {repr(response_text)}"
+                        f"BGG returned suspiciously short response for game {_sl(bgg_id)}: {repr(response_text)}"
                     )
                     # Check if it's a specific "Not Found" type response
                     if response_text.strip().lower() in [
@@ -311,7 +311,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                 ):
                     # BGG sometimes returns HTML error pages with 200 status
                     logger.error(
-                        f"BGG returned non-XML content for game {bgg_id}. Content-Type: {content_type}"
+                        f"BGG returned non-XML content for game {_sl(bgg_id)}. Content-Type: {content_type}"
                     )
                     if "<html" in response_text.lower()[:100]:
                         # Check for common "not found" patterns in HTML
@@ -353,7 +353,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                 break
 
             except httpx.TimeoutException:
-                logger.error(f"Timeout fetching BGG data for game {bgg_id}")
+                logger.error(f"Timeout fetching BGG data for game {_sl(bgg_id)}")
                 if attempt == retries - 1:
                     raise BGGServiceError(f"Timeout fetching game {bgg_id}")
                 delay = (2**attempt) + (
@@ -363,7 +363,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
 
             except httpx.HTTPError as e:
                 logger.error(
-                    f"HTTP error fetching BGG data for game {bgg_id}: {e}"
+                    f"HTTP error fetching BGG data for game {_sl(bgg_id)}: {e}"
                 )
                 if attempt == retries - 1:
                     raise BGGServiceError(
@@ -381,7 +381,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
 
             except Exception as e:
                 logger.error(
-                    f"Unexpected error fetching BGG data for game {bgg_id}: {e}"
+                    f"Unexpected error fetching BGG data for game {_sl(bgg_id)}: {e}"
                 )
                 if attempt == retries - 1:
                     raise BGGServiceError(
@@ -394,12 +394,12 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
 
     # Parse XML response with comprehensive error handling
     try:
-        logger.info(f"Attempting to parse XML response for game {bgg_id}...")
+        logger.info(f"Attempting to parse XML response for game {_sl(bgg_id)}...")
 
         # Check if we have valid response_text before attempting to parse
         if response_text is None:
             logger.error(
-                f"No response_text available for game {bgg_id} - all retry attempts failed"
+                f"No response_text available for game {_sl(bgg_id)} - all retry attempts failed"
             )
             raise BGGServiceError(
                 f"Failed to fetch valid response for game {bgg_id} after {retries} attempts"
@@ -408,7 +408,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
         # Try to parse the XML (use the validated response_text, not original response.text)
         root = ET.fromstring(response_text)
         logger.info(
-            f"Successfully parsed XML for game {bgg_id}. Root tag: {root.tag}"
+            f"Successfully parsed XML for game {_sl(bgg_id)}. Root tag: {_sl(root.tag)}"
         )
 
         strip_namespace(root)
@@ -418,7 +418,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
         if error_elem is not None:
             error_message = error_elem.get("message", "Unknown error")
             logger.error(
-                f"BGG returned XML error for game {bgg_id}: {error_message}"
+                f"BGG returned XML error for game {_sl(bgg_id)}: {_sl(error_message)}"
             )
             raise BGGServiceError(
                 f"BGG API error for game {bgg_id}: {error_message}"
@@ -428,7 +428,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
         if item is None:
             # Log the actual response for debugging
             logger.error(
-                f"No item found in BGG response for game {bgg_id}. Response root tag: {root.tag}"
+                f"No item found in BGG response for game {_sl(bgg_id)}. Response root tag: {_sl(root.tag)}"
             )
             logger.error(f"Full response content: {response_text.replace(chr(10), ' ').replace(chr(13), ' ')}")
 

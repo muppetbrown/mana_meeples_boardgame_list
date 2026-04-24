@@ -99,7 +99,7 @@ def validate_url_against_ssrf(url: str) -> bool:
 
         # Block loopback addresses (127.x.x.x, ::1)
         if ip_obj.is_loopback:
-            logger.warning(f"SSRF attempt blocked: loopback IP {ip_obj} for hostname {hostname}")
+            logger.warning(f"SSRF attempt blocked: loopback IP {ip_obj} for hostname {_sl(hostname)}")
             raise HTTPException(
                 status_code=400,
                 detail="Cannot proxy requests to loopback addresses"
@@ -107,7 +107,7 @@ def validate_url_against_ssrf(url: str) -> bool:
 
         # Block link-local addresses (169.254.x.x, fe80::/10)
         if ip_obj.is_link_local:
-            logger.warning(f"SSRF attempt blocked: link-local IP {ip_obj} for hostname {hostname}")
+            logger.warning(f"SSRF attempt blocked: link-local IP {ip_obj} for hostname {_sl(hostname)}")
             raise HTTPException(
                 status_code=400,
                 detail="Cannot proxy requests to link-local addresses"
@@ -115,7 +115,7 @@ def validate_url_against_ssrf(url: str) -> bool:
 
         # Block reserved IP ranges
         if ip_obj.is_reserved:
-            logger.warning(f"SSRF attempt blocked: reserved IP {ip_obj} for hostname {hostname}")
+            logger.warning(f"SSRF attempt blocked: reserved IP {ip_obj} for hostname {_sl(hostname)}")
             raise HTTPException(
                 status_code=400,
                 detail="Cannot proxy requests to reserved IP addresses"
@@ -123,20 +123,20 @@ def validate_url_against_ssrf(url: str) -> bool:
 
         # Block multicast addresses
         if ip_obj.is_multicast:
-            logger.warning(f"SSRF attempt blocked: multicast IP {ip_obj} for hostname {hostname}")
+            logger.warning(f"SSRF attempt blocked: multicast IP {ip_obj} for hostname {_sl(hostname)}")
             raise HTTPException(
                 status_code=400,
                 detail="Cannot proxy requests to multicast addresses"
             )
 
-        logger.debug(f"SSRF validation passed for {hostname} ({ip_obj})")
+        logger.debug(f"SSRF validation passed for {_sl(hostname)} ({ip_obj})")
         return True
 
     except HTTPException:
         # Re-raise HTTP exceptions
         raise
     except Exception as e:
-        logger.error(f"SSRF validation error for URL {url}: {e}")
+        logger.error(f"SSRF validation error for URL {_sl(url)}: {e}")
         raise HTTPException(
             status_code=400,
             detail=f"URL validation failed: {str(e)}"
@@ -450,7 +450,7 @@ async def image_proxy(
 
         # Basic URL validation
         if not url or not url.startswith(('http://', 'https://')):
-            logger.warning(f"Invalid URL format: {url[:100] if url else 'None'}")
+            logger.warning(f"Invalid URL format: {_sl(url[:100]) if url else 'None'}")
             raise HTTPException(
                 status_code=400,
                 detail="Invalid image URL format"
@@ -466,7 +466,7 @@ async def image_proxy(
         # This happens when cloudinary_url is used instead of the original BGG URL
         # Redirect directly to Cloudinary instead of double-proxying
         if _url_host == 'res.cloudinary.com' or _url_host.endswith('.cloudinary.com'):
-            logger.warning(f"Image proxy received Cloudinary URL (should receive BGG URL): {url[:100]}")
+            logger.warning(f"Image proxy received Cloudinary URL (should receive BGG URL): {_sl(url[:100])}")
             # Redirect directly to the Cloudinary URL
             return Response(
                 status_code=302,
@@ -491,7 +491,7 @@ async def image_proxy(
             (_api_host and _url_host == _api_host)
         )
         if not is_trusted:
-            logger.warning(f"Attempted to proxy untrusted URL: {url}")
+            logger.warning(f"Attempted to proxy untrusted URL: {_sl(url)}")
             raise HTTPException(
                 status_code=400,
                 detail="Image proxy only supports BoardGameGeek images"
@@ -502,10 +502,10 @@ async def image_proxy(
         # Use __md (medium, ~400px) as safer alternative - confirmed working
         # This is a safety check in case frontend doesn't transform
         if (_url_host == 'cf.geekdo-images.com' or _url_host.endswith('.geekdo-images.com')) and '__original/' in url:
-            logger.warning(f"Transforming __original URL to __md: {url[:100]}...")
+            logger.warning(f"Transforming __original URL to __md: {_sl(url[:100])}...")
             import re
             url = re.sub(r'__original/', '__md/', url)
-            logger.info(f"Transformed to: {url[:100]}...")
+            logger.info(f"Transformed to: {_sl(url[:100])}...")
 
         # PERFORMANCE FAST-PATH: Check if we have a cached Cloudinary URL in database
         # This avoids re-uploading images that are already in Cloudinary
@@ -533,7 +533,7 @@ async def image_proxy(
                         else:
                             cached_url = game.cloudinary_url
 
-                        logger.info(f"✓ Using cached Cloudinary URL for game {game.id}: {game.title}")
+                        logger.info(f"✓ Using cached Cloudinary URL for game {game.id}: {_sl(game.title)}")
                         return Response(
                             status_code=302,
                             headers={
@@ -588,7 +588,7 @@ async def image_proxy(
                                 base_cloudinary_url = cloudinary_service.get_image_url(url)
                                 game.cloudinary_url = base_cloudinary_url
                                 db.commit()
-                                logger.info(f"✓ Saved Cloudinary URL to database for game {game.id}: {game.title}")
+                                logger.info(f"✓ Saved Cloudinary URL to database for game {game.id}: {_sl(game.title)}")
                             else:
                                 logger.debug(f"Could not find game for URL hash: {hash_part}")
                     except Exception as e:
@@ -597,7 +597,7 @@ async def image_proxy(
 
                     # Only redirect to Cloudinary if we got a valid URL that differs from original
                     if cloudinary_url and cloudinary_url != url:
-                        logger.info(f"✓ Cloudinary upload successful, redirecting to: {cloudinary_url[:100]}...")
+                        logger.info(f"✓ Cloudinary upload successful, redirecting to: {_sl(cloudinary_url[:100])}...")
                         return Response(
                             status_code=302,
                             headers={
@@ -608,11 +608,11 @@ async def image_proxy(
                 else:
                     # Upload failed (e.g., image too large for Cloudinary 10MB limit)
                     # Fall through to direct proxy
-                    logger.info(f"Cloudinary upload failed for {url[:100]}... (likely too large), using direct proxy fallback")
+                    logger.info(f"Cloudinary upload failed for {_sl(url[:100])}... (likely too large), using direct proxy fallback")
 
             except Exception as e:
                 # If Cloudinary fails for any reason, fall through to direct proxy
-                logger.warning(f"Cloudinary error for {url[:100]}...: {str(e)[:100]}, falling back to direct proxy")
+                logger.warning(f"Cloudinary error for {_sl(url[:100])}...: {str(e)[:100]}, falling back to direct proxy")
 
         # Fallback to direct proxy if Cloudinary fails or is disabled
         # Determine cache max age based on URL
@@ -643,7 +643,7 @@ async def image_proxy(
         # Re-raise HTTPExceptions (like validation errors) without modification
         raise
     except Exception as e:
-        logger.error(f"Image proxy error for {url}: {e}")
+        logger.error(f"Image proxy error for {_sl(url)}: {e}")
         raise HTTPException(
             status_code=502, detail=f"Failed to fetch image: {str(e)}"
         )
