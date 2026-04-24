@@ -16,6 +16,7 @@ from cloudinary import CloudinaryImage
 from PIL import Image
 
 logger = logging.getLogger(__name__)
+_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
 
 # Configure Cloudinary from environment variables
 cloudinary.config(
@@ -97,7 +98,7 @@ class CloudinaryService:
 
             # First, download the image from BGG with proper headers
             # BGG requires User-Agent and Referer headers to prevent hotlinking
-            logger.debug(f"Preparing to upload image from BGG: {url}")
+            logger.debug(f"Preparing to upload image from BGG: {_sl(url)}")
 
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -378,7 +379,7 @@ class CloudinaryService:
 
         # Check if this URL previously failed to upload
         if url in self._failed_uploads:
-            logger.debug(f"URL previously failed to upload, using direct proxy: {url}")
+            logger.debug(f"URL previously failed to upload, using direct proxy: {_sl(url)}")
             return url
 
         try:
@@ -417,7 +418,7 @@ class CloudinaryService:
             return cloudinary_url
 
         except Exception as e:
-            logger.error(f"Failed to generate Cloudinary URL for {url}: {e}")
+            logger.error(f"Failed to generate Cloudinary URL for {_sl(url)}: {e}")
             return url  # Fallback to original URL
 
     def get_responsive_urls(self, url: str) -> Dict[str, str]:

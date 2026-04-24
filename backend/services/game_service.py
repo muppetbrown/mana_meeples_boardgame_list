@@ -17,6 +17,7 @@ from utils.helpers import parse_categories, categorize_game, game_to_dict
 from config import API_BASE
 
 logger = logging.getLogger(__name__)
+_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
 
 
 class GameService:
@@ -252,7 +253,7 @@ class GameService:
         logger = logging.getLogger(__name__)
         actual_count = len(games)
         logger.info(
-            f"Pagination DEBUG - Category: {category}, Page: {page}, "
+            f"Pagination DEBUG - Category: {_sl(category)}, Page: {page}, "
             f"PageSize: {page_size}, Offset: {offset}, "
             f"Expected: {min(page_size, total - offset)}, "
             f"Actual returned: {actual_count}, Total count: {total}"
@@ -524,7 +525,7 @@ class GameService:
         self.db.delete(game)
         self.db.commit()
 
-        logger.info(f"Deleted game: {game_title} (ID: {game_id})")
+        logger.info(f"Deleted game: {_sl(game_title)} (ID: {game_id})")
         return game_title
 
     def update_game_from_bgg_data(
@@ -594,7 +595,7 @@ class GameService:
 
         base_game_bgg_id = bgg_data.get("base_game_bgg_id")
         if not base_game_bgg_id:
-            logger.info(f"Expansion {game.title} has no base game BGG ID in data")
+            logger.info(f"Expansion {_sl(game.title)} has no base game BGG ID in data")
             return
 
         # Try to find base game in database
@@ -602,11 +603,11 @@ class GameService:
         if base_game:
             game.base_game_id = base_game.id
             logger.info(
-                f"Auto-linked expansion '{game.title}' to base game '{base_game.title}'"
+                f"Auto-linked expansion '{_sl(game.title)}' to base game '{_sl(base_game.title)}'"
             )
         else:
             logger.info(
-                f"Base game BGG ID {base_game_bgg_id} not found in database for expansion '{game.title}'"
+                f"Base game BGG ID {base_game_bgg_id} not found in database for expansion '{_sl(game.title)}'"
             )
 
     def _update_game_enhanced_fields(
@@ -808,7 +809,7 @@ class GameService:
             # Update existing game using consolidated method
             self.update_game_from_bgg_data(existing, bgg_data, commit=True)
             logger.info(
-                f"Updated from BGG: {existing.title} (BGG ID: {bgg_id})"
+                f"Updated from BGG: {_sl(existing.title)} (BGG ID: {bgg_id})"
             )
             return existing, True
         else:
@@ -822,7 +823,7 @@ class GameService:
             # Use consolidated method to populate all BGG data
             self.update_game_from_bgg_data(game, bgg_data, commit=True)
 
-            logger.info(f"Imported from BGG: {game.title} (BGG ID: {bgg_id})")
+            logger.info(f"Imported from BGG: {_sl(game.title)} (BGG ID: {bgg_id})")
             return game, False
 
     def get_category_counts(self) -> Dict[str, int]:
@@ -885,7 +886,7 @@ class GameService:
         # Get sleeve data from BGG response
         sleeve_data = bgg_data.get('sleeve_data')
         if not sleeve_data:
-            logger.info(f"No sleeve data in BGG response for {game.title}")
+            logger.info(f"No sleeve data in BGG response for {_sl(game.title)}")
             return
 
         # Update has_sleeves status
@@ -911,6 +912,6 @@ class GameService:
                 )
                 self.db.add(sleeve)
 
-            logger.info(f"Saved {len(sleeve_data['card_types'])} sleeve types for {game.title}")
+            logger.info(f"Saved {len(sleeve_data['card_types'])} sleeve types for {_sl(game.title)}")
         else:
-            logger.info(f"No sleeve data found for {game.title}")
+            logger.info(f"No sleeve data found for {_sl(game.title)}")

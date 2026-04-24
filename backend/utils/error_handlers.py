@@ -139,7 +139,8 @@ def handle_generic_error(e: Exception, operation: str) -> HTTPException:
     logger = logging.getLogger(__name__)
 
     # Log the error with full stack trace
-    logger.error(f"Failed to {operation}: {e}", exc_info=True)
+    safe_op = str(operation).replace('\n', ' ').replace('\r', ' ')
+    logger.error(f"Failed to {safe_op}: {e}", exc_info=True)
 
     # Don't expose internal error details to users
     return HTTPException(

@@ -23,6 +23,7 @@ from models import BuyListGame, Game, PriceOffer, PriceSnapshot
 from schemas import BuyListGameCreate, BuyListGameOut, BuyListGameUpdate
 
 logger = logging.getLogger(__name__)
+_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
 
 # Create router with prefix and tags
 router = APIRouter(prefix="/api/admin/buy-list", tags=["buy-list"])
@@ -415,7 +416,7 @@ async def update_buy_list_game(
             .limit(1)
         ).scalar_one_or_none()
 
-        logger.info(f"Updated buy list entry {buy_list_id}")
+        logger.info(f"Updated buy list entry {_sl(buy_list_id)}")
 
         return build_buy_list_response(buy_list_entry, latest_price)
 
@@ -440,7 +441,7 @@ async def remove_from_buy_list(buy_list_id: int, db: Session = Depends(get_db)):
         db.delete(buy_list_entry)
         db.commit()
 
-        logger.info(f"Removed buy list entry {buy_list_id}")
+        logger.info(f"Removed buy list entry {_sl(buy_list_id)}")
 
         return {"message": "Game removed from buy list", "id": buy_list_id}
 
@@ -690,7 +691,7 @@ async def import_prices_from_json(
         BATCH_SIZE = 50
         batch_count = 0
 
-        logger.info(f"Starting price import for {total_games} games from {source_file}")
+        logger.info(f"Starting price import for {total_games} games from {_sl(source_file)}")
 
         for idx, game_data in enumerate(games_data, 1):
             try:

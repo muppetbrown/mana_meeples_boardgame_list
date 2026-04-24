@@ -19,6 +19,7 @@ from middleware.performance import performance_monitor
 from bgg_service import fetch_bgg_thing, BGGServiceError
 
 logger = logging.getLogger(__name__)
+_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
 
 # Create routers for different prefixes
 health_router = APIRouter(prefix="/api/health", tags=["health"])
@@ -203,11 +204,11 @@ async def debug_bgg_api_call(
     bgg_id: int, _: None = Depends(require_admin_auth)
 ):
     """Debug endpoint to test BGG API calls with detailed logging"""
-    logger.info(f"Starting BGG debug test for game ID {bgg_id}")
+    logger.info(f"Starting BGG debug test for game ID {_sl(bgg_id)}")
 
     try:
         game_data = await fetch_bgg_thing(bgg_id)
-        logger.info(f"Successfully fetched BGG data for game {bgg_id}")
+        logger.info(f"Successfully fetched BGG data for game {_sl(bgg_id)}")
 
         return {
             "status": "success",
@@ -220,10 +221,11 @@ async def debug_bgg_api_call(
         }
 
     except BGGServiceError as e:
-        logger.error(f"BGG service error for game {bgg_id}: {str(e)}")
+        logger.error(f"BGG service error for game {_sl(bgg_id)}: {e}")
         return {
             "status": "bgg_error",
             "bgg_id": bgg_id,
+            "error": str(e),
             "message": "BGG service error occurred - check logs for detailed debugging info",
         }
 
@@ -234,5 +236,6 @@ async def debug_bgg_api_call(
         return {
             "status": "error",
             "bgg_id": bgg_id,
+            "error": str(e),
             "message": "Unexpected error occurred - check logs for details",
         }

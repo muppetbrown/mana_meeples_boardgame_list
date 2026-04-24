@@ -22,6 +22,7 @@ from models import Game, Sleeve
 from utils.helpers import CATEGORY_KEYS, categorize_game, parse_categories
 
 logger = logging.getLogger(__name__)
+_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
 
 # Background task imports from services
 from services.background_tasks import (
@@ -558,7 +559,7 @@ async def bulk_update_aftergame_ids(
                 # Basic UUID validation (optional but recommended)
                 if aftergame_id and len(aftergame_id) != 36:
                     logger.warning(
-                        f"Line {line_num}: AfterGame ID '{aftergame_id}' "
+                        f"Line {line_num}: AfterGame ID '{_sl(aftergame_id)}' "
                         f"doesn't match expected UUID format (36 chars)"
                     )
 

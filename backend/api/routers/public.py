@@ -30,6 +30,7 @@ from utils.cache import cached_query
 from schemas import GameListItemResponse, GameDetailResponse
 
 logger = logging.getLogger(__name__)
+_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
 
 
 def validate_url_against_ssrf(url: str) -> bool:
@@ -90,7 +91,7 @@ def validate_url_against_ssrf(url: str) -> bool:
 
         # Block private IP ranges (10.x.x.x, 192.168.x.x, 172.16-31.x.x)
         if ip_obj.is_private:
-            logger.warning(f"SSRF attempt blocked: private IP {ip_obj} for hostname {hostname}")
+            logger.warning(f"SSRF attempt blocked: private IP {ip_obj} for hostname {_sl(hostname)}")
             raise HTTPException(
                 status_code=400,
                 detail="Cannot proxy requests to private IP addresses"

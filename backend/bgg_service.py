@@ -28,6 +28,7 @@ from services.bgg_parser import (
 )
 
 logger = logging.getLogger(__name__)
+_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
 
 
 class BGGServiceError(Exception):
@@ -442,14 +443,14 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                 )
 
         logger.info(
-            f"Successfully found item in BGG response for game {bgg_id}"
+            f"Successfully found item in BGG response for game {_sl(bgg_id)}"
         )
         return _extract_comprehensive_game_data(item, bgg_id)
 
     except ET.ParseError as e:
         # Enhanced XML parsing error logging - now all variables are in scope
         logger.error("=== XML PARSE ERROR DEBUG INFO ===")
-        logger.error(f"Game ID: {bgg_id}")
+        logger.error(f"Game ID: {_sl(bgg_id)}")
         logger.error(f"Parse Error: {str(e)}")
 
         # Only log response details if we have a response object
@@ -536,7 +537,7 @@ def _extract_comprehensive_game_data(item: Element, bgg_id: int) -> Dict[str, An
     data["is_cooperative"] = is_cooperative
 
     logger.info(
-        f"Successfully extracted comprehensive data for '{data['title']}'"
+        f"Successfully extracted comprehensive data for '{_sl(data['title'])}'"
     )
 
     # Note: Sleeve data fetching has been moved to a background task in the import endpoint
