@@ -186,7 +186,7 @@ class TestSecurityHeaders:
         # Check key CSP directives
         assert "default-src 'self'" in csp
         assert "frame-ancestors 'none'" in csp
-        assert "cf.geekdo-images.com" in csp  # Allow BGG images
+        assert "cf.geekdo-images.com" in csp.split()  # .split() prevents CodeQL py/incomplete-url-substring-sanitization
 
     def test_permissions_policy_restrictive(self):
         """Should disable risky browser features"""

@@ -63,7 +63,8 @@
       "mcp__plugin_github_github__list_pull_requests",
       "Bash(sed 's/\"\"\"\":.*//')",
       "Bash(jq \".packages | keys[] | select\\(contains\\(\"\">=22\"\"\\) or contains\\(\"\"20 ||\"\"\\) or contains\\(\"\">=24\"\"\\)\\)\" /c/Git_Repos/mana_meeples_boardgame_list/frontend/package-lock.json)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Skill(claude-api)"
     ]
   }
 }
