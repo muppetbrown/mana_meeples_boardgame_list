@@ -252,8 +252,10 @@ class TestSecurityHeadersMiddleware:
 
         # CSP should allow BGG images
         csp = headers_sent[0][b"content-security-policy"].decode()
-        assert "cf.geekdo-images.com" in csp.split()  # .split() prevents CodeQL py/incomplete-url-substring-sanitization
-        assert "cf.geekdo-static.com" in csp.split()  # .split() prevents CodeQL py/incomplete-url-substring-sanitization
+        # .split() + rstrip(';') + exact equality prevents CodeQL py/incomplete-url-substring-sanitization
+        csp_tokens = [t.rstrip(';') for t in csp.split()]
+        assert "https://cf.geekdo-images.com" in csp_tokens
+        assert "https://cf.geekdo-static.com" in csp_tokens
 
     @pytest.mark.asyncio
     async def test_skips_non_http_requests(self):
