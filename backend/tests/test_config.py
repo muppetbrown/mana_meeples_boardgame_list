@@ -30,10 +30,11 @@ class TestConfigLoading:
             import config
             importlib.reload(config)
 
-            assert len(config.CORS_ORIGINS) == 3
-            assert "http://localhost:3000" in config.CORS_ORIGINS
-            assert "https://example.com" in config.CORS_ORIGINS
-            assert "https://test.com" in config.CORS_ORIGINS
+            assert set(config.CORS_ORIGINS) == {
+                "http://localhost:3000",
+                "https://example.com",
+                "https://test.com",
+            }
 
     def test_cors_origins_empty(self):
         """Test CORS origins with empty environment variable"""

@@ -252,8 +252,8 @@ class TestSecurityHeadersMiddleware:
 
         # CSP should allow BGG images
         csp = headers_sent[0][b"content-security-policy"].decode()
-        assert "cf.geekdo-images.com" in csp
-        assert "cf.geekdo-static.com" in csp
+        assert "cf.geekdo-images.com" in csp.split()
+        assert "cf.geekdo-static.com" in csp.split()
 
     @pytest.mark.asyncio
     async def test_skips_non_http_requests(self):
