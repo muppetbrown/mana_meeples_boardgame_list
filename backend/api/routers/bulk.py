@@ -197,13 +197,12 @@ async def bulk_import_csv(
 
                 except Exception as e:
                     db.rollback()
-                    errors.append(
-                        f"Line {line_num}: Failed to import BGG ID "
-                        f"{bgg_id} - {str(e)}"
-                    )
+                    logger.error(f"Line {line_num}: failed to import BGG ID {bgg_id}: {e}")
+                    errors.append(f"Line {line_num}: failed to import BGG ID {bgg_id}")
 
             except Exception as e:
-                errors.append(f"Line {line_num}: {str(e)}")
+                logger.error(f"Line {line_num}: parse error: {e}")
+                errors.append(f"Line {line_num}: could not parse row")
 
         return {
             "message": f"Processed {len(lines)} lines",
@@ -215,7 +214,7 @@ async def bulk_import_csv(
     except Exception as e:
         logger.error(f"Bulk import failed: {e}")
         raise HTTPException(
-            status_code=500, detail=f"Bulk import failed: {str(e)}"
+            status_code=500, detail="Bulk import failed - check logs for details"
         )
 
 
@@ -660,9 +659,8 @@ async def backfill_cloudinary_urls(
 
             except Exception as e:
                 failed += 1
-                error_msg = f"Game {game.id} ({game.title}): {str(e)}"
-                logger.error(f"Failed to generate Cloudinary URL - {error_msg}")
-                errors.append(error_msg)
+                logger.error(f"Failed to generate Cloudinary URL for game {game.id} ({game.title}): {e}")
+                errors.append(f"Game {game.id} ({game.title}): failed to generate URL")
                 continue
 
         # Commit all changes

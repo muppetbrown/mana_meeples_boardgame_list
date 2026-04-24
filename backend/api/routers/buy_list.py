@@ -607,7 +607,8 @@ async def bulk_import_buy_list_csv(
                     added_count += 1
 
             except Exception as e:
-                errors.append(f"Row {row_num}: {str(e)}")
+                logger.error(f"Row {row_num} import error: {e}")
+                errors.append(f"Row {row_num}: import failed")
                 error_count += 1
                 continue
 

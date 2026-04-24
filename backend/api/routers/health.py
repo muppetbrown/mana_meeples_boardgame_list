@@ -78,7 +78,7 @@ async def health_check_redis():
         logger.error(f"Redis health check failed: {e}")
         return {
             "status": "error",
-            "message": f"Redis health check error: {str(e)}",
+            "message": "Redis health check failed - check logs for details",
         }
 
 
