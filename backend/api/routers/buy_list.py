@@ -627,7 +627,6 @@ async def bulk_import_buy_list_csv(
             "updated": updated_count,
             "skipped": skipped_count,
             "errors": error_count,
-            "error_details": errors if errors else None
         }
 
     except HTTPException:
