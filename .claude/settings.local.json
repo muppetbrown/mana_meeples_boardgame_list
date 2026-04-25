@@ -64,7 +64,13 @@
       "Bash(sed 's/\"\"\"\":.*//')",
       "Bash(jq \".packages | keys[] | select\\(contains\\(\"\">=22\"\"\\) or contains\\(\"\"20 ||\"\"\\) or contains\\(\"\">=24\"\"\\)\\)\" /c/Git_Repos/mana_meeples_boardgame_list/frontend/package-lock.json)",
       "Bash(npm audit:*)",
-      "Skill(claude-api)"
+      "Skill(claude-api)",
+      "Bash(claude mcp *)",
+      "Bash(git remote *)",
+      "Bash(gh api *)",
+      "PowerShell(gh api *)",
+      "Skill(update-config)",
+      "PowerShell(Get-Command *)"
     ]
   }
 }
