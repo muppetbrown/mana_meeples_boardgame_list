@@ -87,8 +87,8 @@ def scrape_sleeve_data(bgg_id, game_name=None, driver=None):
                     # Extract number from "QTY 73" or "Qty 73"
                     quantity = int(qty_text.upper().replace('QTY', '').strip())
                 except NoSuchElementException:
-                    pass
-                
+                    quantity = 0  # quantity element not found
+
                 # Get card name
                 card_name = None
                 try:
@@ -96,14 +96,14 @@ def scrape_sleeve_data(bgg_id, game_name=None, driver=None):
                     name_span = name_elem.find_element(By.TAG_NAME, "span")
                     card_name = name_span.text.strip()
                 except NoSuchElementException:
-                    pass
-                
+                    card_name = None  # name element not found
+
                 # Parse dimensions (e.g., "44 x 68" -> width: 44, height: 68)
                 try:
                     width, height = dimensions.split('x')
                     width = int(width.strip())
                     height = int(height.strip())
-                except:
+                except Exception:
                     width = None
                     height = None
                 
@@ -128,8 +128,8 @@ def scrape_sleeve_data(bgg_id, game_name=None, driver=None):
             notes_elem = driver.find_element(By.CLASS_NAME, "sleeve-visualizer__overview-notes__primary")
             notes = notes_elem.text.strip()
         except NoSuchElementException:
-            pass
-        
+            notes = None  # notes element not found
+
         result = {
             'bgg_id': bgg_id,
             'card_types': card_types,

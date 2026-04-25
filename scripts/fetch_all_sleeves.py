@@ -105,8 +105,8 @@ def main():
                 print(f"  🔄 Periodic driver restart (every 50 games)...", flush=True)
                 try:
                     driver.quit()
-                except:
-                    pass
+                except Exception as _e:
+                    print(f"  Driver restart error (ignored): {_e}", flush=True)
                 driver = create_driver()
                 print(f"  ✓ Driver restarted", flush=True)
 
@@ -173,8 +173,8 @@ def main():
     finally:
         try:
             driver.quit()
-        except:
-            pass  # Ignore errors on final cleanup
+        except Exception as _e:
+            print(f"Driver cleanup error (ignored): {_e}", flush=True)
         db.close()
 
 if __name__ == "__main__":

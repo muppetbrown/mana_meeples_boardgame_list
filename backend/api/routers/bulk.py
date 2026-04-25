@@ -287,7 +287,7 @@ async def bulk_categorize_csv(
                                 category_key = key
                                 break
                     except ImportError:
-                        pass
+                        category_key = None
 
                 if not category_key:
                     errors.append(

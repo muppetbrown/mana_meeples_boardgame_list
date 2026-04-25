@@ -1,7 +1,6 @@
 """
 Tests for public API endpoints
 """
-import pytest
 from urllib.parse import urlparse
 from models import Game
 

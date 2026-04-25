@@ -28,7 +28,9 @@ from services.bgg_parser import (
 )
 
 logger = logging.getLogger(__name__)
-_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
+def _sl(v: object) -> str:
+    """Sanitize a value for safe log output by stripping newline characters."""
+    return str(v).replace('\n', ' ').replace('\r', ' ')
 
 
 class BGGServiceError(Exception):
@@ -96,7 +98,8 @@ class BGGRateLimiter:
 
                 # Wait and retry
                 await asyncio.sleep(wait_time)
-                return await self.acquire()  # Recursive retry after waiting
+                await self.acquire()  # Recursive retry after waiting
+                return
 
             # Record this request
             self.requests.append(now)
@@ -344,7 +347,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                         stripped_response[:100].replace("\n", " ").replace("\r", " ")
                     )
                     logger.error(
-                        f"BGG response doesn't look like XML for game {bgg_id}: {safe_preview}"
+                        f"BGG response doesn't look like XML for game {_sl(bgg_id)}: {safe_preview}"
                     )
                     raise BGGServiceError(
                         f"Game ID {bgg_id} returned non-XML content from BoardGameGeek"

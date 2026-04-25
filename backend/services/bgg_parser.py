@@ -259,7 +259,8 @@ def parse_expansion_relationships(item: Element, title: str, is_expansion: bool)
                     f"{data['modifies_players_min']}-{data['modifies_players_max']}"
                 )
             except (ValueError, TypeError):
-                pass
+                data["modifies_players_min"] = None
+                data["modifies_players_max"] = None
 
         # Check if title suggests it's standalone
         standalone_keywords = [
@@ -316,7 +317,7 @@ def parse_statistics(item: Element) -> Dict[str, Any]:
                 float(rating_elem.attrib.get("value", "")) or None
             )
     except (ValueError, TypeError):
-        pass
+        data["average_rating"] = None
 
     # Complexity (weight)
     try:
@@ -326,7 +327,7 @@ def parse_statistics(item: Element) -> Dict[str, Any]:
                 float(weight_elem.attrib.get("value", "")) or None
             )
     except (ValueError, TypeError):
-        pass
+        data["complexity"] = None
 
     # Number of users who rated
     try:
@@ -336,7 +337,7 @@ def parse_statistics(item: Element) -> Dict[str, Any]:
                 int(users_rated_elem.attrib.get("value", "")) or None
             )
     except (ValueError, TypeError):
-        pass
+        data["users_rated"] = None
 
     # BGG Rank and Game Type from ranks
     ranks = ratings.find("ranks")
@@ -422,7 +423,7 @@ def parse_statistics(item: Element) -> Dict[str, Any]:
             try:
                 data["bgg_rank"] = int(main_rank)
             except ValueError:
-                pass
+                data["bgg_rank"] = None
 
     return data
 

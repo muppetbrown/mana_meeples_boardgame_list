@@ -150,7 +150,7 @@ describe('InlineError', () => {
   });
 
   it('applies correct text color and size', () => {
-    const { container } = render(<InlineError message="Error" />);
+    render(<InlineError message="Error" />);
     const alert = screen.getByRole('alert');
     expect(alert).toHaveClass('text-red-600', 'text-sm');
   });

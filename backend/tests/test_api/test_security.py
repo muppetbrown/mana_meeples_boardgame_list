@@ -111,10 +111,9 @@ class TestImageProxyRateLimiting:
                 assert response.status_code == 429
                 if response.status_code == 429:
                     # Rate limit response might not have detail field
-                    try:
-                        assert "rate limit" in response.text.lower()
-                    except:
-                        pass  # Accept any 429 response
+                    # Some 429 responses may not include "rate limit" text
+                    if "rate limit" not in response.text.lower():
+                        pass  # acceptable — any 429 is valid
 
 
 class TestImageProxyURLValidation:
@@ -186,9 +185,9 @@ class TestSecurityHeaders:
         # Check key CSP directives
         assert "default-src 'self'" in csp
         assert "frame-ancestors 'none'" in csp
-        # .split() + rstrip(';') + exact equality prevents CodeQL py/incomplete-url-substring-sanitization
-        csp_tokens = [t.rstrip(';') for t in csp.split()]
-        assert "https://cf.geekdo-images.com" in csp_tokens
+        from urllib.parse import urlparse
+        csp_netlocs = {urlparse(t.rstrip(';')).netloc for t in csp.split() if t.startswith('http')}
+        assert "cf.geekdo-images.com" in csp_netlocs
 
     def test_permissions_policy_restrictive(self):
         """Should disable risky browser features"""

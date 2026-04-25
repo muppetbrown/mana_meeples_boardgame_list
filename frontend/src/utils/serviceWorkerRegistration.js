@@ -56,7 +56,7 @@ export function register(config) {
 async function checkStorageAvailability() {
   try {
     const testCacheName = 'sw-registration-test';
-    const cache = await caches.open(testCacheName);
+    await caches.open(testCacheName);
     await caches.delete(testCacheName);
     return true;
   } catch (error) {

@@ -640,7 +640,7 @@ describe('PublicCatalogue Page', () => {
     });
 
     test('updates URL when filters change', async () => {
-      const { container } = renderWithQuery(
+      renderWithQuery(
         <BrowserRouter>
           <PublicCatalogue />
         </BrowserRouter>
@@ -1004,7 +1004,6 @@ describe('PublicCatalogue Page', () => {
 
       await waitFor(() => {
         // Look for games plural in the search summary
-        const summary = screen.queryByText(/games found/i) || screen.queryByText(/found for/i);
         // Summary should exist when searching
         expect(apiClient.getPublicGames).toHaveBeenCalled();
       });
@@ -1032,8 +1031,8 @@ describe('PublicCatalogue Page', () => {
 
       // Button should appear (note: may need to wait for state update)
       await waitFor(() => {
-        const scrollButton = screen.queryByRole('button', { name: /scroll.*top/i });
         // Button visibility depends on scroll handling
+        screen.queryByRole('button', { name: /scroll.*top/i });
       });
     });
   });

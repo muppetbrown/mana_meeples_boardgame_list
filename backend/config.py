@@ -1,5 +1,8 @@
 import os
 import sys
+import logging
+
+_log = logging.getLogger(__name__)
 
 # CORS origins, comma-separated
 CORS_ORIGINS = [
@@ -11,10 +14,7 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 # Only warn about missing ADMIN_TOKEN if not in CI/CD environment
 # and not in a migration-only context
 if not ADMIN_TOKEN and not os.getenv("CI") and os.getenv("SKIP_ADMIN_WARNING", "").lower() != "true":
-    print(
-        "WARNING: ADMIN_TOKEN not set - admin endpoints will be unavailable",
-        file=sys.stderr,
-    )
+    _log.warning("ADMIN_TOKEN not set - admin endpoints will be unavailable")
 
 # Database configuration
 # Production: PostgreSQL on Render
@@ -30,27 +30,21 @@ if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is required")
 
 if DATABASE_URL.startswith("postgresql://"):
-    print(
-        f"Using PostgreSQL database: {DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'unknown'}",
-        file=sys.stderr,
+    _log.info(
+        "Using PostgreSQL database: %s",
+        DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'unknown',
     )
     if READ_REPLICA_URL:
-        print(
-            f"Read replica enabled: {READ_REPLICA_URL.split('@')[1] if '@' in READ_REPLICA_URL else 'unknown'}",
-            file=sys.stderr,
+        _log.info(
+            "Read replica enabled: %s",
+            READ_REPLICA_URL.split('@')[1] if '@' in READ_REPLICA_URL else 'unknown',
         )
     else:
-        print(
-            "Read replica not configured - using primary database for all operations",
-            file=sys.stderr,
-        )
+        _log.info("Read replica not configured - using primary database for all operations")
 elif DATABASE_URL.startswith("sqlite"):
-    print(f"Using SQLite database: {DATABASE_URL}", file=sys.stderr)
+    _log.info("Using SQLite database: %s", DATABASE_URL)
 else:
-    print(
-        f"WARNING: Unrecognized database URL format: {DATABASE_URL[:20]}...",
-        file=sys.stderr,
-    )
+    _log.warning("Unrecognized database URL format: %s...", DATABASE_URL[:20])
 
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
 
@@ -66,10 +60,7 @@ HTTP_RETRIES = int(os.getenv("HTTP_RETRIES", "3"))
 # BoardGameGeek API configuration
 BGG_API_KEY = os.getenv("BGG_API_KEY", "")
 if not BGG_API_KEY:
-    print(
-        "WARNING: BGG_API_KEY not set - BGG API requests may be rate limited or fail",
-        file=sys.stderr,
-    )
+    _log.warning("BGG_API_KEY not set - BGG API requests may be rate limited or fail")
 
 # Rate limiting configuration
 RATE_LIMIT_ATTEMPTS = int(os.getenv("RATE_LIMIT_ATTEMPTS", "5"))
@@ -99,15 +90,11 @@ if not SESSION_SECRET:
     import secrets
     SESSION_SECRET = secrets.token_hex(32)
 
-    # Multi-line warning that's hard to miss
-    print("\n" + "="*80, file=sys.stderr)
-    print("⚠️  SECURITY WARNING: SESSION_SECRET NOT CONFIGURED", file=sys.stderr)
-    print("="*80, file=sys.stderr)
-    print("Generated temporary secret (sessions will reset on restart)", file=sys.stderr)
-    print("Not suitable for multi-instance deployment!", file=sys.stderr)
-    print("\nSet SESSION_SECRET in .env or environment variables", file=sys.stderr)
-    print("Example: SESSION_SECRET=$(python -c \"import secrets; print(secrets.token_hex(32))\")", file=sys.stderr)
-    print("="*80 + "\n", file=sys.stderr)
+    _log.warning(
+        "SESSION_SECRET not configured - generated temporary secret. "
+        "Sessions will reset on restart. Not suitable for multi-instance deployment. "
+        "Set SESSION_SECRET in .env or environment variables."
+    )
 
 # Session timeout (1 hour by default)
 SESSION_TIMEOUT_SECONDS = int(os.getenv("SESSION_TIMEOUT_SECONDS", "3600"))
@@ -121,10 +108,7 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 GITHUB_REPO_OWNER = os.getenv("GITHUB_REPO_OWNER", "muppetbrown")
 GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "mana_meeples_boardgame_list")
 if not GITHUB_TOKEN:
-    print(
-        "WARNING: GITHUB_TOKEN not set - workflow triggering will be unavailable",
-        file=sys.stderr,
-    )
+    _log.warning("GITHUB_TOKEN not set - workflow triggering will be unavailable")
 
 # Cloudinary configuration for image CDN and optimization
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
@@ -133,15 +117,9 @@ CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
 CLOUDINARY_ENABLED = bool(CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET)
 
 if CLOUDINARY_ENABLED:
-    print(
-        f"Cloudinary CDN enabled: {CLOUDINARY_CLOUD_NAME}",
-        file=sys.stderr,
-    )
+    _log.info("Cloudinary CDN enabled: %s", CLOUDINARY_CLOUD_NAME)
 else:
-    print(
-        "WARNING: Cloudinary not configured - using direct BGG image URLs",
-        file=sys.stderr,
-    )
+    _log.warning("Cloudinary not configured - using direct BGG image URLs")
 
 # Cache configuration (Performance Optimization)
 # TTL for in-memory cache (games query cache)
@@ -171,14 +149,10 @@ if REDIS_ENABLED:
         parsed = urlparse(REDIS_URL)
         redis_host = parsed.hostname or "localhost"
         redis_port = parsed.port or 6379
-        print(
-            f"Redis enabled: {redis_host}:{redis_port}",
-            file=sys.stderr,
-        )
+        _log.info("Redis enabled: %s:%s", redis_host, redis_port)
     except Exception:
-        print("Redis enabled: configuration loaded", file=sys.stderr)
+        _log.info("Redis enabled: configuration loaded")
 else:
-    print(
-        "WARNING: Redis disabled - using in-memory storage (not suitable for multi-instance deployment)",
-        file=sys.stderr,
+    _log.warning(
+        "Redis disabled - using in-memory storage (not suitable for multi-instance deployment)"
     )

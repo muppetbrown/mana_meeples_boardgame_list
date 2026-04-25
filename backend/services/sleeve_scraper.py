@@ -96,8 +96,8 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
                     name_span = name_elem.find_element(By.TAG_NAME, "span")
                     card_name = name_span.text.strip()
                 except NoSuchElementException:
-                    pass
-                
+                    card_name = None  # optional field, not found
+
                 try:
                     width, height = dimensions.split('x')
                     width = int(float(width.strip()))
@@ -121,8 +121,8 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
             notes_elem = driver.find_element(By.CLASS_NAME, "sleeve-visualizer__overview-notes__primary")
             notes = notes_elem.text.strip()
         except NoSuchElementException:
-            pass
-        
+            notes = None  # optional field, not found
+
         if not card_types:
             return {'status': 'not_found', 'card_types': [], 'notes': None}
         

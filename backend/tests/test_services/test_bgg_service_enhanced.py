@@ -3,6 +3,7 @@ Comprehensive tests for BGG service (bgg_service.py)
 Target: 12.1% → 90% coverage
 Focus: Rate limiting, circuit breaker, fetch logic, error handling
 """
+import contextlib
 import pytest
 import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
@@ -101,10 +102,8 @@ class TestCircuitBreaker:
 
         # Trigger failures
         for _ in range(5):
-            try:
+            with contextlib.suppress(Exception):  # expected failures to trigger circuit breaker
                 bgg_circuit_breaker.call(lambda: (_ for _ in ()).throw(Exception("Network error")))
-            except Exception:
-                pass
 
         # Circuit should now be open
         from pybreaker import CircuitBreakerError

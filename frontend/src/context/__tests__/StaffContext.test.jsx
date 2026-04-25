@@ -6,7 +6,7 @@ import { render, screen, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { StaffProvider, useStaff } from '../StaffContext';
 import * as apiClient from '../../api/client';
-import { mockGames, mockCategoryCounts } from '../../test/mockData';
+import { mockGames } from '../../test/mockData';
 
 // Mock react-router-dom navigate
 const mockNavigate = vi.fn();

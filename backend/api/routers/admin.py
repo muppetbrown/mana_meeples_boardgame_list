@@ -49,7 +49,9 @@ from shared.rate_limiting import rate_limit_tracker, cleanup_expired_attempts, r
 from utils.helpers import game_to_dict
 
 logger = logging.getLogger(__name__)
-_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
+def _sl(v: object) -> str:
+    """Sanitize a value for safe log output by stripping newline characters."""
+    return str(v).replace('\n', ' ').replace('\r', ' ')
 
 # Create router with prefix and tags
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -315,7 +317,7 @@ async def update_admin_game(
     except Exception as e:
         db.rollback()
         logger.error(
-            f"Failed to update game {_sl(game_id)}: {e}", extra={"game_id": game_id}, exc_info=True
+            f"Failed to update game {_sl(game_id)}: {_sl(e)}", extra={"game_id": game_id}, exc_info=True
         )
         raise handle_generic_error(e, f"update game {game_id}")
 
@@ -346,7 +348,7 @@ async def update_admin_game_post(
     except Exception as e:
         db.rollback()
         logger.error(
-            f"Failed to update game {_sl(game_id)} via POST: {e}",
+            f"Failed to update game {_sl(game_id)} via POST: {_sl(e)}",
             extra={"game_id": game_id},
         )
         raise HTTPException(status_code=500, detail="Failed to update game")
@@ -370,7 +372,7 @@ async def delete_admin_game(
     except Exception as e:
         db.rollback()
         logger.error(
-            f"Failed to delete game {_sl(game_id)}: {e}", extra={"game_id": game_id}
+            f"Failed to delete game {_sl(game_id)}: {_sl(e)}", extra={"game_id": game_id}
         )
         raise HTTPException(status_code=500, detail="Failed to delete game")
 

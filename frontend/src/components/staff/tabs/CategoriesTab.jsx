@@ -28,15 +28,6 @@ export function CategoriesTab() {
     return library.filter((g) => !g.mana_meeple_category);
   }, [library]);
 
-  // Get games by category
-  const gamesByCategory = useMemo(() => {
-    const result = {};
-    CATEGORY_KEYS.forEach((key) => {
-      result[key] = library.filter((g) => g.mana_meeple_category === key);
-    });
-    return result;
-  }, [library]);
-
   // Handle NZ Designer bulk update
   const handleBulkNZDesigners = async () => {
     if (!nzDesignersText.trim()) {

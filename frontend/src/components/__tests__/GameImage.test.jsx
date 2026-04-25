@@ -114,7 +114,7 @@ describe('GameImage Component', () => {
     });
 
     test('applies custom fallback class', () => {
-      const { container } = render(
+      render(
         <GameImage
           url={null}
           alt="Test"

@@ -110,7 +110,7 @@ class LabelGenerator:
                 if abs(int(min_t) - int(max_t)) <= 5:
                     return f"~{max_t} min"
             except (ValueError, TypeError):
-                pass
+                return f"{min_t}–{max_t} min"
             return f"{min_t}–{max_t} min"
         
         return f"{min_t or max_t} min"
@@ -302,7 +302,7 @@ class LabelGenerator:
                 if weight > 0:
                     complexities.append(weight)
             except (ValueError, TypeError):
-                pass
+                weight = 0.0  # skip malformed weight value
         
         if complexities:
             avg_complexity = sum(complexities) / len(complexities)

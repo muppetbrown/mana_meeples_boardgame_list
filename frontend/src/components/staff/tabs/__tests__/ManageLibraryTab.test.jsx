@@ -481,7 +481,6 @@ describe('ManageLibraryTab', () => {
     });
 
     test('shows error when no games selected for bulk action', async () => {
-      const user = userEvent.setup();
       render(<ManageLibraryTab />);
 
       // Directly test the handler logic by checking disabled state

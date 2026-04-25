@@ -116,16 +116,16 @@ async def dismiss_banners(page):
             if await btn.count():
                 await btn.first.click(timeout=1500)
                 await page.wait_for_timeout(400)
-        except Exception:
-            pass
+        except Exception as _e:
+            print(f"  Cookie/popup dismiss failed (ignored): {_e}")
 
     try:
         nz = page.locator("a[href*='/en-NZ'], button:has-text('New Zealand')")
         if await nz.count():
             await nz.first.click(timeout=1500)
             await page.wait_for_load_state('domcontentloaded', timeout=10000)
-    except Exception:
-        pass
+    except Exception as _e:
+        print(f"  NZ region selector not found (ignored): {_e}")
 
 
 # ---------- Fetch BGO product page ----------
@@ -153,8 +153,8 @@ async def fetch_page(context, url: str, wait_ms: int):
                 html = await page.content()
                 status = resp.status if resp else None
                 return status, html
-        except Exception:
-            pass
+        except Exception as _e:
+            print(f"  Early-exit check failed (ignored): {_e}")
 
         # Scroll to load dynamic content
         for _ in range(2):

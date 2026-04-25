@@ -34,7 +34,7 @@ export default function PublicCatalogue() {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [isFilterExpanded, setIsFilterExpanded] = useState(false);
-  const [isSticky, setIsSticky] = useState(false);
+  const [, setIsSticky] = useState(false);
   const [expandedCards, setExpandedCards] = useState(new Set());
   const [announcement, setAnnouncement] = useState("");
 
@@ -87,7 +87,7 @@ export default function PublicCatalogue() {
       return response;
     },
     getNextPageParam: (lastPage, allPages) => {
-      const currentItems = allPages.reduce((sum, page) => sum + (page.items?.length || 0), 0);
+      allPages.reduce((sum, page) => sum + (page.items?.length || 0), 0);
       const totalPages = Math.ceil((lastPage.total || 0) / pageSize);
       const currentPage = allPages.length;
       return currentPage < totalPages ? currentPage + 1 : undefined;

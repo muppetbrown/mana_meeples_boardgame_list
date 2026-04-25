@@ -5,7 +5,6 @@ URL validation, caching, and fallback behavior.
 """
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
-from fastapi import Response
 from urllib.parse import urlparse
 
 

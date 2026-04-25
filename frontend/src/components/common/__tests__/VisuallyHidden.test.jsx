@@ -68,7 +68,6 @@ describe('VisuallyHidden', () => {
     it('has correct visually hidden styles', () => {
       const { container } = render(<VisuallyHidden>Text</VisuallyHidden>);
       const element = container.firstChild;
-      const styles = window.getComputedStyle(element);
 
       // Check key visually hidden styles
       expect(element.style.position).toBe('absolute');

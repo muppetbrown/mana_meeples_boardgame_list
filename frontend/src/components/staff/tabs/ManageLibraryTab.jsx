@@ -17,7 +17,6 @@ export function ManageLibraryTab() {
     counts,
     filteredLibrary,
     library,
-    openEditCategory,
     deleteGameData,
     updateGameData,
     showToast,
@@ -142,7 +141,7 @@ export function ManageLibraryTab() {
     }
 
     try {
-      const data = await triggerSleeveFetch(Array.from(selectedGames));
+      await triggerSleeveFetch(Array.from(selectedGames));
       showToast(`Sleeve fetch workflow triggered for ${selectedGames.size} game(s)`, 'success');
       // Clear selection after triggering
       setSelectedGames(new Set());

@@ -166,7 +166,7 @@ describe('GameCardPublic', () => {
   });
 
   it('formats rating correctly', () => {
-    const { container } = render(
+    render(
       <RouterWrapper>
         <GameCardPublic game={mockGame} onToggleExpand={mockOnToggleExpand} isExpanded={true} />
       </RouterWrapper>
@@ -191,7 +191,7 @@ describe('GameCardPublic', () => {
   });
 
   it('formats complexity correctly', () => {
-    const { container } = render(
+    render(
       <RouterWrapper>
         <GameCardPublic game={mockGame} onToggleExpand={mockOnToggleExpand} isExpanded={true} />
       </RouterWrapper>
@@ -337,7 +337,7 @@ describe('GameCardPublic', () => {
   });
 
   it('renders link to game details', () => {
-    const { container } = render(
+    render(
       <RouterWrapper>
         <GameCardPublic game={mockGame} onToggleExpand={mockOnToggleExpand} />
       </RouterWrapper>
@@ -348,7 +348,7 @@ describe('GameCardPublic', () => {
   });
 
   it('respects prefersReducedMotion', () => {
-    const { container } = render(
+    render(
       <RouterWrapper>
         <GameCardPublic
           game={mockGame}

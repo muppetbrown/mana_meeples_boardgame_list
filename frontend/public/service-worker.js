@@ -65,7 +65,7 @@ let storageAvailable = true;
 async function checkStorageAvailability() {
   try {
     const testCacheName = 'sw-storage-test';
-    const cache = await caches.open(testCacheName);
+    await caches.open(testCacheName);
     await caches.delete(testCacheName);
     storageAvailable = true;
     return true;
@@ -411,8 +411,8 @@ function fetchAndCache(request, cacheName) {
 
 // Message handling for cache control from the app
 self.addEventListener('message', (event) => {
-  // Only handle messages from clients on this origin
-  if (!event.source || !event.source.url.startsWith(self.location.origin)) {
+  // Only handle messages from our own origin
+  if (!event.origin || event.origin !== self.location.origin) {
     return;
   }
 

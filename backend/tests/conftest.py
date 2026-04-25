@@ -1,10 +1,13 @@
 """
 Pytest configuration and fixtures for backend tests
 """
+import logging
 import os
 import pytest
 import pytest_asyncio
 from unittest.mock import patch
+
+logger = logging.getLogger(__name__)
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from fastapi.testclient import TestClient
@@ -50,7 +53,7 @@ def clear_cache():
         from bgg_service import bgg_rate_limiter
         bgg_rate_limiter.requests.clear()
     except ImportError:
-        pass
+        bgg_rate_limiter = None  # module not available in this test context
 
 
 @pytest.fixture(scope="function")
@@ -68,12 +71,12 @@ def db_engine():
     # Safely cleanup - ignore errors if connections are already closed
     try:
         Base.metadata.drop_all(engine)
-    except Exception:
-        pass
+    except Exception as _cleanup_err:  # noqa: BLE001 — intentional teardown swallow
+        logger.debug("Engine drop_all cleanup error (ignored): %s", _cleanup_err)
     try:
         engine.dispose()
-    except Exception:
-        pass
+    except Exception as _cleanup_err:  # noqa: BLE001 — intentional teardown swallow
+        logger.debug("Engine dispose cleanup error (ignored): %s", _cleanup_err)
 
 
 @pytest.fixture(scope="function")
@@ -91,12 +94,12 @@ def db_session(db_engine) -> Session:
         # Ensure cleanup even if test fails
         try:
             session.rollback()
-        except Exception:
-            pass
+        except Exception as _cleanup_err:
+            logger.debug("Session rollback cleanup error (ignored): %s", _cleanup_err)
         try:
             session.close()
-        except Exception:
-            pass
+        except Exception as _cleanup_err:
+            logger.debug("Session close cleanup error (ignored): %s", _cleanup_err)
 
 
 @pytest.fixture(scope="function")

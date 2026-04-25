@@ -3,7 +3,7 @@
  * Custom hook for advanced lazy loading with Intersection Observer
  * Loads images slightly before they enter the viewport for smoother UX
  */
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Hook for lazy loading images with Intersection Observer

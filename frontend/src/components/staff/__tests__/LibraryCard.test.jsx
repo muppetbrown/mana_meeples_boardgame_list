@@ -458,7 +458,7 @@ describe('LibraryCard', () => {
         expansion_type: 'standalone',
       };
 
-      const { container } = render(
+      render(
         <LibraryCard
           game={standaloneExpansion}
           onEditCategory={mockOnEditCategory}
@@ -478,7 +478,7 @@ describe('LibraryCard', () => {
         expansion_type: 'requires_base',
       };
 
-      const { container } = render(
+      render(
         <LibraryCard
           game={requiresBaseExpansion}
           onEditCategory={mockOnEditCategory}

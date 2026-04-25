@@ -30,7 +30,9 @@ from utils.cache import cached_query
 from schemas import GameListItemResponse, GameDetailResponse
 
 logger = logging.getLogger(__name__)
-_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
+def _sl(v: object) -> str:
+    """Sanitize a value for safe log output by stripping newline characters."""
+    return str(v).replace('\n', ' ').replace('\r', ' ')
 
 
 def validate_url_against_ssrf(url: str) -> bool:
@@ -590,7 +592,7 @@ async def image_proxy(
                                 db.commit()
                                 logger.info(f"✓ Saved Cloudinary URL to database for game {game.id}: {_sl(game.title)}")
                             else:
-                                logger.debug(f"Could not find game for URL hash: {hash_part}")
+                                logger.debug(f"Could not find game for URL hash: {_sl(hash_part)}")
                     except Exception as e:
                         logger.warning(f"Failed to save cloudinary_url to database: {e}")
                         # Non-critical, continue anyway

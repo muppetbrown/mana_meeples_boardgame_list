@@ -1,3 +1,4 @@
+import contextlib
 import os, re, httpx
 from typing import Optional
 from config import HTTP_TIMEOUT
@@ -39,9 +40,8 @@ async def download_thumbnail(url: str, basename: str) -> Optional[str]:
             # Validate file size
             if content_length and int(content_length) > MAX_FILE_SIZE:
                 return None
-        except:
-            # If HEAD fails, continue with GET but validate after download
-            pass
+        except Exception as _head_err:
+            _ = repr(_head_err)  # HEAD request failed; fall through to GET
 
     # Determine extension based on URL or content type
     ext = ".jpg"

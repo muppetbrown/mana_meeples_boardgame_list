@@ -4,6 +4,7 @@ Unit tests for database.py
 Tests database initialization, connection pooling, and session management.
 Migration tests are limited due to PostgreSQL-specific logic that skips in test mode.
 """
+import contextlib
 import pytest
 from unittest.mock import Mock, patch, MagicMock, call
 from sqlalchemy.exc import OperationalError, DatabaseError
@@ -130,10 +131,8 @@ class TestGetDb:
         next(gen)
 
         # Simulate exception by calling close on generator
-        try:
+        with contextlib.suppress(Exception):
             gen.close()
-        except:
-            pass
 
         # Session should be closed
         mock_session.close.assert_called()
@@ -178,10 +177,8 @@ class TestGetReadDb:
         gen = get_read_db()
         next(gen)
 
-        try:
+        with contextlib.suppress(Exception):
             gen.close()
-        except:
-            pass
 
         mock_session.close.assert_called()
 

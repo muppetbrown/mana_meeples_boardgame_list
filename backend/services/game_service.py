@@ -17,7 +17,9 @@ from utils.helpers import parse_categories, categorize_game, game_to_dict
 from config import API_BASE
 
 logger = logging.getLogger(__name__)
-_sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
+def _sl(v: object) -> str:
+    """Sanitize a value for safe log output by stripping newline characters."""
+    return str(v).replace('\n', ' ').replace('\r', ' ')
 
 
 class GameService:

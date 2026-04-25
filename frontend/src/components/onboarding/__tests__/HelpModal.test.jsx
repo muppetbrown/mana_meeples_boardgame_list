@@ -1,7 +1,6 @@
 // frontend/src/components/onboarding/__tests__/HelpModal.test.jsx
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { HelpModal } from '../HelpModal';
 
 // Mock lucide-react

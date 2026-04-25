@@ -63,7 +63,6 @@ describe('GameDetails Page', () => {
   };
 
   // Helper to flush all pending promises
-  const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
 
   beforeEach(() => {
     queryClient = createTestQueryClient();
@@ -659,7 +658,7 @@ describe('GameDetails Page', () => {
   test('displays category badge with correct styling', async () => {
     apiClient.getPublicGame.mockResolvedValue(mockGame);
 
-    const { container } = renderWithQuery(
+    renderWithQuery(
       <MemoryRouter initialEntries={['/game/1']}>
         <Routes>
           <Route path="/game/:id" element={<GameDetails />} />

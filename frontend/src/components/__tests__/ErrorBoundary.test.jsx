@@ -144,9 +144,6 @@ describe('ErrorBoundary', () => {
   });
 
   it('shows development mode debug info when in dev mode', () => {
-    // Force dev mode
-    import.meta.env.DEV = true;
-
     render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} error={new Error('Dev mode error')} />
