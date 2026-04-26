@@ -14,7 +14,6 @@ JSONB is the recommended PostgreSQL type for JSON data as it's more efficient
 and supports more operations than the plain JSON type.
 """
 from alembic import op
-import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic

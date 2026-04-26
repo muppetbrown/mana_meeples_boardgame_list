@@ -9,7 +9,6 @@ import logging
 import httpx
 import traceback
 from typing import Optional
-from datetime import datetime
 from sqlalchemy.orm import Session
 from tenacity import (
     retry,

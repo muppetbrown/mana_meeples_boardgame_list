@@ -178,8 +178,6 @@ class CloudinaryService:
                 qualities = [90, 85, 80, 75, 70, 65]  # WebP quality range
 
                 output = None
-                final_quality = None
-                final_dimension = None
                 success = False
 
                 # Try each dimension + quality combination until we succeed

@@ -2,10 +2,7 @@
 Comprehensive database analysis script for Render PostgreSQL
 Tests indexes, schema, query performance, and JSON queries
 """
-import os
 from sqlalchemy import create_engine, text
-import json
-from datetime import datetime
 
 # Database connection
 DATABASE_URL = "postgresql://tcg_admin:1FhON1ZvCR7bRry4L9UoonvorMD4BjAR@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles"
@@ -131,7 +128,7 @@ def main():
         # 5. SAMPLE DATA
         print_section("5. SAMPLE DATA")
 
-        rows = run_query(conn,
+        run_query(conn,
             """
             SELECT
                 id, title, mana_meeple_category, nz_designer,
@@ -321,7 +318,7 @@ def main():
         # 12. SAMPLE QUERIES FOR REAL-WORLD USE
         print_section("12. REAL-WORLD QUERY EXAMPLES")
 
-        rows = run_query(conn,
+        run_query(conn,
             """
             SELECT id, title, designers, average_rating, complexity
             FROM boardgames
@@ -331,7 +328,7 @@ def main():
             """,
             "Top 10 Core Strategy Games by Rating")
 
-        rows = run_query(conn,
+        run_query(conn,
             """
             SELECT id, title, designers, year
             FROM boardgames

@@ -5,7 +5,6 @@ Run this to verify your Cloudinary credentials and test basic functionality
 """
 import os
 import sys
-import asyncio
 from dotenv import load_dotenv
 
 # Load environment variables

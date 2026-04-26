@@ -828,9 +828,9 @@ class TestBuyListErrorHandling:
             assert "Failed to retrieve buy list" in response.json()["detail"]
 
     def test_add_game_with_general_exception(self, client, db_session, admin_headers):
-        """Test add endpoint handles unexpected errors"""
-        # Create a game first
-        game = Game(title="Test Game", bgg_id=12345)
+        """Test add endpoint handles unexpected errors when creating BuyListGame"""
+        # Create a game with BUY_LIST status so the route reaches BuyListGame creation
+        game = Game(title="Test Game", bgg_id=12345, status="BUY_LIST")
         db_session.add(game)
         db_session.commit()
 

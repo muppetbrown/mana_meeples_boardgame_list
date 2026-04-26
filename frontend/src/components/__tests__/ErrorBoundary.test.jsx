@@ -66,7 +66,7 @@ describe('ErrorBoundary', () => {
   });
 
   it('has working Try Again button', () => {
-    const { rerender } = render(
+    render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
       </ErrorBoundary>

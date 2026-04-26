@@ -8,7 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import time
-from typing import Optional, List, Dict
+from typing import Optional, Dict
 
 def create_game_slug(title: str) -> str:
     """Convert game title to BGG URL slug"""

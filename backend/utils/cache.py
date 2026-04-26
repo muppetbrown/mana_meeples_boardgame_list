@@ -7,7 +7,7 @@ Phase 1 Performance: Added automatic cache cleanup to prevent memory leaks
 import time
 import hashlib
 import logging
-from typing import Any, Optional, Callable
+from typing import Any, Callable
 from functools import wraps
 
 logger = logging.getLogger(__name__)

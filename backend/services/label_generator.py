@@ -10,9 +10,6 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.pdfgen import canvas
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import Image
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
 
@@ -69,11 +66,7 @@ class LabelGenerator:
 
     def _get_contrast_text_color(self, bg_color: colors.Color) -> colors.Color:
         """Get contrasting text color (white or black) based on background color"""
-        # Get RGB values (0-1 range)
-        r, g, b = bg_color.red, bg_color.green, bg_color.blue
-
-        # Return white for dark backgrounds, black for light backgrounds
-        return colors.white  # luminance check removed: always white for now
+        return colors.white
 
     def generate_pdf(self, games: List[dict]) -> BytesIO:
         """

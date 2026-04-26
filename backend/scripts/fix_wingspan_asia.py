@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from database import SessionLocal
 from models import Game
-from sqlalchemy import or_, select
+from sqlalchemy import select
 
 def fix_wingspan_asia():
     """Update Wingspan Asia to be recognized as standalone expansion."""

@@ -4,7 +4,6 @@ Printing API endpoints for generating PDF game labels.
 """
 import logging
 from datetime import datetime
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse

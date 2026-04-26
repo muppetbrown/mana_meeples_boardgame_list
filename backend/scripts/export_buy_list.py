@@ -2,7 +2,6 @@
 # export_buy_list.py
 # Export buy list from database to CSV for price scraping
 
-import os
 import sys
 from pathlib import Path
 

@@ -4,6 +4,7 @@ Game service layer - handles all business logic for game operations.
 Separates business logic from HTTP routing concerns.
 """
 import logging
+import re
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 from datetime import datetime, timedelta, timezone
@@ -19,7 +20,7 @@ from config import API_BASE
 logger = logging.getLogger(__name__)
 def _sl(v: object) -> str:
     """Sanitize a value for safe log output by stripping newline characters."""
-    return str(v).replace('\n', ' ').replace('\r', ' ')
+    return re.sub(r'[\n\r]', ' ', str(v))
 
 
 class GameService:
@@ -252,11 +253,11 @@ class GameService:
 
         # DEBUG LOGGING: Track pagination issues
         actual_count = len(games)
-        safe_cat = str(category).replace('\n', ' ').replace('\r', ' ')
+        safe_cat = re.sub(r'[\n\r]', ' ', str(category))
         logger.info(
             "Pagination DEBUG - Category: %s, Page: %s, PageSize: %s, Offset: %s, "
             "Expected: %s, Actual returned: %s, Total count: %s",
-            safe_cat, page, page_size, offset,
+            safe_cat, int(page), int(page_size), int(offset),
             min(page_size, total - offset), actual_count, total
         )
 
@@ -526,8 +527,8 @@ class GameService:
         self.db.delete(game)
         self.db.commit()
 
-        safe_title = str(game_title).replace('\n', ' ').replace('\r', ' ')
-        logger.info("Deleted game: %s (ID: %s)", safe_title, game_id)
+        safe_title = re.sub(r'[\n\r]', ' ', str(game_title))
+        logger.info("Deleted game: %s (ID: %s)", safe_title, int(game_id))
         return game_title
 
     def update_game_from_bgg_data(
@@ -812,8 +813,8 @@ class GameService:
         if existing:
             # Update existing game using consolidated method
             self.update_game_from_bgg_data(existing, bgg_data, commit=True)
-            safe_title = str(existing.title).replace('\n', ' ').replace('\r', ' ')
-            logger.info("Updated from BGG: %s (BGG ID: %s)", safe_title, bgg_id)
+            safe_title = re.sub(r'[\n\r]', ' ', str(existing.title))
+            logger.info("Updated from BGG: %s (BGG ID: %s)", safe_title, int(bgg_id))
             return existing, True
         else:
             # Create new game with minimal data
@@ -826,8 +827,8 @@ class GameService:
             # Use consolidated method to populate all BGG data
             self.update_game_from_bgg_data(game, bgg_data, commit=True)
 
-            safe_title = str(game.title).replace('\n', ' ').replace('\r', ' ')
-            logger.info("Imported from BGG: %s (BGG ID: %s)", safe_title, bgg_id)
+            safe_title = re.sub(r'[\n\r]', ' ', str(game.title))
+            logger.info("Imported from BGG: %s (BGG ID: %s)", safe_title, int(bgg_id))
             return game, False
 
     def get_category_counts(self) -> Dict[str, int]:
