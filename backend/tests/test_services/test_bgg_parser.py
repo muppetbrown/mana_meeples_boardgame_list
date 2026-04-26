@@ -21,8 +21,8 @@ class TestParseBasicInfo:
     def test_parse_complete_basic_info(self):
         """Test parsing complete basic information"""
         item = Element("item", type="boardgame")
-        name = SubElement(item, "name", type="primary", value="Test Game")
-        year = SubElement(item, "yearpublished", value="2020")
+        SubElement(item, "name", type="primary", value="Test Game")
+        SubElement(item, "yearpublished", value="2020")
         desc = SubElement(item, "description")
         desc.text = "A great game &amp; fun to play&#10;New line"
 
@@ -38,7 +38,7 @@ class TestParseBasicInfo:
     def test_parse_expansion_type(self):
         """Test parsing expansion item type"""
         item = Element("item", type="boardgameexpansion")
-        name = SubElement(item, "name", type="primary", value="Test Expansion")
+        SubElement(item, "name", type="primary", value="Test Expansion")
 
         result = parse_basic_info(item)
 
@@ -48,7 +48,7 @@ class TestParseBasicInfo:
     def test_parse_no_primary_name(self):
         """Test fallback to non-primary name"""
         item = Element("item", type="boardgame")
-        name = SubElement(item, "name", value="Alternate Name")
+        SubElement(item, "name", value="Alternate Name")
 
         result = parse_basic_info(item)
 
@@ -65,8 +65,8 @@ class TestParseBasicInfo:
     def test_parse_invalid_year(self):
         """Test handling invalid year value"""
         item = Element("item", type="boardgame")
-        name = SubElement(item, "name", type="primary", value="Test")
-        year = SubElement(item, "yearpublished", value="invalid")
+        SubElement(item, "name", type="primary", value="Test")
+        SubElement(item, "yearpublished", value="invalid")
 
         result = parse_basic_info(item)
 
@@ -75,7 +75,7 @@ class TestParseBasicInfo:
     def test_parse_no_year(self):
         """Test handling missing year element"""
         item = Element("item", type="boardgame")
-        name = SubElement(item, "name", type="primary", value="Test")
+        SubElement(item, "name", type="primary", value="Test")
 
         result = parse_basic_info(item)
 
@@ -84,7 +84,7 @@ class TestParseBasicInfo:
     def test_parse_html_entities_in_description(self):
         """Test HTML entity decoding in description"""
         item = Element("item", type="boardgame")
-        name = SubElement(item, "name", type="primary", value="Test")
+        SubElement(item, "name", type="primary", value="Test")
         desc = SubElement(item, "description")
         desc.text = "&quot;Quoted&quot; text &amp; more &#10;with newline"
 
@@ -96,7 +96,7 @@ class TestParseBasicInfo:
     def test_parse_long_description_truncation(self):
         """Test description truncation at 2000 characters"""
         item = Element("item", type="boardgame")
-        name = SubElement(item, "name", type="primary", value="Test")
+        SubElement(item, "name", type="primary", value="Test")
         desc = SubElement(item, "description")
         desc.text = "A" * 3000  # 3000 characters
 
@@ -108,7 +108,7 @@ class TestParseBasicInfo:
     def test_parse_empty_description(self):
         """Test handling empty description"""
         item = Element("item", type="boardgame")
-        name = SubElement(item, "name", type="primary", value="Test")
+        SubElement(item, "name", type="primary", value="Test")
         desc = SubElement(item, "description")
         desc.text = ""
 
@@ -119,7 +119,7 @@ class TestParseBasicInfo:
     def test_parse_no_description(self):
         """Test handling missing description element"""
         item = Element("item", type="boardgame")
-        name = SubElement(item, "name", type="primary", value="Test")
+        SubElement(item, "name", type="primary", value="Test")
 
         result = parse_basic_info(item)
 
@@ -193,8 +193,8 @@ class TestParsePlayerCounts:
     def test_parse_player_counts(self):
         """Test parsing min/max player counts"""
         item = Element("item")
-        min_players = SubElement(item, "minplayers", value="2")
-        max_players = SubElement(item, "maxplayers", value="4")
+        SubElement(item, "minplayers", value="2")
+        SubElement(item, "maxplayers", value="4")
 
         result = parse_player_counts(item)
 
@@ -204,8 +204,8 @@ class TestParsePlayerCounts:
     def test_parse_solo_game(self):
         """Test parsing solo game (1-1 players)"""
         item = Element("item")
-        min_players = SubElement(item, "minplayers", value="1")
-        max_players = SubElement(item, "maxplayers", value="1")
+        SubElement(item, "minplayers", value="1")
+        SubElement(item, "maxplayers", value="1")
 
         result = parse_player_counts(item)
 
@@ -215,8 +215,8 @@ class TestParsePlayerCounts:
     def test_parse_invalid_player_counts(self):
         """Test handling invalid player count values"""
         item = Element("item")
-        min_players = SubElement(item, "minplayers", value="invalid")
-        max_players = SubElement(item, "maxplayers", value="invalid")
+        SubElement(item, "minplayers", value="invalid")
+        SubElement(item, "maxplayers", value="invalid")
 
         result = parse_player_counts(item)
 
@@ -239,9 +239,9 @@ class TestParsePlaytime:
     def test_parse_playtime_range(self):
         """Test parsing min/max playtime"""
         item = Element("item")
-        min_time = SubElement(item, "minplaytime", value="30")
-        max_time = SubElement(item, "maxplaytime", value="60")
-        age = SubElement(item, "minage", value="10")
+        SubElement(item, "minplaytime", value="30")
+        SubElement(item, "maxplaytime", value="60")
+        SubElement(item, "minage", value="10")
 
         result = parse_playtime(item)
 
@@ -252,8 +252,8 @@ class TestParsePlaytime:
     def test_parse_zero_playtime(self):
         """Test handling zero playtime values (should be None)"""
         item = Element("item")
-        min_time = SubElement(item, "minplaytime", value="0")
-        max_time = SubElement(item, "maxplaytime", value="0")
+        SubElement(item, "minplaytime", value="0")
+        SubElement(item, "maxplaytime", value="0")
 
         result = parse_playtime(item)
 
@@ -263,7 +263,7 @@ class TestParsePlaytime:
     def test_parse_fallback_to_playingtime(self):
         """Test fallback to playingtime when min/max not present"""
         item = Element("item")
-        play_time = SubElement(item, "playingtime", value="45")
+        SubElement(item, "playingtime", value="45")
 
         result = parse_playtime(item)
 
@@ -273,7 +273,7 @@ class TestParsePlaytime:
     def test_parse_zero_playingtime_fallback(self):
         """Test fallback with zero playingtime (should be None)"""
         item = Element("item")
-        play_time = SubElement(item, "playingtime", value="0")
+        SubElement(item, "playingtime", value="0")
 
         result = parse_playtime(item)
 
@@ -293,7 +293,7 @@ class TestParsePlaytime:
     def test_parse_invalid_age(self):
         """Test handling invalid age value"""
         item = Element("item")
-        age = SubElement(item, "minage", value="invalid")
+        SubElement(item, "minage", value="invalid")
 
         result = parse_playtime(item)
 
@@ -306,8 +306,8 @@ class TestParseLinks:
     def test_parse_categories(self):
         """Test parsing category links"""
         item = Element("item")
-        link1 = SubElement(item, "link", type="boardgamecategory", value="Strategy")
-        link2 = SubElement(item, "link", type="boardgamecategory", value="Economic")
+        SubElement(item, "link", type="boardgamecategory", value="Strategy")
+        SubElement(item, "link", type="boardgamecategory", value="Economic")
 
         result = parse_links(item, "boardgamecategory")
 
@@ -318,8 +318,8 @@ class TestParseLinks:
     def test_parse_mechanics(self):
         """Test parsing mechanic links"""
         item = Element("item")
-        link1 = SubElement(item, "link", type="boardgamemechanic", value="Deck Building")
-        link2 = SubElement(item, "link", type="boardgamemechanic", value="Worker Placement")
+        SubElement(item, "link", type="boardgamemechanic", value="Deck Building")
+        SubElement(item, "link", type="boardgamemechanic", value="Worker Placement")
 
         result = parse_links(item, "boardgamemechanic")
 
@@ -330,7 +330,7 @@ class TestParseLinks:
     def test_parse_designers(self):
         """Test parsing designer links"""
         item = Element("item")
-        link = SubElement(item, "link", type="boardgamedesigner", value="Jamey Stegmaier")
+        SubElement(item, "link", type="boardgamedesigner", value="Jamey Stegmaier")
 
         result = parse_links(item, "boardgamedesigner")
 
@@ -340,9 +340,9 @@ class TestParseLinks:
     def test_parse_empty_values(self):
         """Test filtering out empty link values"""
         item = Element("item")
-        link1 = SubElement(item, "link", type="boardgamecategory", value="Strategy")
-        link2 = SubElement(item, "link", type="boardgamecategory", value="  ")  # Whitespace only
-        link3 = SubElement(item, "link", type="boardgamecategory", value="")  # Empty
+        SubElement(item, "link", type="boardgamecategory", value="Strategy")
+        SubElement(item, "link", type="boardgamecategory", value="  ")  # Whitespace only
+        SubElement(item, "link", type="boardgamecategory", value="")  # Empty
 
         result = parse_links(item, "boardgamecategory")
 
@@ -365,7 +365,7 @@ class TestParseExpansionRelationships:
     def test_parse_base_game_link(self):
         """Test parsing base game link for expansion"""
         item = Element("item")
-        link = SubElement(
+        SubElement(
             item,
             "link",
             type="boardgameexpansion",
@@ -382,8 +382,8 @@ class TestParseExpansionRelationships:
     def test_parse_expansion_links(self):
         """Test parsing expansion links for base game"""
         item = Element("item")
-        link1 = SubElement(item, "link", type="boardgameexpansion", id="100", value="Expansion 1")
-        link2 = SubElement(item, "link", type="boardgameexpansion", id="200", value="Expansion 2")
+        SubElement(item, "link", type="boardgameexpansion", id="100", value="Expansion 1")
+        SubElement(item, "link", type="boardgameexpansion", id="200", value="Expansion 2")
 
         result = parse_expansion_relationships(item, "Base Game", False)
 
@@ -439,7 +439,7 @@ class TestParseExpansionRelationships:
     def test_parse_invalid_base_game_id(self):
         """Test handling invalid base game ID"""
         item = Element("item")
-        link = SubElement(
+        SubElement(
             item,
             "link",
             type="boardgameexpansion",
@@ -456,8 +456,8 @@ class TestParseExpansionRelationships:
     def test_parse_skip_inbound_expansion_links(self):
         """Test skipping inbound links (base games, not expansions)"""
         item = Element("item")
-        link1 = SubElement(item, "link", type="boardgameexpansion", inbound="true", id="100", value="Base Game")
-        link2 = SubElement(item, "link", type="boardgameexpansion", id="200", value="Real Expansion")
+        SubElement(item, "link", type="boardgameexpansion", inbound="true", id="100", value="Base Game")
+        SubElement(item, "link", type="boardgameexpansion", id="200", value="Real Expansion")
 
         result = parse_expansion_relationships(item, "Base Game", False)
 
@@ -475,13 +475,13 @@ class TestParseStatistics:
         statistics = SubElement(item, "statistics")
         ratings = SubElement(statistics, "ratings")
 
-        average = SubElement(ratings, "average", value="7.5")
-        weight = SubElement(ratings, "averageweight", value="3.2")
-        users_rated = SubElement(ratings, "usersrated", value="1000")
+        SubElement(ratings, "average", value="7.5")
+        SubElement(ratings, "averageweight", value="3.2")
+        SubElement(ratings, "usersrated", value="1000")
 
         ranks = SubElement(ratings, "ranks")
-        rank1 = SubElement(ranks, "rank", type="subtype", name="boardgame", value="150")
-        rank2 = SubElement(ranks, "rank", type="family", name="strategygames", value="75")
+        SubElement(ranks, "rank", type="subtype", name="boardgame", value="150")
+        SubElement(ranks, "rank", type="family", name="strategygames", value="75")
 
         result = parse_statistics(item)
 
@@ -496,7 +496,7 @@ class TestParseStatistics:
         item = Element("item")
         statistics = SubElement(item, "statistics")
         ratings = SubElement(statistics, "ratings")
-        average = SubElement(ratings, "average", value="0")
+        SubElement(ratings, "average", value="0")
 
         result = parse_statistics(item)
 
@@ -507,7 +507,7 @@ class TestParseStatistics:
         item = Element("item")
         statistics = SubElement(item, "statistics")
         ratings = SubElement(statistics, "ratings")
-        weight = SubElement(ratings, "averageweight", value="0")
+        SubElement(ratings, "averageweight", value="0")
 
         result = parse_statistics(item)
 
@@ -519,7 +519,7 @@ class TestParseStatistics:
         statistics = SubElement(item, "statistics")
         ratings = SubElement(statistics, "ratings")
         ranks = SubElement(ratings, "ranks")
-        rank = SubElement(ranks, "rank", type="subtype", name="boardgame", value="Not Ranked")
+        SubElement(ranks, "rank", type="subtype", name="boardgame", value="Not Ranked")
 
         result = parse_statistics(item)
 
@@ -532,9 +532,9 @@ class TestParseStatistics:
         ratings = SubElement(statistics, "ratings")
         ranks = SubElement(ratings, "ranks")
 
-        rank1 = SubElement(ranks, "rank", type="family", name="strategygames", value="100")
-        rank2 = SubElement(ranks, "rank", type="family", name="familygames", value="50")  # Best rank
-        rank3 = SubElement(ranks, "rank", type="family", name="thematic", value="150")
+        SubElement(ranks, "rank", type="family", name="strategygames", value="100")
+        SubElement(ranks, "rank", type="family", name="familygames", value="50")  # Best rank
+        SubElement(ranks, "rank", type="family", name="thematic", value="150")
 
         result = parse_statistics(item)
 
@@ -548,7 +548,7 @@ class TestParseStatistics:
         ratings = SubElement(statistics, "ratings")
         ranks = SubElement(ratings, "ranks")
 
-        rank1 = SubElement(ranks, "rank", type="family", name="partygames", value="Not Ranked")
+        SubElement(ranks, "rank", type="family", name="partygames", value="Not Ranked")
 
         result = parse_statistics(item)
 
@@ -561,7 +561,7 @@ class TestParseStatistics:
         ratings = SubElement(statistics, "ratings")
         ranks = SubElement(ratings, "ranks")
 
-        rank = SubElement(ranks, "rank", type="family", name="thematic", value="100")
+        SubElement(ranks, "rank", type="family", name="thematic", value="100")
 
         result = parse_statistics(item)
 
@@ -574,7 +574,7 @@ class TestParseStatistics:
         ratings = SubElement(statistics, "ratings")
         ranks = SubElement(ratings, "ranks")
 
-        rank = SubElement(ranks, "rank", type="family", name="strategygames", value="100")
+        SubElement(ranks, "rank", type="family", name="strategygames", value="100")
 
         result = parse_statistics(item)
 
@@ -596,7 +596,7 @@ class TestParseStatistics:
     def test_parse_no_ratings(self):
         """Test handling missing ratings element"""
         item = Element("item")
-        statistics = SubElement(item, "statistics")
+        SubElement(item, "statistics")
 
         result = parse_statistics(item)
 
@@ -610,9 +610,9 @@ class TestParseStatistics:
         statistics = SubElement(item, "statistics")
         ratings = SubElement(statistics, "ratings")
 
-        average = SubElement(ratings, "average", value="invalid")
-        weight = SubElement(ratings, "averageweight", value="invalid")
-        users_rated = SubElement(ratings, "usersrated", value="invalid")
+        SubElement(ratings, "average", value="invalid")
+        SubElement(ratings, "averageweight", value="invalid")
+        SubElement(ratings, "usersrated", value="invalid")
 
         result = parse_statistics(item)
 

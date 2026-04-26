@@ -247,7 +247,7 @@ class TestBGGImportFlowIntegration:
 
         # At least one should be rate limited if limits are strict
         # Note: Actual rate limiting may vary based on implementation
-        has_rate_limit = any(status == 429 for status in responses)
+        any(status == 429 for status in responses)
         # This test may pass even without rate limiting
 
     def test_import_concurrent_requests(self, client, admin_headers):

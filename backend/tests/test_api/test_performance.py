@@ -203,7 +203,7 @@ class TestAPIPerformance:
 
         def make_request():
             start = time.time()
-            response = client.get('/api/public/games?page_size=24')
+            client.get('/api/public/games?page_size=24')
             duration = time.time() - start
 
             with lock:

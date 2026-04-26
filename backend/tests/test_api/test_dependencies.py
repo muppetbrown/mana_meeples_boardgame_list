@@ -379,7 +379,7 @@ class TestRequireAdminAuth:
     def test_require_admin_auth_valid_session_cookie(self):
         """Test authentication with valid session cookie"""
         client_ip = "10.0.0.5"
-        session_token = create_session(client_ip)
+        create_session(client_ip)
 
         request = Mock(spec=Request)
         request.headers = {}
@@ -471,8 +471,7 @@ class TestRequireAdminAuth:
         """Test JWT is tried before session cookie"""
         client_ip = "192.168.1.100"
         jwt_token = generate_jwt_token(client_ip)
-        # Create invalid session
-        invalid_session = "invalid-session-token"
+        # Create invalid session (unused, kept as documentation)
 
         request = Mock(spec=Request)
         request.headers = {}
@@ -487,7 +486,7 @@ class TestRequireAdminAuth:
     def test_require_admin_auth_session_preferred_over_token(self):
         """Test session cookie is tried before admin token"""
         client_ip = "192.168.1.100"
-        session_token = create_session(client_ip)
+        create_session(client_ip)
 
         request = Mock(spec=Request)
         request.headers = {}
@@ -565,7 +564,7 @@ class TestRequireAdminAuth:
 
         caplog.set_level(logging.DEBUG)
         client_ip = "192.168.1.100"
-        session_token = create_session(client_ip)
+        create_session(client_ip)
 
         request = Mock(spec=Request)
         request.headers = {}
@@ -642,7 +641,7 @@ class TestIntegration:
 
         # Create all auth methods
         jwt_token = generate_jwt_token(client_ip)
-        session_token = create_session(client_ip)
+        create_session(client_ip)
 
         request = Mock(spec=Request)
         request.headers = {}

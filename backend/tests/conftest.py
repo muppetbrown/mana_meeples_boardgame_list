@@ -53,7 +53,7 @@ def clear_cache():
         from bgg_service import bgg_rate_limiter
         bgg_rate_limiter.requests.clear()
     except ImportError:
-        bgg_rate_limiter = None  # module not available in this test context
+        pass  # bgg_service not available in this test context
 
 
 @pytest.fixture(scope="function")
@@ -105,7 +105,6 @@ def db_session(db_engine) -> Session:
 @pytest.fixture(scope="function")
 def client(db_engine):
     """Create a test API client with database override"""
-    from database import get_db, get_read_db
     import database as db_module
     from unittest.mock import AsyncMock
     from sqlalchemy.pool import StaticPool
@@ -134,8 +133,8 @@ def client(db_engine):
             session.close()
 
     # Override both get_db and get_read_db
-    app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_read_db] = override_get_db
+    app.dependency_overrides[db_module.get_db] = override_get_db
+    app.dependency_overrides[db_module.get_read_db] = override_get_db
 
     # Mock the db_ping to prevent startup issues
     # Patch them where they're imported (in main.py), not where they're defined
@@ -316,7 +315,6 @@ async def async_client(db_engine):
     Required for testing async endpoints with @pytest.mark.asyncio.
     """
     from httpx import AsyncClient, ASGITransport
-    from database import get_db, get_read_db
     import database as db_module
     from unittest.mock import AsyncMock
     from sqlalchemy.pool import StaticPool
@@ -342,8 +340,8 @@ async def async_client(db_engine):
             session.close()
 
     # Override dependencies
-    app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[get_read_db] = override_get_db
+    app.dependency_overrides[db_module.get_db] = override_get_db
+    app.dependency_overrides[db_module.get_read_db] = override_get_db
 
     # Mock startup/shutdown events
     with patch('main.db_ping', return_value=True), \

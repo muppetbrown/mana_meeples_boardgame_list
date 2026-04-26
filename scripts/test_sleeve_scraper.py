@@ -54,7 +54,7 @@ def scrape_sleeve_data(bgg_id, game_name=None, driver=None):
         
         # Wait for the card list to appear
         try:
-            card_list = wait.until(
+            wait.until(
                 EC.presence_of_element_located((By.CLASS_NAME, "sleeve-visualizer__card-list"))
             )
         except TimeoutException:

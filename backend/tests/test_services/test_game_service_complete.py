@@ -623,7 +623,7 @@ class TestPerformance:
 
         # Should execute efficiently using window function
         with patch.object(db_session, 'execute', wraps=db_session.execute) as mock_execute:
-            games, total = service.get_filtered_games(page=1, page_size=5)
+            _, _ = service.get_filtered_games(page=1, page_size=5)
 
             # Should make 3 calls: setup, window function query, and object loading
             # This is much better than N+1 queries (would be 10+ calls)

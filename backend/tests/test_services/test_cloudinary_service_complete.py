@@ -305,7 +305,7 @@ class TestImageUpload:
             }
 
             service = CloudinaryService()
-            result = await service.upload_from_url(
+            await service.upload_from_url(
                 "https://example.com/corrupt.jpg",
                 mock_http_client
             )

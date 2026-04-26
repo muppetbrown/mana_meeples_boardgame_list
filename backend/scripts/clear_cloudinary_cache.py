@@ -42,7 +42,7 @@ def clear_cloudinary_urls():
             return
 
         # Clear cloudinary_url for all games
-        result = db.execute(
+        db.execute(
             update(Game).values(cloudinary_url=None)
         )
         db.commit()

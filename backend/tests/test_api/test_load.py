@@ -189,7 +189,7 @@ class TestConcurrentLoad:
             results.append(make_request())
 
         # Some should be rate limited (429)
-        rate_limited = sum(1 for status in results if status == 429)
+        sum(1 for status in results if status == 429)
 
         # If rate limiting is implemented, we should see some 429s
         # If not implemented yet, this is a reminder to add it
@@ -298,7 +298,7 @@ class TestConcurrentLoad:
         # First request (cache miss)
         start = time.time()
         client.get('/api/public/category-counts')
-        first_duration = time.time() - start
+        time.time() - start
 
         # Subsequent requests (should hit cache if implemented)
         durations = []
@@ -307,7 +307,7 @@ class TestConcurrentLoad:
             client.get('/api/public/category-counts')
             durations.append(time.time() - start)
 
-        avg_duration = sum(durations) / len(durations)
+        sum(durations) / len(durations)
 
         # Cached requests should generally be faster
         # This test will reveal if caching is effective

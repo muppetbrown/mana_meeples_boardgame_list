@@ -200,7 +200,7 @@ class TestBuyListWorkflowsIntegration:
             db.close()
 
         # Add once
-        response1 = client.post(
+        client.post(
             '/api/admin/buy-list/games',
             json={'bgg_id': sample_game.bgg_id},
             headers=admin_headers

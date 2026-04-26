@@ -266,7 +266,7 @@ class TestAdminGameManagementIntegration:
     def test_update_timestamp_on_modification(self, client, admin_headers, sample_game):
         """Should update timestamp when game is modified"""
         import time
-        original_time = sample_game.created_at
+        sample_game.created_at
 
         time.sleep(1)  # Ensure time difference
 

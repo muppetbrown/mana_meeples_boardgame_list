@@ -896,8 +896,8 @@ class TestBuyListErrorHandling:
         assert data["on_buy_list"] is False
 
 
-class TestBuyListErrorHandling:
-    """Test error handling in buy list endpoints"""
+class TestBuyListUpdateErrorHandling:
+    """Test error handling in buy list update endpoints"""
 
     def test_update_buy_list_game_database_error(
         self, client, db_session, admin_headers

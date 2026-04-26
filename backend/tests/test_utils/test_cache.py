@@ -511,7 +511,7 @@ class TestIntegration:
         # Typical request pattern
         user1 = get_user_data(1)  # DB query
         user1_again = get_user_data(1)  # Cached
-        user2 = get_user_data(2)  # DB query
+        get_user_data(2)  # DB query
         user1_third = get_user_data(1)  # Cached
 
         assert len(db_queries) == 2  # Only 2 actual queries

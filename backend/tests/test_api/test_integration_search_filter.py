@@ -249,7 +249,7 @@ class TestSearchFilterIntegration:
         response = client.get('/api/public/games?category=SOME_EMPTY_CATEGORY')
 
         assert response.status_code == 200
-        data = response.json()
+        response.json()
         # May return empty results or all results depending on implementation
 
     def test_filter_by_designer_name(self, client, diverse_games):
@@ -265,7 +265,7 @@ class TestSearchFilterIntegration:
         response = client.get('/api/public/games?q=strategy adventure')
 
         assert response.status_code == 200
-        data = response.json()
+        response.json()
         # Should return games matching search terms
 
     def test_case_insensitive_search(self, client, diverse_games):

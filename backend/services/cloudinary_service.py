@@ -208,8 +208,6 @@ class CloudinaryService:
 
                         # Check if both sizes are acceptable
                         if compressed_size <= MAX_FILE_SIZE and actual_uncompressed <= MAX_FILE_SIZE:
-                            final_quality = quality
-                            final_dimension = max_dimension
                             image_bytes = output_bytes
                             success = True
                             logger.info(

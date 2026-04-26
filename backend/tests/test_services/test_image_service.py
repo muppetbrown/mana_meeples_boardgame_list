@@ -236,7 +236,7 @@ class TestImageServiceInit:
     def test_ensures_thumbs_dir_exists(self, db_session):
         """Test that thumbnail directory is created on init"""
         with patch("os.makedirs") as mock_makedirs:
-            service = ImageService(db_session)
+            ImageService(db_session)
 
             # Should have called makedirs with exist_ok=True
             mock_makedirs.assert_called_once()

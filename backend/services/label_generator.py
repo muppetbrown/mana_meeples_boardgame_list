@@ -72,11 +72,8 @@ class LabelGenerator:
         # Get RGB values (0-1 range)
         r, g, b = bg_color.red, bg_color.green, bg_color.blue
 
-        # Calculate relative luminance
-        luminance = 0.299 * r + 0.587 * g + 0.114 * b
-
         # Return white for dark backgrounds, black for light backgrounds
-        return colors.white #if luminance < 0.5 else colors.black
+        return colors.white  # luminance check removed: always white for now
 
     def generate_pdf(self, games: List[dict]) -> BytesIO:
         """
