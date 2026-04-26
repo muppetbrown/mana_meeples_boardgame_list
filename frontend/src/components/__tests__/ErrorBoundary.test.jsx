@@ -11,8 +11,6 @@ const ThrowError = ({ shouldThrow, error }) => {
 };
 
 describe('ErrorBoundary', () => {
-  const originalEnv = import.meta.env.DEV;
-
   beforeEach(() => {
     // Suppress console.error for cleaner test output
     vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -153,9 +151,6 @@ describe('ErrorBoundary', () => {
     if (import.meta.env.DEV) {
       expect(screen.getByText('Error Details (Development Mode)')).toBeInTheDocument();
     }
-
-    // Restore original env
-    import.meta.env.DEV = originalEnv;
   });
 
   it('handles error without message gracefully', () => {
