@@ -8,6 +8,7 @@ import logging
 
 from bgg_service import fetch_bgg_thing
 import database
+SessionLocal = database.SessionLocal  # alias for test patching
 from models import Game
 from services.game_service import GameService
 from services.image_service import ImageService
@@ -33,7 +34,7 @@ async def download_and_update_thumbnail(game_id: int, thumbnail_url: str):
         "Cloudinary handles all image resizing on-demand."
     )
     try:
-        db = database.SessionLocal()
+        db = SessionLocal()
         image_service = ImageService(db)
 
         success = await image_service.download_and_update_game_thumbnail(
@@ -65,7 +66,7 @@ async def reimport_single_game(game_id: int, bgg_id: int, delay_seconds: float =
         if delay_seconds > 0:
             await asyncio.sleep(delay_seconds)
 
-        db = database.SessionLocal()
+        db = SessionLocal()
         game = db.get(Game, game_id)
         if not game:
             logger.warning(f"Game {game_id} not found for reimport")
