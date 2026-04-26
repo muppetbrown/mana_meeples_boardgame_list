@@ -100,7 +100,7 @@ def check_database_cloudinary_urls() -> Dict[str, any]:
         # Count games missing cloudinary_url
         games_missing_cloudinary = db.query(Game).filter(
             (Game.image != None) | (Game.thumbnail_url != None),
-            (Game.cloudinary_url == None) | (Game.cloudinary_url == '')
+            Game.cloudinary_url.is_(None) | (Game.cloudinary_url == '')
         ).count()
 
         logger.info(f"  Total games with images:     {games_with_images}")

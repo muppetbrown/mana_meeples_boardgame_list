@@ -124,8 +124,8 @@ def main():
                     print(f"  🔄 Restarting driver after timeout...", flush=True)
                     try:
                         driver.quit()
-                    except:
-                        pass  # Ignore errors when quitting hung driver
+                    except Exception as _e:
+                        print(f"  Driver quit error (ignored): {_e}", flush=True)
                     driver = create_driver()
                     print(f"  ✓ Driver restarted", flush=True)
 

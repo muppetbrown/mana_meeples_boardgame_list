@@ -7,11 +7,9 @@ import csv
 import io
 import json
 import logging
-import os
 from datetime import datetime, timezone
-from decimal import Decimal
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import desc, func, select
@@ -20,7 +18,7 @@ from sqlalchemy.orm import Session, joinedload
 from api.dependencies import require_admin_auth
 from database import get_db
 from models import BuyListGame, Game, PriceOffer, PriceSnapshot
-from schemas import BuyListGameCreate, BuyListGameOut, BuyListGameUpdate
+from schemas import BuyListGameCreate, BuyListGameUpdate
 
 logger = logging.getLogger(__name__)
 _sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs

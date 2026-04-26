@@ -7,7 +7,6 @@ Focuses on both successful operations and error scenarios with mocked Redis.
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from redis.exceptions import RedisError, ConnectionError as RedisConnectionError
-import redis_client
 from redis_client import RedisClient, get_redis_client
 
 
@@ -528,7 +527,8 @@ class TestRedisClientIntegration:
         assert client.get("key") == "value123"
 
         # Delete value
-        assert client.delete("key") is True
+        delete_result = client.delete("key")
+        assert delete_result is True
 
     @patch('redis_client.redis.from_url')
     def test_counter_workflow(self, mock_from_url):
@@ -583,7 +583,8 @@ class TestRedisClientIntegration:
         assert client.is_available is False
         assert client.get("key") is None
         assert client.set("key", "value") is False
-        assert client.delete("key") is False
+        delete_result = client.delete("key")
+        assert delete_result is False
         assert client.incr("counter") is None
         assert client.expire("key", 300) is False
         assert client.ttl("key") is None

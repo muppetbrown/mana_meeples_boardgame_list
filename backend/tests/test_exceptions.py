@@ -105,38 +105,28 @@ class TestExceptionRaising:
 
     def test_raise_game_service_error(self):
         """Test raising GameServiceError"""
-        with pytest.raises(GameServiceError) as exc_info:
+        with pytest.raises(GameServiceError, match="Test error"):
             raise GameServiceError("Test error")
-
-        assert "Test error" in str(exc_info.value)
 
     def test_raise_game_not_found_error(self):
         """Test raising GameNotFoundError"""
-        with pytest.raises(GameNotFoundError) as exc_info:
+        with pytest.raises(GameNotFoundError, match="Game not found"):
             raise GameNotFoundError("Game not found")
-
-        assert "Game not found" in str(exc_info.value)
 
     def test_raise_bgg_service_error(self):
         """Test raising BGGServiceError"""
-        with pytest.raises(BGGServiceError) as exc_info:
+        with pytest.raises(BGGServiceError, match="BGG API failed"):
             raise BGGServiceError("BGG API failed")
-
-        assert "BGG API failed" in str(exc_info.value)
 
     def test_raise_validation_error(self):
         """Test raising ValidationError"""
-        with pytest.raises(ValidationError) as exc_info:
+        with pytest.raises(ValidationError, match="Invalid input"):
             raise ValidationError("Invalid input")
-
-        assert "Invalid input" in str(exc_info.value)
 
     def test_raise_database_error(self):
         """Test raising DatabaseError"""
-        with pytest.raises(DatabaseError) as exc_info:
+        with pytest.raises(DatabaseError, match="DB connection failed"):
             raise DatabaseError("DB connection failed")
-
-        assert "DB connection failed" in str(exc_info.value)
 
 
 class TestExceptionCatching:

@@ -5,11 +5,10 @@ session management, and helper functions.
 """
 import logging
 import secrets
-import time
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import Cookie, Header, HTTPException, Request
+from fastapi import Header, HTTPException, Request
 
 from config import (
     ADMIN_TOKEN,
@@ -19,12 +18,10 @@ from config import (
     SESSION_TIMEOUT_SECONDS,
 )
 from shared.rate_limiting import (
-    admin_attempt_tracker,  # Legacy - for backward compatibility
-    admin_sessions,  # Legacy - for backward compatibility
-    session_storage,  # New Redis-backed storage
-    rate_limit_tracker,  # New Redis-backed tracker
-    cleanup_expired_attempts,  # Utility to cleanup expired rate limit attempts
-    record_failed_attempt,  # Utility to record failed auth attempts
+    admin_sessions,
+    session_storage,
+    cleanup_expired_attempts,
+    record_failed_attempt,
 )
 from utils.jwt_utils import verify_jwt_token, extract_token_from_header
 

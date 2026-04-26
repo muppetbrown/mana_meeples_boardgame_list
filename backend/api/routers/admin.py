@@ -4,13 +4,11 @@ Admin API endpoints for game management, authentication, and BGG import.
 Includes CRUD operations and session management.
 """
 import logging
-import time
 from typing import Any, Dict, Optional
 
 from fastapi import (
     APIRouter,
     BackgroundTasks,
-    Cookie,
     Depends,
     HTTPException,
     Path,
@@ -18,7 +16,7 @@ from fastapi import (
     Request,
     Response,
 )
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -37,15 +35,14 @@ from config import (
     JWT_EXPIRATION_DAYS,
     RATE_LIMIT_ATTEMPTS,
     RATE_LIMIT_WINDOW,
-    SESSION_TIMEOUT_SECONDS,
 )
 from utils.jwt_utils import generate_jwt_token
 from database import get_db
 from exceptions import GameNotFoundError, ValidationError
 import schemas
 from models import Game, BuyListGame, PriceSnapshot, PriceOffer, Sleeve
-from services import GameService, ImageService
-from shared.rate_limiting import rate_limit_tracker, cleanup_expired_attempts, record_failed_attempt
+from services import GameService
+from shared.rate_limiting import cleanup_expired_attempts, record_failed_attempt
 from utils.helpers import game_to_dict
 
 logger = logging.getLogger(__name__)

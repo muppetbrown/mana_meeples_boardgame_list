@@ -26,7 +26,8 @@ class LabelGenerator:
                 self.games_data = [row for row in reader if row.get('status') in ['OK', 'CACHED']]
             
             if config.VERBOSE_OUTPUT:
-                total_rows = sum(1 for _ in open(csv_path, encoding='utf-8')) - 1  # -1 for header
+                with open(csv_path, encoding='utf-8') as _f:
+                    total_rows = sum(1 for _ in _f) - 1  # -1 for header
                 print(f"Loaded {len(self.games_data)} successful games out of {total_rows} total")
             
             return len(self.games_data) > 0
@@ -302,7 +303,7 @@ class LabelGenerator:
                 if weight > 0:
                     complexities.append(weight)
             except (ValueError, TypeError):
-                weight = 0.0  # skip malformed weight value
+                continue  # skip malformed weight value
         
         if complexities:
             avg_complexity = sum(complexities) / len(complexities)

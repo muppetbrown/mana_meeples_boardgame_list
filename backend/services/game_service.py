@@ -251,8 +251,6 @@ class GameService:
             total = self.db.execute(count_query).scalar() or 0
 
         # DEBUG LOGGING: Track pagination issues
-        import logging
-        logger = logging.getLogger(__name__)
         actual_count = len(games)
         safe_cat = str(category).replace('\n', ' ').replace('\r', ' ')
         logger.info(

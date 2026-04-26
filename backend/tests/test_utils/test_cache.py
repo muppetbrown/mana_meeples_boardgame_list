@@ -113,10 +113,11 @@ class TestCachedQueryDecorator:
         assert result1 == 10
         assert call_count == 1
 
-        # Second call - should use cache
+        # Second call - should use cache (counter must not increment)
+        count_before = call_count
         result2 = test_func(5)
         assert result2 == 10
-        assert call_count == 1  # Not incremented
+        assert call_count == count_before
 
     def test_cached_query_different_args(self):
         """Test caching with different arguments"""

@@ -267,10 +267,10 @@ class TestAdminLoginRateLimiting:
         with patch('api.routers.admin.Request') as mock_request:
             mock_request.client.host = test_ip
 
-            # Next attempt should be rate limited
-            # Note: The actual endpoint uses Request.client.host
-            # We need to test via the API which gets the real client IP
-            pass  # This test shows the pattern, but API testing is better
+            # Verify the tracker has the 5 attempts recorded
+            from shared.rate_limiting import rate_limit_tracker
+            attempts = rate_limit_tracker._memory_tracker.get(test_ip, [])
+            assert len(attempts) == 5
 
     def test_login_succeeds_with_valid_token(self, client, admin_headers):
         """Valid login should succeed even after failed attempts"""

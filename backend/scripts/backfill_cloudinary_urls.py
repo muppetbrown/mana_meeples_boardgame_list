@@ -81,7 +81,7 @@ def backfill_cloudinary_urls(
         # Filter: only games missing cloudinary_url (unless force)
         if not force:
             query = query.filter(
-                (Game.cloudinary_url == None) | (Game.cloudinary_url == '')
+                Game.cloudinary_url.is_(None) | (Game.cloudinary_url == '')
             )
 
         # Apply limit if specified

@@ -6,9 +6,7 @@ Handles app initialization, middleware setup, and router registration.
 import os
 import json
 import logging
-import asyncio
 import time
-from typing import Dict, Any
 from datetime import datetime, timezone
 from collections import defaultdict
 from contextlib import asynccontextmanager
@@ -18,21 +16,15 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import delete
 from starlette.types import ASGIApp, Receive, Scope, Send
 from shared.rate_limiting import (
     get_limiter,
     get_rate_limit_exception_handler,
     get_rate_limit_exception,
-    admin_attempt_tracker,
-    admin_sessions,
 )
 
-from database import SessionLocal, db_ping
-from models import Game
-from bgg_service import fetch_bgg_thing
+from database import db_ping
 from exceptions import (
-    GameServiceError,
     GameNotFoundError,
     BGGServiceError,
     ValidationError,
@@ -542,7 +534,6 @@ from api.routers.health import health_router, debug_router
 from api.routers.buy_list import router as buy_list_router
 from api.routers.sleeves import router as sleeves_router
 from api.routers.printing import router as printing_router
-from api.versioning import version_info
 
 # Register API routers (currently using /api prefix without versioning)
 # Note: Explicit /api/v1 versioning disabled due to CORS middleware inheritance issues

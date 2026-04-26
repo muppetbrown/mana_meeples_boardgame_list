@@ -13,8 +13,7 @@ from collections import deque
 import httpx
 import logging
 import html
-import config
-from config import HTTP_TIMEOUT, HTTP_RETRIES
+from config import HTTP_TIMEOUT, HTTP_RETRIES, BGG_API_KEY
 from pybreaker import CircuitBreaker, CircuitBreakerError
 from services.bgg_parser import (
     parse_basic_info,
@@ -159,8 +158,8 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
 
     # Add BGG API key to headers if available
     headers = {}
-    if config.BGG_API_KEY:
-        headers["Authorization"] = f"Bearer {config.BGG_API_KEY}"
+    if BGG_API_KEY:
+        headers["Authorization"] = f"Bearer {BGG_API_KEY}"
         logger.info(f"Using BGG API key for authentication")
     else:
         logger.warning(f"No BGG API key configured - request may be rate limited")
