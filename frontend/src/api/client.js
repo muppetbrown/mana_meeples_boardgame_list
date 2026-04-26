@@ -5,7 +5,7 @@
  * Phase 1 Performance: Added request deduplication
  */
 import axios from "axios";
-import { API_BASE, getApiUrl, imageProxyUrl as proxyUrl } from "../config/api";
+import { API_BASE, getApiUrl, imageProxyUrl as proxyUrl, generateSrcSet } from "../config/api";
 import { safeStorage } from "../utils/storage";
 
 /**

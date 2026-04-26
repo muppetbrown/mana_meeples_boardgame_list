@@ -337,7 +337,7 @@ describe('GameCardPublic', () => {
   });
 
   it('renders link to game details', () => {
-    render(
+    const { container } = render(
       <RouterWrapper>
         <GameCardPublic game={mockGame} onToggleExpand={mockOnToggleExpand} />
       </RouterWrapper>
@@ -348,7 +348,7 @@ describe('GameCardPublic', () => {
   });
 
   it('respects prefersReducedMotion', () => {
-    render(
+    const { container } = render(
       <RouterWrapper>
         <GameCardPublic
           game={mockGame}
