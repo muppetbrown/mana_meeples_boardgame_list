@@ -253,9 +253,9 @@ class TestSecurityHeadersMiddleware:
         # CSP should allow BGG images
         csp = headers_sent[0][b"content-security-policy"].decode()
         from urllib.parse import urlparse
-        csp_netlocs = {urlparse(t.rstrip(';')).netloc for t in csp.split() if t.startswith('http')}
-        assert "cf.geekdo-images.com" in csp_netlocs
-        assert "cf.geekdo-static.com" in csp_netlocs
+        csp_netlocs = [urlparse(t.rstrip(';')).netloc for t in csp.split() if t.startswith('http')]
+        assert any(netloc == "cf.geekdo-images.com" for netloc in csp_netlocs)
+        assert any(netloc == "cf.geekdo-static.com" for netloc in csp_netlocs)
 
     @pytest.mark.asyncio
     async def test_skips_non_http_requests(self):

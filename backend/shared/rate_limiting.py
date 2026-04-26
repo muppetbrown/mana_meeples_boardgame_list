@@ -323,3 +323,9 @@ rate_limit_tracker = RateLimitTracker()
 # Main application code now uses session_storage and rate_limit_tracker
 admin_sessions: Dict[str, Dict[str, Any]] = {}
 admin_attempt_tracker: Dict[str, List[float]] = defaultdict(list)
+
+
+def clear_legacy_trackers() -> None:
+    """Clear legacy tracking dicts. Used in test teardown."""
+    admin_attempt_tracker.clear()
+    admin_sessions.clear()

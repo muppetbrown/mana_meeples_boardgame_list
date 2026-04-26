@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session
 from api.dependencies import require_admin_auth
 from bgg_service import fetch_bgg_thing
 import database
-from database import get_db
+get_db = database.get_db
+SessionLocal = database.SessionLocal
 from models import Game, Sleeve
 from utils.helpers import CATEGORY_KEYS, categorize_game, parse_categories
 
@@ -39,7 +40,7 @@ async def _fetch_sleeve_data_task(game_id: int, bgg_id: int, game_title: str):
     from services.sleeve_scraper import scrape_sleeve_data
 
     try:
-        db = database.SessionLocal()
+        db = SessionLocal()
         game = db.get(Game, game_id)
         if not game:
             logger.warning(f"Game {game_id} not found for sleeve fetch")

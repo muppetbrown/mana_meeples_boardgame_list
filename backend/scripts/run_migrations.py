@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import logging
 import database
-from database import db_ping
+db_ping = database.db_ping
 from sqlalchemy import text
 
 logging.basicConfig(level=logging.INFO)

@@ -186,8 +186,8 @@ class TestSecurityHeaders:
         assert "default-src 'self'" in csp
         assert "frame-ancestors 'none'" in csp
         from urllib.parse import urlparse
-        csp_netlocs = {urlparse(t.rstrip(';')).netloc for t in csp.split() if t.startswith('http')}
-        assert "cf.geekdo-images.com" in csp_netlocs
+        csp_netlocs = [urlparse(t.rstrip(';')).netloc for t in csp.split() if t.startswith('http')]
+        assert any(netloc == "cf.geekdo-images.com" for netloc in csp_netlocs)
 
     def test_permissions_policy_restrictive(self):
         """Should disable risky browser features"""

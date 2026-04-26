@@ -101,9 +101,8 @@ def cleanup_expired_entries(force: bool = False):
     # Only run cleanup periodically to reduce overhead
     if not force:
         _cleanup_counter += 1
-        if _cleanup_counter < CLEANUP_CHECK_INTERVAL:
+        if _cleanup_counter % CLEANUP_CHECK_INTERVAL != 0:
             return
-        _cleanup_counter = 0
 
     current_time = time.time()
     expired_keys = []
