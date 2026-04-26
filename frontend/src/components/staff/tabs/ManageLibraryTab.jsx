@@ -3,7 +3,7 @@ import React, { useState, useMemo } from "react";
 import { useStaff } from "../../../context/StaffContext";
 import CategoryFilter from "../../CategoryFilter";
 import { CATEGORY_LABELS } from "../../../constants/categories";
-import { imageProxyUrl, generateSleeveShoppingList, triggerSleeveFetch, generateGameLabels } from "../../../api/client";
+import { imageProxyUrl, generateSleeveShoppingList, triggerSleeveFetch, generateGameLabels, reimportSelectedGames } from "../../../api/client";
 import GameEditModal from "../GameEditModal";
 import SleeveShoppingListModal from "../SleeveShoppingListModal";
 
@@ -152,6 +152,27 @@ export function ManageLibraryTab() {
     }
   };
 
+  const handleReimportSelected = async () => {
+    if (selectedGames.size === 0) {
+      showToast('Please select at least one game', 'error');
+      return;
+    }
+
+    if (!window.confirm(`Re-import ${selectedGames.size} game(s) from BoardGameGeek?\n\nThis will refresh BGG data (ratings, descriptions, images, etc.) for the selected games. It runs in the background and may take a minute or two.`)) {
+      return;
+    }
+
+    try {
+      const result = await reimportSelectedGames(Array.from(selectedGames));
+      showToast(result.message, 'success');
+      setSelectedGames(new Set());
+    } catch (err) {
+      console.error('Failed to re-import selected games:', err);
+      const errorMsg = err.response?.data?.detail || 'Failed to start re-import';
+      showToast(errorMsg, 'error');
+    }
+  };
+
   const handlePrintLabels = async () => {
     if (selectedGames.size === 0) {
       showToast('Please select at least one game', 'error');
@@ -253,6 +274,14 @@ export function ManageLibraryTab() {
             </div>
 
             <div className="flex gap-2">
+              <button
+                onClick={handleReimportSelected}
+                disabled={selectedGames.size === 0}
+                className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Re-import selected games from BoardGameGeek"
+              >
+                ♻️ Re-import from BGG
+              </button>
               <button
                 onClick={handleTriggerSleeveFetch}
                 disabled={selectedGames.size === 0}

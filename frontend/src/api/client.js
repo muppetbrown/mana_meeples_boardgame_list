@@ -257,6 +257,16 @@ export async function reimportAllGames() {
 }
 
 /**
+ * Re-import a selection of games with enhanced BGG data
+ * @param {number[]} gameIds - Array of game IDs to re-import
+ * @returns {Promise<Object>} Re-import initiation confirmation
+ */
+export async function reimportSelectedGames(gameIds) {
+  const r = await api.post("/admin/reimport-selected-games", { game_ids: gameIds });
+  return r.data;
+}
+
+/**
  * Fetch sleeve data for all games (sleeve data only, no full re-import)
  * @returns {Promise<Object>} Sleeve fetch initiation confirmation
  */

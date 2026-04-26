@@ -12,6 +12,8 @@ from fastapi import (
     HTTPException,
     Request,
 )
+from pydantic import BaseModel
+from typing import List
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -371,6 +373,54 @@ async def reimport_all_games(
             f"Estimated completion time: {estimated_time_minutes:.1f} minutes "
             f"(rate limited to prevent BGG API errors)"
         )
+    }
+
+
+class ReimportSelectedRequest(BaseModel):
+    game_ids: List[int]
+
+
+@router.post("/reimport-selected-games")
+async def reimport_selected_games(
+    background_tasks: BackgroundTasks,
+    request: Request,
+    body: ReimportSelectedRequest,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin_auth),
+):
+    """Re-import a specific selection of games with enhanced BGG data."""
+    if not body.game_ids:
+        raise HTTPException(status_code=400, detail="No game IDs provided")
+
+    games = (
+        db.execute(
+            select(Game).where(
+                Game.id.in_(body.game_ids),
+                Game.bgg_id.isnot(None),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    if not games:
+        raise HTTPException(
+            status_code=404, detail="No matching games with BGG IDs found"
+        )
+
+    DELAY_BETWEEN_REQUESTS = 2.0
+    for index, game in enumerate(games):
+        delay = index * DELAY_BETWEEN_REQUESTS
+        background_tasks.add_task(reimport_single_game, game.id, game.bgg_id, delay)
+
+    estimated_time_minutes = (len(games) * DELAY_BETWEEN_REQUESTS) / 60
+
+    return {
+        "message": (
+            f"Started re-importing {len(games)} game(s) with enhanced BGG data. "
+            f"Estimated completion time: {estimated_time_minutes:.1f} minutes."
+        ),
+        "count": len(games),
     }
 
 
