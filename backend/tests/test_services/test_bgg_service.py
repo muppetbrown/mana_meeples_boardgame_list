@@ -576,7 +576,7 @@ class TestCircuitBreakerAndAuth:
         mock_response.raise_for_status = Mock()
         mock_response.headers = {"content-type": "application/xml"}
 
-        with patch("bgg_service.config.BGG_API_KEY", "test_api_key"), \
+        with patch("bgg_service.BGG_API_KEY", "test_api_key"), \
              patch("httpx.AsyncClient") as mock_client_cls:
 
             mock_client = AsyncMock()
