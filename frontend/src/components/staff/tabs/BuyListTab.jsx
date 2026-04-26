@@ -169,16 +169,21 @@ export function BuyListTab() {
 
       // Force a BGG reimport to ensure all derived fields (nz_designer, mana_meeple_category,
       // etc.) are fully populated — buy list additions may have used an older import path
+      let reimportFailed = false;
       if (item.bgg_id) {
         try {
           await importFromBGG(item.bgg_id, true);
         } catch (reimportErr) {
-          // Non-critical — game is still moved to owned, data refresh just failed
           console.warn("BGG data refresh failed after move-to-owned:", reimportErr);
+          reimportFailed = true;
         }
       }
 
-      setSuccess(`"${item.title}" moved to owned collection!`);
+      if (reimportFailed) {
+        setSuccess(`"${item.title}" moved to owned collection. BGG data refresh failed — use Re-import in Manage Library to update it.`);
+      } else {
+        setSuccess(`"${item.title}" moved to owned collection!`);
+      }
       await loadBuyList();
     } catch (err) {
       console.error("Failed to move to owned:", err);

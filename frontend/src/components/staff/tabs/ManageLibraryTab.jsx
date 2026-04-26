@@ -20,6 +20,7 @@ export function ManageLibraryTab() {
     deleteGameData,
     updateGameData,
     showToast,
+    loadLibrary,
   } = useStaff();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -511,6 +512,7 @@ export function ManageLibraryTab() {
           library={library}
           onSave={handleSaveGame}
           onClose={handleCloseEditModal}
+          onSleeveUpdate={loadLibrary}
         />
       )}
 

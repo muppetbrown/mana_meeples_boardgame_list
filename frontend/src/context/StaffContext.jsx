@@ -209,9 +209,14 @@ export function StaffProvider({ children }) {
       showToast('Please enter a valid BGG ID', 'error');
       return;
     }
+    const existing = library.find((g) => g.bgg_id === id);
+    if (existing) {
+      showToast(`"${existing.title}" is already in your library`, 'warning', 4000);
+      return;
+    }
     addGameByBggId(id);
     setBggIdInput('');
-  }, [bggIdInput, addGameByBggId, showToast]);
+  }, [bggIdInput, addGameByBggId, library, showToast]);
 
   /**
    * Open edit category modal

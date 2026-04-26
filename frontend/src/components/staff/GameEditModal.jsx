@@ -9,7 +9,7 @@ import SleevesListTable from './SleevesListTable';
  * - Expansion details
  * - Sleeve status
  */
-export default function GameEditModal({ game, library, onSave, onClose }) {
+export default function GameEditModal({ game, library, onSave, onClose, onSleeveUpdate }) {
   const [activeTab, setActiveTab] = useState('category');
   const [formData, setFormData] = useState({
     // Category
@@ -304,9 +304,7 @@ export default function GameEditModal({ game, library, onSave, onClose }) {
             <div className="space-y-4">
               <SleevesListTable
                 gameId={game.id}
-                onSleeveUpdate={() => {
-                  // Optionally refresh parent data
-                }}
+                onSleeveUpdate={onSleeveUpdate}
               />
 
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
