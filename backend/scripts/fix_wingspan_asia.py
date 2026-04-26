@@ -13,13 +13,13 @@ import os
 # Add backend to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from database import SessionLocal
+import database
 from models import Game
 from sqlalchemy import select
 
 def fix_wingspan_asia():
     """Update Wingspan Asia to be recognized as standalone expansion."""
-    db = SessionLocal()
+    db = database.SessionLocal()
     try:
         # Find Wingspan Asia by BGG ID
         wingspan_asia = db.execute(

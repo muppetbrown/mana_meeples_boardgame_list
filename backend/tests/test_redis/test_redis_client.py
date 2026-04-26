@@ -7,7 +7,7 @@ Focuses on both successful operations and error scenarios with mocked Redis.
 from unittest.mock import Mock, patch
 from redis.exceptions import RedisError, ConnectionError as RedisConnectionError
 import redis_client
-from redis_client import RedisClient
+RedisClient = redis_client.RedisClient
 
 
 class TestRedisClientInitialization:

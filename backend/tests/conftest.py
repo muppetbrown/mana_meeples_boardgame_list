@@ -21,7 +21,7 @@ os.environ["CORS_ORIGINS"] = "http://localhost:3000,http://test"
 # Disable rate limiting during tests to prevent test failures
 os.environ["DISABLE_RATE_LIMITING"] = "true"
 
-from database import Base
+import database
 from main import app
 
 
@@ -66,11 +66,11 @@ def db_engine():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool  # Use StaticPool for thread-safe in-memory SQLite
     )
-    Base.metadata.create_all(engine)
+    database.Base.metadata.create_all(engine)
     yield engine
     # Safely cleanup - ignore errors if connections are already closed
     try:
-        Base.metadata.drop_all(engine)
+        database.Base.metadata.drop_all(engine)
     except Exception as _cleanup_err:  # noqa: BLE001 — intentional teardown swallow
         logger.debug("Engine drop_all cleanup error (ignored): %s", _cleanup_err)
     try:
@@ -105,7 +105,7 @@ def db_session(db_engine) -> Session:
 @pytest.fixture(scope="function")
 def client(db_engine):
     """Create a test API client with database override"""
-    import database as db_module
+    db_module = database
     from unittest.mock import AsyncMock
     from sqlalchemy.pool import StaticPool
 
@@ -315,7 +315,7 @@ async def async_client(db_engine):
     Required for testing async endpoints with @pytest.mark.asyncio.
     """
     from httpx import AsyncClient, ASGITransport
-    import database as db_module
+    db_module = database
     from unittest.mock import AsyncMock
     from sqlalchemy.pool import StaticPool
     from sqlalchemy.orm import sessionmaker

@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from sqlalchemy import create_engine, inspect, text
 from database import DATABASE_URL
-from models import Base, Sleeve
+from models import Base
 import logging
 
 logging.basicConfig(level=logging.INFO)

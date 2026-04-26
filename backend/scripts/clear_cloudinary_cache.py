@@ -14,14 +14,14 @@ import os
 # Add parent directory to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from database import SessionLocal
+import database
 from models import Game
 from sqlalchemy import update
 
 
 def clear_cloudinary_urls():
     """Clear all cached cloudinary_url values"""
-    db = SessionLocal()
+    db = database.SessionLocal()
 
     try:
         # Count games with cloudinary_url set

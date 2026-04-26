@@ -11,7 +11,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import logging
-from database import db_ping, SessionLocal
+import database
+from database import db_ping
 from sqlalchemy import text
 
 logging.basicConfig(level=logging.INFO)
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 def check_table_exists(table_name: str) -> bool:
     """Check if a table exists in the database"""
     try:
-        db = SessionLocal()
+        db = database.SessionLocal()
         result = db.execute(
             text(
                 "SELECT EXISTS (SELECT FROM information_schema.tables "

@@ -9,7 +9,10 @@ import pytest
 from unittest.mock import Mock, patch
 from sqlalchemy.exc import OperationalError, DatabaseError
 import database
-from database import db_ping, init_db, get_db, get_read_db
+db_ping = database.db_ping
+init_db = database.init_db
+get_db = database.get_db
+get_read_db = database.get_read_db
 
 
 class TestDbPing:

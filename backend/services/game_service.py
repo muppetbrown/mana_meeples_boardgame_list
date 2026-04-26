@@ -251,23 +251,6 @@ class GameService:
             count_query = select(func.count()).select_from(base_id_query.alias())
             total = self.db.execute(count_query).scalar() or 0
 
-        # DEBUG LOGGING: Track pagination issues
-        actual_count = len(games)
-        safe_cat = re.sub(r'[\n\r]', ' ', str(category))
-        logger.info(
-            "Pagination DEBUG - Category: %s, Page: %s, PageSize: %s, Offset: %s, "
-            "Expected: %s, Actual returned: %s, Total count: %s",
-            safe_cat, int(page), int(page_size), int(offset),
-            min(page_size, total - offset), actual_count, total
-        )
-
-        # Additional logging for suspicious cases
-        if actual_count < page_size and offset + actual_count < total:
-            logger.warning(
-                f"PAGINATION MISMATCH - Returned {actual_count} items but expected "
-                f"{min(page_size, total - offset)} (total: {total}, offset: {offset})"
-            )
-
         return games, total
 
     def _apply_sorting(self, query, sort: str):
@@ -754,7 +737,6 @@ class GameService:
                 # Try new format first (most common)
                 if '__' in source_url:
                     # Replace new format pattern: __SIZE/
-                    import re
                     source_url = re.sub(r'__[a-z]+/', optimal_suffix_new, source_url)
                 else:
                     # Fallback to old format: _SIZE.
