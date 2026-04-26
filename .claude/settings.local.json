@@ -75,7 +75,8 @@
       "Bash(git -C /c/Git_Repos/mana_meeples_boardgame_list commit -m ' *)",
       "Bash(git -C /c/Git_Repos/mana_meeples_boardgame_list push origin main)",
       "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); gh run list --repo muppetbrown/mana_meeples_boardgame_list --limit 5 --json status,name,conclusion,headSha | ConvertFrom-Json | Format-Table name, status, conclusion)",
-      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); gh run list --repo muppetbrown/mana_meeples_boardgame_list --limit 5 --json databaseId,name,conclusion | ConvertFrom-Json | Where-Object { $_.conclusion -eq \"failure\" } | Select-Object -First 1 | ForEach-Object { gh run view $_.databaseId --repo muppetbrown/mana_meeples_boardgame_list --log-failed 2>&1 | Select-String -Pattern \"ERROR|FAILED|error|ImportError|ModuleNotFound|assert\" | Select-Object -First 50 })"
+      "PowerShell($env:PATH = [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"Machine\"\\) + \";\" + [System.Environment]::GetEnvironmentVariable\\(\"PATH\", \"User\"\\); gh run list --repo muppetbrown/mana_meeples_boardgame_list --limit 5 --json databaseId,name,conclusion | ConvertFrom-Json | Where-Object { $_.conclusion -eq \"failure\" } | Select-Object -First 1 | ForEach-Object { gh run view $_.databaseId --repo muppetbrown/mana_meeples_boardgame_list --log-failed 2>&1 | Select-String -Pattern \"ERROR|FAILED|error|ImportError|ModuleNotFound|assert\" | Select-Object -First 50 })",
+      "Bash(gh run *)"
     ]
   }
 }
