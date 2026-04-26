@@ -5,10 +5,7 @@ Sprint 11: Advanced Testing
 Tests the complete BoardGameGeek import workflow from API call to database persistence
 """
 
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
-from fastapi.testclient import TestClient
-from datetime import datetime
+from unittest.mock import AsyncMock, patch
 
 class TestBGGImportFlowIntegration:
     """Test complete BGG import workflow"""

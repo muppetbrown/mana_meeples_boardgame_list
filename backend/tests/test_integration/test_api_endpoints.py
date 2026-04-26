@@ -6,8 +6,6 @@ import pytest
 from httpx import AsyncClient
 from unittest.mock import AsyncMock, patch
 
-from main import app
-from models import Game
 from services.game_service import GameService
 
 

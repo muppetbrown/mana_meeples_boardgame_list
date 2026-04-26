@@ -14,10 +14,8 @@ import pytest
 import logging
 import json
 import os
-from datetime import datetime
-from unittest.mock import Mock, patch, AsyncMock, MagicMock
+from unittest.mock import Mock, patch
 from fastapi import Request
-from sqlalchemy.orm import Session
 
 # Import the main module components
 from main import (

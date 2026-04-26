@@ -3,7 +3,6 @@ Unit tests for middleware/performance.py
 
 Tests performance monitoring including LRU eviction and slow query tracking.
 """
-import pytest
 from middleware.performance import PerformanceMonitor
 
 

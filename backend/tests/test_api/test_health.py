@@ -3,9 +3,8 @@ Comprehensive tests for health and debug endpoints
 Tests health checks, database health, Redis health, and debug endpoints
 """
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from datetime import datetime
-from fastapi import HTTPException
 
 
 class TestHealthCheckEndpoint:

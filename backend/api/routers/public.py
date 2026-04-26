@@ -22,11 +22,10 @@ from fastapi import (
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from database import get_db, get_read_db
+from database import get_read_db
 from exceptions import GameNotFoundError
 from services import GameService, ImageService
 from utils.helpers import game_to_dict
-from utils.cache import cached_query
 from schemas import GameListItemResponse, GameDetailResponse
 
 logger = logging.getLogger(__name__)

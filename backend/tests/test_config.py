@@ -13,10 +13,8 @@ Tests cover:
 - Rate limiting configuration
 """
 import os
-import sys
 import pytest
-from unittest.mock import patch, MagicMock
-from io import StringIO
+from unittest.mock import patch
 
 
 class TestConfigLoading:

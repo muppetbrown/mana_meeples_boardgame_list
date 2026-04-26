@@ -2,7 +2,7 @@
 Tests for backfill_cloudinary_urls script
 """
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
 from models import Game
 
 

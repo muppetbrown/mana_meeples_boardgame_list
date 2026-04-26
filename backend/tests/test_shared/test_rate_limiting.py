@@ -2,12 +2,10 @@
 Tests for rate limiting utilities (shared/rate_limiting.py)
 Target: Increase coverage from 43% to 80%+
 """
-import pytest
 import json
-import time
 from collections import defaultdict
 from datetime import datetime, timezone
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from shared.rate_limiting import (
     get_limiter,
     get_rate_limit_exception_handler,

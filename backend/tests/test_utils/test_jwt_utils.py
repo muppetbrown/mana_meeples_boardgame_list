@@ -2,10 +2,8 @@
 Tests for JWT utilities (utils/jwt_utils.py)
 Target: Increase coverage from 53% to 95%+
 """
-import pytest
 import jwt as pyjwt
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
 from utils.jwt_utils import (
     generate_jwt_token,
     verify_jwt_token,

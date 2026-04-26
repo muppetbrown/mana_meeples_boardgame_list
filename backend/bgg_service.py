@@ -12,7 +12,6 @@ from datetime import datetime, timedelta
 from collections import deque
 import httpx
 import logging
-import html
 from config import HTTP_TIMEOUT, HTTP_RETRIES, BGG_API_KEY
 from pybreaker import CircuitBreaker, CircuitBreakerError
 from services.bgg_parser import (

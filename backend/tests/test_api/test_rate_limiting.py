@@ -2,9 +2,8 @@
 Comprehensive tests for rate limiting functionality.
 Tests the rate limiting implementation for admin login and other protected endpoints.
 """
-import pytest
 import time
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from datetime import datetime
 from collections import defaultdict
 

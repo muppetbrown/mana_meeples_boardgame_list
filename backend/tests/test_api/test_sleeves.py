@@ -9,10 +9,6 @@ Tests all sleeve management endpoints including:
 - Grouping sleeves by size
 """
 
-import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
-
 from models import Game, Sleeve
 
 

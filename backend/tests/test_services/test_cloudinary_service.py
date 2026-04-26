@@ -12,7 +12,6 @@ Tests all Cloudinary service functionality including:
 """
 
 import hashlib
-import io
 from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 import pytest

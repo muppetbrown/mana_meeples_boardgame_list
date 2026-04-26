@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, text, event
+from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
@@ -12,7 +12,6 @@ from config import (
     SLOW_QUERY_THRESHOLD_SECONDS,
 )
 from models import Base
-from datetime import datetime
 import logging
 import time
 import os

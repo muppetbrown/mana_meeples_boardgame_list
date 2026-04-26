@@ -8,12 +8,12 @@ from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, func, or_, and_, case, inspect, cast, String, delete
+from sqlalchemy import select, func, or_, and_, case, cast, String, delete
 from sqlalchemy.orm import Session, selectinload
 
 from models import Game
 from exceptions import GameNotFoundError, ValidationError
-from utils.helpers import parse_categories, categorize_game, game_to_dict
+from utils.helpers import parse_categories, categorize_game
 from config import API_BASE
 
 logger = logging.getLogger(__name__)

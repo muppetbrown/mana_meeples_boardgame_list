@@ -1,5 +1,4 @@
 import os
-import sys
 import logging
 
 _log = logging.getLogger(__name__)

@@ -6,7 +6,6 @@ Phase 1 Performance: Added automatic cache cleanup to prevent memory leaks
 """
 import time
 import hashlib
-import json
 import logging
 from typing import Any, Optional, Callable
 from functools import wraps

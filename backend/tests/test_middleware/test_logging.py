@@ -4,7 +4,7 @@ Unit tests for middleware/logging.py
 Tests request logging middleware including timing, request IDs, and performance monitoring.
 """
 import pytest
-from unittest.mock import Mock, patch, AsyncMock
+from unittest.mock import patch, AsyncMock
 from middleware.logging import RequestLoggingMiddleware
 
 

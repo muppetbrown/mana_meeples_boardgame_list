@@ -5,7 +5,6 @@ Focus: Rate limiting, circuit breaker, fetch logic, error handling
 """
 import contextlib
 import pytest
-import asyncio
 from unittest.mock import AsyncMock, patch, MagicMock
 from datetime import datetime, timedelta
 import xml.etree.ElementTree as ET
@@ -14,7 +13,6 @@ import httpx
 from bgg_service import (
     BGGRateLimiter,
     bgg_circuit_breaker,
-    bgg_rate_limiter,
     fetch_bgg_thing,
     BGGServiceError,
     _extract_comprehensive_game_data,

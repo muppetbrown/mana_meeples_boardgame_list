@@ -3,7 +3,6 @@ Comprehensive tests for BGG parser (services/bgg_parser.py)
 Target: 7.4% → 90% coverage
 Focus: All parser functions, edge cases, HTML decoding, namespace handling
 """
-import pytest
 import xml.etree.ElementTree as ET
 
 from services.bgg_parser import (

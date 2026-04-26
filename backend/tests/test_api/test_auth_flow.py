@@ -1,9 +1,6 @@
 """
 Tests for authentication flow and session management
 """
-import pytest
-import time
-from unittest.mock import patch
 
 
 class TestAuthenticationFlow:

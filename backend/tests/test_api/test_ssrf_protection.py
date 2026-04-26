@@ -3,7 +3,7 @@ Comprehensive tests for SSRF (Server-Side Request Forgery) protection.
 Tests the validate_url_against_ssrf() function in api/routers/public.py
 """
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from fastapi import HTTPException
 
 

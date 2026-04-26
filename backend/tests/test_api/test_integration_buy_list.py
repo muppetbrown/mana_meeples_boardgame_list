@@ -8,8 +8,6 @@ NOTE: These tests match the actual buy list API implementation.
       The API uses BGG IDs for adding games and buy_list_entry IDs for updates/deletes.
 """
 
-import pytest
-from fastapi.testclient import TestClient
 
 
 class TestBuyListWorkflowsIntegration:

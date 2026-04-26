@@ -1,7 +1,5 @@
 """Tests for GameService business logic layer."""
 import pytest
-from unittest.mock import Mock, patch
-from datetime import datetime, timedelta
 
 from services.game_service import GameService
 from models import Game

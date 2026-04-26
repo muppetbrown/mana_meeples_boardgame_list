@@ -4,19 +4,16 @@ Focus: Uncovered lines and edge cases in buy_list.py
 Target: Increase coverage from 73.8% to 90%+
 """
 
-import csv
 import io
 import json
 from datetime import datetime, timezone
 from decimal import Decimal
 from pathlib import Path
-from tempfile import TemporaryDirectory
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
 
-from models import BuyListGame, Game, PriceOffer, PriceSnapshot
+from models import BuyListGame, Game, PriceSnapshot
 
 
 class TestBulkImportCSVEdgeCases:

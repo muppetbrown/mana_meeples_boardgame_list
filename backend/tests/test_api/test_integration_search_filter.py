@@ -6,7 +6,6 @@ Tests complex search and filtering scenarios with multiple combinations
 """
 
 import pytest
-from fastapi.testclient import TestClient
 from models import Game
 
 

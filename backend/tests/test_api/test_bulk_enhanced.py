@@ -5,8 +5,7 @@ error paths, and integration scenarios to reach 85% coverage target.
 """
 import pytest
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, Mock, patch, call
-from sqlalchemy import select
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 from models import Game, Sleeve
 
 

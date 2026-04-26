@@ -1,8 +1,7 @@
 """
 Comprehensive tests for services/sleeve_scraper.py
 """
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from services.sleeve_scraper import create_game_slug, scrape_sleeve_data
 

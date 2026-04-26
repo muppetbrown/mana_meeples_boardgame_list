@@ -4,11 +4,9 @@ Tests for Sprint 5: Error Handling & Monitoring
 Tests circuit breaker, retry logic, and background task failure tracking
 """
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime
+from unittest.mock import patch
 
 import httpx
-from pybreaker import CircuitBreakerError
 
 
 class TestCircuitBreaker:

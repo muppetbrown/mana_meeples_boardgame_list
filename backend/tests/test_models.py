@@ -12,7 +12,7 @@ Tests cover:
 - Default values and auto-generated fields
 """
 import pytest
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError

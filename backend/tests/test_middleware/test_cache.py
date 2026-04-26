@@ -4,7 +4,7 @@ Unit tests for middleware/cache.py
 Tests cache control middleware for different endpoint types.
 """
 import pytest
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock
 from middleware.cache import APICacheControlMiddleware
 
 

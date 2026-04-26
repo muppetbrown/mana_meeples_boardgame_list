@@ -12,19 +12,15 @@ Tests all buy list management endpoints including:
 - Helper functions
 """
 
-import csv
 import io
-import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from decimal import Decimal
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
 
 from api.routers.buy_list import build_buy_list_response, compute_buy_filter
-from models import BuyListGame, Game, PriceOffer, PriceSnapshot
+from models import BuyListGame, Game, PriceSnapshot
 
 
 class TestComputeBuyFilter:

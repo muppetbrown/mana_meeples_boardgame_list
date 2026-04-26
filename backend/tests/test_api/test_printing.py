@@ -2,7 +2,6 @@
 Comprehensive tests for printing API endpoints.
 Tests the /api/admin/print-labels endpoint for generating PDF game labels.
 """
-import pytest
 from unittest.mock import patch, MagicMock
 from io import BytesIO
 

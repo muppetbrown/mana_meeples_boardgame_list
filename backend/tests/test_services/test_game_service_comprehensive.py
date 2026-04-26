@@ -3,8 +3,6 @@ Comprehensive tests for GameService.
 Tests all filtering, sorting, CRUD operations, and edge cases.
 """
 import pytest
-from datetime import datetime, timedelta, timezone
-from unittest.mock import patch, MagicMock
 
 from models import Game
 from services.game_service import GameService

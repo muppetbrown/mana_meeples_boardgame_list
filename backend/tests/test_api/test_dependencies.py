@@ -3,9 +3,8 @@ Tests for API dependencies (api/dependencies.py)
 Target: Increase coverage from 40% to 80%+
 """
 import pytest
-import time
 from datetime import datetime, timedelta, timezone
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from fastapi import HTTPException, Request
 from api.dependencies import (
     get_client_ip,

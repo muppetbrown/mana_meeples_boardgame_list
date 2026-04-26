@@ -6,7 +6,7 @@ Migration tests are limited due to PostgreSQL-specific logic that skips in test 
 """
 import contextlib
 import pytest
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 from sqlalchemy.exc import OperationalError, DatabaseError
 import database
 from database import db_ping, init_db, get_db, get_read_db

@@ -7,7 +7,6 @@ Tests API performance benchmarks and response times
 
 import pytest
 import time
-from fastapi.testclient import TestClient
 from models import Game
 
 

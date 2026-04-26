@@ -2,7 +2,6 @@
 Tests for BGG Parser Module
 Comprehensive tests for all XML parsing functions
 """
-import pytest
 from xml.etree.ElementTree import Element, SubElement
 from services.bgg_parser import (
     parse_basic_info,

@@ -4,7 +4,6 @@ Target: Increase coverage from 55% to 95%+
 """
 import pytest
 import time
-from unittest.mock import Mock, patch
 from utils.cache import (
     make_cache_key,
     cached_query,
@@ -12,7 +11,6 @@ from utils.cache import (
     get_cache_stats,
     _cache_store,
     _cache_timestamps,
-    DEFAULT_TTL_SECONDS,
 )
 
 

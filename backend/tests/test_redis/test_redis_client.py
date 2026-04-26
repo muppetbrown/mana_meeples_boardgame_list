@@ -4,10 +4,9 @@ Unit tests for redis_client.py
 Tests Redis client wrapper with connection pooling and error handling.
 Focuses on both successful operations and error scenarios with mocked Redis.
 """
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 from redis.exceptions import RedisError, ConnectionError as RedisConnectionError
-from redis_client import RedisClient, get_redis_client
+from redis_client import RedisClient
 
 
 class TestRedisClientInitialization:

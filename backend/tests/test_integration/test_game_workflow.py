@@ -6,9 +6,7 @@ import pytest
 from unittest.mock import AsyncMock, patch
 from sqlalchemy.orm import Session
 
-from models import Game
 from services.game_service import GameService
-from bgg_service import fetch_bgg_thing
 from exceptions import GameNotFoundError, ValidationError
 
 

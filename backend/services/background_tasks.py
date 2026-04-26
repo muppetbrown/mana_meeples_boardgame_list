@@ -5,7 +5,6 @@ These are wrappers around service methods designed for FastAPI BackgroundTasks.
 """
 import asyncio
 import logging
-from typing import Optional
 
 from bgg_service import fetch_bgg_thing
 from database import SessionLocal

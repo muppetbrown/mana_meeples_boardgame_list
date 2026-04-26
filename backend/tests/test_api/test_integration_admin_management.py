@@ -5,8 +5,6 @@ Sprint 11: Advanced Testing
 Tests the complete admin game management workflow including CRUD operations
 """
 
-import pytest
-from fastapi.testclient import TestClient
 
 
 class TestAdminGameManagementIntegration:

@@ -5,11 +5,9 @@ Sprint 11: Advanced Testing
 Tests system behavior under concurrent load
 """
 
-import pytest
 import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from fastapi.testclient import TestClient
 
 
 class TestConcurrentLoad:
