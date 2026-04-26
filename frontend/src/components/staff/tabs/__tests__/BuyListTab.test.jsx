@@ -18,6 +18,7 @@ vi.mock('../../../../api/client', () => ({
   bulkImportBuyListCSV: vi.fn(),
   imageProxyUrl: vi.fn((url) => `proxy:${url}`),
   updateGame: vi.fn(),
+  importFromBGG: vi.fn().mockResolvedValue({}),
 }));
 
 describe('BuyListTab', () => {

@@ -13,6 +13,7 @@ vi.mock('../../../../api/client', () => ({
   generateSleeveShoppingList: vi.fn(),
   triggerSleeveFetch: vi.fn(),
   generateGameLabels: vi.fn(),
+  reimportSelectedGames: vi.fn().mockResolvedValue({ message: 'Re-import started', count: 1 }),
 }));
 
 // Mock useStaff hook
