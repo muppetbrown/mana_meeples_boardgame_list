@@ -70,7 +70,10 @@
       "Bash(gh api *)",
       "PowerShell(gh api *)",
       "Skill(update-config)",
-      "PowerShell(Get-Command *)"
+      "PowerShell(Get-Command *)",
+      "Bash(git -C /c/Git_Repos/mana_meeples_boardgame_list add frontend/src/components/staff/tabs/__tests__/AddGamesTab.test.jsx frontend/src/components/__tests__/UpdateNotification.test.jsx frontend/src/components/public/__tests__/GameCardPublic.test.jsx frontend/src/api/client.js)",
+      "Bash(git -C /c/Git_Repos/mana_meeples_boardgame_list commit -m ' *)",
+      "Bash(git -C /c/Git_Repos/mana_meeples_boardgame_list push origin main)"
     ]
   }
 }
