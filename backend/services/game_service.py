@@ -254,11 +254,12 @@ class GameService:
         import logging
         logger = logging.getLogger(__name__)
         actual_count = len(games)
+        safe_cat = str(category).replace('\n', ' ').replace('\r', ' ')
         logger.info(
-            f"Pagination DEBUG - Category: {_sl(category)}, Page: {page}, "
-            f"PageSize: {page_size}, Offset: {offset}, "
-            f"Expected: {min(page_size, total - offset)}, "
-            f"Actual returned: {actual_count}, Total count: {total}"
+            "Pagination DEBUG - Category: %s, Page: %s, PageSize: %s, Offset: %s, "
+            "Expected: %s, Actual returned: %s, Total count: %s",
+            safe_cat, page, page_size, offset,
+            min(page_size, total - offset), actual_count, total
         )
 
         # Additional logging for suspicious cases
@@ -527,7 +528,8 @@ class GameService:
         self.db.delete(game)
         self.db.commit()
 
-        logger.info(f"Deleted game: {_sl(game_title)} (ID: {game_id})")
+        safe_title = str(game_title).replace('\n', ' ').replace('\r', ' ')
+        logger.info("Deleted game: %s (ID: %s)", safe_title, game_id)
         return game_title
 
     def update_game_from_bgg_data(
@@ -608,8 +610,10 @@ class GameService:
                 f"Auto-linked expansion '{_sl(game.title)}' to base game '{_sl(base_game.title)}'"
             )
         else:
+            safe_title = str(game.title).replace('\n', ' ').replace('\r', ' ')
             logger.info(
-                f"Base game BGG ID {base_game_bgg_id} not found in database for expansion '{_sl(game.title)}'"
+                "Base game BGG ID %s not found in database for expansion '%s'",
+                base_game_bgg_id, safe_title
             )
 
     def _update_game_enhanced_fields(
@@ -810,9 +814,8 @@ class GameService:
         if existing:
             # Update existing game using consolidated method
             self.update_game_from_bgg_data(existing, bgg_data, commit=True)
-            logger.info(
-                f"Updated from BGG: {_sl(existing.title)} (BGG ID: {bgg_id})"
-            )
+            safe_title = str(existing.title).replace('\n', ' ').replace('\r', ' ')
+            logger.info("Updated from BGG: %s (BGG ID: %s)", safe_title, bgg_id)
             return existing, True
         else:
             # Create new game with minimal data
@@ -825,7 +828,8 @@ class GameService:
             # Use consolidated method to populate all BGG data
             self.update_game_from_bgg_data(game, bgg_data, commit=True)
 
-            logger.info(f"Imported from BGG: {_sl(game.title)} (BGG ID: {bgg_id})")
+            safe_title = str(game.title).replace('\n', ' ').replace('\r', ' ')
+            logger.info("Imported from BGG: %s (BGG ID: %s)", safe_title, bgg_id)
             return game, False
 
     def get_category_counts(self) -> Dict[str, int]:

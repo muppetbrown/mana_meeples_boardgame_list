@@ -316,9 +316,9 @@ async def update_admin_game(
         raise handle_validation_error(e)
     except Exception as e:
         db.rollback()
-        logger.error(
-            f"Failed to update game {_sl(game_id)}: {_sl(e)}", extra={"game_id": game_id}, exc_info=True
-        )
+        safe_id = str(game_id).replace('\n', ' ').replace('\r', ' ')
+        safe_err = str(e).replace('\n', ' ').replace('\r', ' ')
+        logger.error("Failed to update game %s: %s", safe_id, safe_err, exc_info=True)
         raise handle_generic_error(e, f"update game {game_id}")
 
 
@@ -347,10 +347,9 @@ async def update_admin_game_post(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         db.rollback()
-        logger.error(
-            f"Failed to update game {_sl(game_id)} via POST: {_sl(e)}",
-            extra={"game_id": game_id},
-        )
+        safe_id = str(game_id).replace('\n', ' ').replace('\r', ' ')
+        safe_err = str(e).replace('\n', ' ').replace('\r', ' ')
+        logger.error("Failed to update game %s via POST: %s", safe_id, safe_err)
         raise HTTPException(status_code=500, detail="Failed to update game")
 
 
@@ -371,9 +370,9 @@ async def delete_admin_game(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         db.rollback()
-        logger.error(
-            f"Failed to delete game {_sl(game_id)}: {_sl(e)}", extra={"game_id": game_id}
-        )
+        safe_id = str(game_id).replace('\n', ' ').replace('\r', ' ')
+        safe_err = str(e).replace('\n', ' ').replace('\r', ' ')
+        logger.error("Failed to delete game %s: %s", safe_id, safe_err)
         raise HTTPException(status_code=500, detail="Failed to delete game")
 
 

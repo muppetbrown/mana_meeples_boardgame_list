@@ -180,7 +180,8 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                 if bgg_id in [314421, 13]:  # 13 = Catan (known good ID)
                     logger.info(f"=== SPECIAL DEBUG FOR BGG ID {_sl(bgg_id)} ===")
                     logger.info(f"Request URL: {url}")
-                    logger.info(f"Request params: {params}")
+                    safe_params = str(params).replace('\n', ' ').replace('\r', ' ')
+                    logger.info("Request params: %s", safe_params)
 
                 response = await client.get(url, params=params, headers=headers)
 
