@@ -34,7 +34,7 @@ def _sl(v: object) -> str:
     return str(v).replace('\n', ' ').replace('\r', ' ')
 
 
-async def validate_url_against_ssrf(url: str) -> bool:
+def validate_url_against_ssrf(url: str) -> bool:
     """
     Validate URL against SSRF (Server-Side Request Forgery) attacks.
 
@@ -72,10 +72,9 @@ async def validate_url_against_ssrf(url: str) -> bool:
                 detail="URL must have a valid hostname"
             )
 
-        # Resolve hostname to IP address (run in thread pool to avoid blocking event loop)
+        # Resolve hostname to IP address
         try:
-            import asyncio
-            ip_address_str = await asyncio.to_thread(socket.gethostbyname, hostname)
+            ip_address_str = socket.gethostbyname(hostname)
         except socket.gaierror:
             raise HTTPException(
                 status_code=400,
@@ -459,7 +458,7 @@ async def image_proxy(
             )
 
         # SECURITY: SSRF protection - validate URL before proxying
-        await validate_url_against_ssrf(url)
+        validate_url_against_ssrf(url)
 
         # Parse hostname once; reused for all host checks below
         _url_host = (urlparse(url).hostname or "").lower()
