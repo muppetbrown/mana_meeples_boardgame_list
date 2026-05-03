@@ -65,46 +65,40 @@ class BGGRateLimiter:
         """
         Acquire permission to make a BGG API request.
 
-        Blocks (with exponential backoff) if rate limit exceeded.
+        Blocks (with sleep) if rate limit exceeded.
         Thread-safe for concurrent async requests.
 
         Raises:
             No exceptions - blocks until request can proceed
         """
-        async with self._lock:
-            now = datetime.now()
-            cutoff = now - timedelta(seconds=self.time_window)
+        while True:
+            async with self._lock:
+                now = datetime.now()
+                cutoff = now - timedelta(seconds=self.time_window)
 
-            # Remove old requests outside time window (sliding window)
-            while self.requests and self.requests[0] < cutoff:
-                self.requests.popleft()
+                # Remove old requests outside time window (sliding window)
+                while self.requests and self.requests[0] < cutoff:
+                    self.requests.popleft()
 
-            # Check if rate limit exceeded
-            if len(self.requests) >= self.max_requests:
-                # Calculate wait time with exponential backoff
+                # If under limit, record and return
+                if len(self.requests) < self.max_requests:
+                    self.requests.append(now)
+                    logger.debug(
+                        f"BGG API request acquired "
+                        f"({len(self.requests)}/{self.max_requests} in window)"
+                    )
+                    return
+
+                # Calculate wait time; sleep OUTSIDE the lock so other coroutines can proceed
                 oldest_request = self.requests[0]
                 wait_until = oldest_request + timedelta(seconds=self.time_window)
-                wait_time = (wait_until - now).total_seconds()
+                wait_time = min(max((wait_until - now).total_seconds(), 0.1), 60)
 
-                # Cap wait time at 60 seconds max
-                wait_time = min(wait_time, 60)
-
-                logger.warning(
-                    f"BGG API rate limit reached ({self.max_requests} req/{self.time_window}s), "
-                    f"waiting {wait_time:.1f}s before retry"
-                )
-
-                # Wait and retry
-                await asyncio.sleep(wait_time)
-                await self.acquire()  # Recursive retry after waiting
-                return
-
-            # Record this request
-            self.requests.append(now)
-            logger.debug(
-                f"BGG API request acquired "
-                f"({len(self.requests)}/{self.max_requests} in window)"
+            logger.warning(
+                f"BGG API rate limit reached ({self.max_requests} req/{self.time_window}s), "
+                f"waiting {wait_time:.1f}s before retry"
             )
+            await asyncio.sleep(wait_time)
 
 
 # Global rate limiter instance

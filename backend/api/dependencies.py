@@ -67,7 +67,11 @@ def validate_session(session_token: Optional[str], client_ip: str) -> bool:
         return False
 
     # Check if session has expired (should be handled by Redis TTL, but double-check)
-    session_age = (datetime.now(timezone.utc) - session["created_at"]).total_seconds()
+    created_at = session.get("created_at")
+    if created_at is None:
+        session_storage.delete_session(session_token)
+        return False
+    session_age = (datetime.now(timezone.utc) - created_at).total_seconds()
     if session_age > SESSION_TIMEOUT_SECONDS:
         logger.info(f"Session expired for {client_ip} (age: {session_age}s)")
         session_storage.delete_session(session_token)

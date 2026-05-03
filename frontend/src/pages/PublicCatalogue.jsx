@@ -87,10 +87,8 @@ export default function PublicCatalogue() {
       return response;
     },
     getNextPageParam: (lastPage, allPages) => {
-      allPages.reduce((sum, page) => sum + (page.items?.length || 0), 0);
-      const totalPages = Math.ceil((lastPage.total || 0) / pageSize);
-      const currentPage = allPages.length;
-      return currentPage < totalPages ? currentPage + 1 : undefined;
+      const totalLoaded = allPages.reduce((sum, page) => sum + (page.items?.length || 0), 0);
+      return totalLoaded < (lastPage.total || 0) ? allPages.length + 1 : undefined;
     },
     staleTime: 30 * 1000, // 30 seconds
     gcTime: 5 * 60 * 1000, // 5 minutes

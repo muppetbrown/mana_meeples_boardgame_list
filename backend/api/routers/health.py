@@ -149,11 +149,9 @@ async def debug_database_info(
         Game.game_type,
     )
 
-    games = db.execute(query).all()
-
-    # Apply limit if specified, otherwise return all
     if limit is not None:
-        games = games[:limit]
+        query = query.limit(limit)
+    games = db.execute(query).all()
 
     return {
         "total_games_in_db": db.execute(

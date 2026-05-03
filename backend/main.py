@@ -290,8 +290,9 @@ async def lifespan(app: FastAPI):
     os.makedirs(THUMBS_DIR, exist_ok=True)
     logger.info(f"Thumbnails directory: {THUMBS_DIR}")
 
-    # Sprint 12: Warm cache for popular queries
-    warm_cache()
+    # Sprint 12: Warm cache for popular queries (runs in thread pool to avoid blocking the event loop)
+    import asyncio
+    await asyncio.to_thread(warm_cache)
 
     logger.info("API startup complete")
 

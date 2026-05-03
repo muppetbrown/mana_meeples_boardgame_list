@@ -213,6 +213,8 @@ async def import_from_bgg(
             async def cloudinary_upload_task():
                 """Upload image to Cloudinary immediately during import"""
                 if CLOUDINARY_ENABLED:
+                    from database import SessionLocal
+                    db_task = SessionLocal()
                     try:
                         # Upload to Cloudinary (will compress to WebP at 1200px)
                         upload_result = await cloudinary_service.upload_from_url(
@@ -223,19 +225,22 @@ async def import_from_bgg(
                             # Generate base Cloudinary URL (without transformations)
                             cloudinary_url = cloudinary_service.get_image_url(image_url)
 
-                            # Save to database for fast-path serving
+                            # Save to database using a fresh session (request db is already closed)
                             from models import Game
                             stmt = select(Game).where(Game.id == game.id)
-                            db_game = db.execute(stmt).scalars().first()
+                            db_game = db_task.execute(stmt).scalars().first()
                             if db_game:
                                 db_game.cloudinary_url = cloudinary_url
-                                db.commit()
+                                db_task.commit()
                                 logger.info(f"✓ Cloudinary upload completed for game {game.id}: {game.title}")
                         else:
                             logger.warning(f"Cloudinary upload failed for game {game.id}, will use direct proxy fallback")
                     except Exception as e:
+                        db_task.rollback()
                         logger.error(f"Cloudinary upload task failed for game {game.id}: {e}")
                         # Non-critical - image proxy will handle it on-demand if needed
+                    finally:
+                        db_task.close()
                 else:
                     # Cloudinary disabled - no action needed
                     # The image proxy endpoint will serve images directly from BGG on-demand

@@ -128,8 +128,8 @@ CACHE_FRESH_THRESHOLD = float(os.getenv("CACHE_FRESH_THRESHOLD", "0.9"))  # 90% 
 
 # Database connection pool configuration (Performance Tuning)
 # Tune these based on your deployment environment and load characteristics
-DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "15"))  # Permanent connections
-DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))  # Burst capacity
+DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))  # Permanent connections (Render free tier limit ~25 total)
+DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "10"))  # Burst capacity
 DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))  # Connection wait timeout
 DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "900"))  # Recycle every 15 min (conservative for cloud PostgreSQL like Render)
 
