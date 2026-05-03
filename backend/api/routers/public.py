@@ -75,9 +75,7 @@ async def validate_url_against_ssrf(url: str) -> bool:
         # Resolve hostname to IP address (run in thread pool to avoid blocking event loop)
         try:
             import asyncio
-            ip_address_str = await asyncio.get_event_loop().run_in_executor(
-                None, socket.gethostbyname, hostname
-            )
+            ip_address_str = await asyncio.to_thread(socket.gethostbyname, hostname)
         except socket.gaierror:
             raise HTTPException(
                 status_code=400,
