@@ -58,14 +58,14 @@
     ]
   },
   "devDependencies": {
-    "@axe-core/react": "^4.11.2",
+    "@axe-core/react": "^4.11.3",
     "@playwright/test": "^1.59.1",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.5",
     "@vitest/ui": "^4.0.14",
     "autoprefixer": "^10.5.0",
-    "jsdom": "^29.1.0",
-    "postcss": "^8.5.12",
+    "jsdom": "^29.1.1",
+    "postcss": "^8.5.13",
     "rollup-plugin-visualizer": "^7.0.1",
     "terser": "^5.46.2",
     "vite": "^8.0.10",
