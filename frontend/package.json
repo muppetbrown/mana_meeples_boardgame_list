@@ -67,8 +67,8 @@
     "jsdom": "^29.1.1",
     "postcss": "^8.5.14",
     "rollup-plugin-visualizer": "^7.0.1",
-    "terser": "^5.46.2",
-    "vite": "^8.0.10",
+    "terser": "^5.47.1",
+    "vite": "^8.0.12",
     "vite-plugin-compression": "^0.5.1",
     "vitest": "^4.0.16"
   }
