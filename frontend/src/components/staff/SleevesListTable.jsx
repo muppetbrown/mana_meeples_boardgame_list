@@ -101,7 +101,11 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
   };
 
   const handleAddSleeve = async (e) => {
-    e.preventDefault();
+    // This lives inside GameEditModal's own outer <form>, so it must never be
+    // a nested <form>/submit itself (invalid HTML - the browser will fall
+    // back to a full-page submit/reload, discarding whatever was typed).
+    // Called from a plain button's onClick; e is defensive in case that changes.
+    e?.preventDefault?.();
     setAddError(null);
 
     const width_mm = parseInt(addForm.width_mm, 10);
@@ -190,7 +194,13 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
           + Add Sleeve Requirement
         </button>
       ) : (
-        <form onSubmit={handleAddSleeve} className="space-y-3">
+        // Deliberately a <div>, not a <form>: this renders inside
+        // GameEditModal's own outer <form>, and nested <form> elements are
+        // invalid HTML - the browser falls back to a full-page submit
+        // instead of running React's handler, which reloads the page and
+        // discards whatever was typed. All buttons below use type="button"
+        // and call handlers directly instead of relying on form submission.
+        <div className="space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <input
               type="text"
@@ -205,7 +215,6 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
               value={addForm.width_mm}
               onChange={(e) => setAddForm({ ...addForm, width_mm: e.target.value })}
               className="px-2 py-1.5 border rounded text-sm"
-              required
             />
             <input
               type="number"
@@ -213,7 +222,6 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
               value={addForm.height_mm}
               onChange={(e) => setAddForm({ ...addForm, height_mm: e.target.value })}
               className="px-2 py-1.5 border rounded text-sm"
-              required
             />
             <input
               type="number"
@@ -221,7 +229,6 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
               value={addForm.quantity}
               onChange={(e) => setAddForm({ ...addForm, quantity: e.target.value })}
               className="px-2 py-1.5 border rounded text-sm"
-              required
             />
             <input
               type="text"
@@ -234,7 +241,8 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
           {addError && <p className="text-sm text-red-600">{addError}</p>}
           <div className="flex gap-2">
             <button
-              type="submit"
+              type="button"
+              onClick={handleAddSleeve}
               disabled={saving}
               className="px-3 py-1.5 text-sm rounded-lg bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400"
             >
@@ -248,7 +256,7 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
               Cancel
             </button>
           </div>
-        </form>
+        </div>
       )}
     </div>
   );
