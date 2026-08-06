@@ -558,6 +558,17 @@ export async function deleteGameSleeve(sleeveId) {
 }
 
 /**
+ * Manually set a game's sleeve-investigation status (no BGG scrape needed)
+ * @param {number} gameId - Game ID
+ * @param {'none'|'check'} status - 'none' = no cards to sleeve, 'check' = reset to needs-investigation
+ * @returns {Promise<Object>} { success, game_id, has_sleeves }
+ */
+export async function updateGameSleeveStatus(gameId, status) {
+  const r = await api.patch(`/admin/sleeves/game/${gameId}/status`, { status });
+  return r.data;
+}
+
+/**
  * Update the sleeved status of a specific sleeve record
  * When marking as sleeved, auto-deducts stock from matched product
  * @param {number} sleeveId - Sleeve record ID
@@ -641,6 +652,16 @@ export async function getToOrderList() {
  */
 export async function getToSleeveList() {
   const r = await api.get("/admin/sleeves/to-sleeve");
+  return r.data;
+}
+
+/**
+ * Get the status of the most recent "Fetch Sleeve Data" GitHub Actions run,
+ * plus a DB-wide sleeve-coverage snapshot.
+ * @returns {Promise<Object>} { workflow_configured, status, conclusion, html_url, coverage, ... }
+ */
+export async function getSleeveFetchStatus() {
+  const r = await api.get("/admin/sleeves/fetch-status");
   return r.data;
 }
 

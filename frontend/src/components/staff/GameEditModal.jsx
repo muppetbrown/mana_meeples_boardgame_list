@@ -304,6 +304,7 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
             <div className="space-y-4">
               <SleevesListTable
                 gameId={game.id}
+                hasSleeves={game.has_sleeves}
                 onSleeveUpdate={onSleeveUpdate}
               />
 

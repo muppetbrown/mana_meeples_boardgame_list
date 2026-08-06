@@ -402,9 +402,12 @@ describe('SleevesListTable', () => {
         );
       });
 
-      // Should show empty state after error
+      // Should show a visible error state with a retry option, not silently
+      // look like "no sleeves defined" (which is indistinguishable from a
+      // real empty state and previously masked load failures).
       await waitFor(() => {
-        expect(screen.getByText('No sleeve requirements defined for this game.')).toBeInTheDocument();
+        expect(screen.getByText(/Failed to load sleeve data/)).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
       });
 
       consoleErrorSpy.mockRestore();

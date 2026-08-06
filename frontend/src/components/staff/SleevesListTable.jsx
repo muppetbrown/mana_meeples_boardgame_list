@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { getGameSleeves, updateSleeveStatus, createGameSleeve, deleteGameSleeve } from '../../api/client';
+import { getGameSleeves, updateSleeveStatus, createGameSleeve, deleteGameSleeve, updateGameSleeveStatus } from '../../api/client';
 
 const EMPTY_FORM = { card_name: '', width_mm: '', height_mm: '', quantity: '', notes: '' };
 
-export default function SleevesListTable({ gameId, onSleeveUpdate }) {
+const STATUS_INFO = {
+  found: { icon: '🃏', label: 'Sleeve data found (from BGG)' },
+  none: { icon: '🚫🃏', label: 'No sleeves needed' },
+  manual: { icon: '🃏', label: 'Sleeve data added manually' },
+  error: { icon: '❓🃏', label: 'Scraper error - needs investigation' },
+  not_found: { icon: '❓🃏', label: 'Not found on BGG - needs investigation' },
+  check: { icon: '❓🃏', label: 'Needs investigation' },
+};
+
+export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate }) {
   const [sleeves, setSleeves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -12,10 +21,32 @@ export default function SleevesListTable({ gameId, onSleeveUpdate }) {
   const [addForm, setAddForm] = useState(EMPTY_FORM);
   const [addError, setAddError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [gameSleeveStatus, setGameSleeveStatus] = useState(hasSleeves || null);
+  const [statusUpdating, setStatusUpdating] = useState(false);
+
+  useEffect(() => {
+    setGameSleeveStatus(hasSleeves || null);
+  }, [hasSleeves, gameId]);
 
   useEffect(() => {
     loadSleeves();
   }, [gameId]);
+
+  const handleSetGameStatus = async (status) => {
+    setStatusUpdating(true);
+    try {
+      const result = await updateGameSleeveStatus(gameId, status);
+      setGameSleeveStatus(result.has_sleeves);
+      await loadSleeves();
+      if (onSleeveUpdate) {
+        onSleeveUpdate();
+      }
+    } catch (error) {
+      console.error('Failed to update game sleeve status:', error);
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
 
   const loadSleeves = async () => {
     setLoading(true);
@@ -91,6 +122,8 @@ export default function SleevesListTable({ gameId, onSleeveUpdate }) {
         quantity,
         notes: addForm.notes.trim() || null,
       });
+      // Backend marks the game "manual" when a sleeve is added by hand.
+      setGameSleeveStatus('manual');
       setAddForm(EMPTY_FORM);
       setShowAddForm(false);
       await loadSleeves();
@@ -111,6 +144,40 @@ export default function SleevesListTable({ gameId, onSleeveUpdate }) {
   if (loading) {
     return <div className="text-center py-4">Loading sleeve requirements...</div>;
   }
+
+  const statusInfo = STATUS_INFO[gameSleeveStatus] || { icon: '❓🃏', label: 'Needs investigation (never checked)' };
+  const statusHeader = (
+    <div className="p-3 bg-gray-50 rounded-lg border flex items-center justify-between gap-3 flex-wrap">
+      <span className="text-sm text-gray-700">
+        <span className="mr-1">{statusInfo.icon}</span>
+        <strong>Status:</strong> {statusInfo.label}
+      </span>
+      <div className="flex gap-2">
+        {gameSleeveStatus !== 'none' && (
+          <button
+            type="button"
+            onClick={() => handleSetGameStatus('none')}
+            disabled={statusUpdating}
+            title="Mark this game as having no cards to sleeve"
+            className="px-2 py-1 text-xs rounded bg-gray-600 hover:bg-gray-700 text-white disabled:bg-gray-400"
+          >
+            Mark No Sleeves Needed
+          </button>
+        )}
+        {gameSleeveStatus && (
+          <button
+            type="button"
+            onClick={() => handleSetGameStatus('check')}
+            disabled={statusUpdating}
+            title="Reset to needs-investigation"
+            className="px-2 py-1 text-xs rounded bg-gray-200 hover:bg-gray-300 text-gray-700 disabled:opacity-50"
+          >
+            Reset Status
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   const addFormPanel = (
     <div className="border rounded-lg p-4 bg-gray-50">
@@ -189,6 +256,7 @@ export default function SleevesListTable({ gameId, onSleeveUpdate }) {
   if (loadError) {
     return (
       <div className="space-y-4">
+        {statusHeader}
         <div className="p-4 bg-red-50 rounded-lg border border-red-200 flex items-center justify-between gap-4">
           <p className="text-sm text-red-700">{loadError}</p>
           <button
@@ -207,9 +275,11 @@ export default function SleevesListTable({ gameId, onSleeveUpdate }) {
   if (sleeves.length === 0) {
     return (
       <div className="space-y-4">
+        {statusHeader}
         <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
           <p className="text-sm text-gray-700">
             No sleeve requirements defined for this game.
+            {gameSleeveStatus === 'none' && ' (Marked as not needing sleeves.)'}
           </p>
         </div>
         {addFormPanel}
@@ -219,6 +289,7 @@ export default function SleevesListTable({ gameId, onSleeveUpdate }) {
 
   return (
     <div className="space-y-4">
+      {statusHeader}
       {/* Fully Sleeved Indicator */}
       {fullySleeved && (
         <div className="p-3 bg-green-50 rounded-lg border border-green-300 flex items-center gap-2">

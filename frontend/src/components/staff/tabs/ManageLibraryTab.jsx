@@ -6,6 +6,7 @@ import { CATEGORY_LABELS } from "../../../constants/categories";
 import { imageProxyUrl, generateSleeveShoppingList, triggerSleeveFetch, generateGameLabels, reimportSelectedGames } from "../../../api/client";
 import GameEditModal from "../GameEditModal";
 import SleeveShoppingListModal from "../SleeveShoppingListModal";
+import SleeveFetchStatus from "../SleeveFetchStatus";
 
 /**
  * Manage Library tab - Browse, edit, and delete games in compact table view
@@ -32,6 +33,7 @@ export function ManageLibraryTab() {
   const [selectedGames, setSelectedGames] = useState(new Set());
   const [showSleeveShoppingList, setShowSleeveShoppingList] = useState(false);
   const [sleeveShoppingList, setSleeveShoppingList] = useState(null);
+  const [sleeveFetchPollToken, setSleeveFetchPollToken] = useState(0);
 
   // Filter by search query and apply sorting
   const searchFilteredLibrary = useMemo(() => {
@@ -144,6 +146,8 @@ export function ManageLibraryTab() {
     try {
       await triggerSleeveFetch(Array.from(selectedGames));
       showToast(`Sleeve fetch workflow triggered for ${selectedGames.size} game(s)`, 'success');
+      // Bump the poll token so SleeveFetchStatus starts actively polling for progress.
+      setSleeveFetchPollToken((t) => t + 1);
       // Clear selection after triggering
       setSelectedGames(new Set());
     } catch (err) {
@@ -307,6 +311,7 @@ export function ManageLibraryTab() {
                 🏷️ Print Labels
               </button>
             </div>
+            <SleeveFetchStatus pollToken={sleeveFetchPollToken} />
           </div>
         </div>
       )}

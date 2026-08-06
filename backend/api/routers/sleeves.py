@@ -1,10 +1,13 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
+from config import GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from database import get_db
 from models import Game, Sleeve, SleeveProduct
 from api.dependencies import require_admin_auth
@@ -14,6 +17,8 @@ from services.sleeve_matching import (
     compute_to_order_list,
     find_matching_products,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin/sleeves", tags=["admin-sleeves"])
 
@@ -57,6 +62,9 @@ class SleeveCreateRequest(BaseModel):
     height_mm: int
     quantity: int
     notes: str | None = None
+
+class GameSleeveStatusUpdate(BaseModel):
+    status: str  # "none" (no cards to sleeve) or "check" (reset to needs-investigation)
 
 class SleeveProductCreate(BaseModel):
     distributor: str
@@ -254,6 +262,10 @@ def create_game_sleeve(
     if not game:
         raise HTTPException(status_code=404, detail="Game not found")
 
+    # Reflect that this game's sleeve data includes a manual entry, so the
+    # public "needs investigation" badge clears once an admin has looked at it.
+    game.has_sleeves = "manual"
+
     sleeve = Sleeve(
         game_id=game_id,
         card_name=data.card_name,
@@ -316,6 +328,37 @@ def delete_game_sleeve(
     db.commit()
 
     return {"success": True}
+
+
+@router.patch("/game/{game_id}/status", dependencies=[Depends(require_admin_auth)])
+def update_game_sleeve_status(
+    game_id: int,
+    data: GameSleeveStatusUpdate,
+    db: Session = Depends(get_db),
+):
+    """
+    Manually set a game's sleeve-investigation status without a BGG scrape.
+    Use "none" for games that genuinely have no cards to sleeve (this clears
+    any existing sleeve requirement rows, since they'd be contradictory).
+    Use "check" to reset back to "needs investigation" - e.g. to undo an
+    accidental "none", or to clear a bad "manual"/"error" state.
+    """
+    if data.status not in ("none", "check"):
+        raise HTTPException(status_code=400, detail="status must be 'none' or 'check'")
+
+    game = db.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    if data.status == "none":
+        db.execute(delete(Sleeve).where(Sleeve.game_id == game_id))
+        game.has_sleeves = "none"
+    else:
+        game.has_sleeves = None
+
+    db.commit()
+
+    return {"success": True, "game_id": game_id, "has_sleeves": game.has_sleeves}
 
 
 # ============================================================================
@@ -468,3 +511,73 @@ def get_to_order_list(db: Session = Depends(get_db)):
 def get_to_sleeve_list(db: Session = Depends(get_db)):
     """List of games ready to sleeve (all requirements covered by stock)."""
     return compute_to_sleeve_games(db)
+
+
+# ============================================================================
+# Fetch Status (visibility into the GitHub Actions sleeve scrape)
+# ============================================================================
+
+@router.get("/fetch-status", dependencies=[Depends(require_admin_auth)])
+async def get_sleeve_fetch_status(db: Session = Depends(get_db)):
+    """
+    Report the status of the most recent 'Fetch Sleeve Data' GitHub Actions
+    run, plus a DB-wide coverage snapshot. Both the "fetch all" and
+    "fetch selected games" buttons dispatch the same workflow via the
+    GitHub API, which only returns a 204 with no run ID - so this looks up
+    the most recent run rather than tracking a specific one. That's a
+    reasonable approximation since this workflow isn't run concurrently.
+    """
+    import httpx
+
+    coverage_rows = db.execute(
+        select(Game.has_sleeves, func.count()).group_by(Game.has_sleeves)
+    ).all()
+    coverage = {(status or "null"): count for status, count in coverage_rows}
+
+    if not GITHUB_TOKEN:
+        return {
+            "workflow_configured": False,
+            "message": "GITHUB_TOKEN not configured - cannot check workflow run status.",
+            "coverage": coverage,
+        }
+
+    url = (
+        f"https://api.github.com/repos/{GITHUB_REPO_OWNER}/{GITHUB_REPO_NAME}"
+        f"/actions/workflows/fetch_sleeves.yml/runs?per_page=1"
+    )
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.get(url, headers=headers)
+        response.raise_for_status()
+        runs = response.json().get("workflow_runs", [])
+    except Exception as e:
+        logger.error(f"Failed to fetch sleeve workflow run status: {e}")
+        return {
+            "workflow_configured": True,
+            "message": "Failed to reach GitHub Actions API - check server logs.",
+            "coverage": coverage,
+        }
+
+    if not runs:
+        return {
+            "workflow_configured": True,
+            "message": "No sleeve fetch runs found yet.",
+            "coverage": coverage,
+        }
+
+    run = runs[0]
+    return {
+        "workflow_configured": True,
+        "status": run.get("status"),  # queued | in_progress | completed
+        "conclusion": run.get("conclusion"),  # success | failure | cancelled | null
+        "html_url": run.get("html_url"),
+        "run_started_at": run.get("run_started_at"),
+        "updated_at": run.get("updated_at"),
+        "coverage": coverage,
+    }

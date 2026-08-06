@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { bulkUpdateNZDesigners, bulkUpdateAfterGameIDs, reimportAllGames, fetchAllSleeveData, backfillCloudinaryUrls, fixDatabaseSequence, getDebugCategories, getDebugDatabaseInfo, getDebugPerformance, exportGamesCSV, getHealthCheck, getDbHealthCheck } from "../../api/client";
+import SleeveFetchStatus from "./SleeveFetchStatus";
 
 export function AdminToolsPanel({ onToast, onLibraryReload }) {
   const [nzDesignersText, setNzDesignersText] = useState("");
@@ -7,6 +8,7 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
   const [isLoading, setIsLoading] = useState(false);
   const [debugData, setDebugData] = useState(null);
   const [debugType, setDebugType] = useState("");
+  const [sleeveFetchPollToken, setSleeveFetchPollToken] = useState(0);
 
   const downloadText = useCallback((name, text) => {
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
@@ -118,6 +120,8 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
     try {
       const result = await fetchAllSleeveData();
       onToast(`Sleeve data fetch started! Processing ${result.total_games || 0} games in background`, "success");
+      // Bump the poll token so SleeveFetchStatus starts actively polling for progress.
+      setSleeveFetchPollToken((t) => t + 1);
       if (onLibraryReload) await onLibraryReload();
     } catch (error) {
       onToast("Failed to start sleeve data fetch", "error");
@@ -331,6 +335,7 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
             Backfill Cloudinary URLs
           </button>
         </div>
+        <SleeveFetchStatus pollToken={sleeveFetchPollToken} />
         <p className="text-sm text-gray-600 mt-2">
           Re-import will fetch latest BGG data for all games. Fetch Sleeve Data will scrape sleeve information only. Fix Sequence resolves "duplicate key" errors when adding games. Export creates a CSV backup. Backfill Cloudinary URLs pre-generates optimized image URLs for faster loading.
         </p>
