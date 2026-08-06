@@ -7,6 +7,8 @@ Tests the complete BoardGameGeek import workflow from API call to database persi
 
 from unittest.mock import AsyncMock, patch
 
+from models import Game
+
 class TestBGGImportFlowIntegration:
     """Test complete BGG import workflow"""
 
@@ -212,7 +214,11 @@ class TestBGGImportFlowIntegration:
 
         assert response.status_code == 200
         data = response.json()
-        assert len(data['added']) >= 3
+        assert data['count'] == 3
+        # Import runs as a background task; verify the games actually landed.
+        assert db_session.query(Game).filter(
+            Game.bgg_id.in_([174430, 13, 12345])
+        ).count() == 3
 
     def test_import_duplicate_detection(self, client, db_session, sample_game, admin_headers):
         """Should detect and handle duplicate BGG IDs"""

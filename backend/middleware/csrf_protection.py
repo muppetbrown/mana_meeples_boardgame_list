@@ -10,6 +10,7 @@ For JWT-based APIs, traditional CSRF tokens are not necessary because:
 However, we still validate Origin/Referer headers for defense-in-depth.
 """
 import logging
+import os
 from urllib.parse import urlparse
 from starlette.types import ASGIApp, Receive, Scope, Send
 from starlette.responses import JSONResponse
@@ -37,15 +38,18 @@ class OriginValidationMiddleware:
             for origin in CORS_ORIGINS:
                 self.allowed_origins.add(origin.rstrip('/'))
 
-        # Always allow localhost for development and testing
-        self.allowed_origins.update([
-            'http://localhost:3000',
-            'http://127.0.0.1:3000',
-            'http://localhost:5173',
-            'http://127.0.0.1:5173',
-            'http://testserver',  # For FastAPI TestClient
-            'http://test',        # For async test client
-        ])
+        # Only allow localhost/test origins outside production - matching the
+        # CORS gate in main.py. In production, an attacker-controlled Origin
+        # header of e.g. "http://testserver" must not pass this check.
+        if os.getenv("ENVIRONMENT") != "production":
+            self.allowed_origins.update([
+                'http://localhost:3000',
+                'http://127.0.0.1:3000',
+                'http://localhost:5173',
+                'http://127.0.0.1:5173',
+                'http://testserver',  # For FastAPI TestClient
+                'http://test',        # For async test client
+            ])
 
         logger.info(f"CSRF protection enabled for origins: {self.allowed_origins}")
 

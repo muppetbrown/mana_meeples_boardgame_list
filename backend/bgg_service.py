@@ -31,10 +31,36 @@ def _sl(v: object) -> str:
     return str(v).replace('\n', ' ').replace('\r', ' ')
 
 
-class BGGServiceError(Exception):
-    """Custom exception for BGG service errors"""
+from exceptions import BGGServiceError  # noqa: E402  (re-exported for backward compatibility)
 
-    pass
+
+class _BGGTransientFailure(Exception):
+    """
+    Internal marker used only to make the circuit breaker count a real
+    transport-level failure (timeout, HTTP error, unexpected error after all
+    retries). BGGServiceError itself is excluded from breaker counting so that
+    validation errors (bad game ID, "not found", etc.) don't trip the breaker.
+    """
+
+
+def _raise_transient_failure():
+    raise _BGGTransientFailure("BGG transient failure")
+
+
+def _record_bgg_transient_failure() -> None:
+    """Tell the circuit breaker a real BGG request ultimately failed."""
+    try:
+        bgg_circuit_breaker.call(_raise_transient_failure)
+    except (_BGGTransientFailure, CircuitBreakerError):
+        pass  # Expected: we only called this to make the breaker count the failure
+
+
+def _record_bgg_success() -> None:
+    """Tell the circuit breaker a real BGG request succeeded (resets fail count)."""
+    try:
+        bgg_circuit_breaker.call(lambda: None)
+    except CircuitBreakerError:
+        pass  # Breaker just opened concurrently; nothing to do here
 
 
 class BGGRateLimiter:
@@ -346,11 +372,14 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                         f"Game ID {bgg_id} returned non-XML content from BoardGameGeek"
                     )
 
+                # Real, successful response received - let the breaker know BGG is up.
+                _record_bgg_success()
                 break
 
             except httpx.TimeoutException:
                 logger.error(f"Timeout fetching BGG data for game {_sl(bgg_id)}")
                 if attempt == retries - 1:
+                    _record_bgg_transient_failure()
                     raise BGGServiceError(f"Timeout fetching game {bgg_id}")
                 delay = (2**attempt) + (
                     attempt * 0.5
@@ -362,6 +391,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                     f"HTTP error fetching BGG data for game {_sl(bgg_id)}: {e}"
                 )
                 if attempt == retries - 1:
+                    _record_bgg_transient_failure()
                     raise BGGServiceError(
                         f"Failed to fetch game {bgg_id}: {e}"
                     )
@@ -373,6 +403,8 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
             except BGGServiceError:
                 # BGGServiceError from validation checks should be re-raised immediately
                 # (don't retry for invalid game IDs, malformed responses, etc.)
+                # Not counted as a circuit-breaker failure - these indicate a bad
+                # request/response, not that BGG itself is down.
                 raise
 
             except Exception as e:
@@ -380,6 +412,7 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
                     f"Unexpected error fetching BGG data for game {_sl(bgg_id)}: {e}"
                 )
                 if attempt == retries - 1:
+                    _record_bgg_transient_failure()
                     raise BGGServiceError(
                         f"Unexpected error fetching game {bgg_id}: {e}"
                     )

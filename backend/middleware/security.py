@@ -43,6 +43,12 @@ class SecurityHeadersMiddleware:
                 # Determine if this is an API endpoint (returns JSON)
                 is_api_endpoint = path.startswith("/api/")
 
+                # Swagger/ReDoc load their JS/CSS from cdn.jsdelivr.net and use
+                # inline bootstrap scripts, which the strict same-origin CSP
+                # below blocks outright. Treat them like API endpoints for CSP
+                # purposes only - other security headers still apply.
+                is_docs_endpoint = path in ("/docs", "/redoc", "/openapi.json")
+
                 # Only add headers that don't already exist
                 # This prevents overwriting CORS headers added by CORSMiddleware
                 new_headers = []
@@ -74,7 +80,7 @@ class SecurityHeadersMiddleware:
 
                 # Content-Security-Policy: Only for HTML pages, not API JSON responses
                 # This is a moderate policy that allows same-origin and trusted CDNs
-                if not is_api_endpoint and b"content-security-policy" not in headers_dict:
+                if not is_api_endpoint and not is_docs_endpoint and b"content-security-policy" not in headers_dict:
                     csp_policy = "; ".join([
                         "default-src 'self'",
                         "script-src 'self'",  # Vite builds are bundled, no inline scripts needed

@@ -140,7 +140,7 @@ def validate_url_against_ssrf(url: str) -> bool:
         logger.error(f"SSRF validation error for URL {_sl(url)}: {e}")
         raise HTTPException(
             status_code=400,
-            detail=f"URL validation failed: {str(e)}"
+            detail="URL validation failed"
         )
 
 
@@ -410,9 +410,10 @@ async def get_games_by_designer(
             "games": [game_to_dict(request, game) for game in games],
         }
     except Exception as e:
+        logger.error(f"Failed to fetch games by designer '{_sl(designer_name)}': {e}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to fetch games by designer: {str(e)}",
+            detail="Failed to fetch games by designer",
         )
 
 
@@ -644,7 +645,7 @@ async def image_proxy(
         # Re-raise HTTPExceptions (like validation errors) without modification
         raise
     except Exception as e:
-        logger.error(f"Image proxy error for {_sl(url)}: {e}")
+        logger.error(f"Image proxy error for {_sl(url)}: {e}", exc_info=True)
         raise HTTPException(
-            status_code=502, detail=f"Failed to fetch image: {str(e)}"
+            status_code=502, detail="Failed to fetch image"
         )

@@ -12,7 +12,7 @@ from models import Game, Sleeve
 class TestBulkImportCSVEnhanced:
     """Enhanced bulk import CSV tests for additional coverage"""
 
-    def test_bulk_import_with_bgg_fetch(self, client, admin_headers):
+    def test_bulk_import_with_bgg_fetch(self, client, db_session, admin_headers):
         """Test that bulk import fetches BGG data correctly"""
         with patch("api.routers.bulk.fetch_bgg_thing") as mock_fetch:
 
@@ -33,7 +33,8 @@ class TestBulkImportCSVEnhanced:
                 # BGG fetch should be called
                 assert mock_fetch.call_count >= 1
                 data = response.json()
-                assert len(data["added"]) == 1
+                assert data["count"] == 1
+                assert db_session.query(Game).filter_by(bgg_id=174430).first() is not None
 
     def test_bulk_import_csv_with_whitespace_in_ids(self, client, admin_headers):
         """Test bulk import handles BGG IDs with whitespace"""
@@ -83,12 +84,12 @@ class TestBulkImportCSVEnhanced:
 
             if response.status_code == 200:
                 data = response.json()
-                # Should have mix of results
-                assert len(data["added"]) >= 1  # 174430
-                assert len(data["skipped"]) >= 1  # 30549 (duplicate)
-                assert len(data["errors"]) >= 2  # 999999 and invalid
+                assert data["count"] == 4
+                # 174430 should have been added; 30549 was already a duplicate
+                assert db_session.query(Game).filter_by(bgg_id=174430).first() is not None
+                assert db_session.query(Game).filter_by(bgg_id=30549).count() == 1
 
-    def test_bulk_import_with_categorization(self, client, admin_headers):
+    def test_bulk_import_with_categorization(self, client, db_session, admin_headers):
         """Test bulk import with auto-categorization from BGG data"""
         with patch("api.routers.bulk.fetch_bgg_thing") as mock_fetch:
             mock_fetch.return_value = {
@@ -108,10 +109,13 @@ class TestBulkImportCSVEnhanced:
 
             if response.status_code == 200:
                 data = response.json()
-                assert len(data["added"]) == 1
+                assert data["count"] == 1
                 # Should auto-categorize based on BGG data
+                game = db_session.query(Game).filter_by(bgg_id=178900).first()
+                assert game is not None
+                assert game.mana_meeple_category is not None
 
-    def test_bulk_import_commit_rollback_on_error(self, client, admin_headers):
+    def test_bulk_import_commit_rollback_on_error(self, client, db_session, admin_headers):
         """Test that database transaction rolls back on error"""
         with patch("api.routers.bulk.fetch_bgg_thing") as mock_fetch, \
              patch("sqlalchemy.orm.Session.commit") as mock_commit:
@@ -127,8 +131,10 @@ class TestBulkImportCSVEnhanced:
 
             if response.status_code == 200:
                 data = response.json()
-                # Should handle error gracefully
-                assert len(data["errors"]) >= 1
+                # Endpoint queues the import regardless; the failure happens
+                # inside the background task and should not create a game.
+                assert data["count"] == 1
+                assert db_session.query(Game).filter_by(bgg_id=174430).count() == 0
 
 
 class TestBulkCategorizeCSVEnhanced:
@@ -636,7 +642,7 @@ class TestFetchSleeveDataTaskEnhanced:
 class TestBulkOperationsIntegration:
     """Integration tests for bulk operations"""
 
-    def test_bulk_import_and_categorize_workflow(self, client, admin_headers):
+    def test_bulk_import_and_categorize_workflow(self, client, db_session, admin_headers):
         """Test complete workflow: import games then categorize them"""
         # Step 1: Import games
         with patch("api.routers.bulk.fetch_bgg_thing") as mock_fetch:
@@ -653,7 +659,10 @@ class TestBulkOperationsIntegration:
 
             if import_response.status_code == 200:
                 import_data = import_response.json()
-                assert len(import_data["added"]) == 2
+                assert import_data["count"] == 2
+                assert db_session.query(Game).filter(
+                    Game.bgg_id.in_([174430, 30549])
+                ).count() == 2
 
                 # Step 2: Categorize imported games
                 categorize_response = client.post(

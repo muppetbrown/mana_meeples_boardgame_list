@@ -11,10 +11,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, joinedload
 
+import database
 from api.dependencies import require_admin_auth
 from database import get_db
 from models import BuyListGame, Game, PriceOffer, PriceSnapshot
@@ -453,49 +454,27 @@ async def remove_from_buy_list(buy_list_id: int, db: Session = Depends(get_db)):
         )
 
 
-@router.post("/bulk-import-csv", dependencies=[Depends(require_admin_auth)])
-async def bulk_import_buy_list_csv(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db)
-):
+async def _bulk_import_buy_list_csv_task(text_content: str) -> None:
     """
-    Bulk import games to buy list from CSV file.
-
-    Expected CSV columns: bgg_id, rank, bgo_link, lpg_rrp, lpg_status
-    - bgg_id: Required - BoardGameGeek ID
-    - rank: Optional - Numeric rank/priority
-    - bgo_link: Optional - BoardGameOracle link
-    - lpg_rrp: Optional - Lets Play Games RRP price
-    - lpg_status: Optional - LPG stock status (AVAILABLE, BACK_ORDER, NOT_FOUND, etc.)
-
-    Games not in database will be auto-imported from BoardGameGeek.
+    Background task: process the buy-list CSV, auto-importing any BGG IDs
+    not already in the database. Each new row can require its own BGG fetch
+    (with retry/backoff), so this must not run inline in the request cycle -
+    a CSV of more than a handful of rows can easily exceed a platform request
+    timeout.
     """
+    # Local import so patches on bgg_service.fetch_bgg_thing are picked up.
+    from bgg_service import fetch_bgg_thing
+
+    db = database.SessionLocal()
     try:
-        # Import BGG service for auto-import
-        from bgg_service import fetch_bgg_thing
-
-        # Read CSV file
-        contents = await file.read()
-        # Use utf-8-sig to handle BOM (Byte Order Mark) from Excel/Windows
-        text_content = contents.decode("utf-8-sig")
         csv_reader = csv.DictReader(io.StringIO(text_content))
-
-        # Strip whitespace from fieldnames and normalize them
         if csv_reader.fieldnames:
             csv_reader.fieldnames = [field.strip() for field in csv_reader.fieldnames]
-
-        # Validate required column
-        if "bgg_id" not in csv_reader.fieldnames:
-            raise HTTPException(
-                status_code=400,
-                detail=f"CSV must contain 'bgg_id' column. Found columns: {csv_reader.fieldnames}"
-            )
 
         added_count = 0
         updated_count = 0
         skipped_count = 0
         error_count = 0
-        errors = []
 
         for row_num, row in enumerate(csv_reader, start=2):  # Start at 2 to account for header
             try:
@@ -508,7 +487,7 @@ async def bulk_import_buy_list_csv(
                 try:
                     bgg_id = int(bgg_id_str)
                 except ValueError:
-                    errors.append(f"Row {row_num}: Invalid BGG ID '{bgg_id_str}'")
+                    logger.warning(f"Row {row_num}: Invalid BGG ID '{_sl(bgg_id_str)}'")
                     error_count += 1
                     continue
 
@@ -518,14 +497,14 @@ async def bulk_import_buy_list_csv(
                     try:
                         rank = int(row["rank"])
                     except ValueError:
-                        errors.append(f"Row {row_num}: Invalid rank '{row['rank']}'")
+                        logger.warning(f"Row {row_num}: Invalid rank '{_sl(row['rank'])}'")
 
                 lpg_rrp = None
                 if row.get("lpg_rrp", "").strip():
                     try:
                         lpg_rrp = float(row["lpg_rrp"])
                     except ValueError:
-                        errors.append(f"Row {row_num}: Invalid lpg_rrp '{row['lpg_rrp']}'")
+                        logger.warning(f"Row {row_num}: Invalid lpg_rrp '{_sl(row['lpg_rrp'])}'")
 
                 bgo_link = row.get("bgo_link", "").strip() or None
                 lpg_status = row.get("lpg_status", "").strip() or None
@@ -541,7 +520,7 @@ async def bulk_import_buy_list_csv(
                     try:
                         bgg_data = await fetch_bgg_thing(bgg_id)
                     except Exception as e:
-                        errors.append(f"Row {row_num}: Failed to import BGG ID {bgg_id}: {str(e)}")
+                        logger.error(f"Row {row_num}: Failed to import BGG ID {bgg_id}: {e}")
                         error_count += 1
                         continue
 
@@ -607,7 +586,6 @@ async def bulk_import_buy_list_csv(
 
             except Exception as e:
                 logger.error(f"Row {row_num} import error: {e}")
-                errors.append(f"Row {row_num}: import failed")
                 error_count += 1
                 continue
 
@@ -615,24 +593,67 @@ async def bulk_import_buy_list_csv(
         db.commit()
 
         logger.info(
-            f"Bulk import completed: {added_count} added, {updated_count} updated, "
+            f"Buy list bulk CSV import complete: {added_count} added, {updated_count} updated, "
             f"{skipped_count} skipped, {error_count} errors"
         )
 
-        return {
-            "message": "Bulk import completed",
-            "added": added_count,
-            "updated": updated_count,
-            "skipped": skipped_count,
-            "errors": error_count,
-        }
+    except Exception as e:
+        logger.error(f"Error in buy list bulk CSV import: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
+
+@router.post("/bulk-import-csv", dependencies=[Depends(require_admin_auth)])
+async def bulk_import_buy_list_csv(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+):
+    """
+    Bulk import games to buy list from CSV file.
+
+    Expected CSV columns: bgg_id, rank, bgo_link, lpg_rrp, lpg_status
+    - bgg_id: Required - BoardGameGeek ID
+    - rank: Optional - Numeric rank/priority
+    - bgo_link: Optional - BoardGameOracle link
+    - lpg_rrp: Optional - Lets Play Games RRP price
+    - lpg_status: Optional - LPG stock status (AVAILABLE, BACK_ORDER, NOT_FOUND, etc.)
+
+    Games not in database will be auto-imported from BoardGameGeek. Runs in
+    the background since new rows require a BGG fetch each - see
+    _bulk_import_buy_list_csv_task. Check server logs for results.
+    """
+    try:
+        # Read CSV file
+        contents = await file.read()
+        # Use utf-8-sig to handle BOM (Byte Order Mark) from Excel/Windows
+        text_content = contents.decode("utf-8-sig")
+        csv_reader = csv.DictReader(io.StringIO(text_content))
+
+        # Strip whitespace from fieldnames and normalize them
+        if csv_reader.fieldnames:
+            csv_reader.fieldnames = [field.strip() for field in csv_reader.fieldnames]
+
+        # Validate required column
+        if not csv_reader.fieldnames or "bgg_id" not in csv_reader.fieldnames:
+            raise HTTPException(
+                status_code=400,
+                detail=f"CSV must contain 'bgg_id' column. Found columns: {csv_reader.fieldnames}"
+            )
+
+        row_count = sum(1 for _ in csv_reader)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in bulk CSV import: {e}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to import CSV: {str(e)}")
+        logger.error(f"Failed to parse buy list CSV: {e}")
+        raise HTTPException(status_code=500, detail="Failed to import CSV - check file format")
+
+    background_tasks.add_task(_bulk_import_buy_list_csv_task, text_content)
+
+    return {
+        "message": f"Started importing {row_count} row(s) from CSV in the background. Check server logs for results.",
+        "count": row_count,
+    }
 
 
 # ------------------------------------------------------------------------------

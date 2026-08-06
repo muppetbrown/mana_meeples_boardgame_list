@@ -41,9 +41,9 @@ class TestBulkImportCSVEdgeCases:
         )
 
         assert response.status_code == 200
-        data = response.json()
         # Should have added the game despite invalid rank
-        assert data["added"] >= 1
+        game = db_session.query(Game).filter_by(bgg_id=12345).first()
+        assert game is not None
 
     @patch("bgg_service.fetch_bgg_thing")
     def test_bulk_import_with_invalid_lpg_rrp(
@@ -66,9 +66,9 @@ class TestBulkImportCSVEdgeCases:
         )
 
         assert response.status_code == 200
-        data = response.json()
         # Should still add the game
-        assert data["added"] >= 1
+        game = db_session.query(Game).filter_by(bgg_id=12346).first()
+        assert game is not None
 
     @patch("bgg_service.fetch_bgg_thing")
     def test_bulk_import_empty_bgg_id_rows(
@@ -91,11 +91,9 @@ class TestBulkImportCSVEdgeCases:
         )
 
         assert response.status_code == 200
-        data = response.json()
-        # Should have skipped 2 rows with empty bgg_id
-        assert data["skipped"] == 2
-        # Should have added 1 valid game
-        assert data["added"] == 1
+        # Should have skipped the 2 rows with empty bgg_id and added the 1 valid game
+        assert db_session.query(Game).filter_by(bgg_id=12347).first() is not None
+        assert db_session.query(BuyListGame).count() == 1
 
     @patch("bgg_service.fetch_bgg_thing")
     def test_bulk_import_invalid_bgg_id_format(
@@ -111,9 +109,8 @@ class TestBulkImportCSVEdgeCases:
         )
 
         assert response.status_code == 200
-        data = response.json()
-        # Should have 1 error for invalid BGG ID
-        assert data["errors"] == 1
+        # Invalid BGG ID should not have created any game
+        assert db_session.query(Game).count() == 0
 
     @patch("bgg_service.fetch_bgg_thing")
     def test_bulk_import_update_existing_buy_list_entry(
@@ -146,10 +143,8 @@ class TestBulkImportCSVEdgeCases:
         )
 
         assert response.status_code == 200
-        data = response.json()
-        # Should have updated 1 entry
-        assert data["updated"] == 1
-        assert data["added"] == 0
+        # Should have updated the entry, not created a new one
+        assert db_session.query(BuyListGame).count() == 1
 
         # Verify the update
         db_session.refresh(existing_entry)
@@ -179,8 +174,7 @@ class TestBulkImportCSVEdgeCases:
         )
 
         assert response.status_code == 200
-        data = response.json()
-        assert data["added"] == 1
+        assert db_session.query(BuyListGame).filter_by(game_id=game.id).count() == 1
 
         # Verify status was updated
         db_session.refresh(game)
@@ -215,9 +209,8 @@ class TestBulkImportCSVEdgeCases:
             )
 
             assert response.status_code == 200
-            data = response.json()
-            # Should have error count
-            assert data["errors"] >= 1
+            # The simulated row error should prevent a BuyListGame entry from being created
+            assert db_session.query(BuyListGame).filter_by(game_id=game.id).count() == 0
 
     def test_bulk_import_general_exception_handling(
         self, client, admin_headers

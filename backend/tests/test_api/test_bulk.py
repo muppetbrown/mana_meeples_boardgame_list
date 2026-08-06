@@ -22,7 +22,7 @@ class TestBulkImportCSV:
         if response.status_code != 429:
             assert "CSV" in response.json()["detail"]
 
-    def test_bulk_import_single_game_success(self, client, admin_headers):
+    def test_bulk_import_single_game_success(self, client, db_session, admin_headers):
         """Test bulk import with single valid game"""
         with patch("api.routers.bulk.fetch_bgg_thing") as mock_fetch:
             mock_fetch.return_value = {
@@ -48,8 +48,12 @@ class TestBulkImportCSV:
 
             if response.status_code == 200:
                 data = response.json()
-                assert len(data["added"]) == 1
-                assert len(data["errors"]) == 0
+                # Import now runs as a background task; the endpoint just
+                # confirms how many lines were queued.
+                assert data["count"] == 1
+                game = db_session.query(Game).filter_by(bgg_id=174430).first()
+                assert game is not None
+                assert game.title == "Gloomhaven"
 
     def test_bulk_import_duplicate_game(self, client, db_session, admin_headers):
         """Test bulk import with duplicate BGG ID"""
@@ -67,10 +71,12 @@ class TestBulkImportCSV:
 
         if response.status_code == 200:
             data = response.json()
-            assert len(data["skipped"]) == 1
-            assert "Already exists" in data["skipped"][0]
+            assert data["count"] == 1
+            # Still only one game with this bgg_id - duplicate was skipped
+            games = db_session.query(Game).filter_by(bgg_id=174430).all()
+            assert len(games) == 1
 
-    def test_bulk_import_invalid_bgg_id(self, client, admin_headers):
+    def test_bulk_import_invalid_bgg_id(self, client, db_session, admin_headers):
         """Test bulk import with invalid BGG ID"""
         response = client.post(
             "/api/admin/bulk-import-csv",
@@ -81,10 +87,11 @@ class TestBulkImportCSV:
 
         if response.status_code == 200:
             data = response.json()
-            assert len(data["errors"]) == 1
-            assert "Invalid BGG ID" in data["errors"][0]
+            assert data["count"] == 1
+            # Invalid ID should not have created any game
+            assert db_session.query(Game).count() == 0
 
-    def test_bulk_import_multiple_games(self, client, admin_headers):
+    def test_bulk_import_multiple_games(self, client, db_session, admin_headers):
         """Test bulk import with multiple games"""
         with patch("api.routers.bulk.fetch_bgg_thing") as mock_fetch:
             mock_fetch.side_effect = [
@@ -110,7 +117,10 @@ class TestBulkImportCSV:
 
             if response.status_code == 200:
                 data = response.json()
-                assert len(data["added"]) == 2
+                assert data["count"] == 2
+                assert db_session.query(Game).filter(
+                    Game.bgg_id.in_([174430, 30549])
+                ).count() == 2
 
     def test_bulk_import_unauthorized(self, client, csrf_headers):
         """Test bulk import without authentication"""
@@ -721,7 +731,7 @@ class TestBulkImportErrorHandling:
         if response.status_code != 429:
             assert "CSV" in response.json()["detail"] or "valid" in response.json()["detail"].lower()
 
-    def test_bulk_import_bgg_fetch_error(self, client, admin_headers):
+    def test_bulk_import_bgg_fetch_error(self, client, db_session, admin_headers):
         """Test bulk import when BGG fetch fails"""
         with patch("api.routers.bulk.fetch_bgg_thing") as mock_fetch:
             mock_fetch.return_value = None  # BGG fetch failed
@@ -735,11 +745,11 @@ class TestBulkImportErrorHandling:
 
             if response.status_code == 200:
                 data = response.json()
-                # Should be in errors list when BGG fetch fails
-                assert len(data["errors"]) == 1
-                assert "174430" in data["errors"][0]
+                assert data["count"] == 1
+                # Failed fetch should not have created a game
+                assert db_session.query(Game).filter_by(bgg_id=174430).first() is None
 
-    def test_bulk_import_database_error(self, client, admin_headers):
+    def test_bulk_import_database_error(self, client, db_session, admin_headers):
         """Test bulk import with database error during save"""
         with patch("api.routers.bulk.fetch_bgg_thing") as mock_fetch, \
              patch("sqlalchemy.orm.Session.add") as mock_add:
@@ -760,7 +770,8 @@ class TestBulkImportErrorHandling:
 
             if response.status_code == 200:
                 data = response.json()
-                assert len(data["errors"]) == 1
+                assert data["count"] == 1
+                assert db_session.query(Game).filter_by(bgg_id=174430).first() is None
 
 
 class TestBulkCategorizeErrorHandling:

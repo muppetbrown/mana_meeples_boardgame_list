@@ -45,6 +45,15 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
             chrome_options.add_argument('--no-sandbox')
             chrome_options.add_argument('--disable-dev-shm-usage')
             chrome_options.add_argument('--disable-gpu')
+            # Reduce basic automation fingerprinting that can trigger bot
+            # detection on sites fronted by Cloudflare (BGG included).
+            chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+            chrome_options.add_argument(
+                'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+                '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+            )
+            chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+            chrome_options.add_experimental_option('useAutomationExtension', False)
             driver = webdriver.Chrome(options=chrome_options)
             close_driver = True
         except Exception as e:
@@ -58,14 +67,26 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
         driver.set_script_timeout(10)     # 10 second timeout for scripts
 
         driver.get(url)
-        wait = WebDriverWait(driver, 10)  # 10 seconds max wait for elements
+        wait = WebDriverWait(driver, 20)  # allow slower CI/cloud rendering to finish
 
         try:
             wait.until(
                 EC.presence_of_element_located((By.CLASS_NAME, "sleeve-visualizer__card-list"))
             )
         except TimeoutException:
-            logger.debug(f"Timeout waiting for sleeve data on {url}")
+            # Distinguish "genuinely no sleeve data" from "page never rendered"
+            # (bot-challenge, slow JS load, etc.) so failures are debuggable
+            # from CI logs instead of silently looking identical.
+            try:
+                page_title = driver.title
+                body_snippet = driver.find_element(By.TAG_NAME, "body").text[:300]
+            except Exception:
+                page_title = "<unavailable>"
+                body_snippet = "<unavailable>"
+            logger.warning(
+                f"Timeout waiting for sleeve data on {url} | title={page_title!r} | "
+                f"body_snippet={body_snippet!r}"
+            )
             return {'status': 'not_found', 'card_types': [], 'notes': None}
 
         time.sleep(0.5)  # Brief pause to let Angular finish rendering

@@ -537,6 +537,27 @@ export async function getGameSleeves(gameId) {
 }
 
 /**
+ * Manually add a sleeve requirement for a game (no BGG scrape needed)
+ * @param {number} gameId - Game ID
+ * @param {Object} data - { card_name, width_mm, height_mm, quantity, notes }
+ * @returns {Promise<Object>} Created sleeve record
+ */
+export async function createGameSleeve(gameId, data) {
+  const r = await api.post(`/admin/sleeves/game/${gameId}`, data);
+  return r.data;
+}
+
+/**
+ * Delete a sleeve requirement record
+ * @param {number} sleeveId - Sleeve record ID
+ * @returns {Promise<Object>} Deletion confirmation
+ */
+export async function deleteGameSleeve(sleeveId) {
+  const r = await api.delete(`/admin/sleeves/sleeve/${sleeveId}`);
+  return r.data;
+}
+
+/**
  * Update the sleeved status of a specific sleeve record
  * When marking as sleeved, auto-deducts stock from matched product
  * @param {number} sleeveId - Sleeve record ID

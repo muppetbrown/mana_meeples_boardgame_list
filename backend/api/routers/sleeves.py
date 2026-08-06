@@ -12,6 +12,7 @@ from services.sleeve_matching import (
     run_matching_for_all_games,
     compute_to_sleeve_games,
     compute_to_order_list,
+    find_matching_products,
 )
 
 router = APIRouter(prefix="/api/admin/sleeves", tags=["admin-sleeves"])
@@ -49,6 +50,13 @@ class SleeveResponse(BaseModel):
 
 class SleeveUpdateRequest(BaseModel):
     is_sleeved: bool
+
+class SleeveCreateRequest(BaseModel):
+    card_name: str | None = None
+    width_mm: int
+    height_mm: int
+    quantity: int
+    notes: str | None = None
 
 class SleeveProductCreate(BaseModel):
     distributor: str
@@ -233,6 +241,81 @@ def get_game_sleeves(game_id: int, db: Session = Depends(get_db)) -> List[Sleeve
         ))
 
     return result
+
+
+@router.post("/game/{game_id}", dependencies=[Depends(require_admin_auth)])
+def create_game_sleeve(
+    game_id: int,
+    data: SleeveCreateRequest,
+    db: Session = Depends(get_db),
+) -> SleeveResponse:
+    """Manually add a sleeve requirement for a game (no BGG scrape needed)."""
+    game = db.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    sleeve = Sleeve(
+        game_id=game_id,
+        card_name=data.card_name,
+        width_mm=data.width_mm,
+        height_mm=data.height_mm,
+        quantity=data.quantity,
+        notes=data.notes,
+        is_sleeved=False,
+    )
+
+    # Auto-match to a product using the same tolerance/tie-break rules as
+    # run_matching_for_all_games, so manually added sleeves behave consistently.
+    candidates = find_matching_products(data.width_mm, data.height_mm, db)
+    if candidates:
+        best = min(candidates, key=lambda p: (
+            (p.width_mm - data.width_mm) + (p.height_mm - data.height_mm),
+            0 if p.in_stock > 0 else 1,
+            float(p.price) / p.sleeves_per_pack,
+        ))
+        sleeve.matched_product_id = best.id
+
+    db.add(sleeve)
+    db.commit()
+    db.refresh(sleeve)
+
+    product_name = None
+    product_stock = None
+    if sleeve.matched_product_id:
+        product = db.get(SleeveProduct, sleeve.matched_product_id)
+        if product:
+            product_name = product.name
+            product_stock = product.in_stock
+
+    return SleeveResponse(
+        id=sleeve.id,
+        game_id=sleeve.game_id,
+        card_name=sleeve.card_name,
+        width_mm=sleeve.width_mm,
+        height_mm=sleeve.height_mm,
+        quantity=sleeve.quantity,
+        notes=sleeve.notes,
+        is_sleeved=sleeve.is_sleeved or False,
+        matched_product_id=sleeve.matched_product_id,
+        matched_product_name=product_name,
+        matched_product_stock=product_stock,
+    )
+
+
+@router.delete("/sleeve/{sleeve_id}", dependencies=[Depends(require_admin_auth)])
+def delete_game_sleeve(
+    sleeve_id: int,
+    db: Session = Depends(get_db),
+):
+    """Delete a manually or automatically added sleeve requirement record."""
+    sleeve = db.get(Sleeve, sleeve_id)
+    if not sleeve:
+        raise HTTPException(status_code=404, detail="Sleeve not found")
+
+    db.delete(sleeve)
+    db.commit()
+
+    return {"success": True}
 
 
 # ============================================================================

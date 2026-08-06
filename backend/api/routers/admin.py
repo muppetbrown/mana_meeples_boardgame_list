@@ -4,6 +4,7 @@ Admin API endpoints for game management, authentication, and BGG import.
 Includes CRUD operations and session management.
 """
 import logging
+import secrets
 from typing import Any, Dict, Optional
 
 from fastapi import (
@@ -78,8 +79,8 @@ async def admin_login(
             detail="Too many login attempts. Please try again later.",
         )
 
-    # Validate admin token
-    if not ADMIN_TOKEN or credentials.token != ADMIN_TOKEN:
+    # Validate admin token (constant-time comparison to avoid a timing side-channel)
+    if not ADMIN_TOKEN or not secrets.compare_digest(credentials.token, ADMIN_TOKEN):
         record_failed_attempt(client_ip, RATE_LIMIT_WINDOW)
         logger.warning(f"Invalid admin login attempt from {client_ip}")
         raise HTTPException(status_code=401, detail="Invalid credentials")

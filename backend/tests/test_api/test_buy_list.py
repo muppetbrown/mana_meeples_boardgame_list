@@ -481,7 +481,9 @@ class TestBulkImportCSV:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["added"] >= 0
+        # Import now runs as a background task; the endpoint just confirms
+        # how many rows were queued.
+        assert data["count"] == 2
         assert "message" in data
 
     def test_bulk_import_missing_bgg_id_column(self, client, admin_headers):
@@ -985,8 +987,10 @@ class TestBuyListUpdateErrorHandling:
 
             assert response.status_code == 200
             data = response.json()
-            # Game import should result in error due to BGG failure
-            assert data["errors"] >= 1
+            # Row is queued for the background task regardless of the eventual outcome
+            assert data["count"] == 1
+            # The BGG failure happens inside the background task; no game should be created
+            assert db_session.query(Game).filter_by(bgg_id=999999).first() is None
 
 
 # Note: Price import endpoint tests are complex due to specific directory structure

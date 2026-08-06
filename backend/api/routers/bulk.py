@@ -90,49 +90,36 @@ async def _fetch_sleeve_data_task(game_id: int, bgg_id: int, game_title: str):
         db.close()
 
 
-@router.post("/bulk-import-csv")
-async def bulk_import_csv(
-    csv_data: dict,
-    background_tasks: BackgroundTasks,
-    request: Request,
-    db: Session = Depends(get_db),
-    _: None = Depends(require_admin_auth),
-):
-    """Bulk import games from CSV data (admin only)"""
+async def _bulk_import_csv_task(lines: list[str]) -> None:
+    """
+    Background task: import each CSV line's BGG ID as a new game.
+    Runs one BGG fetch (with its own internal retry/backoff) per line, so this
+    must not run inline in the request/response cycle - a CSV of more than a
+    handful of rows can easily exceed a platform request timeout.
+    """
+    # Look up database.SessionLocal at call time (not the module-level alias
+    # captured at import time) so test fixtures that monkeypatch it still work.
+    db = database.SessionLocal()
+    added = 0
+    skipped = 0
+    errors = 0
+
     try:
-        csv_text = csv_data.get("csv_data", "")
-        if not csv_text.strip():
-            raise HTTPException(status_code=400, detail="No CSV data provided")
-
-        lines = [
-            line.strip()
-            for line in csv_text.strip().split("\n")
-            if line.strip()
-        ]
-        if not lines:
-            raise HTTPException(
-                status_code=400, detail="No valid lines in CSV"
-            )
-
-        added = []
-        skipped = []
-        errors = []
-
         for line_num, line in enumerate(lines, 1):
             try:
                 # Expected format: bgg_id,title (title is optional)
                 parts = [p.strip() for p in line.split(",")]
                 if len(parts) < 1:
-                    errors.append(f"Line {line_num}: No BGG ID provided")
+                    logger.warning(f"Line {line_num}: No BGG ID provided")
+                    errors += 1
                     continue
 
                 # Try to parse BGG ID
                 try:
                     bgg_id = int(parts[0])
                 except ValueError:
-                    errors.append(
-                        f"Line {line_num}: Invalid BGG ID '{parts[0]}'"
-                    )
+                    logger.warning(f"Line {line_num}: Invalid BGG ID '{_sl(parts[0])}'")
+                    errors += 1
                     continue
 
                 # Check if already exists
@@ -140,10 +127,8 @@ async def bulk_import_csv(
                     select(Game).where(Game.bgg_id == bgg_id)
                 ).scalar_one_or_none()
                 if existing:
-                    skipped.append(
-                        f"BGG ID {bgg_id}: Already exists as "
-                        f"'{existing.title}'"
-                    )
+                    logger.info(f"BGG ID {bgg_id}: Already exists as '{_sl(existing.title)}'")
+                    skipped += 1
                     continue
 
                 # Import from BGG
@@ -198,31 +183,58 @@ async def bulk_import_csv(
                     db.commit()
                     db.refresh(game)
 
-                    added.append(f"BGG ID {bgg_id}: {game.title}")
+                    added += 1
+                    logger.info(f"BGG ID {bgg_id}: imported as '{_sl(game.title)}'")
 
                 except Exception as e:
                     db.rollback()
                     logger.error(f"Line {line_num}: failed to import BGG ID {bgg_id}: {e}")
-                    errors.append(f"Line {line_num}: failed to import BGG ID {bgg_id}")
+                    errors += 1
 
             except Exception as e:
                 logger.error(f"Line {line_num}: parse error: {e}")
-                errors.append(f"Line {line_num}: could not parse row")
+                errors += 1
 
-        return {
-            "message": f"Processed {len(lines)} lines",
-            "added": added,
-            "skipped": skipped,
-            "errors": errors,
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Bulk import failed: {e}")
-        raise HTTPException(
-            status_code=500, detail="Bulk import failed - check logs for details"
+        logger.info(
+            f"Bulk CSV import complete: {added} added, {skipped} skipped, {errors} errors "
+            f"(of {len(lines)} lines)"
         )
+    finally:
+        db.close()
+
+
+@router.post("/bulk-import-csv")
+async def bulk_import_csv(
+    csv_data: dict,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    _: None = Depends(require_admin_auth),
+):
+    """
+    Bulk import games from CSV data (admin only).
+
+    Runs in the background since each line requires its own BGG fetch (with
+    retry/backoff) - see _bulk_import_csv_task. Check server logs for
+    per-line results (added/skipped/errors).
+    """
+    csv_text = csv_data.get("csv_data", "")
+    if not csv_text.strip():
+        raise HTTPException(status_code=400, detail="No CSV data provided")
+
+    lines = [
+        line.strip()
+        for line in csv_text.strip().split("\n")
+        if line.strip()
+    ]
+    if not lines:
+        raise HTTPException(status_code=400, detail="No valid lines in CSV")
+
+    background_tasks.add_task(_bulk_import_csv_task, lines)
+
+    return {
+        "message": f"Started importing {len(lines)} line(s) from CSV in the background. Check server logs for results.",
+        "count": len(lines),
+    }
 
 
 @router.post("/bulk-categorize-csv")
