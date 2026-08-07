@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body { margin: 0; background: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: #059669; } a:hover { color: #047857; }
+</style>
+</helmet>
+<div data-screen-label="Current library (mobile)" style="min-height: 100vh; background: linear-gradient(to bottom right, #f8fafc, #ecfdf5, #fffbeb); color: #1f2f2d;">
+  <main style="padding: 16px 16px 40px 16px; max-width: 480px; margin: 0 auto;">
+    <header style="margin-bottom: 16px;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+        <img src="assets/logo192.png" alt="Mana &amp; Meeples logo" style="width: 48px; height: 48px; flex-shrink: 0;">
+        <div style="flex: 1;">
+          <p style="font-size: 24px; font-weight: 700; background: linear-gradient(to right, #047857, #0d9488, #d97706); -webkit-background-clip: text; background-clip: text; color: transparent; margin: 0 0 4px 0; line-height: 1.2;">Mana &amp; Meeples</p>
+          <p style="font-size: 14px; color: #475569; margin: 0 0 2px 0;">Timaru's Board Game Community</p>
+          <p style="font-size: 12px; color: #64748b; margin: 0;">Explore our game collection</p>
+        </div>
+      </div>
+      <div style="width: 48px; height: 4px; background: linear-gradient(to right, #10b981, #f59e0b); border-radius: 999px; margin-bottom: 16px;"></div>
+      <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 12px;">
+        <sc-for list="{{ pills }}" as="pill" hint-placeholder-count="6">
+          <button onClick="{{ pill.onPick }}" style="{{ pill.style }}">{{ pill.label }}</button>
+        </sc-for>
+      </div>
+    </header>
+    <div style="position: sticky; top: 0; z-index: 40; margin: 0 -16px 16px -16px;">
+      <div style="background: white; border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 12px;">
+          <select style="flex: 1; min-height: 44px; padding: 8px 12px; font-size: 14px; color: #0f172a; border: 2px solid #cbd5e1; border-radius: 12px; background: white;">
+            <option>Newest first</option><option>Title A to Z</option><option>Title Z to A</option><option>Highest rated first</option><option>Shortest play time first</option>
+          </select>
+          <button onClick="{{ toggleFilters }}" style="display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; background: linear-gradient(to right, #10b981, #14b8a6); border: none; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">
+            <span style="font-size: 14px; font-weight: 600; color: white; white-space: nowrap;">Filters</span>
+            <svg width="16" height="16" fill="none" stroke="white" viewBox="0 0 24 24" style="{{ chevronStyle }}"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+          </button>
+        </div>
+        <sc-if value="{{ filterOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 12px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid #e2e8f0; background: white;">
+            <div>
+              <label style="display: block; font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 6px;">Search Games</label>
+              <input type="search" placeholder="Search by title, designer, or description..." style="width: 100%; box-sizing: border-box; min-height: 44px; padding: 8px 12px; font-size: 14px; border: 2px solid #cbd5e1; border-radius: 12px; background: white; color: #0f172a;">
+            </div>
+            <div>
+              <label style="display: block; font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 6px;">Player Count</label>
+              <select style="width: 100%; min-height: 44px; padding: 8px 12px; font-size: 14px; color: #0f172a; border: 2px solid #cbd5e1; border-radius: 12px; background: white;">
+                <option>Any</option><option>1 player</option><option>2 players</option><option>3 players</option><option>4 players</option><option>5 players</option><option>6 players</option><option>7+ players</option>
+              </select>
+            </div>
+            <div>
+              <label style="display: block; font-size: 14px; font-weight: 600; color: #0f172a; margin-bottom: 6px;">Complexity</label>
+              <select style="width: 100%; min-height: 44px; padding: 8px 12px; font-size: 14px; color: #0f172a; border: 2px solid #cbd5e1; border-radius: 12px; background: white;">
+                <option>Any</option><option>Light (1-1.5)</option><option>Light-Medium (1.5-2.5)</option><option>Medium (2.5-3.5)</option><option>Medium-Heavy (3.5-4.5)</option><option>Heavy (4.5-5)</option>
+              </select>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+              <button style="min-height: 44px; padding: 8px 12px; font-size: 14px; font-weight: 500; border-radius: 12px; background: white; color: #1e3a8a; border: 2px solid #93c5fd; cursor: pointer;">🇳🇿 NZ Designer</button>
+              <button style="min-height: 44px; padding: 8px 12px; font-size: 14px; font-weight: 500; border-radius: 12px; background: white; color: #581c87; border: 2px solid #d8b4fe; cursor: pointer;">✨ Recently Added</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 1fr; gap: 12px; align-items: start;">
+      <sc-for list="{{ games }}" as="g" hint-placeholder-count="4">
+        <article style="{{ g.cardStyle }}">
+          <sc-if value="{{ g.collapsed }}" hint-placeholder-val="{{ true }}">
+            <div style="width: 100%; height: 100%; display: flex; flex-direction: row;">
+              <div style="width: 50%; height: 100%; flex-shrink: 0; overflow: hidden; position: relative; background: repeating-linear-gradient(45deg, #e2e8f0 0 10px, #f1f5f9 10px 20px); display: flex; align-items: center; justify-content: center;">
+                <span style="font-family: monospace; font-size: 11px; color: #64748b;">cover art</span>
+              </div>
+              <div style="width: 50%; height: 100%; overflow: hidden; display: flex; flex-direction: column; padding: 6px;">
+                <h3 style="font-weight: 700; font-size: 14px; color: #1e293b; line-height: 1.25; margin: 0 0 2px 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ g.title }}</h3>
+                <div style="margin-bottom: 4px;"><span style="{{ g.badgeStyle }}">{{ g.categoryLabel }}</span></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #f8fafc; border-radius: 8px; padding: 6px 4px;">
+                    <svg width="14" height="14" fill="#059669" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"></path></svg>
+                    <span style="font-weight: 600; font-size: 12px; color: #334155;">{{ g.playersText }}</span>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #f8fafc; border-radius: 8px; padding: 6px 4px;">
+                    <svg width="14" height="14" fill="#64748b" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
+                    <span style="font-weight: 600; font-size: 12px; color: #334155;">{{ g.timeText }}</span>
+                  </div>
+                  <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #f8fafc; border-radius: 8px; padding: 6px 4px;">
+                    <span style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #d97706;">Complexity</span>
+                    <span style="font-weight: 600; font-size: 12px; color: #334155;">🧩 {{ g.complexityText }}</span>
+                  </div>
+                  <button onClick="{{ g.onToggle }}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 8px; padding: 6px 4px; font-weight: 700; background: linear-gradient(to bottom right, #ecfdf5, #f0fdfa); color: #047857; border: 2px solid #a7f3d0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); cursor: pointer;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    <span style="font-size: 10px; font-weight: 700;">More</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ g.isExpanded }}" hint-placeholder-val="{{ false }}">
+            <div style="position: relative; overflow: hidden; width: 100%; aspect-ratio: 1/1; background: repeating-linear-gradient(45deg, #e2e8f0 0 10px, #f1f5f9 10px 20px); display: flex; align-items: center; justify-content: center; border-radius: 14px 14px 0 0;">
+              <span style="font-family: monospace; font-size: 12px; color: #64748b;">cover art</span>
+              <div style="position: absolute; top: 8px; right: 8px;"><span style="{{ g.badgeStyleFloat }}">{{ g.categoryLabel }}</span></div>
+            </div>
+            <div style="padding: 12px; display: flex; flex-direction: column;">
+              <h3 style="font-weight: 700; font-size: 14px; color: #1e293b; line-height: 1.25; margin: 0 0 6px 0;">{{ g.title }}</h3>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px;">
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #f8fafc; border-radius: 8px; padding: 8px 4px;">
+                  <svg width="16" height="16" fill="#059669" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"></path></svg>
+                  <span style="font-weight: 600; font-size: 12px; color: #334155;">{{ g.playersText }}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #f8fafc; border-radius: 8px; padding: 8px 4px;">
+                  <svg width="16" height="16" fill="#64748b" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path></svg>
+                  <span style="font-weight: 600; font-size: 12px; color: #334155;">{{ g.timeText }}</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; background: #f8fafc; border-radius: 8px; padding: 8px 4px;">
+                  <span style="font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #d97706;">Complexity</span>
+                  <span style="font-weight: 600; font-size: 12px; color: #334155;">🧩 {{ g.complexityText }}</span>
+                </div>
+                <button onClick="{{ g.onToggle }}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: 8px; padding: 8px 4px; background: #d1fae5; color: #047857; border: none; cursor: pointer;">
+                  <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="transform: rotate(180deg);"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                  <span style="font-size: 10px; font-weight: 700;">Less</span>
+                </button>
+              </div>
+              <div style="padding-top: 12px; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 8px; font-size: 14px;">
+                <span style="color: #334155;"><span style="font-weight: 600;">Players:</span> {{ g.playersText }}</span>
+                <span style="color: #334155;"><span style="font-weight: 600;">Play Time:</span> {{ g.timeText }}</span>
+                <span style="color: #334155;"><span style="font-weight: 600;">BGG Rating:</span> {{ g.ratingText }}/10</span>
+                <span style="color: #334155;"><span style="font-weight: 600;">🧩 Complexity:</span> {{ g.complexityText }}/5</span>
+                <span style="color: #334155;"><span style="font-weight: 600;">Designer:</span> {{ g.designer }}</span>
+                <span style="color: #334155;"><span style="font-weight: 600;">Published:</span> {{ g.year }}</span>
+                <p style="color: #475569; font-size: 12px; line-height: 1.6; margin: 4px 0 0 0;">{{ g.description }}</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                  <a href="#" style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 8px; background: linear-gradient(to right, #14b8a6, #10b981); color: white; font-weight: 600; font-size: 14px; text-decoration: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <img src="assets/aftergame_icon.webp" alt="AfterGame" style="width: 20px; height: 20px;">
+                    <span>Plan a Game</span>
+                  </a>
+                  <a href="#" style="display: inline-flex; align-items: center; gap: 8px; color: #059669; font-weight: 600; font-size: 14px; padding: 8px; text-decoration: none;">
+                    <span>View Full Details</span>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </article>
+      </sc-for>
+    </div>
+    <div style="margin-top: 32px; padding: 32px 0; text-align: center;">
+      <p style="font-size: 12px; color: #94a3b8; margin: 0;">Scroll for more • 8 of 409</p>
+    </div>
+  </main>
+  <button style="position: fixed; bottom: 24px; left: 24px; z-index: 50; width: 48px; height: 48px; background: #0d9488; color: white; border: none; border-radius: 999px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2); font-size: 20px; font-weight: 700; cursor: pointer;">?</button>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 390, &quot;height&quot;: 844}}">
+class Component extends DCLogic {
+  state = { category: 'all', expandedId: null, filterOpen: false };
+  renderVals() {
+    const CATS = {
+      COOP_ADVENTURE: { label: 'Co-op & Adventure', bg: '#c2410c', border: '#9a3412', count: 45 },
+      CORE_STRATEGY: { label: 'Core Strategy & Epics', bg: '#1e40af', border: '#1e3a8a', count: 78 },
+      GATEWAY_STRATEGY: { label: 'Gateway Strategy', bg: '#047857', border: '#065f46', count: 92 },
+      KIDS_FAMILIES: { label: 'Kids & Families', bg: '#7e22ce', border: '#6b21a8', count: 34 },
+      PARTY_ICEBREAKERS: { label: 'Party & Icebreakers', bg: '#92400e', border: '#78350f', count: 56 },
+    };
+    const GAMES = [
+      { id: 1, title: 'Gloomhaven', cat: 'CORE_STRATEGY', players: '1-4', time: '60-120 min', cx: '3.9', rating: '8.7', designer: 'Isaac Childres', year: 2017, description: 'Gloomhaven is a game of Euro-inspired tactical combat in a persistent world of shifting motives.' },
+      { id: 2, title: 'Wingspan', cat: 'GATEWAY_STRATEGY', players: '1-5', time: '40-70 min', cx: '2.4', rating: '8.1', designer: 'Elizabeth Hargrave', year: 2019, description: 'Wingspan is a competitive, medium-weight, card-driven, engine-building board game.' },
+      { id: 3, title: 'Pandemic', cat: 'COOP_ADVENTURE', players: '2-4', time: '45 min', cx: '2.4', rating: '7.6', designer: 'Matt Leacock', year: 2008, description: 'Your team of experts must prevent the world from succumbing to a viral pandemic.' },
+      { id: 4, title: 'Codenames', cat: 'PARTY_ICEBREAKERS', players: '2-8', time: '15 min', cx: '1.3', rating: '7.7', designer: 'Vlaada Chvátil', year: 2015, description: 'Two rival spymasters know the secret identities of 25 agents.' },
+      { id: 5, title: 'Kingdomino', cat: 'KIDS_FAMILIES', players: '2-4', time: '15 min', cx: '1.2', rating: '7.4', designer: 'Bruno Cathala', year: 2016, description: 'Build your kingdom and make sure to get the best plots of land.' },
+      { id: 6, title: 'Cascadia', cat: 'GATEWAY_STRATEGY', players: '1-4', time: '30-45 min', cx: '1.9', rating: '8.0', designer: 'Randy Flynn', year: 2021, description: 'Create the most harmonious ecosystem in the Pacific Northwest.' },
+      { id: 7, title: 'Azul', cat: 'GATEWAY_STRATEGY', players: '2-4', time: '30-45 min', cx: '1.8', rating: '7.8', designer: 'Michael Kiesling', year: 2017, description: 'Artfully embellish the walls of your palace by drafting the most beautiful tiles.' },
+      { id: 8, title: 'Just One', cat: 'PARTY_ICEBREAKERS', players: '3-7', time: '20 min', cx: '1.1', rating: '7.6', designer: 'Ludovic Roudy', year: 2018, description: 'A cooperative party game in which you play together to discover as many mystery words as possible.' },
+    ];
+    const { category, expandedId, filterOpen } = this.state;
+    const pillBase = 'flex-shrink:0;border-radius:999px;padding:8px 16px;font-size:14px;font-weight:500;white-space:nowrap;min-height:44px;cursor:pointer;';
+    const styleObj = (s) => s.split(';').filter(Boolean).reduce((o, kv) => { const [k, v] = kv.split(/:(.*)/); o[k.trim().replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = v.trim(); return o; }, {});
+    const pills = [{ key: 'all', label: 'All (409)' }].concat(Object.keys(CATS).map(k => ({ key: k, label: `${CATS[k].label} (${CATS[k].count})` }))).map(p => ({
+      ...p,
+      onPick: () => this.setState({ category: p.key, expandedId: null }),
+      style: styleObj(pillBase + (category === p.key
+        ? 'background:#10b981;color:white;border:1px solid #10b981;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);'
+        : 'background:rgba(255,255,255,0.9);color:#334155;border:1px solid #e2e8f0;')),
+    }));
+    const games = GAMES.filter(g => category === 'all' || g.cat === category).map(g => {
+      const c = CATS[g.cat];
+      const isExpanded = expandedId === g.id;
+      return {
+        ...g,
+        categoryLabel: c.label,
+        playersText: g.players, timeText: g.time, complexityText: g.cx + '/5'.replace('/5',''), ratingText: g.rating,
+        complexityText: g.cx, isExpanded, collapsed: !isExpanded,
+        onToggle: () => this.setState({ expandedId: isExpanded ? null : g.id }),
+        cardStyle: styleObj('background:white;border-radius:16px;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1);border:2px solid #e2e8f0;overflow:hidden;' + (isExpanded ? 'display:flex;flex-direction:column;' : 'width:100%;aspect-ratio:2/1;')),
+        badgeStyle: styleObj(`display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:${c.bg};color:white;`),
+        badgeStyleFloat: styleObj(`display:inline-block;padding:4px 8px;border-radius:8px;font-size:12px;font-weight:700;background:${c.bg};color:white;border:2px solid ${c.border};box-shadow:0 4px 6px -1px rgba(0,0,0,0.2);`),
+      };
+    });
+    return {
+      pills, games, filterOpen,
+      toggleFilters: () => this.setState(s => ({ filterOpen: !s.filterOpen })),
+      chevronStyle: { transform: filterOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.3s' },
+    };
+  }
+}
+</script>
+</body>
+</html>

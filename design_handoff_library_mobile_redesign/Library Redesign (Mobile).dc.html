@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&amp;family=Source+Sans+3:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body { margin: 0; background: #f7f5ed; font-family: 'Source Sans 3', sans-serif; -webkit-font-smoothing: antialiased; }
+a { color: #5a734c; } a:hover { color: #3d5135; }
+input::placeholder { color: #8a9a85; }
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #e3e1d6; display: flex; justify-content: center;">
+<div data-screen-label="Library redesign (mobile)" style="width: 100%; max-width: 414px; min-height: 100vh; background: #f7f5ed; color: #3e473d; font-size: 16px; line-height: 1.5; box-shadow: 0 0 40px rgba(61,81,53,0.15); position: relative;">
+  <header style="background: linear-gradient(170deg, #3d5135 0%, #2d4a47 100%); color: white; padding: 16px 20px 24px 20px;">
+    <a href="https://www.manaandmeeples.co.nz" style="display: flex; align-items: center; gap: 10px; text-decoration: none; margin-bottom: 18px;">
+      <img src="assets/logo192.png" alt="Mana &amp; Meeples logo" style="width: 38px; height: 38px; border-radius: 50%; background: white;">
+      <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; color: white;">The Game Library</span>
+      <span style="margin-left: auto; font-size: 13px; font-weight: 600; color: #cfe0c8;">← main site</span>
+    </a>
+    <p style="font-size: 15px; color: #e8f0e4; margin: 0;">409 games on our shelves — let's find yours.</p>
+  </header>
+  <sc-if value="{{ showQuickPicks }}" hint-placeholder-val="{{ true }}">
+    <section style="padding: 20px 20px 4px 20px;">
+      <h2 style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 19px; font-weight: 700; color: #3d5135; margin: 0 0 3px 0;">Who's playing today?</h2>
+      <p style="font-size: 14px; color: #5f726c; margin: 0 0 14px 0;">Tap one and we'll shortlist the shelf for you.</p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <sc-for list="{{ quickPicks }}" as="qp" hint-placeholder-count="4">
+          <button onClick="{{ qp.onPick }}" style="{{ qp.style }}">
+            <span style="display: flex; align-items: center; gap: 7px;">
+              <span style="font-size: 17px;">{{ qp.icon }}</span>
+              <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 700; line-height: 1.2;">{{ qp.label }}</span>
+            </span>
+            <span style="{{ qp.subStyle }}">{{ qp.sub }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+  </sc-if>
+  <section style="padding: 14px 20px 10px 20px;">
+    <h2 style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700; color: #3d5135; margin: 0 0 2px 0;">Or browse the shelves</h2>
+    <p style="font-size: 13px; color: #8a9a85; margin: 0 0 12px 0;">Tap a box to take it off the shelf — mix as many as you like.</p>
+    <div style="display: flex; align-items: flex-end; gap: 8px; padding: 0 6px;">
+      <sc-for list="{{ shelfRow1 }}" as="sh" hint-placeholder-count="3">
+        <button onClick="{{ sh.onPick }}" style="{{ sh.style }}">
+          <span style="{{ sh.checkStyle }}">✓</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 13px; font-weight: 700; line-height: 1.15;">{{ sh.label }}</span>
+          <span style="font-size: 11px; font-weight: 600; opacity: 0.85;">{{ sh.count }} games</span>
+        </button>
+      </sc-for>
+    </div>
+    <div style="height: 7px; background: linear-gradient(#c9b285, #a8905f); border-radius: 3px; box-shadow: 0 3px 4px rgba(61,81,53,0.18); margin-bottom: 12px;"></div>
+    <div style="display: flex; align-items: flex-end; gap: 8px; padding: 0 6px; justify-content: center;">
+      <sc-for list="{{ shelfRow2 }}" as="sh" hint-placeholder-count="2">
+        <button onClick="{{ sh.onPick }}" style="{{ sh.style }}">
+          <span style="{{ sh.checkStyle }}">✓</span>
+          <span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 13px; font-weight: 700; line-height: 1.15;">{{ sh.label }}</span>
+          <span style="font-size: 11px; font-weight: 600; opacity: 0.85;">{{ sh.count }} games</span>
+        </button>
+      </sc-for>
+    </div>
+    <div style="height: 7px; background: linear-gradient(#c9b285, #a8905f); border-radius: 3px; box-shadow: 0 3px 4px rgba(61,81,53,0.18);"></div>
+  </section>
+  <div style="position: sticky; top: 0; z-index: 40; background: rgba(247,245,237,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid #d4e0d1;">
+    <div style="padding: 10px 20px;">
+      <button onClick="{{ openSheet }}" style="width: 100%; display: flex; align-items: center; gap: 10px; min-height: 50px; padding: 10px 18px; background: #3d5135; border: none; border-radius: 999px; cursor: pointer; box-shadow: 0 2px 8px rgba(61,81,53,0.25);">
+        <svg width="17" height="17" fill="none" stroke="white" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" d="M4 6h16M7 12h10M10 18h4"></path></svg>
+        <span style="font-size: 15px; font-weight: 700; color: white;">Narrow it down</span>
+        <span style="font-size: 13px; font-weight: 600; color: #cfe0c8;">players · time · rules</span>
+        <sc-if value="{{ hasActiveFilters }}" hint-placeholder-val="{{ false }}">
+          <span style="margin-left: auto; background: #a35040; color: white; font-size: 12px; font-weight: 700; min-width: 20px; height: 20px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;">{{ activeCount }}</span>
+        </sc-if>
+      </button>
+    </div>
+    <sc-if value="{{ hasActiveFilters }}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; gap: 6px; overflow-x: auto; padding: 0 20px 10px 20px; align-items: center;">
+        <sc-for list="{{ activeChips }}" as="chip" hint-placeholder-count="2">
+          <button onClick="{{ chip.onClear }}" style="flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; background: #e8f0e4; color: #3d5135; border: none; border-radius: 999px; padding: 6px 12px; font-size: 13px; font-weight: 600; font-family: 'Source Sans 3', sans-serif; cursor: pointer;">{{ chip.label }} ✕</button>
+        </sc-for>
+        <button onClick="{{ clearAll }}" style="flex-shrink: 0; background: none; border: none; color: #a35040; font-size: 13px; font-weight: 700; font-family: 'Source Sans 3', sans-serif; cursor: pointer; padding: 6px 8px;">Clear all</button>
+      </div>
+    </sc-if>
+  </div>
+  <main style="padding: 14px 20px 60px 20px; display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: center; gap: 12px; background: #eef1fd; border: 1px solid #d3daf7; border-radius: 14px; padding: 12px 14px;">
+      <img src="assets/aftergame_icon.webp" alt="Aftergame" style="width: 30px; height: 30px; flex-shrink: 0;">
+      <p style="font-size: 13px; color: #3e473d; line-height: 1.45; margin: 0;"><strong>Keen to play but short on players?</strong> Tap <img src="assets/aftergame_icon.webp" alt="Aftergame" style="width: 15px; height: 15px; vertical-align: -2px;"> on any game to organise a session for a day that suits you — and invite anyone in the Mana &amp; Meeples community to join.</p>
+    </div>
+    <sc-if value="{{ noResults }}" hint-placeholder-val="{{ false }}">
+      <div style="text-align: center; padding: 40px 20px;">
+        <p style="font-size: 17px; color: #5f726c; margin: 0 0 16px 0;">No games match — yet. Try loosening a filter.</p>
+        <button onClick="{{ clearAll }}" style="min-height: 48px; padding: 12px 26px; background: #a35040; color: white; border: none; border-radius: 999px; font-size: 15px; font-weight: 700; font-family: 'Source Sans 3', sans-serif; cursor: pointer;">Clear all filters</button>
+      </div>
+    </sc-if>
+    <sc-for list="{{ games }}" as="g" hint-placeholder-count="5">
+      <article style="background: white; border-radius: 16px; border: 1px solid #d4e0d1; overflow: hidden; box-shadow: 0 2px 8px rgba(61,81,53,0.06);">
+        <div style="display: flex; gap: 12px; padding: 12px;">
+          <div style="width: 104px; height: 104px; flex-shrink: 0; border-radius: 12px; overflow: hidden; background: repeating-linear-gradient(45deg, #e8f0e4 0 10px, #f2f6ef 10px 20px); display: flex; align-items: center; justify-content: center; position: relative;">
+            <span style="font-family: monospace; font-size: 10px; color: #8a9a85;">cover art</span>
+          </div>
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px;">
+            <div>
+              <h3 style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 17px; font-weight: 700; color: #3e473d; line-height: 1.15; margin: 0 0 4px 0;">{{ g.title }}</h3>
+              <span style="{{ g.badgeStyle }}">{{ g.categoryLabel }}</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 3px; font-size: 13px;">
+              <div style="display: flex; gap: 8px;"><span style="width: 58px; flex-shrink: 0; color: #8a9a85; font-weight: 600;">Players</span><span style="color: #3d5135; font-weight: 700;">{{ g.playersText }}</span></div>
+              <div style="display: flex; gap: 8px;"><span style="width: 58px; flex-shrink: 0; color: #8a9a85; font-weight: 600;">Time</span><span style="color: #3d5135; font-weight: 700;">{{ g.timeText }}</span></div>
+              <div style="display: flex; gap: 8px;"><span style="width: 58px; flex-shrink: 0; color: #8a9a85; font-weight: 600;">Rules</span><span style="color: #3d5135; font-weight: 700;">{{ g.weightLabel }}</span></div>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; justify-content: space-between; align-items: center; flex-shrink: 0; padding: 2px 0;">
+            <a href="#" aria-label="Organise a session on Aftergame" style="display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 999px; background: white; border: 1.5px solid #d3daf7; text-decoration: none; box-shadow: 0 1px 4px rgba(61,81,53,0.08);">
+              <img src="assets/aftergame_icon.webp" alt="" style="width: 24px; height: 24px;">
+            </a>
+            <button onClick="{{ g.onToggle }}" aria-label="{{ g.moreLabel }}" style="{{ g.moreStyle }}">
+              <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" style="{{ g.chevStyle }}"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+          </div>
+        </div>
+        <sc-if value="{{ g.isExpanded }}" hint-placeholder-val="{{ false }}">
+          <div style="padding: 14px 16px 16px 16px; border-top: 1px solid #e8f0e4; display: flex; flex-direction: column; gap: 10px;">
+            <p style="font-size: 14px; color: #5f726c; line-height: 1.55; margin: 0;">{{ g.description }}</p>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 14px; color: #3e473d;">
+              <span><strong>Designer</strong><br>{{ g.designer }}</span>
+              <span><strong>BGG rating</strong><br>★ {{ g.ratingText }} / 10</span>
+              <span><strong>Complexity</strong><br>{{ g.complexityText }} / 5 · {{ g.weightLabel }}</span>
+              <span><strong>Published</strong><br>{{ g.year }}</span>
+            </div>
+            <a href="#" style="display: inline-flex; align-items: center; gap: 6px; color: #3d5135; font-weight: 700; font-size: 14px; text-decoration: none; margin-top: 2px;">View full details <span aria-hidden="true">→</span></a>
+          </div>
+        </sc-if>
+      </article>
+    </sc-for>
+    <sc-if value="{{ hasResults }}" hint-placeholder-val="{{ true }}">
+      <p style="text-align: center; font-size: 13px; color: #8a9a85; margin: 20px 0 0 0;">Keep scrolling — {{ resultLabel }} on this shelf</p>
+    </sc-if>
+  </main>
+  <sc-if value="{{ sheetOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeSheet }}" style="position: fixed; inset: 0; background: rgba(45,58,45,0.5); z-index: 90;"></div>
+    <div style="position: fixed; left: 50%; transform: translateX(-50%); width: 100%; max-width: 414px; box-sizing: border-box; bottom: 0; z-index: 100; background: #fdfcf8; border-radius: 22px 22px 0 0; box-shadow: 0 -8px 30px rgba(20,30,20,0.25); max-height: 82vh; overflow-y: auto;">
+      <div style="padding: 18px 20px 26px 20px; display: flex; flex-direction: column; gap: 18px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h2 style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 21px; font-weight: 800; color: #3d5135; margin: 0; flex: 1;">Narrow it down</h2>
+          <button onClick="{{ closeSheet }}" aria-label="Close filters" style="width: 44px; height: 44px; border-radius: 999px; border: none; background: #e8f0e4; color: #3d5135; font-size: 17px; font-weight: 700; cursor: pointer;">✕</button>
+        </div>
+        <div>
+          <p style="font-size: 14px; font-weight: 700; color: #3e473d; margin: 0 0 8px 0;">How many players?</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <sc-for list="{{ playerOpts }}" as="opt" hint-placeholder-count="7">
+              <button onClick="{{ opt.onPick }}" style="{{ opt.style }}">{{ opt.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div>
+          <p style="font-size: 14px; font-weight: 700; color: #3e473d; margin: 0 0 8px 0;">How long have you got?</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <sc-for list="{{ timeOpts }}" as="opt" hint-placeholder-count="4">
+              <button onClick="{{ opt.onPick }}" style="{{ opt.style }}">{{ opt.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div>
+          <p style="font-size: 14px; font-weight: 700; color: #3e473d; margin: 0 0 2px 0;">How much rules-crunch?</p>
+          <p style="font-size: 13px; color: #8a9a85; margin: 0 0 8px 0;">Easy = learn in 5 minutes · Deep = a proper rules session</p>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <sc-for list="{{ weightOpts }}" as="opt" hint-placeholder-count="4">
+              <button onClick="{{ opt.onPick }}" style="{{ opt.style }}">{{ opt.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center; margin-top: 4px;">
+          <button onClick="{{ clearAll }}" style="background: none; border: none; color: #a35040; font-size: 15px; font-weight: 700; font-family: 'Source Sans 3', sans-serif; cursor: pointer; padding: 10px;">Clear</button>
+          <button onClick="{{ closeSheet }}" style="flex: 1; min-height: 54px; background: #3d5135; color: white; border: none; border-radius: 999px; font-size: 16px; font-weight: 700; font-family: 'Source Sans 3', sans-serif; cursor: pointer; box-shadow: 0 4px 14px rgba(61,81,53,0.35);">{{ applyLabel }}</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;: {&quot;width&quot;: 390, &quot;height&quot;: 844}, &quot;showQuickPicks&quot;: {&quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Layout&quot;}, &quot;accent&quot;: {&quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#a35040&quot;, &quot;options&quot;: [&quot;#a35040&quot;, &quot;#3d5135&quot;, &quot;#2d4a47&quot;, &quot;#a06e2c&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Style&quot;}}">
+class Component extends DCLogic {
+  state = { search: '', cats: [], quickPick: null, players: 'any', time: 'any', weight: 'any', sort: 'az', sheetOpen: false, expandedId: null };
+  renderVals() {
+    const CATS = {
+      GATEWAY_STRATEGY: { label: 'Gateway Strategy', color: '#3d5135', count: 92 },
+      CORE_STRATEGY: { label: 'Core Strategy & Epics', color: '#2d4a47', count: 78 },
+      COOP_ADVENTURE: { label: 'Co-op & Adventure', color: '#a35040', count: 45 },
+      PARTY_ICEBREAKERS: { label: 'Party & Icebreakers', color: '#a06e2c', count: 56 },
+      KIDS_FAMILIES: { label: 'Kids & Families', color: '#7d4a66', count: 34 },
+    };
+    const GAMES = [
+      { id: 1, title: 'Gloomhaven', cat: 'CORE_STRATEGY', pMin: 1, pMax: 4, tMin: 60, tMax: 120, cx: 3.9, rating: 8.7, designer: 'Isaac Childres', year: 2017, description: 'Euro-inspired tactical combat in a persistent world of shifting motives. A campaign you\u2019ll come back for.' },
+      { id: 2, title: 'Wingspan', cat: 'GATEWAY_STRATEGY', pMin: 1, pMax: 5, tMin: 40, tMax: 70, cx: 2.4, rating: 8.1, designer: 'Elizabeth Hargrave', year: 2019, description: 'A gorgeous, card-driven engine builder about attracting birds to your wildlife preserve.' },
+      { id: 3, title: 'Pandemic', cat: 'COOP_ADVENTURE', pMin: 2, pMax: 4, tMin: 45, tMax: 45, cx: 2.4, rating: 7.6, designer: 'Matt Leacock', year: 2008, description: 'Work as a team of specialists to stop four diseases before they sweep the globe.' },
+      { id: 4, title: 'Codenames', cat: 'PARTY_ICEBREAKERS', pMin: 2, pMax: 8, tMin: 15, tMax: 15, cx: 1.3, rating: 7.7, designer: 'Vlaada Chv\u00e1til', year: 2015, description: 'One-word clues, 25 agents, two rival teams. The perfect big-table icebreaker.' },
+      { id: 5, title: 'Kingdomino', cat: 'KIDS_FAMILIES', pMin: 2, pMax: 4, tMin: 15, tMax: 15, cx: 1.2, rating: 7.4, designer: 'Bruno Cathala', year: 2016, description: 'Draft dominoes to build your kingdom \u2014 easy for kids, sneaky-clever for grown-ups.' },
+      { id: 6, title: 'Cascadia', cat: 'GATEWAY_STRATEGY', pMin: 1, pMax: 4, tMin: 30, tMax: 45, cx: 1.9, rating: 8.0, designer: 'Randy Flynn', year: 2021, description: 'Create the most harmonious ecosystem in the Pacific Northwest with tiles and wildlife tokens.' },
+      { id: 7, title: 'Azul', cat: 'GATEWAY_STRATEGY', pMin: 2, pMax: 4, tMin: 30, tMax: 45, cx: 1.8, rating: 7.8, designer: 'Michael Kiesling', year: 2017, description: 'Draft beautiful tiles to embellish your palace walls. Simple turns, satisfying decisions.' },
+      { id: 8, title: 'Just One', cat: 'PARTY_ICEBREAKERS', pMin: 3, pMax: 7, tMin: 20, tMax: 20, cx: 1.1, rating: 7.6, designer: 'Ludovic Roudy', year: 2018, description: 'Write one-word clues together \u2014 but matching clues get erased. Instant fun for any crowd.' },
+    ];
+    const QP = [
+      { key: 'first', icon: '\ud83c\udfb2', label: 'First timers', sub: 'Learn in minutes, any shelf', test: (g) => g.cx < 2.2 },
+      { key: 'kids', icon: '\ud83e\uddf8', label: 'With the kids', sub: 'Simple rules, family fun', test: (g) => g.cat === 'KIDS_FAMILIES' || g.cx < 1.5 },
+      { key: 'group', icon: '\ud83c\udf89', label: 'Big group', sub: 'Plays well with 5+', test: (g) => g.pMax >= 5 },
+      { key: 'coop', icon: '\ud83e\udd1d', label: 'Team up', sub: 'Win (or lose) together', test: (g) => g.cat === 'COOP_ADVENTURE' },
+    ];
+    const s = this.state;
+    const accent = this.props.accent ?? '#a35040';
+    const weightOf = (cx) => cx < 1.5 ? 'Easy' : cx < 2.2 ? 'Light' : cx < 3 ? 'Medium' : 'Deep';
+    const timeBucket = (g) => g.tMax <= 30 ? 'quick' : g.tMax <= 60 ? 'mid' : 'long';
+    const activeQP = s.quickPick ? QP.find(q => q.key === s.quickPick) : null;
+    let list = GAMES.filter(g =>
+      (!activeQP || activeQP.test(g)) &&
+      (s.cats.length === 0 || s.cats.includes(g.cat)) &&
+      (s.search === '' || (g.title + ' ' + g.designer).toLowerCase().includes(s.search.toLowerCase())) &&
+      (s.players === 'any' || (s.players === '6+' ? g.pMax >= 6 : (g.pMin <= +s.players && g.pMax >= +s.players))) &&
+      (s.time === 'any' || timeBucket(g) === s.time) &&
+      (s.weight === 'any' || weightOf(g.cx) === s.weight)
+    );
+    const sorters = { az: (a, b) => a.title.localeCompare(b.title), rating: (a, b) => b.rating - a.rating, quick: (a, b) => a.tMax - b.tMax, new: (a, b) => b.year - a.year };
+    list = list.slice().sort(sorters[s.sort]);
+    const games = list.map(g => {
+      const c = CATS[g.cat];
+      const isExpanded = s.expandedId === g.id;
+      return {
+        ...g, categoryLabel: c.label, isExpanded,
+        playersText: g.pMin === g.pMax ? `${g.pMin}` : `${g.pMin}\u2013${g.pMax}`,
+        timeText: g.tMin === g.tMax ? `${g.tMin} min` : `${g.tMin}\u2013${g.tMax} min`,
+        complexityText: g.cx.toFixed(1), ratingText: g.rating.toFixed(1),
+        weightLabel: weightOf(g.cx),
+        onToggle: () => this.setState({ expandedId: isExpanded ? null : g.id }),
+        moreLabel: isExpanded ? 'Show less' : 'More info',
+        badgeStyle: { display: 'inline-block', padding: '3px 10px', borderRadius: '999px', fontSize: '11px', fontWeight: 700, letterSpacing: '0.02em', background: c.color, color: 'white' },
+        moreStyle: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: '44px', height: '44px', borderRadius: '999px', border: '1.5px solid #d4e0d1', background: isExpanded ? '#e8f0e4' : 'white', color: '#3d5135', cursor: 'pointer' },
+        chevStyle: { transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s' },
+      };
+    });
+    const pillStyle = (active) => ({ flexShrink: 0, borderRadius: '999px', padding: '8px 13px', fontSize: '13px', fontWeight: 600, fontFamily: "'Source Sans 3', sans-serif", whiteSpace: 'nowrap', minHeight: '40px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '7px', border: active ? '1.5px solid #3d5135' : '1.5px solid #d4e0d1', background: active ? '#3d5135' : 'white', color: active ? 'white' : '#3e473d' });
+    const boxOf = (k) => {
+      const active = s.cats.includes(k);
+      return {
+        key: k, label: CATS[k].label, count: CATS[k].count,
+        onPick: () => this.setState({ cats: active ? s.cats.filter(c => c !== k) : s.cats.concat(k), quickPick: null, expandedId: null }),
+        style: {
+          position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px',
+          padding: '10px 10px 8px 10px', minHeight: '64px', textAlign: 'left', cursor: 'pointer',
+          fontFamily: "'Source Sans 3', sans-serif", color: 'white', background: CATS[k].color,
+          border: 'none', borderRadius: '9px 9px 3px 3px',
+          boxShadow: active ? '0 10px 16px rgba(61,81,53,0.35), inset 0 0 0 2px rgba(255,255,255,0.85)' : 'inset 0 -5px 0 rgba(0,0,0,0.18)',
+          transform: active ? 'translateY(-7px)' : 'none', transition: 'transform 0.18s, box-shadow 0.18s',
+        },
+        checkStyle: {
+          position: 'absolute', top: '-7px', right: '-5px', width: '20px', height: '20px', borderRadius: '999px',
+          background: 'white', color: CATS[k].color, fontSize: '12px', fontWeight: 800,
+          display: active ? 'inline-flex' : 'none', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 1px 4px rgba(61,81,53,0.3)',
+        },
+      };
+    };
+    const catKeys = ['KIDS_FAMILIES', 'PARTY_ICEBREAKERS', 'GATEWAY_STRATEGY', 'COOP_ADVENTURE', 'CORE_STRATEGY'];
+    const shelfRow1 = catKeys.slice(0, 3).map(boxOf);
+    const shelfRow2 = catKeys.slice(3).map(boxOf);
+    const quickPicks = QP.map(qp => {
+      const active = s.quickPick === qp.key;
+      return {
+        ...qp,
+        onPick: () => this.setState({ quickPick: active ? null : qp.key, expandedId: null }),
+        style: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '3px', padding: '11px 13px', borderRadius: '14px', cursor: 'pointer', textAlign: 'left', fontFamily: "'Source Sans 3', sans-serif", border: active ? `2px solid ${accent}` : '2px solid transparent', background: active ? '#fdf0ec' : 'white', color: '#3e473d', boxShadow: '0 2px 8px rgba(61,81,53,0.08)' },
+        subStyle: { fontSize: '12px', color: active ? accent : '#8a9a85', fontWeight: 600 },
+      };
+    });
+    const optRow = (field, opts) => opts.map(([val, label]) => ({
+      label,
+      onPick: () => this.setState({ [field]: s[field] === val ? 'any' : val }),
+      style: { ...pillStyle(s[field] === val), minWidth: '52px', justifyContent: 'center' },
+    }));
+    const chips = [];
+    if (activeQP) chips.push({ label: activeQP.label, onClear: () => this.setState({ quickPick: null }) });
+    s.cats.forEach(k => chips.push({ label: CATS[k].label, onClear: () => this.setState({ cats: s.cats.filter(c => c !== k) }) }));
+    if (s.players !== 'any') chips.push({ label: s.players + ' players', onClear: () => this.setState({ players: 'any', quickPick: null }) });
+    if (s.time !== 'any') chips.push({ label: { quick: 'Under 30 min', mid: '30\u201360 min', long: 'Over an hour' }[s.time], onClear: () => this.setState({ time: 'any' }) });
+    if (s.weight !== 'any') chips.push({ label: s.weight + ' rules', onClear: () => this.setState({ weight: 'any' }) });
+    if (s.search) chips.push({ label: '\u201c' + s.search + '\u201d', onClear: () => this.setState({ search: '' }) });
+    return {
+      search: s.search, sort: s.sort, sheetOpen: s.sheetOpen,
+      showQuickPicks: this.props.showQuickPicks ?? true,
+      games, shelfRow1, shelfRow2, quickPicks,
+      hasResults: games.length > 0, noResults: games.length === 0,
+      resultLabel: games.length === GAMES.length ? '409 games' : `${games.length} of 409 games`,
+      applyLabel: games.length === 0 ? 'No matches \u2014 loosen up' : `Show ${games.length} game${games.length === 1 ? '' : 's'}`,
+      hasActiveFilters: chips.length > 0, activeCount: chips.length, activeChips: chips,
+      playerOpts: optRow('players', [['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6+', '6+']]),
+      timeOpts: optRow('time', [['quick', 'Under 30 min'], ['mid', '30\u201360 min'], ['long', 'Over an hour']]),
+      weightOpts: optRow('weight', [['Easy', 'Easy'], ['Light', 'Light'], ['Medium', 'Medium'], ['Deep', 'Deep']]),
+      onSearch: (e) => this.setState({ search: e.target.value }),
+      onSort: (e) => this.setState({ sort: e.target.value }),
+      openSheet: () => this.setState({ sheetOpen: true }),
+      closeSheet: () => this.setState({ sheetOpen: false }),
+      clearAll: () => this.setState({ search: '', cats: [], quickPick: null, players: 'any', time: 'any', weight: 'any' }),
+    };
+  }
+}
+</script>
+</body>
+</html>
