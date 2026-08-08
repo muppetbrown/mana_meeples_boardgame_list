@@ -79,6 +79,9 @@ class GameService:
         players: Optional[int] = None,
         complexity_min: Optional[float] = None,
         complexity_max: Optional[float] = None,
+        playtime_max_min: Optional[int] = None,
+        playtime_max_max: Optional[int] = None,
+        quick_pick: Optional[str] = None,
         recently_added_days: Optional[int] = None,
         sort: str = "title_asc",
         page: int = 1,
@@ -92,12 +95,15 @@ class GameService:
 
         Args:
             search: Search query for title, designers, description
-            category: Category filter
+            category: Category filter - single key, or comma-separated keys for multi-select
             designer: Designer name filter
             nz_designer: Filter by NZ designer flag
             players: Filter by player count
             complexity_min: Minimum complexity rating (1-5)
             complexity_max: Maximum complexity rating (1-5)
+            playtime_max_min: Minimum playtime_max in minutes (lower bound of the "how long" bucket)
+            playtime_max_max: Maximum playtime_max in minutes (upper bound of the "how long" bucket)
+            quick_pick: Mobile-catalogue quick-pick trait filter key: 'first', 'kids', 'group', 'coop'
             recently_added_days: Filter games added within last N days
             sort: Sort order
             page: Page number (1-indexed)
@@ -193,6 +199,44 @@ class GameService:
                     )
                 )
 
+        if playtime_max_min is not None:
+            id_query = id_query.where(
+                and_(
+                    Game.playtime_max.isnot(None),
+                    Game.playtime_max >= playtime_max_min,
+                )
+            )
+        if playtime_max_max is not None:
+            id_query = id_query.where(
+                and_(
+                    Game.playtime_max.isnot(None),
+                    Game.playtime_max <= playtime_max_max,
+                )
+            )
+
+        if quick_pick == "first":
+            id_query = id_query.where(
+                and_(Game.complexity.isnot(None), Game.complexity < 2.2)
+            )
+        elif quick_pick == "kids":
+            id_query = id_query.where(
+                or_(
+                    Game.mana_meeple_category == "KIDS_FAMILIES",
+                    and_(Game.complexity.isnot(None), Game.complexity < 1.5),
+                )
+            )
+        elif quick_pick == "group":
+            id_query = id_query.where(
+                and_(Game.players_max.isnot(None), Game.players_max >= 5)
+            )
+        elif quick_pick == "coop":
+            id_query = id_query.where(
+                or_(
+                    Game.is_cooperative.is_(True),
+                    Game.mana_meeple_category == "COOP_ADVENTURE",
+                )
+            )
+
         if recently_added_days is not None:
             cutoff_date = datetime.now(timezone.utc) - timedelta(
                 days=recently_added_days
@@ -201,10 +245,11 @@ class GameService:
                 id_query = id_query.where(Game.date_added >= cutoff_date)
 
         if category and category != "all":
-            if category == "uncategorized":
+            category_keys = [c.strip() for c in category.split(",") if c.strip()]
+            if len(category_keys) == 1 and category_keys[0] == "uncategorized":
                 id_query = id_query.where(Game.mana_meeple_category.is_(None))
-            else:
-                id_query = id_query.where(Game.mana_meeple_category == category)
+            elif category_keys:
+                id_query = id_query.where(Game.mana_meeple_category.in_(category_keys))
 
         # Apply sorting to ID query
         id_query = self._apply_sorting(id_query, sort)

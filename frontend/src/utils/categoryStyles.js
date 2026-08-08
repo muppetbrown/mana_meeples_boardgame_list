@@ -38,3 +38,26 @@ export function getCategoryStyle(category, gradient = false) {
   const styles = gradient ? CATEGORY_GRADIENT_STYLES : CATEGORY_STYLES;
   return styles[category] || styles.default;
 }
+
+/**
+ * Solid hex category colors used by the mobile library redesign
+ * (shelf picker boxes, card category pills). Kept separate from
+ * CATEGORY_STYLES above since those are Tailwind class names, not colors.
+ */
+export const CATEGORY_COLORS = {
+  KIDS_FAMILIES: "#7d4a66",
+  PARTY_ICEBREAKERS: "#a06e2c",
+  GATEWAY_STRATEGY: "#3d5135",
+  COOP_ADVENTURE: "#a35040",
+  CORE_STRATEGY: "#2d4a47",
+  default: "#5f726c",
+};
+
+/**
+ * Get the solid hex color for a category key
+ * @param {string} category - The mana_meeple_category value
+ * @returns {string} Hex color
+ */
+export function getCategoryColor(category) {
+  return CATEGORY_COLORS[category] || CATEGORY_COLORS.default;
+}

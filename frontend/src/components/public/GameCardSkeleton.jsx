@@ -2,39 +2,33 @@
 import React from "react";
 
 /**
- * Skeleton loader for GameCardPublic
- * Matches exact dimensions to prevent Cumulative Layout Shift (CLS)
- * Shows while games are loading
+ * Skeleton loader for GameCardPublic (mobile library redesign).
+ * Matches the redesigned card's dimensions (104x104 cover, 3 stat rows,
+ * action column) to prevent layout shift while games are loading.
  */
 export default function GameCardSkeleton() {
   return (
     <article
-      className="game-card-container bg-white rounded-2xl overflow-hidden shadow-md border-2 border-slate-200 animate-pulse flex flex-row aspect-2/1 w-full"
+      className="animate-pulse"
       aria-hidden="true"
+      style={{ background: "white", borderRadius: 16, border: "1px solid #d4e0d1", overflow: "hidden", boxShadow: "0 2px 8px rgba(61,81,53,0.06)" }}
     >
-      {/* Image Skeleton - Square aspect ratio, matches GameCardPublic minimized state */}
-      <div className="relative overflow-hidden bg-linear-to-br from-slate-200 via-slate-100 to-slate-200 h-full aspect-square shrink-0">
-        <div className="w-full h-full flex items-center justify-center">
-          <svg className="w-12 h-12 text-slate-300" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" />
-          </svg>
-        </div>
-      </div>
+      <div style={{ display: "flex", gap: 12, padding: 12 }}>
+        <div style={{ width: 104, height: 104, flexShrink: 0, borderRadius: 12, background: "#e8f0e4" }} />
 
-      {/* Content Skeleton */}
-      <div className="p-3 flex-1 flex flex-col">
-        {/* Title Skeleton */}
-        <div className="space-y-2 mb-3">
-          <div className="h-4 bg-slate-200 rounded w-3/4"></div>
-          <div className="h-4 bg-slate-200 rounded w-1/2"></div>
+        <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ height: 17, width: "70%", borderRadius: 4, background: "#e8f0e4" }} />
+          <div style={{ height: 18, width: 90, borderRadius: 999, background: "#f0f2e8" }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ height: 11, width: "60%", borderRadius: 4, background: "#f0f2e8" }} />
+            <div style={{ height: 11, width: "50%", borderRadius: 4, background: "#f0f2e8" }} />
+            <div style={{ height: 11, width: "55%", borderRadius: 4, background: "#f0f2e8" }} />
+          </div>
         </div>
 
-        {/* Stats Grid Skeleton - 2x2 */}
-        <div className="grid grid-cols-2 gap-1.5 md:gap-2">
-          <div className="bg-slate-100 rounded-lg p-2 h-12"></div>
-          <div className="bg-slate-100 rounded-lg p-2 h-12"></div>
-          <div className="bg-slate-100 rounded-lg p-2 h-12"></div>
-          <div className="bg-slate-100 rounded-lg p-2 h-12"></div>
+        <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", alignItems: "center", flexShrink: 0, padding: "2px 0" }}>
+          <div style={{ width: 44, height: 44, borderRadius: 999, background: "#f0f2e8" }} />
+          <div style={{ width: 44, height: 44, borderRadius: 999, background: "#f0f2e8" }} />
         </div>
       </div>
     </article>

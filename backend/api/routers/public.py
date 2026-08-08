@@ -160,6 +160,9 @@ def _get_cached_games_key(
     players: Optional[int],
     complexity_min: Optional[float],
     complexity_max: Optional[float],
+    playtime_max_min: Optional[int],
+    playtime_max_max: Optional[int],
+    quick_pick: Optional[str],
     recently_added: Optional[int],
     sort: str,
     page: int,
@@ -169,7 +172,9 @@ def _get_cached_games_key(
     from utils.cache import make_cache_key
     return make_cache_key(
         search, category, designer, nz_designer,
-        players, complexity_min, complexity_max, recently_added, sort, page, page_size
+        players, complexity_min, complexity_max,
+        playtime_max_min, playtime_max_max, quick_pick,
+        recently_added, sort, page, page_size
     )
 
 
@@ -182,6 +187,9 @@ def _get_games_from_db(
     players: Optional[int],
     complexity_min: Optional[float],
     complexity_max: Optional[float],
+    playtime_max_min: Optional[int],
+    playtime_max_max: Optional[int],
+    quick_pick: Optional[str],
     recently_added: Optional[int],
     sort: str,
     page: int,
@@ -206,7 +214,9 @@ def _get_games_from_db(
     # Generate cache key
     cache_params = _get_cached_games_key(
         search, category, designer, nz_designer,
-        players, complexity_min, complexity_max, recently_added, sort, page, page_size
+        players, complexity_min, complexity_max,
+        playtime_max_min, playtime_max_max, quick_pick,
+        recently_added, sort, page, page_size
     )
     cache_key = f"games_query:{cache_params}"
 
@@ -250,6 +260,9 @@ def _get_games_from_db(
         players=players,
         complexity_min=complexity_min,
         complexity_max=complexity_max,
+        playtime_max_min=playtime_max_min,
+        playtime_max_max=playtime_max_max,
+        quick_pick=quick_pick,
         recently_added_days=recently_added,
         sort=sort,
         page=page,
@@ -289,6 +302,15 @@ async def get_public_games(
     complexity_max: Optional[float] = Query(
         None, ge=1, le=5, description="Maximum complexity rating (1-5)"
     ),
+    playtime_max_min: Optional[int] = Query(
+        None, ge=0, description="Minimum playtime_max in minutes (lower bound of the duration bucket)"
+    ),
+    playtime_max_max: Optional[int] = Query(
+        None, ge=0, description="Maximum playtime_max in minutes (upper bound of the duration bucket)"
+    ),
+    quick_pick: Optional[str] = Query(
+        None, description="Quick-pick trait filter: 'first', 'kids', 'group', or 'coop'"
+    ),
     recently_added: Optional[int] = Query(
         None, ge=1, description="Filter games added within last N days"
     ),
@@ -313,6 +335,9 @@ async def get_public_games(
         players=players,
         complexity_min=complexity_min,
         complexity_max=complexity_max,
+        playtime_max_min=playtime_max_min,
+        playtime_max_max=playtime_max_max,
+        quick_pick=quick_pick,
         recently_added=recently_added,
         sort=sort,
         page=page,

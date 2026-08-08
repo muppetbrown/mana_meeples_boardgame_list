@@ -72,3 +72,19 @@ export function formatPlayerCount(game) {
   // Otherwise just show base range
   return baseMin === baseMax ? `${baseMin}` : `${baseMin}-${baseMax}`;
 }
+
+/**
+ * Bucket a BGG complexity rating into a plain-language rules-crunch label.
+ * Boundaries match the mobile library redesign's filter sheet buckets.
+ * @param {number|null} complexity - The complexity value (1-5 scale)
+ * @returns {string|null} 'Easy' | 'Light' | 'Medium' | 'Deep' or null if no data
+ */
+export function getComplexityBucket(complexity) {
+  if (complexity === null || complexity === undefined) return null;
+  const c = parseFloat(complexity);
+  if (Number.isNaN(c) || c === 0) return null;
+  if (c < 1.5) return "Easy";
+  if (c < 2.2) return "Light";
+  if (c < 3) return "Medium";
+  return "Deep";
+}

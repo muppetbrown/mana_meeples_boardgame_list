@@ -1,25 +1,18 @@
 // frontend/src/pages/__tests__/PublicCatalogue.test.jsx
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, waitFor, cleanup } from '@testing-library/react';
+import { render, screen, waitFor, cleanup, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import PublicCatalogue from '../PublicCatalogue';
 import * as apiClient from '../../api/client';
 
 vi.mock('../../api/client');
 
-vi.mock('../../hooks/useOnboarding', () => ({
-  useOnboarding: () => ({
-    isFirstVisit: false,
-    markHelpOpened: vi.fn(),
-  }),
-}));
-
 const mockGames = {
   items: [
-    { id: 1, title: 'Catan', mana_meeple_category: 'GATEWAY_STRATEGY' },
-    { id: 2, title: 'Pandemic', mana_meeple_category: 'COOP_ADVENTURE' },
+    { id: 1, title: 'Catan', mana_meeple_category: 'GATEWAY_STRATEGY', players_min: 3, players_max: 4, playtime_min: 60, playtime_max: 120, complexity: 2.32 },
+    { id: 2, title: 'Pandemic', mana_meeple_category: 'COOP_ADVENTURE', players_min: 2, players_max: 4, playtime_min: 45, playtime_max: 45, complexity: 2.43 },
   ],
   total: 2,
   page: 1,
@@ -30,34 +23,37 @@ const mockCategoryCounts = {
   all: 100,
   GATEWAY_STRATEGY: 50,
   COOP_ADVENTURE: 30,
+  CORE_STRATEGY: 10,
+  KIDS_FAMILIES: 5,
+  PARTY_ICEBREAKERS: 5,
+  uncategorized: 0,
 };
 
-// Phase 2 Performance: Test QueryClient setup
 function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
-      queries: {
-        retry: false,
-        gcTime: 0,
-        staleTime: 0,
-      },
+      queries: { retry: false, gcTime: 0, staleTime: 0 },
     },
-    logger: { log: console.log, warn: console.warn, error: () => {} },
   });
 }
 
 describe('PublicCatalogue Page', () => {
   let queryClient;
+  let user;
 
-  const renderWithQuery = (ui) => {
-    return render(
-      <QueryClientProvider client={queryClient}>
-        {ui}
-      </QueryClientProvider>
-    );
-  };
+  const renderWithQuery = (ui) => render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+  );
+
+  const renderPage = () => renderWithQuery(
+    <BrowserRouter>
+      <PublicCatalogue />
+    </BrowserRouter>
+  );
+
   beforeEach(() => {
     queryClient = createTestQueryClient();
+    user = userEvent.setup();
     vi.clearAllMocks();
     apiClient.getPublicGames.mockResolvedValue(mockGames);
     apiClient.getPublicCategoryCounts.mockResolvedValue(mockCategoryCounts);
@@ -67,8 +63,7 @@ describe('PublicCatalogue Page', () => {
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     });
-    // Mock IntersectionObserver as a constructor function
-    global.IntersectionObserver = vi.fn().mockImplementation(function(callback, options) {
+    global.IntersectionObserver = vi.fn().mockImplementation(function (callback, options) {
       this.observe = vi.fn();
       this.disconnect = vi.fn();
       this.unobserve = vi.fn();
@@ -76,23 +71,16 @@ describe('PublicCatalogue Page', () => {
       this.options = options;
       return this;
     });
-    // Use real timers for PublicCatalogue tests to avoid debounce issues
     vi.useRealTimers();
   });
 
   afterEach(() => {
-    // Cleanup rendered components
     cleanup();
-    // Clear React Query cache
     queryClient.clear();
   });
 
   test('renders games after loading', async () => {
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+    renderPage();
 
     await waitFor(() => {
       expect(screen.getByText('Catan')).toBeInTheDocument();
@@ -101,11 +89,7 @@ describe('PublicCatalogue Page', () => {
   });
 
   test('fetches games and category counts on mount', async () => {
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+    renderPage();
 
     await waitFor(() => {
       expect(apiClient.getPublicGames).toHaveBeenCalled();
@@ -114,1159 +98,176 @@ describe('PublicCatalogue Page', () => {
   });
 
   test('scrolls to top on mount', async () => {
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+    renderPage();
 
     expect(window.scrollTo).toHaveBeenCalledWith(0, 0);
+    await waitFor(() => expect(apiClient.getPublicGames).toHaveBeenCalled());
+  });
 
-    // Wait for async effects to complete
+  test('shows the live total from category counts in the header', async () => {
+    renderPage();
+
     await waitFor(() => {
-      expect(apiClient.getPublicGames).toHaveBeenCalled();
+      expect(screen.getByText(/100 games on our shelves/i)).toBeInTheDocument();
     });
   });
 
-  test('displays category counts', async () => {
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+  test('shows the shelf picker with per-category counts', async () => {
+    renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/All \(100\)/i)).toBeInTheDocument();
-      expect(screen.getByText(/Gateway Strategy \(50\)/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Gateway Strategy, 50 games/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Co-op & Adventure, 30 games/i })).toBeInTheDocument();
     });
   });
 
-  test('displays error message when games fail to load', async () => {
+  test('displays error message and retries when games fail to load', async () => {
     apiClient.getPublicGames.mockRejectedValue(new Error('Network error'));
 
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+    renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/Network error/i)).toBeInTheDocument();
-    });
-  });
-
-  test('shows retry button on error', async () => {
-    apiClient.getPublicGames.mockRejectedValue(new Error('Network error'));
-
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
-
-    // First wait for error state to be established
-    await waitFor(() => {
-      expect(screen.getByText(/Network error/i)).toBeInTheDocument();
+      expect(screen.getByText('Network error')).toBeInTheDocument();
     });
 
-    // Then verify retry button is present
-    const retryButton = screen.getByRole('button', { name: /retry/i });
-    expect(retryButton).toBeInTheDocument();
-  });
+    apiClient.getPublicGames.mockResolvedValue(mockGames);
+    await user.click(screen.getByRole('button', { name: /retry/i }));
 
-  test('handles category counts fetch failure gracefully', async () => {
-    apiClient.getPublicCategoryCounts.mockRejectedValue(new Error('Network error'));
-
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
-
-    // Should still render the page
     await waitFor(() => {
       expect(screen.getByText('Catan')).toBeInTheDocument();
     });
   });
 
-  test('displays no results message when no games match', async () => {
-    apiClient.getPublicGames.mockResolvedValue({
-      items: [],
-      total: 0,
-    });
+  test('shows the empty state and clears filters', async () => {
+    apiClient.getPublicGames.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 12 });
 
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+    renderPage();
 
     await waitFor(() => {
-      expect(screen.getByText(/no games found matching your criteria/i)).toBeInTheDocument();
+      expect(screen.getByText(/No games match/i)).toBeInTheDocument();
     });
+
+    await user.click(screen.getByRole('button', { name: /clear all filters/i }));
+    expect(apiClient.getPublicGames).toHaveBeenCalled();
   });
 
-  test('shows clear filters button when no results', async () => {
-    apiClient.getPublicGames.mockResolvedValue({
-      items: [],
-      total: 0,
-    });
+  test('toggling a quick pick sends the quick_pick param and shows a removable chip', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Catan')).toBeInTheDocument());
 
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+    await user.click(screen.getByRole('button', { name: /Team up/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /clear filters/i })).toBeInTheDocument();
+      const lastCall = apiClient.getPublicGames.mock.calls.at(-1)[0];
+      expect(lastCall.quick_pick).toBe('coop');
     });
-  });
 
-  test('sets up intersection observer for infinite scroll', async () => {
-    const mockMultiPage = {
-      items: Array.from({ length: 12 }, (_, i) => ({
-        id: i + 1,
-        title: `Game ${i + 1}`,
-        mana_meeple_category: 'GATEWAY_STRATEGY',
-      })),
-      total: 50,
-      page: 1,
-      page_size: 12,
-    };
-    apiClient.getPublicGames.mockResolvedValue(mockMultiPage);
+    const chip = screen.getByRole('button', { name: /Team up ✕/i });
+    expect(chip).toBeInTheDocument();
 
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+    // Clicking the chip clears the quick pick again. Note: this returns to the
+    // exact queryKey React Query already cached from the initial mount, so no
+    // new getPublicGames call fires — that's correct caching behavior, not a
+    // bug — so assert on the rendered state instead of a new mock call.
+    await user.click(chip);
 
     await waitFor(() => {
-      expect(screen.getByText('Game 1')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Team up ✕/i })).not.toBeInTheDocument();
     });
-
-    // Wait for the load more trigger element to be present
-    await waitFor(() => {
-      const loadMoreText = screen.queryByText(/scroll for more/i);
-      expect(loadMoreText).toBeInTheDocument();
-    });
-
-    // Verify IntersectionObserver was created (wait for useEffect to complete)
-    await waitFor(() => {
-      expect(global.IntersectionObserver).toHaveBeenCalled();
-    }, { timeout: 2000 });
+    const teamUpButton = screen.getByRole('button', { name: /Team up/i });
+    expect(teamUpButton).toHaveAttribute('aria-pressed', 'false');
   });
 
-  test('displays load more indicator when more pages available', async () => {
-    const mockMultiPage = {
-      items: Array.from({ length: 12 }, (_, i) => ({
-        id: i + 1,
-        title: `Game ${i + 1}`,
-        mana_meeple_category: 'GATEWAY_STRATEGY',
-      })),
-      total: 50,
-      page: 1,
-      page_size: 12,
-    };
-    apiClient.getPublicGames.mockResolvedValue(mockMultiPage);
+  test('shelf categories are multi-select and stack (AND) with a quick pick', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Catan')).toBeInTheDocument());
 
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+    await user.click(screen.getByRole('button', { name: /Team up/i }));
+    await user.click(screen.getByRole('button', { name: /Gateway Strategy, 50 games/i }));
+    await user.click(screen.getByRole('button', { name: /Co-op & Adventure, 30 games/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/12 of 50/i)).toBeInTheDocument();
+      const lastCall = apiClient.getPublicGames.mock.calls.at(-1)[0];
+      expect(lastCall.quick_pick).toBe('coop');
+      expect(lastCall.category).toBe('GATEWAY_STRATEGY,COOP_ADVENTURE');
     });
+
+    expect(screen.getByRole('button', { name: /Gateway Strategy ✕/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Co-op & Adventure ✕/i })).toBeInTheDocument();
   });
 
-  test('provides skip navigation link', async () => {
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+  test('opens the filter sheet, applies a player filter, and closes on Show N games', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Catan')).toBeInTheDocument());
 
-    const skipLink = screen.getByText(/skip to main content/i);
-    expect(skipLink).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Narrow it down/i }));
+    const dialog = await screen.findByRole('dialog', { name: /Narrow it down/i });
 
-    // Wait for async effects to complete
-    await waitFor(() => {
-      expect(apiClient.getPublicGames).toHaveBeenCalled();
-    });
-  });
-
-  test('has proper heading structure', async () => {
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
-
-    const mainHeading = screen.getByRole('heading', { level: 1, name: /mana & meeples/i });
-    expect(mainHeading).toBeInTheDocument();
-
-    // Wait for async effects to complete
-    await waitFor(() => {
-      expect(apiClient.getPublicGames).toHaveBeenCalled();
-    });
-  });
-
-  test('filter buttons have aria-labels', async () => {
-    renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+    await user.click(within(dialog).getByRole('button', { name: '6+' }));
 
     await waitFor(() => {
-      const gatewayButton = screen.getByRole('button', {
-        name: /filter by gateway strategy/i,
-      });
-      expect(gatewayButton).toHaveAttribute('aria-label');
+      const lastCall = apiClient.getPublicGames.mock.calls.at(-1)[0];
+      expect(lastCall.players).toBe(6);
     });
+
+    await user.click(within(dialog).getByRole('button', { name: /Show \d+ games?/i }));
+    expect(screen.queryByRole('dialog', { name: /Narrow it down/i })).not.toBeInTheDocument();
+
+    // Filter persists as a chip after closing
+    expect(screen.getByRole('button', { name: /6\+ players ✕/i })).toBeInTheDocument();
   });
 
-  test('respects prefers-reduced-motion', async () => {
-    window.matchMedia = vi.fn().mockReturnValue({
-      matches: true, // Prefers reduced motion
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    });
+  test('duration and rules-crunch buckets map to the expected API params', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Catan')).toBeInTheDocument());
 
-    const { container } = renderWithQuery(
-      <BrowserRouter>
-        <PublicCatalogue />
-      </BrowserRouter>
-    );
+    await user.click(screen.getByRole('button', { name: /Narrow it down/i }));
+    const dialog = await screen.findByRole('dialog', { name: /Narrow it down/i });
 
-    // Elements should not have transition classes
-    const header = container.querySelector('header');
-    expect(header?.className).not.toContain('transition');
-
-    // Wait for async effects to complete
+    await user.click(within(dialog).getByRole('button', { name: 'Under 30 min' }));
     await waitFor(() => {
-      expect(apiClient.getPublicGames).toHaveBeenCalled();
+      const lastCall = apiClient.getPublicGames.mock.calls.at(-1)[0];
+      expect(lastCall.playtime_max_max).toBe(30);
+      expect(lastCall.playtime_max_min).toBeUndefined();
+    });
+
+    await user.click(within(dialog).getByRole('button', { name: 'Easy' }));
+    await waitFor(() => {
+      const lastCall = apiClient.getPublicGames.mock.calls.at(-1)[0];
+      expect(lastCall.complexity_max).toBeCloseTo(1.4999);
+      expect(lastCall.complexity_min).toBeUndefined();
     });
   });
 
-  describe('Search functionality', () => {
-    test('renders search box', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
+  test('Clear all removes every active filter', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Catan')).toBeInTheDocument());
 
-      expect(screen.getByPlaceholderText(/search/i)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /First timers/i }));
+    await user.click(screen.getByRole('button', { name: /Kids & Families, 5 games/i }));
 
-      // Wait for async effects to complete
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
+    expect(await screen.findByRole('button', { name: /Clear all/i })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Clear all/i }));
+
+    // Clearing filters returns to the initial (unfiltered) queryKey, which
+    // React Query already has cached from the mount — so assert on the
+    // rendered state (no chips, quick-pick/shelf toggles reset) rather than
+    // a new getPublicGames call.
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: /Clear all/i })).not.toBeInTheDocument();
     });
+    expect(screen.getByRole('button', { name: /First timers/i })).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.getByRole('button', { name: /Kids & Families, 5 games/i })).toHaveAttribute('aria-pressed', 'false');
   });
 
-  describe('Filter functionality', () => {
-    test('renders category filter buttons', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
+  test('expands a card to show details and links to the game page', async () => {
+    renderPage();
+    await waitFor(() => expect(screen.getByText('Catan')).toBeInTheDocument());
 
-      expect(screen.getByRole('button', { name: /filter by gateway strategy/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /filter by core strategy/i })).toBeInTheDocument();
+    const moreButtons = screen.getAllByRole('button', { name: 'More info' });
+    await user.click(moreButtons[0]);
 
-      // Wait for async effects to complete
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe('Sort functionality', () => {
-    test('renders sort select', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      expect(screen.getAllByRole('combobox').length).toBeGreaterThan(0);
-
-      // Wait for async effects to complete
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe('Loading states', () => {
-    test('shows skeleton cards while loading', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      // Should show skeleton loaders initially
-      const skeletons = document.querySelectorAll('[class*="animate-pulse"]');
-      expect(skeletons.length).toBeGreaterThan(0);
-
-      // Wait for async effects to complete
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
-    });
-
-    test('hides skeleton cards after loading', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      // Skeleton loaders should be gone
-      const skeletons = document.querySelectorAll('[class*="GameCardSkeleton"]');
-      expect(skeletons.length).toBe(0);
-    });
-  });
-
-
-  describe('Help modal', () => {
-    test('opens help modal when help button clicked', async () => {
-      
-      
-
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      const helpButton = screen.getByRole('button', { name: /help/i });
-      userEvent.click(helpButton);
-
-      await waitFor(() => {
-        expect(screen.getByRole('dialog')).toBeInTheDocument();
-      });
-    });
-
-    test('closes help modal when close button clicked', async () => {
-      
-      
-
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      const helpButton = screen.getByRole('button', { name: /help/i });
-      userEvent.click(helpButton);
-
-      const dialog = await screen.findByRole('dialog');
-      expect(dialog).toBeInTheDocument();
-
-      const closeButton = screen.getByRole('button', { name: /close/i });
-      userEvent.click(closeButton);
-
-      await waitFor(() => {
-        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-      });
-    });
-  });
-
-
-  describe('Error handling', () => {
-    test('handles cancellation on unmount', async () => {
-      const { unmount } = renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      // Wait for the debounced API call to be scheduled (component has 150ms debounce)
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      }, { timeout: 300 }); // Wait longer than the 150ms debounce
-
-      // Unmount after API call starts - this tests cancellation handling
-      unmount();
-
-      // Should not cause errors or state updates after unmount
-      // The cancellation logic should prevent state updates
-      expect(apiClient.getPublicGames).toHaveBeenCalled();
-    });
-  });
-
-  describe('Infinite scroll', () => {
-    test('loads more games when scrolling near bottom', async () => {
-      const mockFirstPage = {
-        items: Array.from({ length: 12 }, (_, i) => ({
-          id: i + 1,
-          title: `Game ${i + 1}`,
-          mana_meeple_category: 'GATEWAY_STRATEGY',
-        })),
-        total: 25,
-        page: 1,
-        page_size: 12,
-      };
-
-      const mockSecondPage = {
-        items: Array.from({ length: 12 }, (_, i) => ({
-          id: i + 13,
-          title: `Game ${i + 13}`,
-          mana_meeple_category: 'GATEWAY_STRATEGY',
-        })),
-        total: 25,
-        page: 2,
-        page_size: 12,
-      };
-
-      apiClient.getPublicGames
-        .mockResolvedValueOnce(mockFirstPage)
-        .mockResolvedValueOnce(mockSecondPage);
-
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      // Wait for the games to load first
-      await waitFor(() => {
-        expect(screen.getByText('Game 1')).toBeInTheDocument();
-      });
-
-      // Wait for the load more trigger element to be present (needed for intersection observer)
-      await waitFor(() => {
-        const loadMoreText = screen.queryByText(/scroll for more/i);
-        expect(loadMoreText).toBeInTheDocument();
-      });
-
-      // Give the intersection observer useEffect time to run after the ref is attached
-      await waitFor(() => {
-        expect(global.IntersectionObserver).toHaveBeenCalled();
-      }, { timeout: 2000 });
-    });
-  });
-
-  describe('Filter interactions', () => {
-    test('updates category filter when button clicked', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        const gatewayButton = screen.queryByRole('button', { name: /filter by gateway strategy/i });
-        expect(gatewayButton).toBeInTheDocument();
-      });
-
-      const gatewayButton = screen.getByRole('button', { name: /filter by gateway strategy/i });
-      // Clicking works without errors
-      userEvent.click(gatewayButton);
-    });
-
-    test('clears all filters when clear button clicked', async () => {
-      renderWithQuery(
-        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY&q=test']}>
-          <PublicCatalogue />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
-    });
-
-    test('toggles NZ designer filter', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      const nzButton = screen.queryByRole('button', { name: /nz designer/i });
-      if (nzButton) {
-        userEvent.click(nzButton);
-      }
-    });
-
-    test('updates sort order', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      const sortSelects = screen.getAllByRole('combobox');
-      expect(sortSelects.length).toBeGreaterThan(0);
-      // Can select options without errors
-      if (sortSelects[0]) {
-        await userEvent.selectOptions(sortSelects[0], 'title');
-      }
-    });
-  });
-
-  describe('URL synchronization', () => {
-    test('reads initial state from URL params', async () => {
-      renderWithQuery(
-        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY&sort=title_asc']}>
-          <PublicCatalogue />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
-    });
-
-    test('updates URL when filters change', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      // Changing filters should update URL (via setSearchParams)
-      const gatewayButton = screen.getByRole('button', { name: /filter by gateway strategy/i });
-      userEvent.click(gatewayButton);
-
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe('Accessibility features', () => {
-    test('provides live region for announcements', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        const liveRegion = document.querySelector('[role="status"]');
-        expect(liveRegion).toBeInTheDocument();
-      });
-    });
-
-    test('has proper ARIA labels on interactive elements', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        const buttons = screen.getAllByRole('button');
-        buttons.forEach(button => {
-          const hasLabel = button.hasAttribute('aria-label') || button.textContent.trim().length > 0;
-          expect(hasLabel).toBe(true);
-        });
-      });
-    });
-  });
-
-  describe('Responsive behavior', () => {
-    test('renders on mobile viewport', async () => {
-      global.innerWidth = 375;
-      global.innerHeight = 667;
-
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-    });
-
-    test('renders on desktop viewport', async () => {
-      global.innerWidth = 1920;
-      global.innerHeight = 1080;
-
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('Error recovery', () => {
-    test('recovers from error when retry clicked', async () => {
-      apiClient.getPublicGames
-        .mockRejectedValueOnce(new Error('Network error'))
-        .mockResolvedValueOnce(mockGames);
-
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText(/Network error/i)).toBeInTheDocument();
-      });
-
-      const retryButton = screen.getByRole('button', { name: /retry/i });
-      expect(retryButton).toBeInTheDocument();
-      // Click retry button - in real usage this would trigger a refetch
-      userEvent.click(retryButton);
-    });
-  });
-
-  describe('Player filter', () => {
-    test('updates player filter when select changes', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      const playerSelect = screen.getByLabelText(/players/i);
-      await userEvent.selectOptions(playerSelect, '4');
-
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
-          expect.objectContaining({ players: 4 })
-        );
-      });
-    });
-
-    test('clears player filter when "Any" selected', async () => {
-      renderWithQuery(
-        <MemoryRouter initialEntries={['/?players=4']}>
-          <PublicCatalogue />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      const playerSelect = screen.getByLabelText(/players/i);
-      await userEvent.selectOptions(playerSelect, '');
-
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
-          expect.not.objectContaining({ players: expect.anything() })
-        );
-      });
-    });
-  });
-
-  describe('Complexity filter', () => {
-    test('updates complexity filter when select changes', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      // Use getByRole with name to be specific about which select element
-      const complexitySelect = screen.getAllByRole('combobox').find(
-        select => select.id.includes('complexity')
-      );
-      expect(complexitySelect).toBeDefined();
-      await userEvent.selectOptions(complexitySelect, '2.5-3.5');
-
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
-          expect.objectContaining({
-            complexity_min: 2.5,
-            complexity_max: 3.5
-          })
-        );
-      });
-    });
-
-    test('clears complexity filter when "Any" selected', async () => {
-      renderWithQuery(
-        <MemoryRouter initialEntries={['/?complexity=2.5-3.5']}>
-          <PublicCatalogue />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      const complexitySelect = screen.getAllByRole('combobox').find(
-        select => select.id.includes('complexity')
-      );
-      expect(complexitySelect).toBeDefined();
-      await userEvent.selectOptions(complexitySelect, '');
-
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
-          expect.not.objectContaining({
-            complexity_min: expect.anything(),
-            complexity_max: expect.anything()
-          })
-        );
-      });
-    });
-  });
-
-  describe('Recently added filter', () => {
-    test('toggles recently added filter on button click', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      const recentButton = screen.getByRole('button', { name: /recent/i });
-      await userEvent.click(recentButton);
-
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
-          expect.objectContaining({ recently_added: 30 })
-        );
-      });
-    });
-
-    test('removes recently added filter when toggled off', async () => {
-      renderWithQuery(
-        <MemoryRouter initialEntries={['/?recently_added=30']}>
-          <PublicCatalogue />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      const recentButton = screen.getByRole('button', { name: /recent/i });
-      await userEvent.click(recentButton);
-
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalledWith(
-          expect.not.objectContaining({ recently_added: expect.anything() })
-        );
-      });
-    });
-  });
-
-  describe('Clear all filters', () => {
-    test('clears all active filters when clear button clicked', async () => {
-      renderWithQuery(
-        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
-          <PublicCatalogue />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      // Clear button should exist when category filter is active
-      const clearButtons = screen.queryAllByRole('button', { name: /clear/i });
-      if (clearButtons.length > 0) {
-        await userEvent.click(clearButtons[0]);
-
-        await waitFor(() => {
-          expect(apiClient.getPublicGames).toHaveBeenCalled();
-        });
-      }
-    });
-
-    test('resets expanded cards when filters cleared', async () => {
-      renderWithQuery(
-        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
-          <PublicCatalogue />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      // Look for any clear button
-      const clearButtons = screen.queryAllByRole('button', { name: /clear/i });
-      if (clearButtons.length > 0) {
-        await userEvent.click(clearButtons[0]);
-
-        // Should not throw errors
-        await waitFor(() => {
-          expect(apiClient.getPublicGames).toHaveBeenCalled();
-        });
-      }
-    });
-  });
-
-  describe('Active filters count', () => {
-    test('calculates correct count with multiple filters', async () => {
-      renderWithQuery(
-        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
-          <PublicCatalogue />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      // When category filter is active, clear button should appear
-      const clearButtons = screen.queryAllByRole('button', { name: /clear/i });
-      expect(clearButtons.length).toBeGreaterThanOrEqual(0);
-    });
-
-    test('shows no clear button when no filters active', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      // No clear filters button should be visible
-      const clearButtons = screen.queryAllByRole('button', { name: /clear/i });
-      // May be 0 or may not exist depending on implementation
-      expect(clearButtons.length).toBeGreaterThanOrEqual(0);
-    });
-  });
-
-  describe('Results summary', () => {
-    test('shows search results count when searching', async () => {
-      apiClient.getPublicGames.mockResolvedValue({
-        items: [mockGames.items[0]],
-        total: 1,
-        page: 1,
-        page_size: 12,
-      });
-
-      renderWithQuery(
-        <MemoryRouter initialEntries={['/?q=Catan']}>
-          <PublicCatalogue />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        // Look for the search summary text (may be in multiple elements)
-        const summary = screen.queryByText(/found for/i);
-        expect(summary).toBeInTheDocument();
-      });
-    });
-
-    test('uses plural form for multiple results', async () => {
-      renderWithQuery(
-        <MemoryRouter initialEntries={['/?q=game']}>
-          <PublicCatalogue />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        // Look for games plural in the search summary
-        // Summary should exist when searching
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
-    });
-  });
-
-  describe('Scroll to top', () => {
-    test('scroll to top button becomes visible after scrolling', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      // Initially not visible (scrollY = 0)
-      expect(screen.queryByRole('button', { name: /scroll.*top/i })).not.toBeInTheDocument();
-
-      // Simulate scrolling down
-      Object.defineProperty(window, 'scrollY', { value: 500, writable: true });
-      window.dispatchEvent(new Event('scroll'));
-
-      // Button should appear (note: may need to wait for state update)
-      await waitFor(() => {
-        // Button visibility depends on scroll handling
-        screen.queryByRole('button', { name: /scroll.*top/i });
-      });
-    });
-  });
-
-  describe('Load more functionality', () => {
-    test('loads next page when more items available', async () => {
-      const mockFirstPage = {
-        items: Array.from({ length: 12 }, (_, i) => ({
-          id: i + 1,
-          title: `Game ${i + 1}`,
-          mana_meeple_category: 'GATEWAY_STRATEGY',
-        })),
-        total: 25,
-        page: 1,
-        page_size: 12,
-      };
-
-      apiClient.getPublicGames.mockResolvedValueOnce(mockFirstPage);
-
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        // Wait for games to load
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
-
-      // Verify pagination indicator appears
-      const paginationText = screen.queryByText(/of 25/i);
-      if (paginationText) {
-        expect(paginationText).toBeInTheDocument();
-      }
-    });
-
-    test('prevents duplicate items from being added', async () => {
-      const mockFirstPage = {
-        items: [
-          { id: 1, title: 'Test Game 1', mana_meeple_category: 'GATEWAY_STRATEGY' },
-        ],
-        total: 2,
-        page: 1,
-        page_size: 1,
-      };
-
-      apiClient.getPublicGames.mockResolvedValueOnce(mockFirstPage);
-
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
-
-      // Component should handle the data gracefully
-    });
-
-    test('does not show pagination when all items are loaded', async () => {
-      const mockSinglePage = {
-        items: [{ id: 1, title: 'Single Game', mana_meeple_category: 'GATEWAY_STRATEGY' }],
-        total: 1,
-        page: 1,
-        page_size: 12,
-      };
-
-      apiClient.getPublicGames.mockResolvedValue(mockSinglePage);
-
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      });
-
-      // Should not show "X of Y" pagination when all items fit on one page
-      const paginationText = screen.queryByText(/of 1/i);
-      expect(paginationText).not.toBeInTheDocument();
-    });
-  });
-
-  describe('Screen reader announcements', () => {
-    test('announces category filter changes', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      // Wait for component to be mounted and debounced API call to complete
-      // Component has 150ms debounce + async API call
-      await waitFor(() => {
-        expect(apiClient.getPublicGames).toHaveBeenCalled();
-      }, { timeout: 1000 });
-
-      // Wait for the games to actually render in the DOM
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      }, { timeout: 2000 });
-
-      const gatewayButton = screen.getByRole('button', { name: /filter by gateway strategy/i });
-      await userEvent.click(gatewayButton);
-
-      // Live region should announce the change
-      const liveRegion = document.querySelector('[role="status"]');
-      expect(liveRegion).toBeInTheDocument();
-    });
-
-    test('announces search queries', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      const searchBox = screen.getByPlaceholderText(/search/i);
-      await userEvent.type(searchBox, 'test');
-
-      // Live region should announce the search
-      await waitFor(() => {
-        const liveRegion = document.querySelector('[role="status"]');
-        expect(liveRegion).toBeInTheDocument();
-      });
-    });
-
-    test('announces when filters are cleared', async () => {
-      renderWithQuery(
-        <MemoryRouter initialEntries={['/?category=GATEWAY_STRATEGY']}>
-          <PublicCatalogue />
-        </MemoryRouter>
-      );
-
-      await waitFor(() => {
-        const clearButton = screen.getByRole('button', { name: /clear.*filter/i });
-        expect(clearButton).toBeInTheDocument();
-      });
-
-      const clearButton = screen.getByRole('button', { name: /clear.*filter/i });
-      await userEvent.click(clearButton);
-
-      // Live region should announce filters cleared
-      const liveRegion = document.querySelector('[role="status"]');
-      expect(liveRegion).toBeInTheDocument();
-    });
-  });
-
-  describe('Card expansion', () => {
-    test('toggles card expansion when card is clicked', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      // Card expansion is handled by GameCardPublic component
-      // This test verifies the state management in PublicCatalogue
-      const cards = screen.getAllByRole('article');
-      expect(cards.length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('Mobile filter panel', () => {
-    test('toggles filter panel when filter button clicked', async () => {
-      // Simulate mobile viewport
-      global.innerWidth = 375;
-
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      const filterButtons = screen.getAllByRole('button', { name: /filter/i });
-      if (filterButtons.length > 0) {
-        // Mobile filter button should toggle the expanded panel
-        const mobileFilterButton = filterButtons.find(btn =>
-          btn.textContent.includes('Filters')
-        );
-
-        if (mobileFilterButton) {
-          const isExpanded = mobileFilterButton.getAttribute('aria-expanded') === 'true';
-          await userEvent.click(mobileFilterButton);
-
-          await waitFor(() => {
-            expect(mobileFilterButton.getAttribute('aria-expanded')).toBe(
-              isExpanded ? 'false' : 'true'
-            );
-          });
-        }
-      }
-    });
-  });
-
-  describe('Sort functionality', () => {
-    test('updates sort order and announces to screen readers', async () => {
-      renderWithQuery(
-        <BrowserRouter>
-          <PublicCatalogue />
-        </BrowserRouter>
-      );
-
-      await waitFor(() => {
-        expect(screen.getByText('Catan')).toBeInTheDocument();
-      });
-
-      const sortSelects = screen.getAllByRole('combobox');
-      if (sortSelects.length > 0) {
-        await userEvent.selectOptions(sortSelects[0], 'title');
-
-        await waitFor(() => {
-          expect(apiClient.getPublicGames).toHaveBeenCalledWith(
-            expect.objectContaining({ sort: 'title_asc' })
-          );
-        });
-      }
-    });
+    expect(await screen.findByRole('link', { name: /View full details/i })).toHaveAttribute('href', expect.stringMatching(/^\/game\/\d+$/));
   });
 });

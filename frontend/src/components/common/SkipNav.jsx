@@ -12,10 +12,7 @@ export default function SkipNav() {
       <a href="#main-content" className="skip-link">
         Skip to main content
       </a>
-      <a href="#search-box" className="skip-link">
-        Skip to search
-      </a>
-      <a href="#category-filters" className="skip-link">
+      <a href="#shelf-picker" className="skip-link">
         Skip to filters
       </a>
     </div>
