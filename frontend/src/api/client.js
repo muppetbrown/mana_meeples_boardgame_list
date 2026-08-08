@@ -207,6 +207,18 @@ export async function deleteGame(gameId) {
   return r.data;
 }
 
+/**
+ * Get every game matching a quick-pick's auto-selection logic, for the
+ * staff Quick Picks curation panel. Ignores exclusions so the full
+ * algorithmic candidate list is visible.
+ * @param {string} key - Quick-pick key: 'first' | 'kids' | 'group' | 'coop'
+ * @returns {Promise<Array>} Array of games with their current excluded_quick_picks
+ */
+export async function getQuickPickCandidates(key) {
+  const r = await api.get(`/admin/quick-picks/${key}/candidates`);
+  return r.data;
+}
+
 // ============================================================================
 // ADMIN API METHODS - Bulk Operations
 // ============================================================================

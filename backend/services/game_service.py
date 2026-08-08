@@ -214,26 +214,16 @@ class GameService:
                 )
             )
 
-        if quick_pick == "first":
-            id_query = id_query.where(
-                and_(Game.complexity.isnot(None), Game.complexity < 2.2)
-            )
-        elif quick_pick == "kids":
-            id_query = id_query.where(
-                or_(
-                    Game.mana_meeple_category == "KIDS_FAMILIES",
-                    and_(Game.complexity.isnot(None), Game.complexity < 1.5),
-                )
-            )
-        elif quick_pick == "group":
-            id_query = id_query.where(
-                and_(Game.players_max.isnot(None), Game.players_max >= 5)
-            )
-        elif quick_pick == "coop":
+        quick_pick_condition = self._quick_pick_condition(quick_pick)
+        if quick_pick_condition is not None:
+            id_query = id_query.where(quick_pick_condition)
+            # Respect admin-curated exclusions for this specific quick pick
+            # (the JSON array is cast to text and pattern-matched so this
+            # works identically on SQLite and Postgres/JSONB).
             id_query = id_query.where(
                 or_(
-                    Game.is_cooperative.is_(True),
-                    Game.mana_meeple_category == "COOP_ADVENTURE",
+                    Game.excluded_quick_picks.is_(None),
+                    ~cast(Game.excluded_quick_picks, String).ilike(f'%"{quick_pick}"%'),
                 )
             )
 
@@ -297,6 +287,71 @@ class GameService:
             total = self.db.execute(count_query).scalar() or 0
 
         return games, total
+
+    # Valid quick-pick keys for the mobile library's "Who's playing today?" row
+    QUICK_PICK_KEYS = ("first", "kids", "group", "coop")
+
+    def _quick_pick_condition(self, quick_pick: Optional[str]):
+        """
+        Build the SQLAlchemy WHERE condition for a quick-pick's auto-selection
+        logic (no exclusions applied). Shared by get_filtered_games (public
+        browsing, exclusions applied separately) and get_quick_pick_candidates
+        (admin curation view, deliberately ignores exclusions so staff can see
+        the full auto-generated list).
+
+        Returns None for an unrecognized/empty key.
+        """
+        if quick_pick == "first":
+            return and_(Game.complexity.isnot(None), Game.complexity < 1.5)
+        elif quick_pick == "kids":
+            return or_(
+                Game.mana_meeple_category == "KIDS_FAMILIES",
+                and_(
+                    Game.complexity.isnot(None),
+                    Game.complexity < 1.5,
+                    Game.min_age.isnot(None),
+                    Game.min_age <= 10,
+                ),
+            )
+        elif quick_pick == "group":
+            return and_(Game.players_max.isnot(None), Game.players_max >= 6)
+        elif quick_pick == "coop":
+            return or_(
+                Game.is_cooperative.is_(True),
+                Game.mana_meeple_category == "COOP_ADVENTURE",
+            )
+        return None
+
+    def get_quick_pick_candidates(self, quick_pick: str) -> List[Game]:
+        """
+        Get every owned game matching a quick-pick's auto-selection criteria,
+        ignoring admin-curated exclusions. Used by the staff "Quick Picks"
+        panel so admins can review exactly what the algorithm would surface
+        and toggle individual games out (e.g. mature content BGG can't flag).
+
+        Args:
+            quick_pick: One of QUICK_PICK_KEYS
+
+        Returns:
+            List of Game objects, title-sorted. Empty list for an unknown key.
+        """
+        condition = self._quick_pick_condition(quick_pick)
+        if condition is None:
+            return []
+
+        stmt = (
+            select(Game)
+            .where(or_(Game.status == "OWNED", Game.status.is_(None)))
+            .where(
+                ~and_(
+                    Game.is_expansion == True,
+                    Game.expansion_type == "requires_base",
+                )
+            )
+            .where(condition)
+            .order_by(Game.title.asc())
+        )
+        return list(self.db.execute(stmt).scalars().all())
 
     def _apply_sorting(self, query, sort: str):
         """
@@ -471,6 +526,17 @@ class GameService:
         if not game:
             raise GameNotFoundError(f"Game {game_id} not found")
 
+        # Validate quick-pick exclusions if being updated
+        if "excluded_quick_picks" in game_data:
+            excluded = game_data["excluded_quick_picks"]
+            if excluded:
+                invalid_keys = set(excluded) - set(self.QUICK_PICK_KEYS)
+                if invalid_keys:
+                    raise ValidationError(
+                        f"Invalid quick-pick key(s): {', '.join(sorted(invalid_keys))}. "
+                        f"Must be one of: {', '.join(self.QUICK_PICK_KEYS)}"
+                    )
+
         # Validate category if being updated
         if "mana_meeple_category" in game_data:
             mana_category = game_data["mana_meeple_category"]
@@ -508,6 +574,7 @@ class GameService:
             "playtime_max",
             "min_age",
             "nz_designer",
+            "excluded_quick_picks",
             # Ownership fields
             "status",
             "date_added",

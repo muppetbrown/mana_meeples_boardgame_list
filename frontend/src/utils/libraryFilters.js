@@ -7,7 +7,7 @@
 export const QUICK_PICKS = [
   { key: "first", icon: "🎲", label: "First timers", sub: "Learn in minutes, any shelf" },
   { key: "kids", icon: "🪸", label: "With the kids", sub: "Simple rules, family fun" },
-  { key: "group", icon: "🎉", label: "Big group", sub: "Plays well with 5+" },
+  { key: "group", icon: "🎉", label: "Big group", sub: "Plays well with 6+" },
   { key: "coop", icon: "🤝", label: "Team up", sub: "Win (or lose) together" },
 ];
 

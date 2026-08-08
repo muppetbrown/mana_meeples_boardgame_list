@@ -19,6 +19,7 @@ import { DashboardTab } from "../components/staff/tabs/DashboardTab";
 import { AddGamesTab } from "../components/staff/tabs/AddGamesTab";
 import { ManageLibraryTab } from "../components/staff/tabs/ManageLibraryTab";
 import { CategoriesTab } from "../components/staff/tabs/CategoriesTab";
+import { QuickPicksTab } from "../components/staff/tabs/QuickPicksTab";
 import { AdvancedToolsTab } from "../components/staff/tabs/AdvancedToolsTab";
 import { BuyListTab } from "../components/staff/tabs/BuyListTab";
 import { SleeveInventoryTab } from "../components/staff/tabs/SleeveInventoryTab";
@@ -53,6 +54,7 @@ function StaffViewContent() {
     { id: "add-games", label: "Add Games", icon: "📥" },
     { id: "manage-library", label: "Manage Library", icon: "📚" },
     { id: "categories", label: "Categories", icon: "🏷️" },
+    { id: "quick-picks", label: "Quick Picks", icon: "🎯" },
     { id: "buy-list", label: "Buy List", icon: "🛒" },
     { id: "sleeve-inventory", label: "Sleeve Inventory", icon: "🃏" },
     { id: "advanced", label: "Advanced Tools", icon: "⚙️" },
@@ -102,6 +104,8 @@ function StaffViewContent() {
         return <ManageLibraryTab />;
       case "categories":
         return <CategoriesTab />;
+      case "quick-picks":
+        return <QuickPicksTab />;
       case "buy-list":
         return <BuyListTab />;
       case "sleeve-inventory":

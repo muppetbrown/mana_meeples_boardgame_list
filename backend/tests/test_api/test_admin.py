@@ -228,6 +228,59 @@ class TestAdminGameCRUDEdgeCases:
         assert response.status_code in [400, 422, 500]
 
 
+class TestQuickPickCandidatesEndpoint:
+    """Tests for the Quick Picks curation panel's candidates endpoint"""
+
+    def test_requires_auth(self, client):
+        response = client.get("/api/admin/quick-picks/first/candidates")
+        assert response.status_code == 401
+
+    def test_rejects_unknown_key(self, client, admin_headers):
+        response = client.get("/api/admin/quick-picks/not_a_real_key/candidates", headers=admin_headers)
+        assert response.status_code == 400
+
+    def test_returns_matching_games_with_exclusion_state(self, client, db_session, admin_headers):
+        included = Game(title="Easy Game", complexity=1.0, status="OWNED")
+        excluded = Game(title="Excluded Game", complexity=1.0, excluded_quick_picks=["first"], status="OWNED")
+        db_session.add_all([included, excluded])
+        db_session.commit()
+
+        response = client.get("/api/admin/quick-picks/first/candidates", headers=admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        by_title = {g["title"]: g for g in data}
+
+        assert set(by_title.keys()) == {"Easy Game", "Excluded Game"}
+        assert by_title["Easy Game"]["excluded_quick_picks"] == []
+        assert by_title["Excluded Game"]["excluded_quick_picks"] == ["first"]
+
+    def test_toggle_exclusion_via_update_game(self, client, db_session, admin_headers, sample_game_data):
+        game = Game(**sample_game_data)
+        db_session.add(game)
+        db_session.commit()
+        game_id = game.id
+
+        response = client.post(
+            f"/api/admin/games/{game_id}/update",
+            json={"excluded_quick_picks": ["first"]},
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["excluded_quick_picks"] == ["first"]
+
+    def test_update_game_rejects_invalid_quick_pick_key(self, client, db_session, admin_headers, sample_game_data):
+        game = Game(**sample_game_data)
+        db_session.add(game)
+        db_session.commit()
+
+        response = client.post(
+            f"/api/admin/games/{game.id}/update",
+            json={"excluded_quick_picks": ["not_a_real_key"]},
+            headers=admin_headers,
+        )
+        assert response.status_code in (400, 422, 500)
+
+
 class TestAdminBGGImport:
     """Tests for BoardGameGeek import functionality"""
 

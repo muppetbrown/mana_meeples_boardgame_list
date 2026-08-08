@@ -861,3 +861,130 @@ class TestGameService:
         results = service.get_games_by_designer("Nonexistent Designer")
 
         assert len(results) == 0
+
+    # --- Quick-pick tests (mobile library "Who's playing today?" row) ---
+
+    def test_quick_pick_first_timers_uses_1_5_threshold(self, db_session):
+        """First timers should only include complexity < 1.5, not 1.5+"""
+        easy = Game(title="Easy Game", complexity=1.2, status="OWNED")
+        borderline = Game(title="Borderline Game", complexity=1.5, status="OWNED")
+        heavy = Game(title="Heavy Game", complexity=3.0, status="OWNED")
+        db_session.add_all([easy, borderline, heavy])
+        db_session.commit()
+
+        service = GameService(db_session)
+        results, total = service.get_filtered_games(quick_pick="first")
+
+        assert total == 1
+        assert results[0].title == "Easy Game"
+
+    def test_quick_pick_kids_requires_both_complexity_and_min_age(self, db_session):
+        """
+        With the kids should exclude simple-but-adult games (e.g. a low
+        complexity party game with a high min_age), matching only the
+        KIDS_FAMILIES category or games that are both simple and low min_age.
+        """
+        family_category = Game(title="Family Game", mana_meeple_category="KIDS_FAMILIES", complexity=2.0, min_age=30, status="OWNED")
+        simple_and_young = Game(title="Simple Kid Game", complexity=1.1, min_age=6, status="OWNED")
+        simple_but_adult = Game(title="Simple Adult Party Game", complexity=1.1, min_age=17, status="OWNED")
+        db_session.add_all([family_category, simple_and_young, simple_but_adult])
+        db_session.commit()
+
+        service = GameService(db_session)
+        results, total = service.get_filtered_games(quick_pick="kids")
+        titles = {g.title for g in results}
+
+        assert total == 2
+        assert titles == {"Family Game", "Simple Kid Game"}
+
+    def test_quick_pick_group_uses_6_plus_threshold(self, db_session):
+        """Big group should only include players_max >= 6, not 5"""
+        five = Game(title="Five Max", players_max=5, status="OWNED")
+        six = Game(title="Six Max", players_max=6, status="OWNED")
+        db_session.add_all([five, six])
+        db_session.commit()
+
+        service = GameService(db_session)
+        results, total = service.get_filtered_games(quick_pick="group")
+
+        assert total == 1
+        assert results[0].title == "Six Max"
+
+    def test_quick_pick_coop_matches_flag_or_category(self, db_session):
+        """Team up should match is_cooperative OR COOP_ADVENTURE category"""
+        flagged = Game(title="Flagged Coop", is_cooperative=True, status="OWNED")
+        categorized = Game(title="Categorized Coop", mana_meeple_category="COOP_ADVENTURE", status="OWNED")
+        neither = Game(title="Competitive Game", is_cooperative=False, status="OWNED")
+        db_session.add_all([flagged, categorized, neither])
+        db_session.commit()
+
+        service = GameService(db_session)
+        results, total = service.get_filtered_games(quick_pick="coop")
+        titles = {g.title for g in results}
+
+        assert total == 2
+        assert titles == {"Flagged Coop", "Categorized Coop"}
+
+    def test_quick_pick_respects_admin_exclusion(self, db_session):
+        """A game matching the auto-logic should be hidden once excluded for that key"""
+        excluded = Game(title="Excluded Game", complexity=1.0, excluded_quick_picks=["first"], status="OWNED")
+        included = Game(title="Included Game", complexity=1.0, status="OWNED")
+        db_session.add_all([excluded, included])
+        db_session.commit()
+
+        service = GameService(db_session)
+        results, total = service.get_filtered_games(quick_pick="first")
+
+        assert total == 1
+        assert results[0].title == "Included Game"
+
+    def test_quick_pick_exclusion_is_scoped_to_its_own_key(self, db_session):
+        """Excluding a game from 'kids' shouldn't hide it from 'first'"""
+        game = Game(title="Easy Game", complexity=1.0, excluded_quick_picks=["kids"], status="OWNED")
+        db_session.add(game)
+        db_session.commit()
+
+        service = GameService(db_session)
+        results, total = service.get_filtered_games(quick_pick="first")
+
+        assert total == 1
+        assert results[0].title == "Easy Game"
+
+    def test_get_quick_pick_candidates_ignores_exclusions(self, db_session):
+        """The admin candidates list should show excluded games too, for review"""
+        excluded = Game(title="Excluded Game", complexity=1.0, excluded_quick_picks=["first"], status="OWNED")
+        included = Game(title="Included Game", complexity=1.0, status="OWNED")
+        db_session.add_all([excluded, included])
+        db_session.commit()
+
+        service = GameService(db_session)
+        candidates = service.get_quick_pick_candidates("first")
+        titles = {g.title for g in candidates}
+
+        assert titles == {"Excluded Game", "Included Game"}
+
+    def test_get_quick_pick_candidates_invalid_key_returns_empty(self, db_session):
+        """An unrecognized quick-pick key returns an empty list, not an error"""
+        service = GameService(db_session)
+        assert service.get_quick_pick_candidates("not_a_real_key") == []
+
+    def test_update_game_validates_excluded_quick_picks(self, db_session):
+        """update_game should reject unknown quick-pick keys"""
+        game = Game(title="Test Game", status="OWNED")
+        db_session.add(game)
+        db_session.commit()
+
+        service = GameService(db_session)
+        with pytest.raises(ValidationError):
+            service.update_game(game.id, {"excluded_quick_picks": ["not_a_real_key"]})
+
+    def test_update_game_sets_excluded_quick_picks(self, db_session):
+        """update_game should persist a valid excluded_quick_picks list"""
+        game = Game(title="Test Game", status="OWNED")
+        db_session.add(game)
+        db_session.commit()
+
+        service = GameService(db_session)
+        updated = service.update_game(game.id, {"excluded_quick_picks": ["first", "kids"]})
+
+        assert updated.excluded_quick_picks == ["first", "kids"]

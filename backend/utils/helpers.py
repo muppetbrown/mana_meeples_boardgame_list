@@ -381,6 +381,7 @@ def game_to_dict(request: Request, game: Game) -> Dict[str, Any]:
         "bgg_rank": getattr(game, "bgg_rank", None),
         "min_age": getattr(game, "min_age", None),
         "is_cooperative": getattr(game, "is_cooperative", None),
+        "excluded_quick_picks": getattr(game, "excluded_quick_picks", None) or [],
         "users_rated": getattr(game, "users_rated", None),
         "bgg_id": getattr(game, "bgg_id", None),
         "created_at": (

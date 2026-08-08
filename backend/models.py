@@ -62,6 +62,11 @@ class Game(Base):
     min_age = Column(Integer, nullable=True)
     is_cooperative = Column(Boolean, nullable=True)
     nz_designer = Column(Boolean, nullable=True, default=False, index=True)
+    # Admin-curated exclusions from the mobile library's quick-pick shortlists
+    # (e.g. ["first", "kids"]). Auto-selection logic still runs; this only
+    # removes specific games staff have flagged as a bad fit (e.g. mature
+    # content the BGG data can't signal). Keys: first, kids, group, coop.
+    excluded_quick_picks = Column(JSON().with_variant(JSONB(), "postgresql"), nullable=True)
     game_type = Column(String(255), nullable=True, index=True)
     # Ownership status: OWNED (in physical collection), BUY_LIST (want to buy), WISHLIST (maybe buy)
     status = Column(String(20), nullable=True, default="OWNED", index=True)

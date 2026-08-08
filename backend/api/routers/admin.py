@@ -296,6 +296,30 @@ async def get_admin_game(
     return game_to_dict(request, game)
 
 
+@router.get("/quick-picks/{key}/candidates")
+async def get_quick_pick_candidates(
+    request: Request,
+    key: str = Path(..., description="Quick-pick key: first, kids, group, or coop"),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_admin_auth),
+):
+    """
+    List every game matching a quick-pick's auto-selection logic, for the
+    staff Quick Picks review panel. Ignores admin-curated exclusions so the
+    full algorithmic list is visible for curation; each game's current
+    excluded_quick_picks array is included so the UI can show its state.
+    """
+    game_service = GameService(db)
+    if key not in game_service.QUICK_PICK_KEYS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid quick-pick key. Must be one of: {', '.join(game_service.QUICK_PICK_KEYS)}",
+        )
+
+    games = game_service.get_quick_pick_candidates(key)
+    return [game_to_dict(request, game) for game in games]
+
+
 @router.put("/games/{game_id}")
 async def update_admin_game(
     game_data: Dict[str, Any],
