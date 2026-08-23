@@ -156,18 +156,16 @@ class GameService:
             expansion_subquery = (
                 select(Expansion.c.base_game_id)
                 .where(Expansion.c.base_game_id.isnot(None))
-                .where(
-                    or_(
-                        Expansion.c.modifies_players_min.is_(None),
-                        Expansion.c.modifies_players_min <= players,
-                    )
-                )
-                .where(
-                    or_(
-                        Expansion.c.modifies_players_max.is_(None),
-                        Expansion.c.modifies_players_max >= players,
-                    )
-                )
+                # Only expansions that actually declare a modified player
+                # range count here — an expansion with both fields NULL
+                # doesn't affect player count at all, and treating NULL as
+                # "any count works" wrongly matched every base game that had
+                # *any* expansion (e.g. a content-only expansion) regardless
+                # of its own player count.
+                .where(Expansion.c.modifies_players_min.isnot(None))
+                .where(Expansion.c.modifies_players_max.isnot(None))
+                .where(Expansion.c.modifies_players_min <= players)
+                .where(Expansion.c.modifies_players_max >= players)
             )
             id_query = id_query.where(
                 or_(

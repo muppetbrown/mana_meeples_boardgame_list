@@ -157,6 +157,57 @@ class TestSearchAndFiltering:
         # Both games support 3 players
         assert total == 2
 
+    def test_player_count_filtering_ignores_expansions_with_no_player_effect(self, db_session):
+        """
+        A base game whose own player range doesn't fit the filter shouldn't
+        match just because it has *some* expansion, if that expansion doesn't
+        actually declare a modified player range (regression test: this used
+        to match on the expansion's modifies_players_min/max being NULL,
+        which was wrongly treated as "compatible with any player count").
+        """
+        base = Game(title="Four Max", bgg_id=7101, status="OWNED", players_min=2, players_max=4)
+        db_session.add(base)
+        db_session.flush()
+        content_expansion = Game(
+            title="Content Expansion",
+            bgg_id=7102,
+            status="OWNED",
+            is_expansion=True,
+            base_game_id=base.id,
+            modifies_players_min=None,
+            modifies_players_max=None,
+        )
+        db_session.add(content_expansion)
+        db_session.commit()
+
+        service = GameService(db_session)
+        games, total = service.get_filtered_games(players=6)
+
+        assert total == 0
+
+    def test_player_count_filtering_respects_real_expansion_range(self, db_session):
+        """A base game should match via an expansion that genuinely extends player count"""
+        base = Game(title="Four Max With Extension", bgg_id=7103, status="OWNED", players_min=2, players_max=4)
+        db_session.add(base)
+        db_session.flush()
+        player_expansion = Game(
+            title="5-6 Player Extension",
+            bgg_id=7104,
+            status="OWNED",
+            is_expansion=True,
+            base_game_id=base.id,
+            modifies_players_min=5,
+            modifies_players_max=6,
+        )
+        db_session.add(player_expansion)
+        db_session.commit()
+
+        service = GameService(db_session)
+        games, total = service.get_filtered_games(players=6)
+
+        assert total == 1
+        assert games[0].title == "Four Max With Extension"
+
     def test_complexity_range_filtering(self, db_session):
         """Should filter by complexity range"""
         light = Game(title="Light", bgg_id=8001, status="OWNED", complexity=1.5)
