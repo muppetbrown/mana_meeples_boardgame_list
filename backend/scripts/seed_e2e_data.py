@@ -22,6 +22,9 @@ def seed_test_data():
         print("ERROR: DATABASE_URL environment variable not set")
         sys.exit(1)
 
+    from config import normalize_database_url
+
+    database_url = normalize_database_url(database_url)
     print(f"Connecting to database: {database_url}")
 
     # Create engine and session
