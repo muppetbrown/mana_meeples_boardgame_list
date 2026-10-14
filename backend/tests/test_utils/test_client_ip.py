@@ -4,6 +4,7 @@ from unittest.mock import Mock
 import pytest
 
 import config
+import utils.client_ip as client_ip_module
 from utils.client_ip import get_client_ip
 
 
@@ -53,3 +54,20 @@ def test_blank_header_falls_back_to_socket_address():
 
 def test_unknown_when_nothing_available():
     assert get_client_ip(_request(None, host=None)) == "unknown"
+
+
+def test_chain_length_is_logged_once_without_addresses(monkeypatch, caplog):
+    monkeypatch.setattr(client_ip_module, "_logged_chain_length", False)
+    with caplog.at_level("INFO", logger="utils.client_ip"):
+        get_client_ip(_request("1.1.1.1, 203.0.113.7"))
+        get_client_ip(_request("1.1.1.1, 203.0.113.7"))
+    messages = [r.getMessage() for r in caplog.records if "X-Forwarded-For has" in r.getMessage()]
+    assert messages == ["X-Forwarded-For has 2 entries; TRUSTED_PROXY_COUNT=1"]
+    assert "203.0.113.7" not in messages[0]
+
+
+def test_chain_length_log_singular(monkeypatch, caplog):
+    monkeypatch.setattr(client_ip_module, "_logged_chain_length", False)
+    with caplog.at_level("INFO", logger="utils.client_ip"):
+        get_client_ip(_request("203.0.113.7"))
+    assert "X-Forwarded-For has 1 entry;" in caplog.text
