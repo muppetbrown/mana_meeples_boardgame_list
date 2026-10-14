@@ -9,6 +9,7 @@ import logging
 import httpx
 import traceback
 from typing import Optional
+from urllib.parse import urljoin, urlparse
 from sqlalchemy.orm import Session
 from tenacity import (
     retry,
@@ -21,12 +22,72 @@ from tenacity import (
 import sentry_sdk
 
 from models import Game, BackgroundTaskFailure
-from config import HTTP_TIMEOUT
+from config import API_BASE, HTTP_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
 # Thumbnail storage directory (ephemeral on Render free tier)
 THUMBS_DIR = os.getenv("THUMBS_DIR", "/tmp/thumbs")
+
+# Hosts the image proxy is allowed to fetch from (exact match on hostname).
+BGG_IMAGE_HOSTS = ("cf.geekdo-images.com", "cf.geekdo-static.com")
+
+# Maximum redirects followed (each hop is re-validated)
+MAX_PROXY_REDIRECTS = 3
+
+
+class UntrustedImageURLError(ValueError):
+    """Raised when an image URL is not on the proxy allowlist."""
+
+
+def build_trusted_image_url(url: str) -> str:
+    """
+    Validate a user-supplied image URL and rebuild it from a trusted origin.
+
+    Only the path and query of the caller's URL are kept. The scheme, host and
+    port come from constants (the BGG image hosts) or from API_BASE (our own
+    /thumbs/ files), so user input can never choose where the request is sent.
+
+    Raises:
+        UntrustedImageURLError: If the URL is malformed or not allowlisted.
+    """
+    if not isinstance(url, str) or any(
+        ch.isspace() or ord(ch) < 32 or ch == "\\" for ch in url
+    ):
+        raise UntrustedImageURLError("Malformed image URL")
+
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https") or parsed.username or parsed.password:
+        raise UntrustedImageURLError("Malformed image URL")
+
+    try:
+        port = parsed.port
+    except ValueError:
+        raise UntrustedImageURLError("Malformed image URL")
+
+    host = (parsed.hostname or "").lower()
+    origin = None
+
+    for trusted_host in BGG_IMAGE_HOSTS:
+        if host == trusted_host and port in (None, 80, 443):
+            origin = f"https://{trusted_host}"
+            break
+
+    if origin is None:
+        api = urlparse(API_BASE)
+        if (
+            api.hostname
+            and host == api.hostname.lower()
+            and parsed.scheme == api.scheme
+            and port == api.port
+        ):
+            origin = API_BASE.rstrip("/")
+
+    if origin is None:
+        raise UntrustedImageURLError("Image host is not allowed")
+
+    path = parsed.path or "/"
+    return origin + path + (f"?{parsed.query}" if parsed.query else "")
 
 
 class ImageService:
@@ -249,6 +310,7 @@ class ImageService:
             Tuple of (content bytes, content_type, cache_control header)
 
         Raises:
+            UntrustedImageURLError: If the URL host is not allowlisted
             httpx.HTTPError: If image fetch fails
         """
         # Request modern image formats for better compression and performance
@@ -261,7 +323,25 @@ class ImageService:
             "Accept-Language": "en-US,en;q=0.9"
         }
 
-        response = await self.http_client.get(url, headers=headers)
+        # SSRF protection: only fetch allowlisted hosts, and follow redirects
+        # manually so every hop is re-validated (the shared client auto-follows).
+        target = build_trusted_image_url(url)
+        response = None
+        for _ in range(MAX_PROXY_REDIRECTS + 1):
+            response = await self.http_client.get(
+                target, headers=headers, follow_redirects=False
+            )
+            if response.is_redirect and response.headers.get("location"):
+                target = build_trusted_image_url(
+                    urljoin(target, response.headers["location"])
+                )
+                continue
+            break
+        else:
+            raise httpx.TooManyRedirects(
+                "Too many redirects while proxying image", request=response.request
+            )
+
         response.raise_for_status()
 
         content_type = response.headers.get(
