@@ -2,18 +2,21 @@
 # export_buy_list.py
 # Export buy list from database to CSV for price scraping
 
+import csv
 import sys
 from pathlib import Path
 
 # Add parent directory to path so we can import from backend
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import pandas as pd
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from config import DATABASE_URL
 from models import BuyListGame, Game
+
+COLUMNS = ['game_id', 'bgo_link', 'rank', 'name', 'bgg_id']
+
 
 def export_buy_list():
     """Export buy list to CSV for price scraping"""
@@ -42,27 +45,16 @@ def export_buy_list():
         if not results:
             print("No games found in buy list with BGO links")
 
-            # Create empty CSV file so the workflow doesn't fail
-            output_dir = Path(__file__).parent.parent / "price_data"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            output_file = output_dir / "buy_list_export.csv"
-
-            # Write empty CSV with headers
-            df_empty = pd.DataFrame(columns=['game_id', 'bgo_link', 'rank', 'name', 'bgg_id'])
-            df_empty.to_csv(output_file, index=False)
-            print(f"✓ Created empty CSV at {output_file}")
-            return
-
-        # Convert to DataFrame
-        df = pd.DataFrame(results, columns=['game_id', 'bgo_link', 'rank', 'name', 'bgg_id'])
-
-        # Write to CSV
+        # Always write the file (header only when empty) so the workflow doesn't fail
         output_dir = Path(__file__).parent.parent / "price_data"
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / "buy_list_export.csv"
 
-        df.to_csv(output_file, index=False)
-        print(f"✓ Exported {len(df)} games to {output_file}")
+        with open(output_file, "w", newline="") as f:
+            writer = csv.writer(f)
+            writer.writerow(COLUMNS)
+            writer.writerows(tuple(row) for row in results)
+        print(f"✓ Exported {len(results)} games to {output_file}")
 
     finally:
         db.close()
