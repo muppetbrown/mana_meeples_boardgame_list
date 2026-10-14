@@ -15,20 +15,32 @@ ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "")
 if not ADMIN_TOKEN and not os.getenv("CI") and os.getenv("SKIP_ADMIN_WARNING", "").lower() != "true":
     _log.warning("ADMIN_TOKEN not set - admin endpoints will be unavailable")
 
+def normalize_database_url(url: str) -> str:
+    """Pin PostgreSQL URLs to the psycopg2 driver.
+
+    SQLAlchemy 2.1 treats a bare ``postgresql://`` URL as psycopg (v3), but this
+    project installs psycopg2-binary. Render also still hands out ``postgres://``.
+    """
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg2://" + url[len(prefix):]
+    return url
+
+
 # Database configuration
 # Production: PostgreSQL on Render
 # Local dev: SQLite fallback for testing
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL", "sqlite:///./app.db"))
 
 # Read replica configuration (optional, for performance optimization)
 # If not set, all operations use the primary database
-READ_REPLICA_URL = os.getenv("READ_REPLICA_URL", "")
+READ_REPLICA_URL = normalize_database_url(os.getenv("READ_REPLICA_URL", ""))
 
 # Validate database configuration
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is required")
 
-if DATABASE_URL.startswith("postgresql://"):
+if DATABASE_URL.startswith("postgresql"):
     _log.info(
         "Using PostgreSQL database: %s",
         DATABASE_URL.split('@')[1] if '@' in DATABASE_URL else 'unknown',

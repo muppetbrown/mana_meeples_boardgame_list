@@ -78,7 +78,7 @@ class TestConfigLoading:
             import config
             importlib.reload(config)
 
-            assert config.DATABASE_URL == pg_url
+            assert config.DATABASE_URL == pg_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
     def test_read_replica_url(self):
         """Test read replica configuration"""
@@ -88,7 +88,7 @@ class TestConfigLoading:
             import config
             importlib.reload(config)
 
-            assert config.READ_REPLICA_URL == replica_url
+            assert config.READ_REPLICA_URL == replica_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
     def test_read_replica_url_default(self):
         """Test read replica defaults to empty string"""
