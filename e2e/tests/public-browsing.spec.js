@@ -41,8 +41,8 @@ test.describe('Public Browsing and Filtering', () => {
       // Wait for filtered results
       await page.waitForTimeout(500);
 
-      // Verify URL contains category parameter
-      expect(page.url()).toContain('category=');
+      // Verify URL contains category parameter (the shelf picker syncs it as `cats`)
+      expect(page.url()).toContain('cats=');
 
       // Verify games are still displayed
       const gameCards = page.locator('[data-testid="game-card"], .game-card, article');
@@ -51,21 +51,20 @@ test.describe('Public Browsing and Filtering', () => {
     }
   });
 
-  test('should search for games by title', async ({ page }) => {
-    // Find search input
-    const searchInput = page.locator('input[placeholder*="Search"], input[type="search"], input[name="search"]').first();
+  test('should shortlist games with a quick pick', async ({ page }) => {
+    // The search box was removed from the main page in the mobile redesign;
+    // the "Who's playing today?" quick picks are the primary way to narrow down.
+    await page.waitForSelector('[data-testid="game-card"], .game-card, article', {
+      timeout: 10000
+    });
 
-    // Focus and fill the search input
-    await searchInput.click();
-    await searchInput.fill('catan');
+    const quickPick = page.getByRole('button', { name: /First timers/i }).first();
+    await quickPick.click();
 
-    // Wait for debounced search (150ms debounce + extra time for URL update)
-    await page.waitForTimeout(500);
+    // Wait for the URL to reflect the selected quick pick
+    await expect(page).toHaveURL(/quickPick=/);
 
-    // Verify URL contains search parameter
-    expect(page.url()).toContain('q=');
-
-    // Results should be visible (or "no results" message)
+    // Results should be visible (or an empty-state message)
     const hasResults = await page.locator('[data-testid="game-card"], .game-card, article').count() > 0;
     const hasNoResults = await page.locator('text=/no.*games.*found/i').or(page.locator('text=/no.*results/i')).count() > 0;
 
