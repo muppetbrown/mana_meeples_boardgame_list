@@ -5,6 +5,7 @@ Matches game sleeve requirements to available sleeve products based on size tole
 Provides ordering recommendations and stock-based sleeving readiness checks.
 """
 from collections import defaultdict
+from decimal import Decimal
 from sqlalchemy import select, and_
 from sqlalchemy.orm import Session, joinedload
 
@@ -12,12 +13,26 @@ from models import Sleeve, SleeveProduct, Game
 
 
 # Matching tolerances
-WIDTH_TOLERANCE_MM = 1   # Sleeve width must be >= card width and <= card width + 1mm
-HEIGHT_TOLERANCE_MM = 5  # Sleeve height must be >= card height and <= card height + 5mm
+WIDTH_TOLERANCE_MM = Decimal("1")   # Sleeve width must be >= card width and <= card width + 1mm
+HEIGHT_TOLERANCE_MM = Decimal("5")  # Sleeve height must be >= card height and <= card height + 5mm
+
+
+def to_decimal(value) -> Decimal:
+    """Normalise int/float/Decimal/str measurements to Decimal (2dp) so mixed arithmetic is safe."""
+    return Decimal(str(value)).quantize(Decimal("0.01"))
+
+
+def size_waste(product: SleeveProduct, width_mm, height_mm) -> Decimal:
+    """Total mm of slack between a product and a card size (lower is a tighter fit)."""
+    return (to_decimal(product.width_mm) - to_decimal(width_mm)) + (
+        to_decimal(product.height_mm) - to_decimal(height_mm)
+    )
 
 
 def find_matching_products(width_mm: float, height_mm: float, db: Session) -> list[SleeveProduct]:
     """Find all sleeve products that fit a given card size within tolerances."""
+    width_mm = to_decimal(width_mm)
+    height_mm = to_decimal(height_mm)
     return db.execute(
         select(SleeveProduct).where(
             and_(
@@ -37,7 +52,7 @@ def best_match_for_order(width_mm: float, height_mm: float, db: Session) -> Slee
         return None
     # Best size fit first, then cheapest per sleeve for same-size products
     return min(products, key=lambda p: (
-        (p.width_mm - width_mm) + (p.height_mm - height_mm),
+        size_waste(p, width_mm, height_mm),
         float(p.price) / p.sleeves_per_pack,
     ))
 
@@ -50,7 +65,7 @@ def best_match_in_stock(width_mm: float, height_mm: float, db: Session) -> Sleev
         return None
     # Best size fit first, then highest stock for same-size products
     return min(in_stock, key=lambda p: (
-        (p.width_mm - width_mm) + (p.height_mm - height_mm),
+        size_waste(p, width_mm, height_mm),
         -p.in_stock,
         float(p.price) / p.sleeves_per_pack,
     ))
@@ -75,18 +90,20 @@ def run_matching_for_all_games(db: Session) -> dict:
 
     for sleeve in sleeves:
         # Find matching products from pre-loaded list
+        sw = to_decimal(sleeve.width_mm)
+        sh = to_decimal(sleeve.height_mm)
         candidates = [
             p for p in all_products
-            if p.width_mm >= sleeve.width_mm
-            and p.width_mm <= sleeve.width_mm + WIDTH_TOLERANCE_MM
-            and p.height_mm >= sleeve.height_mm
-            and p.height_mm <= sleeve.height_mm + HEIGHT_TOLERANCE_MM
+            if to_decimal(p.width_mm) >= sw
+            and to_decimal(p.width_mm) <= sw + WIDTH_TOLERANCE_MM
+            and to_decimal(p.height_mm) >= sh
+            and to_decimal(p.height_mm) <= sh + HEIGHT_TOLERANCE_MM
         ]
 
         if candidates:
             # Best size fit, then prefer in-stock, then cheapest per sleeve
             best = min(candidates, key=lambda p: (
-                (p.width_mm - sleeve.width_mm) + (p.height_mm - sleeve.height_mm),
+                size_waste(p, sleeve.width_mm, sleeve.height_mm),
                 0 if p.in_stock > 0 else 1,
                 float(p.price) / p.sleeves_per_pack,
             ))
@@ -129,8 +146,8 @@ def compute_to_sleeve_games(db: Session) -> list[dict]:
                 sleeve_details.append({
                     "sleeve_id": sleeve.id,
                     "card_name": sleeve.card_name,
-                    "width_mm": sleeve.width_mm,
-                    "height_mm": sleeve.height_mm,
+                    "width_mm": float(sleeve.width_mm),
+                    "height_mm": float(sleeve.height_mm),
                     "quantity": sleeve.quantity,
                     "product_id": None,
                     "product_name": None,
@@ -147,8 +164,8 @@ def compute_to_sleeve_games(db: Session) -> list[dict]:
             sleeve_details.append({
                 "sleeve_id": sleeve.id,
                 "card_name": sleeve.card_name,
-                "width_mm": sleeve.width_mm,
-                "height_mm": sleeve.height_mm,
+                "width_mm": float(sleeve.width_mm),
+                "height_mm": float(sleeve.height_mm),
                 "quantity": sleeve.quantity,
                 "product_id": product.id if product else None,
                 "product_name": product.name if product else None,
@@ -189,7 +206,7 @@ def compute_to_order_list(db: Session) -> list[dict]:
     # Group by card size
     size_groups = defaultdict(list)
     for sleeve in sleeves:
-        size_groups[(sleeve.width_mm, sleeve.height_mm)].append(sleeve)
+        size_groups[(to_decimal(sleeve.width_mm), to_decimal(sleeve.height_mm))].append(sleeve)
 
     order_list = []
 
@@ -233,8 +250,8 @@ def compute_to_order_list(db: Session) -> list[dict]:
         games = db.execute(select(Game.title).where(Game.id.in_(game_ids))).scalars().all()
 
         order_list.append({
-            "width_mm": width,
-            "height_mm": height,
+            "width_mm": float(width),
+            "height_mm": float(height),
             "total_needed": total_needed,
             "deficit": deficit,
             "games_count": len(game_ids),

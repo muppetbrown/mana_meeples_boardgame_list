@@ -121,8 +121,8 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
 
                 try:
                     width, height = dimensions.split('x')
-                    width = int(float(width.strip()))
-                    height = int(float(height.strip()))
+                    width = round(float(width.strip()), 2)
+                    height = round(float(height.strip()), 2)
                 except Exception as e:
                     logger.warning(f"Could not parse dimensions '{dimensions}': {e}")
                     continue

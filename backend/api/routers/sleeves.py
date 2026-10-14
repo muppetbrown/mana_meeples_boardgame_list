@@ -5,7 +5,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from decimal import Decimal
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from config import GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from database import get_db
@@ -16,6 +16,8 @@ from services.sleeve_matching import (
     compute_to_sleeve_games,
     compute_to_order_list,
     find_matching_products,
+    size_waste,
+    to_decimal,
 )
 
 logger = logging.getLogger(__name__)
@@ -31,8 +33,8 @@ class SleeveShoppingListRequest(BaseModel):
     game_ids: List[int]
 
 class SleeveShoppingListItem(BaseModel):
-    width_mm: int
-    height_mm: int
+    width_mm: float
+    height_mm: float
     total_quantity: int
     games_count: int
     variations_grouped: int
@@ -44,8 +46,8 @@ class SleeveResponse(BaseModel):
     id: int
     game_id: int
     card_name: str | None
-    width_mm: int
-    height_mm: int
+    width_mm: float
+    height_mm: float
     quantity: int
     notes: str | None
     is_sleeved: bool
@@ -58,8 +60,8 @@ class SleeveUpdateRequest(BaseModel):
 
 class SleeveCreateRequest(BaseModel):
     card_name: str | None = None
-    width_mm: int
-    height_mm: int
+    width_mm: float = Field(gt=0, le=9999.99)
+    height_mm: float = Field(gt=0, le=9999.99)
     quantity: int
     notes: str | None = None
 
@@ -70,8 +72,8 @@ class SleeveProductCreate(BaseModel):
     distributor: str
     item_id: str | None = None
     name: str
-    width_mm: float
-    height_mm: float
+    width_mm: float = Field(gt=0, le=9999.99)
+    height_mm: float = Field(gt=0, le=9999.99)
     sleeves_per_pack: int
     price: float
     in_stock: int = 0
@@ -130,12 +132,12 @@ def generate_sleeve_shopping_list(
 
     size_groups = defaultdict(list)
     for sleeve in sleeves:
-        key = (sleeve.width_mm, sleeve.height_mm)
+        key = (to_decimal(sleeve.width_mm), to_decimal(sleeve.height_mm))
         size_groups[key].append(sleeve)
 
     shopping_list = []
     for (width, height), sleeve_group in size_groups.items():
-        unique_sizes = set((s.width_mm, s.height_mm) for s in sleeve_group)
+        unique_sizes = set((to_decimal(s.width_mm), to_decimal(s.height_mm)) for s in sleeve_group)
         variations = len(unique_sizes)
 
         game_ids = set(s.game_id for s in sleeve_group)
@@ -147,8 +149,8 @@ def generate_sleeve_shopping_list(
         total_qty = sum(s.quantity for s in sleeve_group)
 
         shopping_list.append(SleeveShoppingListItem(
-            width_mm=width,
-            height_mm=height,
+            width_mm=float(width),
+            height_mm=float(height),
             total_quantity=total_qty,
             games_count=len(game_ids),
             variations_grouped=variations,
@@ -269,8 +271,8 @@ def create_game_sleeve(
     sleeve = Sleeve(
         game_id=game_id,
         card_name=data.card_name,
-        width_mm=data.width_mm,
-        height_mm=data.height_mm,
+        width_mm=to_decimal(data.width_mm),
+        height_mm=to_decimal(data.height_mm),
         quantity=data.quantity,
         notes=data.notes,
         is_sleeved=False,
@@ -281,7 +283,7 @@ def create_game_sleeve(
     candidates = find_matching_products(data.width_mm, data.height_mm, db)
     if candidates:
         best = min(candidates, key=lambda p: (
-            (p.width_mm - data.width_mm) + (p.height_mm - data.height_mm),
+            size_waste(p, data.width_mm, data.height_mm),
             0 if p.in_stock > 0 else 1,
             float(p.price) / p.sleeves_per_pack,
         ))
@@ -405,8 +407,8 @@ def create_sleeve_product(
         distributor=data.distributor,
         item_id=data.item_id,
         name=data.name,
-        width_mm=data.width_mm,
-        height_mm=data.height_mm,
+        width_mm=to_decimal(data.width_mm),
+        height_mm=to_decimal(data.height_mm),
         sleeves_per_pack=data.sleeves_per_pack,
         price=Decimal(str(data.price)),
         in_stock=data.in_stock,
@@ -445,6 +447,9 @@ def update_sleeve_product(
     update_data = data.model_dump(exclude_unset=True)
     if "price" in update_data:
         update_data["price"] = Decimal(str(update_data["price"]))
+    for dim in ("width_mm", "height_mm"):
+        if update_data.get(dim) is not None:
+            update_data[dim] = to_decimal(update_data[dim])
 
     for field, value in update_data.items():
         setattr(product, field, value)
