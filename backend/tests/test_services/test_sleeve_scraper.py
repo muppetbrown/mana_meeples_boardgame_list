@@ -210,7 +210,7 @@ class TestScrapeSleevDataSuccess:
 
         assert result['status'] == 'found'
         assert len(result['card_types']) == 1
-        assert result['card_types'][0]['width_mm'] == 63
+        assert result['card_types'][0]['width_mm'] == 63.5
         assert result['card_types'][0]['height_mm'] == 88
         assert result['card_types'][0]['quantity'] == 0
         assert result['card_types'][0]['name'] is None
@@ -370,7 +370,7 @@ class TestScrapeSleevDataSuccess:
 
         assert result['status'] == 'found'
         assert len(result['card_types']) == 2
-        assert result['card_types'][0]['width_mm'] == 63
+        assert result['card_types'][0]['width_mm'] == 63.5
         assert result['card_types'][0]['height_mm'] == 88
         assert result['card_types'][1]['width_mm'] == 70
         assert result['card_types'][1]['height_mm'] == 120
@@ -468,8 +468,8 @@ class TestScrapeSleevDataEdgeCases:
                 result = scrape_sleeve_data(123, "Test Game", driver=mock_driver)
 
         assert result['status'] == 'found'
-        assert result['card_types'][0]['width_mm'] == 63
-        assert result['card_types'][0]['height_mm'] == 88
+        assert result['card_types'][0]['width_mm'] == 63.5
+        assert result['card_types'][0]['height_mm'] == 88.9
 
     def test_scrape_sleeve_data_card_exception(self):
         """Test handling of exception while parsing individual card"""
@@ -529,7 +529,7 @@ class TestScrapeSleevDataEdgeCases:
         # Should return only valid card
         assert result['status'] == 'found'
         assert len(result['card_types']) == 1
-        assert result['card_types'][0]['width_mm'] == 63
+        assert result['card_types'][0]['width_mm'] == 63.5
 
     def test_scrape_sleeve_data_general_exception(self):
         """Test handling of general exception during scraping"""
@@ -573,7 +573,7 @@ class TestScrapeSleevDataEdgeCases:
                 result = scrape_sleeve_data(123, "Test Game", driver=mock_driver)
 
         assert result['status'] == 'found'
-        assert result['card_types'][0]['width_mm'] == 63
+        assert result['card_types'][0]['width_mm'] == 63.5
         assert result['card_types'][0]['height_mm'] == 88
 
 

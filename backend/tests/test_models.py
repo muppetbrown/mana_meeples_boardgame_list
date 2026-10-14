@@ -423,7 +423,7 @@ class TestSleeveModel:
         session.commit()
 
         repr_str = repr(sleeve)
-        assert "63x88" in repr_str
+        assert "63.00x88.00" in repr_str
         assert "qty=100" in repr_str
         assert f"game_id={game.id}" in repr_str
 

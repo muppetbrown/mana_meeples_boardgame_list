@@ -317,8 +317,8 @@ class Sleeve(Base):
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     game_id = Column(Integer, ForeignKey("boardgames.id", ondelete="CASCADE"), nullable=False, index=True)
     card_name = Column(String(200), nullable=True)  # e.g., "Age Cards", "Player Cards"
-    width_mm = Column(Integer, nullable=False)
-    height_mm = Column(Integer, nullable=False)
+    width_mm = Column(Numeric(6, 2), nullable=False)  # Card width, decimals allowed (e.g. 63.5)
+    height_mm = Column(Numeric(6, 2), nullable=False)  # Card height, decimals allowed (e.g. 88.9)
     quantity = Column(Integer, nullable=False)
     notes = Column(Text, nullable=True)  # Special notes about this card type
     is_sleeved = Column(Boolean, nullable=False, default=False)  # Whether this specific sleeve type is already sleeved
