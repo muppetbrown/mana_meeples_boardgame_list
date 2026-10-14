@@ -4,7 +4,6 @@ Startup/deploy hardening: time-boxed cache warming, DB lock/idle timeouts, relea
 Background: a slow or blocked startup step must never stop the server from opening its port
 (Render waits for it), and a blocked migration must fail loudly instead of hanging.
 """
-import asyncio
 import importlib
 import os
 import time

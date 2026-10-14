@@ -959,12 +959,12 @@ class TestHostileXmlIsRejected:
         "payload",
         [
             # "Billion laughs" entity expansion
-            '<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY lol "lol">'
-            '<!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">]>'
-            "<items><item id=\"1\">&lol2;</item></items>",
+            ('<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY lol "lol">'
+             '<!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">]>'
+             '<items><item id="1">&lol2;</item></items>'),
             # External entity (XXE)
-            '<?xml version="1.0"?><!DOCTYPE x [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
-            "<items><item id=\"1\">&xxe;</item></items>",
+            ('<?xml version="1.0"?><!DOCTYPE x [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
+            "<items><item id=\"1\">&xxe;</item></items>"),
         ],
     )
     async def test_entity_declarations_are_rejected(self, payload):
