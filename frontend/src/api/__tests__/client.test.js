@@ -32,6 +32,8 @@ vi.mock('../../utils/storage', () => ({
 
 // Import after mocks are set up
 const apiClient = await import('../client');
+// Capture the response error interceptor registered at import time
+const responseErrorHandler = mockAxiosInstance.interceptors.response.use.mock.calls[0][1];
 
 describe('API Client', () => {
   beforeEach(() => {
@@ -296,6 +298,53 @@ describe('API Client', () => {
       expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/logout');
       expect(mockStorage.removeItem).toHaveBeenCalledWith('JWT_TOKEN');
       expect(result).toEqual(mockResponse.data);
+    });
+
+    test('adminLogout still clears the JWT when the API call fails', async () => {
+      mockAxiosInstance.post.mockRejectedValue(new Error('network down'));
+
+      await expect(apiClient.adminLogout()).rejects.toThrow('network down');
+
+      expect(mockStorage.removeItem).toHaveBeenCalledWith('JWT_TOKEN');
+    });
+
+    describe('401 handling', () => {
+      const originalLocation = window.location;
+      const setLocation = (pathname) => {
+        Object.defineProperty(window, 'location', {
+          value: { pathname, origin: 'https://lib.example', href: '' },
+          writable: true,
+          configurable: true,
+        });
+      };
+      const restore = () =>
+        Object.defineProperty(window, 'location', { value: originalLocation, writable: true, configurable: true });
+
+      test('redirects to staff login and clears the token on a 401 from an admin call', async () => {
+        setLocation('/staff');
+        const err = { config: { url: '/admin/games' }, response: { status: 401 }, message: 'x' };
+        await expect(responseErrorHandler(err)).rejects.toBe(err);
+        expect(mockStorage.removeItem).toHaveBeenCalledWith('JWT_TOKEN');
+        expect(window.location.href).toBe('https://lib.example/staff/login');
+        restore();
+      });
+
+      test('does not redirect for a failed login attempt', async () => {
+        setLocation('/staff/login');
+        const err = { config: { url: '/admin/login' }, response: { status: 401 }, message: 'x' };
+        await expect(responseErrorHandler(err)).rejects.toBe(err);
+        expect(window.location.href).toBe('');
+        expect(mockStorage.removeItem).not.toHaveBeenCalled();
+        restore();
+      });
+
+      test('does not redirect for a 401 from a non-admin call', async () => {
+        setLocation('/staff');
+        const err = { config: { url: '/public/games' }, response: { status: 401 }, message: 'x' };
+        await expect(responseErrorHandler(err)).rejects.toBe(err);
+        expect(window.location.href).toBe('');
+        restore();
+      });
     });
 
     test('validateAdminToken validates session', async () => {
@@ -636,5 +685,30 @@ describe('API Client', () => {
 
       await expect(apiClient.getGames()).resolves.toEqual([]);
     });
+  });
+});
+
+
+describe('Admin monitoring API', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  test('getBackgroundFailures passes filters', async () => {
+    mockAxiosInstance.get.mockResolvedValue({ data: { failures: [] } });
+    const r = await apiClient.getBackgroundFailures({ resolved: false, limit: 10 });
+    expect(mockAxiosInstance.get).toHaveBeenCalledWith('/admin/monitoring/background-failures', {
+      params: { resolved: false, limit: 10 },
+    });
+    expect(r).toEqual({ failures: [] });
+  });
+
+  test('resolveBackgroundFailure posts to the failure id', async () => {
+    mockAxiosInstance.post.mockResolvedValue({ data: { success: true } });
+    await apiClient.resolveBackgroundFailure(7);
+    expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/monitoring/background-failures/7/resolve');
+  });
+
+  test('getCircuitBreakerStatus fetches breaker state', async () => {
+    mockAxiosInstance.get.mockResolvedValue({ data: { state: 'closed' } });
+    expect(await apiClient.getCircuitBreakerStatus()).toEqual({ state: 'closed' });
   });
 });

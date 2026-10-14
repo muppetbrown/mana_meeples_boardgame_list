@@ -51,6 +51,9 @@ api.interceptors.request.use(
  * Debug overlay for development error visualization
  */
 function showOverlay(msg) {
+  // Dev-only: in production the staff UI shows toasts/inline errors instead of
+  // a raw API dump covering the page header.
+  if (!import.meta.env.DEV) return;
   try {
     let el = document.getElementById("debug-overlay");
     if (!el) {
@@ -108,8 +111,12 @@ ${body}`;
     showOverlay(msg);
 
     // Handle 401 errors by redirecting to login
-    if (status === 401 && cfg.url?.includes("/api/admin")) {
+    // (cfg.url is relative to the versioned baseURL, e.g. "/admin/games")
+    const isAdminCall = /^\/?(api\/(v\d+\/)?)?admin\//.test(cfg.url || "");
+    const isLoginCall = /admin\/login/.test(cfg.url || "");
+    if (status === 401 && isAdminCall && !isLoginCall) {
       console.warn("Admin session invalid or expired, redirecting to login");
+      safeStorage.removeItem("JWT_TOKEN");
       if (!window.location.pathname.includes("/staff/login")) {
         window.location.href = window.location.origin + window.location.pathname.replace(/\/staff.*/, "/staff/login");
       }
@@ -332,12 +339,13 @@ export async function adminLogin(token) {
  * @returns {Promise<Object>} Logout confirmation
  */
 export async function adminLogout() {
-  const r = await api.post("/admin/logout");
-
-  // Clear JWT token from safe storage (handles tracking prevention)
-  safeStorage.removeItem("JWT_TOKEN");
-
-  return r.data;
+  try {
+    const r = await api.post("/admin/logout");
+    return r.data;
+  } finally {
+    // Always clear the JWT locally, even if the API call fails
+    safeStorage.removeItem("JWT_TOKEN");
+  }
 }
 
 /**
@@ -689,4 +697,34 @@ export async function generateGameLabels(gameIds) {
     responseType: 'blob' // Important for PDF download
   });
   return response.data;
+}
+
+
+// ============================================================================
+// ADMIN MONITORING
+// ============================================================================
+
+/**
+ * Get recent background task failures (admin)
+ * @param {Object} params - { resolved, task_type, limit }
+ */
+export async function getBackgroundFailures(params = {}) {
+  const r = await api.get("/admin/monitoring/background-failures", { params });
+  return r.data;
+}
+
+/**
+ * Mark a background task failure as resolved (admin)
+ */
+export async function resolveBackgroundFailure(failureId) {
+  const r = await api.post(`/admin/monitoring/background-failures/${failureId}/resolve`);
+  return r.data;
+}
+
+/**
+ * Get BGG circuit breaker status (admin)
+ */
+export async function getCircuitBreakerStatus() {
+  const r = await api.get("/admin/monitoring/circuit-breaker-status");
+  return r.data;
 }

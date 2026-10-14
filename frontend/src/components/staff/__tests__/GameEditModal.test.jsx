@@ -4,6 +4,7 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import GameEditModal from '../GameEditModal';
 
 
@@ -65,10 +66,10 @@ describe('GameEditModal', () => {
     test('renders all four tab buttons', () => {
       render(<GameEditModal {...defaultProps} />);
       // Tab buttons contain emoji prefixes
-      expect(screen.getByRole('button', { name: /📑 Category/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /🎯 Expansion/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /🃏 Sleeves/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /🎲 AfterGame/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /📑 Category/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /🎯 Expansion/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /🃏 Sleeves/i })).toBeInTheDocument();
+      expect(screen.getByRole('tab', { name: /🎲 AfterGame/i })).toBeInTheDocument();
     });
 
     test('renders Cancel and Save buttons', () => {
@@ -104,7 +105,7 @@ describe('GameEditModal', () => {
 
     test('active tab has visual distinction', () => {
       render(<GameEditModal {...defaultProps} />);
-      const categoryTab = screen.getByRole('button', { name: /📑 Category/i });
+      const categoryTab = screen.getByRole('tab', { name: /📑 Category/i });
       expect(categoryTab).toHaveClass('text-purple-600');
     });
   });
@@ -162,7 +163,7 @@ describe('GameEditModal', () => {
 
     test('expansion type dropdown has three options', () => {
       const { container } = render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByRole('button', { name: /🎯 Expansion/i }));
+      fireEvent.click(screen.getByRole('tab', { name: /🎯 Expansion/i }));
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       fireEvent.click(checkbox);
 
@@ -376,7 +377,24 @@ describe('GameEditModal', () => {
     test('modal has proper overlay styling', () => {
       const { container } = render(<GameEditModal {...defaultProps} />);
       const overlay = container.firstChild;
-      expect(overlay).toHaveClass('fixed', 'inset-0', 'bg-black', 'bg-opacity-50');
+      // Tailwind v4: use the bg-black/50 opacity modifier (bg-opacity-* was removed)
+      expect(overlay).toHaveClass('fixed', 'inset-0', 'bg-black/50');
+    });
+
+    test('is an accessible modal dialog that closes on Escape', async () => {
+      const user = userEvent.setup();
+      render(<GameEditModal {...defaultProps} />);
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toHaveAttribute('aria-modal', 'true');
+      expect(dialog).toHaveAccessibleName('Edit Game');
+      await user.keyboard('{Escape}');
+      expect(defaultProps.onClose).toHaveBeenCalled();
+    });
+
+    test('closes when the backdrop is clicked', () => {
+      const { container } = render(<GameEditModal {...defaultProps} />);
+      fireEvent.mouseDown(container.firstChild);
+      expect(defaultProps.onClose).toHaveBeenCalled();
     });
   });
 

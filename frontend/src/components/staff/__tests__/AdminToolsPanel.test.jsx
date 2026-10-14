@@ -35,61 +35,9 @@ describe('AdminToolsPanel', () => {
   test('renders all sections', () => {
     render(<AdminToolsPanel onToast={mockToast} onLibraryReload={mockLibraryReload} />);
 
-    expect(screen.getByText('Bulk Update NZ Designers')).toBeInTheDocument();
     expect(screen.getByText(/Bulk Update AfterGame IDs/)).toBeInTheDocument();
     expect(screen.getByText('Advanced Operations')).toBeInTheDocument();
     expect(screen.getByText('Debug & Monitoring')).toBeInTheDocument();
-  });
-
-  describe('Bulk NZ Designers Update', () => {
-    test('button is disabled when CSV is empty', async () => {
-      render(<AdminToolsPanel onToast={mockToast} onLibraryReload={mockLibraryReload} />);
-
-      const button = screen.getByRole('button', { name: /Update NZ Designers/i });
-
-      expect(button).toBeDisabled();
-    });
-
-    test('handles successful bulk NZ designers update', async () => {
-      apiClient.bulkUpdateNZDesigners.mockResolvedValue({
-        updated: ['Game 1: False → True'],
-        not_found: [],
-        errors: [],
-      });
-
-      render(<AdminToolsPanel onToast={mockToast} onLibraryReload={mockLibraryReload} />);
-
-      const textarea = screen.getAllByRole('textbox')[0];
-      fireEvent.change(textarea, { target: { value: '12345,true' } });
-
-      const button = screen.getByRole('button', { name: /Update NZ Designers/i });
-      fireEvent.click(button);
-
-      await waitFor(() => {
-        expect(apiClient.bulkUpdateNZDesigners).toHaveBeenCalledWith('12345,true');
-        expect(mockToast).toHaveBeenCalledWith(
-          'Updated: 1, Not found: 0, Errors: 0',
-          'success'
-        );
-        expect(mockLibraryReload).toHaveBeenCalled();
-      });
-    });
-
-    test('handles failed bulk NZ designers update', async () => {
-      apiClient.bulkUpdateNZDesigners.mockRejectedValue(new Error('Network error'));
-
-      render(<AdminToolsPanel onToast={mockToast} onLibraryReload={mockLibraryReload} />);
-
-      const textarea = screen.getAllByRole('textbox')[0];
-      fireEvent.change(textarea, { target: { value: '12345,true' } });
-
-      const button = screen.getByRole('button', { name: /Update NZ Designers/i });
-      fireEvent.click(button);
-
-      await waitFor(() => {
-        expect(mockToast).toHaveBeenCalledWith('Bulk NZ designers update failed', 'error');
-      });
-    });
   });
 
   describe('Bulk AfterGame IDs Update', () => {
@@ -110,8 +58,7 @@ describe('AdminToolsPanel', () => {
 
       render(<AdminToolsPanel onToast={mockToast} onLibraryReload={mockLibraryReload} />);
 
-      const textareas = screen.getAllByRole('textbox');
-      const afterGameTextarea = textareas[1];
+      const afterGameTextarea = screen.getByRole('textbox');
       fireEvent.change(afterGameTextarea, {
         target: { value: '12345,abc-123,Game 1' },
       });
@@ -126,6 +73,23 @@ describe('AdminToolsPanel', () => {
           'success'
         );
       });
+      // Per-row results are shown inline, with a log download
+      expect(await screen.findByText('Game 1: None → abc-123')).toBeInTheDocument();
+      expect(screen.getByText('Download log')).toBeInTheDocument();
+    });
+
+    test('shows problems from the server inline', async () => {
+      apiClient.bulkUpdateAfterGameIDs.mockResolvedValue({
+        updated: [],
+        not_found: ['BGG ID 5: not found'],
+        errors: ['Line 2: bad uuid'],
+      });
+      render(<AdminToolsPanel onToast={mockToast} onLibraryReload={mockLibraryReload} />);
+      fireEvent.change(screen.getByRole('textbox'), { target: { value: '5,x' } });
+      fireEvent.click(screen.getByRole('button', { name: /Update AfterGame IDs/i }));
+      expect(await screen.findByText('Line 2: bad uuid')).toBeInTheDocument();
+      expect(screen.getByText('BGG ID 5: not found')).toBeInTheDocument();
+      expect(mockToast).toHaveBeenCalledWith('Updated: 0, Not found: 1, Errors: 1', 'warning');
     });
   });
 

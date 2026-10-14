@@ -1,6 +1,6 @@
 // frontend/src/pages/__tests__/StaffView.test.jsx
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, MemoryRouter } from 'react-router-dom';
 import StaffView from '../StaffView';
@@ -28,6 +28,7 @@ const getDefaultMockContext = () => ({
   handleModalClose: vi.fn(),
   refreshGames: vi.fn(),
   showToast: vi.fn(),
+  confirm: vi.fn().mockResolvedValue(false),
 });
 
 let mockStaffContext = getDefaultMockContext();
@@ -64,6 +65,8 @@ vi.mock('../../components/staff/tabs/BuyListTab', () => ({
 describe('StaffView Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // BrowserRouter shares window.location between tests; start from a clean URL
+    window.history.pushState({}, '', '/staff');
     // Reset mock context to default values
     mockStaffContext = getDefaultMockContext();
   });
@@ -127,7 +130,7 @@ describe('StaffView Page', () => {
         </BrowserRouter>
       );
 
-      const addGamesTab = screen.getByRole('button', { name: /add games/i });
+      const addGamesTab = screen.getByRole('tab', { name: /add games/i });
       userEvent.click(addGamesTab);
 
       await screen.findByText('Add Games Tab');
@@ -141,7 +144,7 @@ describe('StaffView Page', () => {
         </BrowserRouter>
       );
 
-      const manageTab = screen.getByRole('button', { name: /manage library/i });
+      const manageTab = screen.getByRole('tab', { name: /manage library/i });
       userEvent.click(manageTab);
 
       await screen.findByText('Manage Library Tab');
@@ -155,7 +158,7 @@ describe('StaffView Page', () => {
         </BrowserRouter>
       );
 
-      const categoriesTab = screen.getByRole('button', { name: /categories/i });
+      const categoriesTab = screen.getByRole('tab', { name: /categories/i });
       userEvent.click(categoriesTab);
 
       await screen.findByText('Categories Tab');
@@ -169,7 +172,7 @@ describe('StaffView Page', () => {
         </BrowserRouter>
       );
 
-      const buyListTab = screen.getByRole('button', { name: /buy list/i });
+      const buyListTab = screen.getByRole('tab', { name: /buy list/i });
       userEvent.click(buyListTab);
 
       await screen.findByText('Buy List Tab');
@@ -183,7 +186,7 @@ describe('StaffView Page', () => {
         </BrowserRouter>
       );
 
-      const advancedTab = screen.getByRole('button', { name: /advanced tools/i });
+      const advancedTab = screen.getByRole('tab', { name: /advanced tools/i });
       userEvent.click(advancedTab);
 
       await screen.findByText('Advanced Tools Tab');
@@ -217,8 +220,6 @@ describe('StaffView Page', () => {
 
   describe('Logout functionality', () => {
     test('shows confirmation dialog when logout clicked', async () => {
-      window.confirm = vi.fn(() => false);
-
       render(
         <BrowserRouter>
           <StaffView />
@@ -228,11 +229,13 @@ describe('StaffView Page', () => {
       const logoutButton = screen.getByRole('button', { name: /logout/i });
       await userEvent.click(logoutButton);
 
-      expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to logout?');
+      expect(mockStaffContext.confirm).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Log out?' })
+      );
     });
 
     test('navigates to login when logout confirmed', async () => {
-      window.confirm = vi.fn(() => true);
+      mockStaffContext.confirm = vi.fn().mockResolvedValue(true);
 
       const { adminLogout: mockAdminLogout } = await import('../../api/client');
       mockAdminLogout.mockResolvedValue({});
@@ -244,15 +247,13 @@ describe('StaffView Page', () => {
       );
 
       const logoutButton = screen.getByRole('button', { name: /logout/i });
-      userEvent.click(logoutButton);
+      await userEvent.click(logoutButton);
 
-      // Note: Navigation testing is limited in this setup
-      // Real navigation would be tested in E2E tests
+      await waitFor(() => expect(mockAdminLogout).toHaveBeenCalled());
+      await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/staff/login'));
     });
 
     test('does not navigate when logout cancelled', async () => {
-      window.confirm = vi.fn(() => false);
-
       render(
         <BrowserRouter>
           <StaffView />
@@ -308,9 +309,9 @@ describe('StaffView Page', () => {
         </BrowserRouter>
       );
 
-      const tabButtons = screen.getAllByRole('button');
-      // Should have tab buttons plus logout button
-      expect(tabButtons.length).toBeGreaterThan(1);
+      expect(screen.getByRole('tablist')).toBeInTheDocument();
+      expect(screen.getAllByRole('tab').length).toBeGreaterThan(1);
+      expect(screen.getByRole('button', { name: /logout/i })).toBeInTheDocument();
     });
   });
 
@@ -368,13 +369,23 @@ describe('StaffView Page', () => {
       );
 
       // Switch to add games tab
-      const addGamesTab = screen.getByRole('button', { name: /add games/i });
+      const addGamesTab = screen.getByRole('tab', { name: /add games/i });
       await userEvent.click(addGamesTab);
 
       // Add games tab should now be visible
       await screen.findByText('Add Games Tab');
-      // Dashboard tab should be hidden
-      expect(screen.queryByText('Dashboard Tab')).not.toBeInTheDocument();
+      // Dashboard stays mounted (keeps its state) but is hidden from view
+      expect(screen.getByText('Dashboard Tab').closest('[role="tabpanel"]')).toHaveAttribute('hidden');
+      expect(screen.getByText('Add Games Tab').closest('[role="tabpanel"]')).not.toHaveAttribute('hidden');
+    });
+
+    test('does not mount tabs that have not been visited', () => {
+      render(
+        <BrowserRouter>
+          <StaffView />
+        </BrowserRouter>
+      );
+      expect(screen.queryByText('Add Games Tab')).not.toBeInTheDocument();
     });
 
     test('defaults to dashboard for unknown tab', async () => {

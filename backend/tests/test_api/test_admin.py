@@ -617,9 +617,25 @@ class TestAdminGitHubWorkflowTrigger:
                     json=[1, 2, 3],
                     headers=admin_headers
                 )
-                # Note: GitHub API error gets wrapped in 500 by outer exception handler
-                assert response.status_code == 500
-                assert "GitHub API error" in response.json()["detail"] or "Unexpected error" in response.json()["detail"]
+                # GitHub's 401 must NOT be relayed (it would look like an expired
+                # admin session to the frontend) and its body must not leak.
+                assert response.status_code == 502
+                detail = response.json()["detail"]
+                assert "GitHub token is invalid" in detail
+                assert "Bad credentials" not in detail
+
+    def test_trigger_sleeve_fetch_too_many_games(self, client, admin_headers):
+        """Test sleeve fetch trigger rejects oversized requests"""
+        with patch("config.GITHUB_TOKEN", "fake_token"), \
+             patch("config.GITHUB_REPO_OWNER", "owner"), \
+             patch("config.GITHUB_REPO_NAME", "repo"):
+            response = client.post(
+                "/api/admin/trigger-sleeve-fetch",
+                json=list(range(1, 502)),
+                headers=admin_headers,
+            )
+            assert response.status_code == 400
+            assert "Too many games" in response.json()["detail"]
 
     def test_trigger_sleeve_fetch_http_error(self, client, admin_headers):
         """Test sleeve fetch trigger with HTTP error"""
@@ -637,8 +653,8 @@ class TestAdminGitHubWorkflowTrigger:
                     json=[1, 2, 3],
                     headers=admin_headers
                 )
-                assert response.status_code == 500
-                assert "Failed to trigger workflow" in response.json()["detail"]
+                assert response.status_code == 502
+                assert "Could not reach GitHub" in response.json()["detail"]
 
     def test_trigger_sleeve_fetch_unexpected_error(self, client, admin_headers):
         """Test sleeve fetch trigger with unexpected error"""

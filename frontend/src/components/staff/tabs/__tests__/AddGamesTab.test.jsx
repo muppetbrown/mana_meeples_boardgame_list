@@ -42,8 +42,13 @@ describe('AddGamesTab', () => {
   const mockSetCsvImportText = vi.fn();
   const mockDoBulkImport = vi.fn();
   const mockShowToast = vi.fn();
+  const mockLoadLibrary = vi.fn();
 
   const defaultStaffContext = {
+    isAddingGame: false,
+    isBulkRunning: false,
+    bulkImportResult: null,
+    loadLibrary: mockLoadLibrary,
     bggIdInput: '',
     setBggIdInput: mockSetBggIdInput,
     handleAddGame: mockHandleAddGame,
@@ -56,6 +61,15 @@ describe('AddGamesTab', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     useStaff.mockReturnValue(defaultStaffContext);
+  });
+
+  describe('Add progress', () => {
+    test('disables the input and button while a game is being added', () => {
+      useStaff.mockReturnValue({ ...defaultStaffContext, isAddingGame: true });
+      render(<AddGamesTab />);
+      expect(screen.getByRole('button', { name: 'Adding…' })).toBeDisabled();
+      expect(screen.getByLabelText(/BoardGameGeek ID or URL/)).toBeDisabled();
+    });
   });
 
   describe('Rendering', () => {
@@ -250,22 +264,13 @@ describe('AddGamesTab', () => {
       expect(mockShowToast).toHaveBeenCalledWith('Test message', 'success');
     });
 
-    test('reloads page on manual entry success', async () => {
+    test('refreshes the library on manual entry success (no full page reload)', async () => {
       const user = userEvent.setup();
-      const reloadMock = vi.fn();
-
-      // Mock window.location.reload using Object.defineProperty
-      Object.defineProperty(window, 'location', {
-        value: { reload: reloadMock },
-        writable: true,
-      });
-
       render(<AddGamesTab />);
 
-      const submitButton = screen.getByText('Manual Submit');
-      await user.click(submitButton);
+      await user.click(screen.getByText('Manual Submit'));
 
-      expect(reloadMock).toHaveBeenCalledTimes(1);
+      expect(mockLoadLibrary).toHaveBeenCalledTimes(1);
     });
   });
 

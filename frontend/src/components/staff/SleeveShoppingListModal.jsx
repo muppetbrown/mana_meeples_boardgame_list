@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getSleeveProducts } from '../../api/client';
 
+import Modal from '../common/Modal';
+
 export default function SleeveShoppingListModal({ shoppingList, onClose }) {
   const [products, setProducts] = useState([]);
 
@@ -25,10 +27,10 @@ export default function SleeveShoppingListModal({ shoppingList, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <Modal onClose={onClose} labelledBy="sleeve-list-title" maxWidth="max-w-5xl">
+      <div className="flex flex-col max-h-[90vh] overflow-hidden">
         <div className="p-6 border-b">
-          <h2 className="text-2xl font-bold">Sleeve Shopping List</h2>
+          <h2 id="sleeve-list-title" className="text-2xl font-bold">Sleeve Shopping List</h2>
         </div>
 
         <div className="p-6 overflow-y-auto flex-1">
@@ -113,7 +115,7 @@ export default function SleeveShoppingListModal({ shoppingList, onClose }) {
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -136,7 +138,13 @@ function generateCSV(shoppingList, products, findMatch) {
     ]);
   });
 
-  return rows.map(row => row.join(',')).join('\n');
+  // Quote every field (and neutralise spreadsheet formulas) so commas in game names don't break columns
+  const cell = (v) => {
+    let t = String(v ?? '');
+    if (/^[=+\-@]/.test(t)) t = `'${t}`;
+    return `"${t.replace(/"/g, '""')}"`;
+  };
+  return rows.map(row => row.map(cell).join(',')).join('\n');
 }
 
 function downloadCSV(csv, filename) {

@@ -563,7 +563,8 @@ describe('StaffProvider', () => {
       });
 
       expect(apiClient.bulkImportCsv).toHaveBeenCalledWith('174430\n266192\n30549');
-      expect(apiClient.getGames).toHaveBeenCalledTimes(2); // Initial + reload
+      // Import runs in the background server-side, so no library reload
+      expect(apiClient.getGames).toHaveBeenCalledTimes(1);
       expect(contextValue.csvImportText).toBe(''); // Should clear after success
     });
 
@@ -897,7 +898,8 @@ describe('StaffProvider', () => {
       });
 
       expect(apiClient.deleteGame).toHaveBeenCalledWith(1);
-      expect(apiClient.getGames).toHaveBeenCalledTimes(2);
+      // Removed locally instead of re-downloading the whole library
+      expect(apiClient.getGames).toHaveBeenCalledTimes(1);
     });
 
     test('delete game throws error on failure', async () => {

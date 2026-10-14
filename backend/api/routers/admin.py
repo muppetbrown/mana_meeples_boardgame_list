@@ -51,6 +51,9 @@ def _sl(v: object) -> str:
     """Sanitize a value for safe log output by stripping newline characters."""
     return str(v).replace('\n', ' ').replace('\r', ' ')
 
+# Upper bound on games per GitHub Actions sleeve-fetch dispatch
+MAX_SLEEVE_FETCH_GAMES = 500
+
 # Create router with prefix and tags
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -264,7 +267,8 @@ async def import_from_bgg(
         db.rollback()
         logger.error(f"Failed to import BGG game {_sl(bgg_id)}: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Failed to import game: {str(e)}"
+            status_code=500,
+            detail="Failed to import game. Check the server logs for details.",
         )
 
 
@@ -512,7 +516,10 @@ async def fix_sequence(
             extra={"table_name": body.table_name},
             exc_info=True
         )
-        raise HTTPException(status_code=500, detail=f"Failed to fix sequence: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to fix sequence. Check the server logs for details.",
+        )
 
 
 @router.post("/trigger-sleeve-fetch")
@@ -537,6 +544,11 @@ async def trigger_sleeve_fetch(
     if not game_ids:
         raise HTTPException(
             status_code=400, detail="At least one game ID must be provided"
+        )
+    if len(game_ids) > MAX_SLEEVE_FETCH_GAMES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many games selected (max {MAX_SLEEVE_FETCH_GAMES} per request)",
         )
 
     # Prepare workflow dispatch request
@@ -571,24 +583,33 @@ async def trigger_sleeve_fetch(
                     "game_ids": game_ids,
                 }
             else:
-                error_detail = response.text
+                # Log GitHub's response server-side only. Never relay its status
+                # code: a GitHub 401/403 would look like an expired admin session.
                 logger.error(
-                    f"Failed to trigger workflow. Status: {response.status_code}, Error: {error_detail}"
+                    f"Failed to trigger workflow. Status: {response.status_code}, Error: {_sl(response.text[:500])}"
                 )
+                hint = {
+                    401: "GitHub token is invalid or expired",
+                    403: "GitHub token lacks permission to run workflows",
+                    404: "Workflow or repository not found",
+                    422: "Workflow rejected the request",
+                }.get(response.status_code, "GitHub API error")
                 raise HTTPException(
-                    status_code=response.status_code,
-                    detail=f"GitHub API error: {error_detail}",
+                    status_code=502,
+                    detail=f"Could not trigger sleeve fetch: {hint}.",
                 )
 
+    except HTTPException:
+        raise
     except httpx.HTTPError as e:
         logger.error(f"HTTP error triggering workflow: {e}")
         raise HTTPException(
-            status_code=500, detail=f"Failed to trigger workflow: {str(e)}"
+            status_code=502, detail="Could not reach GitHub to trigger the workflow"
         )
     except Exception as e:
-        logger.error(f"Unexpected error triggering workflow: {e}")
+        logger.error(f"Unexpected error triggering workflow: {e}", exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Unexpected error: {str(e)}"
+            status_code=500, detail="Unexpected error triggering the workflow"
         )
 
 
@@ -685,7 +706,7 @@ async def get_background_task_failures(
         logger.error(f"Failed to get background task failures: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to retrieve background task failures: {str(e)}",
+            detail="Failed to retrieve background task failures",
         )
 
 
@@ -732,7 +753,7 @@ async def resolve_background_failure(
         db.rollback()
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to resolve background failure: {str(e)}",
+            detail="Failed to resolve background failure",
         )
 
 
@@ -771,5 +792,5 @@ async def get_circuit_breaker_status(
         logger.error(f"Failed to get circuit breaker status: {e}")
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to retrieve circuit breaker status: {str(e)}",
+            detail="Failed to retrieve circuit breaker status",
         )
