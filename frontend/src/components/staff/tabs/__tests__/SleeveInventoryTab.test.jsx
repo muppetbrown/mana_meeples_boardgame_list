@@ -2,7 +2,7 @@
  * SleeveInventoryTab tests - products, auto-match, ready-to-sleeve, to-order, CSV export
  */
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SleeveInventoryTab } from '../SleeveInventoryTab';
 import * as apiClient from '../../../../api/client';
