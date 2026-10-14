@@ -80,8 +80,8 @@ mana_meeples_boardgame_list/
 ### Backend Development
 
 ```bash
-# Install dependencies
-pip install -r backend/requirements.txt
+# Install dependencies (requirements-dev.txt adds the test tooling; production uses requirements.txt only)
+pip install -r backend/requirements-dev.txt
 
 # Set environment variables
 cp .env.example .env

@@ -12,10 +12,10 @@ from typing import Dict, List, Callable, Type
 from collections import defaultdict
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
 from config import REDIS_ENABLED, DISABLE_RATE_LIMITING
+from utils.client_ip import get_client_ip
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ def get_limiter() -> Limiter:
         logger.warning(f"⚠️  RATE LIMITING DISABLED - DISABLE_RATE_LIMITING={DISABLE_RATE_LIMITING}, enabled={enabled}")
     else:
         logger.info(f"Rate limiting ENABLED - DISABLE_RATE_LIMITING={DISABLE_RATE_LIMITING}, enabled={enabled}")
-    return Limiter(key_func=get_remote_address, enabled=enabled)
+    return Limiter(key_func=get_client_ip, enabled=enabled)
 
 
 def get_rate_limit_exception_handler() -> Callable:

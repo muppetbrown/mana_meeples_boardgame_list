@@ -18,17 +18,10 @@ from shared.rate_limiting import (
     cleanup_expired_attempts,
     record_failed_attempt,
 )
+from utils.client_ip import get_client_ip
 from utils.jwt_utils import verify_jwt_token, extract_token_from_header
 
 logger = logging.getLogger(__name__)
-
-
-def get_client_ip(request: Request) -> str:
-    """Extract client IP from request, handling proxies"""
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
 
 
 def require_admin_auth(
