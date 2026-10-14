@@ -160,7 +160,7 @@ class TestImageService:
         service = ImageService(db_session, http_client=mock_client)
 
         content, content_type, cache_control = await service.proxy_image(
-            "https://example.com/image.jpg",
+            "https://cf.geekdo-images.com/image.jpg",
             cache_max_age=600
         )
 
@@ -183,7 +183,7 @@ class TestImageService:
         service = ImageService(db_session, http_client=mock_client)
 
         content, content_type, cache_control = await service.proxy_image(
-            "https://example.com/image.jpg"
+            "https://cf.geekdo-images.com/image.jpg"
         )
 
         assert content_type == "application/octet-stream"
@@ -258,7 +258,7 @@ class TestImageFormats:
         mock_client.get = AsyncMock(return_value=mock_response)
 
         service = ImageService(db_session, http_client=mock_client)
-        content, content_type, _ = await service.proxy_image("https://example.com/img.png")
+        content, content_type, _ = await service.proxy_image("https://cf.geekdo-images.com/img.png")
 
         assert content_type == "image/png"
 
@@ -274,7 +274,7 @@ class TestImageFormats:
         mock_client.get = AsyncMock(return_value=mock_response)
 
         service = ImageService(db_session, http_client=mock_client)
-        content, content_type, _ = await service.proxy_image("https://example.com/img.gif")
+        content, content_type, _ = await service.proxy_image("https://cf.geekdo-images.com/img.gif")
 
         assert content_type == "image/gif"
 
@@ -290,7 +290,7 @@ class TestImageFormats:
         mock_client.get = AsyncMock(return_value=mock_response)
 
         service = ImageService(db_session, http_client=mock_client)
-        content, content_type, _ = await service.proxy_image("https://example.com/img.webp")
+        content, content_type, _ = await service.proxy_image("https://cf.geekdo-images.com/img.webp")
 
         assert content_type == "image/webp"
 
@@ -332,7 +332,7 @@ class TestImageEdgeCases:
         mock_client.get = AsyncMock(return_value=mock_response)
 
         service = ImageService(db_session, http_client=mock_client)
-        content, content_type, _ = await service.proxy_image("https://example.com/empty.jpg")
+        content, content_type, _ = await service.proxy_image("https://cf.geekdo-images.com/empty.jpg")
 
         assert content == b""
         assert content_type == "image/jpeg"
@@ -350,7 +350,7 @@ class TestImageEdgeCases:
 
         service = ImageService(db_session, http_client=mock_client)
         _, _, cache_control = await service.proxy_image(
-            "https://example.com/img.jpg",
+            "https://cf.geekdo-images.com/img.jpg",
             cache_max_age=86400
         )
 
@@ -392,7 +392,7 @@ class TestImageEdgeCases:
         service = ImageService(db_session, http_client=mock_client)
 
         with pytest.raises(httpx.HTTPStatusError):
-            await service.proxy_image("https://example.com/missing.jpg")
+            await service.proxy_image("https://cf.geekdo-images.com/missing.jpg")
 
     @pytest.mark.asyncio
     async def test_download_thumbnail_with_query_params(self, db_session):
@@ -652,7 +652,7 @@ class TestProxyImageHeaders:
         mock_client.get = AsyncMock(return_value=mock_response)
 
         service = ImageService(db_session, http_client=mock_client)
-        content, content_type, _ = await service.proxy_image("https://example.com/img.avif")
+        content, content_type, _ = await service.proxy_image("https://cf.geekdo-images.com/img.avif")
 
         assert content_type == "image/avif"
 
@@ -775,7 +775,7 @@ class TestProxyImageNetworkErrors:
         service = ImageService(db_session, http_client=mock_client)
 
         with pytest.raises(httpx.ConnectError):
-            await service.proxy_image("https://unreachable.example.com/image.jpg")
+            await service.proxy_image("https://cf.geekdo-images.com/image.jpg")
 
     @pytest.mark.asyncio
     async def test_proxy_image_timeout(self, db_session):
@@ -786,7 +786,7 @@ class TestProxyImageNetworkErrors:
         service = ImageService(db_session, http_client=mock_client)
 
         with pytest.raises(httpx.TimeoutException):
-            await service.proxy_image("https://slow.example.com/image.jpg")
+            await service.proxy_image("https://cf.geekdo-images.com/image.jpg")
 
 
 if __name__ == "__main__":

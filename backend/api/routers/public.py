@@ -25,6 +25,7 @@ from sqlalchemy.orm import Session
 from database import get_read_db
 from exceptions import GameNotFoundError
 from services import GameService, ImageService
+from services.image_service import UntrustedImageURLError
 from utils.helpers import game_to_dict
 from schemas import GameListItemResponse, GameDetailResponse
 
@@ -669,6 +670,12 @@ async def image_proxy(
     except HTTPException:
         # Re-raise HTTPExceptions (like validation errors) without modification
         raise
+    except UntrustedImageURLError:
+        logger.warning(f"Image proxy rejected untrusted URL: {_sl(url[:100])}")
+        raise HTTPException(
+            status_code=400,
+            detail="Image proxy only supports BoardGameGeek images"
+        )
     except Exception as e:
         logger.error(f"Image proxy error for {_sl(url)}: {e}", exc_info=True)
         raise HTTPException(
