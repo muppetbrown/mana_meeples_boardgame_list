@@ -61,7 +61,7 @@ Comprehensive architecture documentation for the Mana & Meeples Board Game Libra
 - **Version Control**: Git + GitHub
 - **Deployment**: Render.com (auto-deploy on push to main)
 - **Database**: Render PostgreSQL (managed service)
-- **File Storage**: Ephemeral disk (/var/data/thumbs on Render)
+- **File Storage**: Cloudinary (optimised/cached images; no local disk storage)
 
 ## Backend Architecture
 
@@ -321,9 +321,8 @@ frontend/src/
    └── Frontend adds to library list
 
 5. Background Processing
-   ├── Downloads thumbnail from BGG
-   ├── Saves to /var/data/thumbs
-   └── Updates game.thumbnail_file
+   ├── Caches BGG image via Cloudinary
+   └── Updates game.cloudinary_url
 ```
 
 ## Database Schema
@@ -471,9 +470,10 @@ Future considerations:
 - ADMIN_TOKEN (secure random token)
 - CORS_ORIGINS (comma-separated allowed origins)
 - PUBLIC_BASE_URL (backend URL for absolute URLs)
-- THUMBS_DIR (/var/data/thumbs on Render disk)
+- CLOUDINARY_CLOUD_NAME / CLOUDINARY_API_KEY / CLOUDINARY_API_SECRET
 
-**Disk Storage**: 1GB persistent disk at /var/data
+**Disk Storage**: none — the service has no persistent disk attached (removed; images are
+served via Cloudinary).
 
 ### Frontend Deployment (Render)
 

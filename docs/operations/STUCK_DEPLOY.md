@@ -87,3 +87,28 @@ idle-in-transaction session is safe: SQLAlchemy reconnects on the next request (
 | A *newer* commit cancelled the in-flight deploy (`Deploy cancelled` in the log) | Render → Events. Not an error — wait for the newest deploy. |
 | The log you are reading is the **old** instance's runtime log | Open the specific deploy (Events → the deploy) and read *its* log, not the service's live log. |
 | Build step itself | `pip install` takes ~1–3 min; verify it completed ("Build successful"). |
+| A persistent disk is attached | See below. |
+
+## A different cause: a persistent disk blocks the new instance from ever starting
+
+If the service has a disk (`disk:` in `render.yaml`, or a volume shown on the service page),
+Render **cannot** run the old and new instances at the same time — only one instance can have the
+disk mounted. So a disk forces a non-zero-downtime deploy: Render has to stop the old instance and
+detach the disk before the new instance can even start its container.
+
+This looks different from the migration-lock case above: the build finishes ("Build successful"),
+and then there is **no further log output at all** — not even the start command's first line
+(`alembic upgrade head`, `Uvicorn running`, `No open ports detected`). That is because the new
+instance's container hasn't started yet; it isn't waiting on a database lock, it's waiting on the
+disk. Meanwhile the old instance keeps answering `/api/health`, exactly as if nothing were wrong,
+for as long as Render leaves it running — this can be many minutes with no error at any layer.
+
+**How to tell the difference**: search the deploy's logs for the start command actually running
+(e.g. `alembic`, `Uvicorn running`). If it's a lock, you'll see `alembic upgrade head` begin and
+then wait. If it's the disk, you'll see nothing after the build at all.
+
+**Fix**: remove the disk if nothing on it is actually used (check what the app writes to the
+mount path — e.g. `grep` the codebase for the mount path and the env var that points at it). If
+the disk is genuinely needed, this is an inherent Render limitation for disked services: deploys
+of that service will never be zero-downtime, and a slow/hung instance swap has to be handled
+manually from the dashboard (cancel the deploy, or wait it out).

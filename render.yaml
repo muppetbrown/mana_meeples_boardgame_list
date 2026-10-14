@@ -35,10 +35,11 @@ services:
         sync: false
       - key: REDIS_URL
         sync: false
-    disk:
-      name: thumbs-storage
-      mountPath: /var/data
-      sizeGB: 1
+    # No persistent disk: images are served via Cloudinary (see CLAUDE.md), nothing writes to
+    # local disk anymore. A disk forces Render to stop the old instance and detach the disk
+    # before it can start the new one (no zero-downtime deploy), and with nothing freeing the
+    # old instance, that step can hang indefinitely with no error in the logs. See
+    # docs/operations/STUCK_DEPLOY.md.
 
   - type: redis
     name: boardgame-library-redis
