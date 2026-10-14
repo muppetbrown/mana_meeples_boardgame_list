@@ -36,6 +36,30 @@ def test_untrusted_urls_are_rejected(url):
         build_trusted_image_url(url)
 
 
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://cf.geekdo-images.com/a/../../admin",
+        "https://cf.geekdo-images.com/a/./b.jpg",
+        "https://cf.geekdo-images.com/a/%2e%2e/b.jpg",
+        "https://cf.geekdo-images.com/a/%2E%2E%2fb.jpg",
+        "https://cf.geekdo-images.com/a%5cb.jpg",
+        "https://cf.geekdo-images.com/a|b.jpg",
+        "https://cf.geekdo-images.com/a.jpg?x=<script>",
+        "https://cf.geekdo-images.com/a.jpg?next=%2Fadmin",
+    ],
+)
+def test_path_traversal_and_unsafe_characters_are_rejected(url):
+    with pytest.raises(UntrustedImageURLError):
+        build_trusted_image_url(url)
+
+
+def test_real_bgg_path_shapes_are_accepted():
+    url = "https://cf.geekdo-images.com/H__original/img/p=/0x0/filters:format(jpeg)/pic9.jpg?x=1&y=2"
+    assert build_trusted_image_url(url) == url
+    assert build_trusted_image_url("https://cf.geekdo-images.com") == "https://cf.geekdo-images.com/"
+
+
 def test_bgg_urls_are_rebuilt_from_trusted_origin():
     assert build_trusted_image_url(BGG_URL) == BGG_URL
     assert (

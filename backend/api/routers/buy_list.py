@@ -15,7 +15,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Qu
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session, joinedload
 
-import database
 from api.dependencies import require_admin_auth
 from database import get_db
 from models import BuyListGame, Game, PriceOffer, PriceSnapshot
@@ -462,10 +461,12 @@ async def _bulk_import_buy_list_csv_task(text_content: str) -> None:
     a CSV of more than a handful of rows can easily exceed a platform request
     timeout.
     """
-    # Local import so patches on bgg_service.fetch_bgg_thing are picked up.
+    # Local imports so patches on bgg_service.fetch_bgg_thing and
+    # database.SessionLocal (swapped for a test session) are picked up at call time.
     from bgg_service import fetch_bgg_thing
+    from database import SessionLocal
 
-    db = database.SessionLocal()
+    db = SessionLocal()
     try:
         csv_reader = csv.DictReader(io.StringIO(text_content))
         if csv_reader.fieldnames:
