@@ -1,4 +1,5 @@
 """Client IP resolution shared by the login limiter and the API rate limiter."""
+import functools
 import logging
 
 from starlette.requests import Request
@@ -6,7 +7,9 @@ from starlette.requests import Request
 import config
 
 logger = logging.getLogger(__name__)
-_logged_chain_length = False
+
+# Fixed wording per chain length so no request-derived value is ever written to the log.
+_CHAIN_LABELS = {1: "1 entry", 2: "2 entries", 3: "3 entries"}
 
 
 def get_client_ip(request: Request) -> str:
@@ -22,21 +25,20 @@ def get_client_ip(request: Request) -> str:
         forwarded = request.headers.get("x-forwarded-for", "")
         parts = [p.strip() for p in forwarded.split(",") if p.strip()]
         if parts:
-            _log_chain_length_once(len(parts), hops)
+            _log_chain_length_once(_chain_label(len(parts)))
             return parts[max(len(parts) - hops, 0)]
     return request.client.host if request.client else "unknown"
 
 
-def _log_chain_length_once(entries: int, hops: int) -> None:
-    """Log how many X-Forwarded-For entries actually arrive, once per process.
+def _chain_label(entries: int) -> str:
+    return _CHAIN_LABELS.get(entries, "4 or more entries")
 
-    Lets us confirm TRUSTED_PROXY_COUNT against the real proxy chain from the deploy logs
-    (only counts are logged, never addresses).
+
+@functools.lru_cache(maxsize=None)
+def _log_chain_length_once(label: str) -> None:
+    """Log how many X-Forwarded-For entries arrive, once per process and per distinct size.
+
+    Lets us confirm TRUSTED_PROXY_COUNT against the real proxy chain from the deploy logs.
+    The label comes from a fixed table, so neither addresses nor header text reach the log.
     """
-    global _logged_chain_length
-    if not _logged_chain_length:
-        _logged_chain_length = True
-        logger.info(
-            "X-Forwarded-For has %d entr%s; TRUSTED_PROXY_COUNT=%d",
-            entries, "y" if entries == 1 else "ies", hops,
-        )
+    logger.info("X-Forwarded-For arrived with %s (TRUSTED_PROXY_COUNT is set in config)", label)
