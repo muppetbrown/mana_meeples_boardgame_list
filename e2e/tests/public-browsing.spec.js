@@ -7,6 +7,8 @@ const { test, expect } = require('@playwright/test');
  * Critical User Journey: Public users can browse and filter the game catalogue
  */
 
+const API_BASE = process.env.API_BASE || 'http://localhost:8000';
+
 test.describe('Public Browsing and Filtering', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the home page before each test
@@ -71,52 +73,45 @@ test.describe('Public Browsing and Filtering', () => {
     expect(hasResults || hasNoResults).toBeTruthy();
   });
 
-  test('should filter by New Zealand designers', async ({ page }) => {
-    // Look for NZ designer filter checkbox or button
-    const nzFilter = page.locator('input[type="checkbox"]:near(:text("New Zealand")), button:has-text("NZ Designer"), label:has-text("New Zealand")').first();
+  test('should list games alphabetically by default', async ({ page }) => {
+    // The redesigned catalogue has no sort control; it always lists A-Z by title.
+    await page.waitForSelector('article h3', { timeout: 10000 });
 
-    if (await nzFilter.count() > 0) {
-      await nzFilter.click();
+    const titles = await page.locator('article h3').allInnerTexts();
+    expect(titles.length).toBeGreaterThan(1);
 
-      // Wait for filter to apply
-      await page.waitForTimeout(500);
-
-      // Verify URL contains nz_designer parameter
-      expect(page.url()).toContain('nz_designer=true');
-    }
+    const sorted = [...titles].sort((a, b) => a.localeCompare(b));
+    expect(titles).toEqual(sorted);
   });
 
-  test('should sort games by different criteria', async ({ page }) => {
-    // Wait for initial load
-    await page.waitForSelector('[data-testid="game-card"], .game-card, article');
+  test('should filter by New Zealand designers', async ({ request }) => {
+    // There is no NZ designer control on the public page, so verify the public
+    // API filter that backs it (the seed includes one NZ-designer fixture game).
+    const all = await (await request.get(`${API_BASE}/api/public/games?page_size=50`)).json();
+    const res = await request.get(`${API_BASE}/api/public/games?nz_designer=true&page_size=50`);
+    expect(res.ok()).toBeTruthy();
+    const nz = await res.json();
 
-    // Find sort dropdown/select - use a simpler selector
-    const sortSelect = page.locator('select[aria-label="Choose sort field"]').first();
+    expect(nz.total).toBeGreaterThan(0);
+    expect(nz.total).toBeLessThan(all.total);
+    expect(nz.items.every((game) => game.nz_designer === true)).toBeTruthy();
+    expect(nz.items.map((game) => game.title)).toContain('Kiwi Test Game');
+  });
 
-    // Check if sort select exists and is visible (may be hidden on mobile)
-    const isVisible = await sortSelect.isVisible().catch(() => false);
+  test('should sort games by different criteria', async ({ request }) => {
+    // Sorting is not exposed in the public UI; verify the API sort options.
+    const years = async (sort) => {
+      const res = await request.get(`${API_BASE}/api/public/games?sort=${sort}&page_size=50`);
+      expect(res.ok()).toBeTruthy();
+      return (await res.json()).items.map((game) => game.year);
+    };
 
-    if (isVisible) {
-      // Select "Year" option by value
-      await sortSelect.selectOption('year');
+    const newestFirst = await years('year_desc');
+    const oldestFirst = await years('year_asc');
 
-      // Wait for re-sort
-      await page.waitForTimeout(500);
-
-      // Verify URL contains sort parameter
-      expect(page.url()).toContain('sort=');
-
-      // Verify games are still displayed
-      const gameCards = page.locator('[data-testid="game-card"], .game-card, article');
-      const count = await gameCards.count();
-      expect(count).toBeGreaterThan(0);
-    } else {
-      // Sort controls may be hidden on mobile or in certain layouts
-      // Skip the sorting verification but ensure games are still displayed
-      const gameCards = page.locator('[data-testid="game-card"], .game-card, article');
-      const count = await gameCards.count();
-      expect(count).toBeGreaterThan(0);
-      console.log('Sort select not visible - skipping sort test (may be mobile layout)');
-    }
+    expect(newestFirst.length).toBeGreaterThan(1);
+    expect(newestFirst).toEqual([...newestFirst].sort((a, b) => b - a));
+    expect(oldestFirst).toEqual([...oldestFirst].sort((a, b) => a - b));
+    expect(newestFirst[0]).not.toEqual(oldestFirst[0]);
   });
 });

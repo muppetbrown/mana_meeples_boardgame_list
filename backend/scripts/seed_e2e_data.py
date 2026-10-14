@@ -186,6 +186,27 @@ def seed_test_data():
                 "image": "https://cf.geekdo-images.com/yLZJCVLlIx4c7eJEWUNJ7w__imagepage/img/VNToqgS2wtBBhqsMqIyNKXEggHk=/fit-in/900x600/filters:no_upscale():strip_icc()/pic4458123.jpg"
             },
             {
+                # Fixture for the New Zealand designer filter E2E test (fictional game)
+                "title": "Kiwi Test Game",
+                "bgg_id": 900001,
+                "year": 2021,
+                "players_min": 2,
+                "players_max": 4,
+                "playtime_min": 30,
+                "playtime_max": 45,
+                "mana_meeple_category": "KIDS_FAMILIES",
+                "complexity": 1.8,
+                "average_rating": 6.5,
+                "designers": ["Test Designer (NZ)"],
+                "mechanics": ["Set Collection"],
+                "description": "A fictional test fixture used to verify the New Zealand designer filter.",
+                "min_age": 6,
+                "is_cooperative": False,
+                "nz_designer": True,
+                "status": "OWNED",
+                "image": None
+            },
+            {
                 "title": "Splendor",
                 "bgg_id": 148228,
                 "year": 2014,
