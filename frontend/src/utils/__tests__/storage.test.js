@@ -111,12 +111,8 @@ describe('MemoryStorage', () => {
 
 describe('SafeStorage', () => {
   let mockLocalStorage;
-  let originalLocalStorage;
 
   beforeEach(() => {
-    // Save original localStorage
-    originalLocalStorage = global.localStorage;
-
     // Create mock localStorage
     mockLocalStorage = {
       store: {},
@@ -136,11 +132,11 @@ describe('SafeStorage', () => {
       key: vi.fn((index) => Object.keys(mockLocalStorage.store)[index] || null),
     };
 
-    global.localStorage = mockLocalStorage;
+    vi.stubGlobal('localStorage', mockLocalStorage);
   });
 
   afterEach(() => {
-    global.localStorage = originalLocalStorage;
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
   });
 
@@ -153,11 +149,11 @@ describe('SafeStorage', () => {
 
     it('falls back to memory storage when localStorage is blocked', () => {
       // Mock localStorage to throw SecurityError
-      global.localStorage = {
+      vi.stubGlobal('localStorage', {
         setItem: vi.fn(() => {
           throw new DOMException('SecurityError');
         }),
-      };
+      });
 
       const storage = new SafeStorage();
       expect(storage.isAvailable()).toBe(false);
@@ -303,17 +299,17 @@ describe('SafeStorage', () => {
   describe('recheckAvailability', () => {
     it('switches to localStorage when it becomes available', () => {
       // Start with blocked localStorage
-      global.localStorage = {
+      vi.stubGlobal('localStorage', {
         setItem: vi.fn(() => {
           throw new DOMException('SecurityError');
         }),
-      };
+      });
 
       const storage = new SafeStorage();
       expect(storage.isUsingMemoryFallback()).toBe(true);
 
       // Restore working localStorage
-      global.localStorage = mockLocalStorage;
+      vi.stubGlobal('localStorage', mockLocalStorage);
 
       const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
       storage.recheckAvailability();
@@ -422,7 +418,7 @@ describe('Integration scenarios', () => {
       key: vi.fn((index) => Object.keys(mockLocalStorage.store)[index] || null),
     };
 
-    global.localStorage = mockLocalStorage;
+    vi.stubGlobal('localStorage', mockLocalStorage);
 
     const storage = new SafeStorage();
 
