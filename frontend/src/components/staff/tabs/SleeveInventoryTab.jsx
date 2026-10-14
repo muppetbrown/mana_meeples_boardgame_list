@@ -1,5 +1,6 @@
 // src/components/staff/tabs/SleeveInventoryTab.jsx
 import React, { useState, useEffect, useCallback } from "react";
+import { useConfirm } from "../../../context/StaffContext";
 import {
   getSleeveProducts,
   createSleeveProduct,
@@ -20,6 +21,8 @@ export function SleeveInventoryTab() {
   const [toOrderList, setToOrderList] = useState([]);
   const [toSleeveList, setToSleeveList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [matching, setMatching] = useState(false);
+  const confirm = useConfirm();
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
@@ -144,7 +147,13 @@ export function SleeveInventoryTab() {
   };
 
   const handleDeleteProduct = async (productId, productName) => {
-    if (!window.confirm(`Delete "${productName}"? This will clear product links on matched sleeves.`)) return;
+    const ok = await confirm({
+      title: `Delete "${productName}"?`,
+      message: "This will clear product links on matched sleeves.",
+      confirmLabel: "Delete product",
+      tone: "danger",
+    });
+    if (!ok) return;
     try {
       await deleteSleeveProduct(productId);
       showMessage("Product deleted");
@@ -157,7 +166,7 @@ export function SleeveInventoryTab() {
   // ---- Matching ----
 
   const handleRunMatching = async () => {
-    setLoading(true);
+    setMatching(true);
     try {
       const result = await runSleeveMatching();
       showMessage(`Matching complete: ${result.matched} matched, ${result.unmatched} unmatched out of ${result.total}`);
@@ -167,7 +176,7 @@ export function SleeveInventoryTab() {
     } catch (err) {
       showMessage("Matching failed", "error");
     } finally {
-      setLoading(false);
+      setMatching(false);
     }
   };
 
@@ -176,6 +185,7 @@ export function SleeveInventoryTab() {
   const handleSleeveReady = async (game) => {
     const readySleeves = game.sleeves.filter((s) => s.ready);
     const results = { success: 0, failed: 0 };
+    // Sleeves can draw from the same product stock, so keep these sequential
     for (const sleeve of readySleeves) {
       try {
         await updateSleeveStatus(sleeve.sleeve_id, true);
@@ -214,7 +224,13 @@ export function SleeveInventoryTab() {
         item.game_names.join("; "),
       ]);
     });
-    const csv = rows.map((r) => r.join(",")).join("\n");
+    // Quote every field (and neutralise spreadsheet formulas) so commas in game names don't break columns
+    const cell = (v) => {
+      let t = String(v ?? "");
+      if (/^[=+\-@]/.test(t)) t = `'${t}`;
+      return `"${t.replace(/"/g, '""')}"`;
+    };
+    const csv = rows.map((r) => r.map(cell).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -234,12 +250,12 @@ export function SleeveInventoryTab() {
     <div className="space-y-6">
       {/* Messages */}
       {error && (
-        <div className="p-3 bg-red-50 border border-red-300 text-red-800 rounded-lg text-sm">
+        <div role="alert" className="p-3 bg-red-50 border border-red-300 text-red-800 rounded-lg text-sm sticky top-32 z-20">
           {error}
         </div>
       )}
       {success && (
-        <div className="p-3 bg-green-50 border border-green-300 text-green-800 rounded-lg text-sm">
+        <div role="status" className="p-3 bg-green-50 border border-green-300 text-green-800 rounded-lg text-sm sticky top-32 z-20">
           {success}
         </div>
       )}
@@ -249,10 +265,10 @@ export function SleeveInventoryTab() {
         <h2 className="text-xl font-bold">Sleeve Inventory</h2>
         <button
           onClick={handleRunMatching}
-          disabled={loading}
+          disabled={matching}
           className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm font-medium"
         >
-          {loading ? "Running..." : "Run Auto-Match"}
+          {matching ? "Running..." : "Run Auto-Match"}
         </button>
       </div>
 

@@ -1,5 +1,5 @@
 // src/pages/StaffView.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 // ---- Context ----
@@ -24,6 +24,18 @@ import { AdvancedToolsTab } from "../components/staff/tabs/AdvancedToolsTab";
 import { BuyListTab } from "../components/staff/tabs/BuyListTab";
 import { SleeveInventoryTab } from "../components/staff/tabs/SleeveInventoryTab";
 
+const TABS = [
+  { id: "dashboard", label: "Dashboard", icon: "📊" },
+  { id: "add-games", label: "Add Games", icon: "📥" },
+  { id: "manage-library", label: "Manage Library", icon: "📚" },
+  { id: "categories", label: "Categories", icon: "🏷️" },
+  { id: "quick-picks", label: "Quick Picks", icon: "🎯" },
+  { id: "buy-list", label: "Buy List", icon: "🛒" },
+  { id: "sleeve-inventory", label: "Sleeve Inventory", icon: "🃏" },
+  { id: "advanced", label: "Advanced Tools", icon: "⚙️" },
+];
+const TAB_IDS = TABS.map((t) => t.id);
+
 /**
  * Staff view content - uses StaffContext for all state management
  * Now with tabbed navigation for better organization
@@ -39,43 +51,42 @@ function StaffViewContent() {
     modalOpen,
     pendingGame,
     stats,
+    confirm,
     handleModalSelect,
     handleModalClose,
   } = useStaff();
 
   // Tab state with URL persistence
-  const [activeTab, setActiveTab] = useState(() => {
-    return searchParams.get("tab") || "dashboard";
-  });
+  const initialTab = TAB_IDS.includes(searchParams.get("tab")) ? searchParams.get("tab") : "dashboard";
+  const [activeTab, setActiveTab] = useState(initialTab);
+  // Tabs stay mounted once visited so search/filters/selections survive tab switches
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set([initialTab]));
 
-  // Tab configuration
-  const tabs = [
-    { id: "dashboard", label: "Dashboard", icon: "📊" },
-    { id: "add-games", label: "Add Games", icon: "📥" },
-    { id: "manage-library", label: "Manage Library", icon: "📚" },
-    { id: "categories", label: "Categories", icon: "🏷️" },
-    { id: "quick-picks", label: "Quick Picks", icon: "🎯" },
-    { id: "buy-list", label: "Buy List", icon: "🛒" },
-    { id: "sleeve-inventory", label: "Sleeve Inventory", icon: "🃏" },
-    { id: "advanced", label: "Advanced Tools", icon: "⚙️" },
-  ];
+  const handleTabChange = useCallback(
+    (tabId) => {
+      setActiveTab(tabId);
+      setVisitedTabs((prev) => (prev.has(tabId) ? prev : new Set(prev).add(tabId)));
+      setSearchParams({ tab: tabId });
+    },
+    [setSearchParams]
+  );
 
-  // Update URL when tab changes
-  const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
-    setSearchParams({ tab: tabId });
-  };
-
-  // Sync with URL on mount and when URL changes
+  // Sync with URL (browser back/forward)
   useEffect(() => {
     const urlTab = searchParams.get("tab");
-    if (urlTab && tabs.find((t) => t.id === urlTab)) {
+    if (urlTab && TAB_IDS.includes(urlTab)) {
       setActiveTab(urlTab);
+      setVisitedTabs((prev) => (prev.has(urlTab) ? prev : new Set(prev).add(urlTab)));
     }
   }, [searchParams]);
 
   const handleLogout = async () => {
-    if (window.confirm("Are you sure you want to logout?")) {
+    const ok = await confirm({
+      title: "Log out?",
+      message: "You will need your admin token to sign back in.",
+      confirmLabel: "Log out",
+    });
+    if (ok) {
       try {
         // Call logout endpoint to clear session cookie
         await adminLogout();
@@ -93,11 +104,8 @@ function StaffViewContent() {
     return <FullPageLoader text="Validating credentials..." />;
   }
 
-  // Render active tab content
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "dashboard":
-        return <DashboardTab onTabChange={handleTabChange} />;
+  const renderTab = (id) => {
+    switch (id) {
       case "add-games":
         return <AddGamesTab />;
       case "manage-library":
@@ -140,11 +148,21 @@ function StaffViewContent() {
       </header>
 
       {/* Tab Navigation */}
-      <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} tabs={tabs} />
+      <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} tabs={TABS} />
 
       {/* Tab Content */}
-      <main role="main" id="main-content" className="max-w-7xl mx-auto px-4 py-6">
-        {renderTabContent()}
+      <main id="main-content" className="max-w-7xl mx-auto px-4 py-6">
+        {TABS.filter((t) => visitedTabs.has(t.id)).map((t) => (
+          <div
+            key={t.id}
+            role="tabpanel"
+            id={`panel-${t.id}`}
+            aria-labelledby={`tab-${t.id}`}
+            hidden={t.id !== activeTab}
+          >
+            {renderTab(t.id)}
+          </div>
+        ))}
       </main>
 
       {/* Global Modals */}

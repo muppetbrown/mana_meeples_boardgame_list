@@ -15,6 +15,10 @@ export function AddGamesTab() {
     csvImportText,
     setCsvImportText,
     doBulkImport,
+    bulkImportResult,
+    isBulkRunning,
+    isAddingGame,
+    loadLibrary,
     showToast,
   } = useStaff();
 
@@ -52,16 +56,19 @@ export function AddGamesTab() {
         <div className="flex flex-wrap gap-2 items-center">
           <input
             className="flex-1 min-w-70 border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-3 text-base outline-none transition-all"
-            placeholder="Enter BoardGameGeek ID (e.g., 30549 for Pandemic)"
+            aria-label="BoardGameGeek ID or URL"
+            placeholder="Enter BoardGameGeek ID or paste a game URL (e.g., 30549 for Pandemic)"
+            disabled={isAddingGame}
             value={bggIdInput}
             onChange={(e) => setBggIdInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAddGame()}
           />
           <button
-            className="px-6 py-3 rounded-lg bg-purple-600 text-white font-medium hover:bg-purple-700 transition-colors shadow-sm"
+            className="px-6 py-3 rounded-lg bg-purple-600 text-white font-medium hover:bg-purple-700 transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
             onClick={handleAddGame}
+            disabled={isAddingGame}
           >
-            Add Game
+            {isAddingGame ? "Adding…" : "Add Game"}
           </button>
         </div>
 
@@ -90,6 +97,8 @@ export function AddGamesTab() {
           value={csvImportText}
           onChange={setCsvImportText}
           onSubmit={doBulkImport}
+          busy={isBulkRunning}
+          queued={bulkImportResult}
         />
 
         <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
@@ -117,7 +126,7 @@ export function AddGamesTab() {
         </div>
 
         <ManualGameEntryPanel
-          onSuccess={() => window.location.reload()}
+          onSuccess={loadLibrary}
           onToast={showToast}
         />
       </div>

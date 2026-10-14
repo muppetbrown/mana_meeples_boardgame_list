@@ -82,7 +82,7 @@ describe('CategoriesTab', () => {
   ];
 
   const defaultStaffContext = {
-    library: mockGames,
+    ownedLibrary: mockGames,
     counts: {
       all: 5,
       COOP_ADVENTURE: 1,
@@ -150,7 +150,7 @@ describe('CategoriesTab', () => {
     test('hides Quick Categorize section when no uncategorized games', () => {
       const contextWithNoUncategorized = {
         ...defaultStaffContext,
-        library: mockGames.filter((g) => g.mana_meeple_category),
+        ownedLibrary: mockGames.filter((g) => g.mana_meeple_category),
       };
 
       useStaff.mockReturnValue(contextWithNoUncategorized);
@@ -200,7 +200,7 @@ describe('CategoriesTab', () => {
     test('does not show uncategorized warning when all games are categorized', () => {
       const contextWithNoUncategorized = {
         ...defaultStaffContext,
-        library: mockGames.filter((g) => g.mana_meeple_category),
+        ownedLibrary: mockGames.filter((g) => g.mana_meeple_category),
       };
 
       useStaff.mockReturnValue(contextWithNoUncategorized);
@@ -362,14 +362,14 @@ describe('CategoriesTab', () => {
       await waitFor(() => {
         expect(mockShowToast).toHaveBeenCalledWith(
           'Updated: 2, Not found: 1, Errors: 0',
-          'success'
+          'warning',
+          4000
         );
       });
     });
 
-    test('downloads log file after NZ designer update', async () => {
+    test('shows inline results with a downloadable log after NZ designer update', async () => {
       const user = userEvent.setup();
-      const createElementSpy = vi.spyOn(document, 'createElement');
       const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-url');
       const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 
@@ -381,19 +381,18 @@ describe('CategoriesTab', () => {
 
       render(<CategoriesTab />);
 
-      const textarea = screen.getByPlaceholderText(/12345,true/);
-      await user.type(textarea, '12345,true');
+      await user.type(screen.getByPlaceholderText(/12345,true/), '12345,true');
+      await user.click(screen.getByText('Update NZ Designer Flags'));
 
-      const button = screen.getByText('Update NZ Designer Flags');
-      await user.click(button);
+      // Results are shown inline (no automatic download)
+      expect(await screen.findByText(/1 updated · 1 not found · 0 errors/)).toBeInTheDocument();
+      expect(screen.getByText('Game 2')).toBeInTheDocument();
+      expect(createObjectURLSpy).not.toHaveBeenCalled();
 
-      await waitFor(() => {
-        expect(createObjectURLSpy).toHaveBeenCalled();
-        expect(createElementSpy).toHaveBeenCalledWith('a');
-        expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url');
-      });
+      await user.click(screen.getByText('Download log'));
+      expect(createObjectURLSpy).toHaveBeenCalled();
+      expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:mock-url');
 
-      createElementSpy.mockRestore();
       createObjectURLSpy.mockRestore();
       revokeObjectURLSpy.mockRestore();
     });
@@ -551,7 +550,7 @@ describe('CategoriesTab', () => {
     test('does not show uncategorized bar when no uncategorized games', () => {
       const contextWithNoUncategorized = {
         ...defaultStaffContext,
-        library: mockGames.filter((g) => g.mana_meeple_category),
+        ownedLibrary: mockGames.filter((g) => g.mana_meeple_category),
         counts: {
           ...defaultStaffContext.counts,
           all: 3,
@@ -577,7 +576,7 @@ describe('CategoriesTab', () => {
       const newLibrary = mockGames.filter((g) => g.mana_meeple_category);
       useStaff.mockReturnValue({
         ...defaultStaffContext,
-        library: newLibrary,
+        ownedLibrary: newLibrary,
       });
 
       rerender(<CategoriesTab />);

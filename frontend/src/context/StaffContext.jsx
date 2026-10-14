@@ -3,7 +3,7 @@
  * StaffContext - Centralized state management for staff/admin interface
  * Eliminates prop drilling and consolidates business logic
  */
-import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   getGames,
@@ -15,6 +15,7 @@ import {
   importFromBGG,
 } from '../api/client';
 import { CATEGORY_KEYS } from '../constants/categories';
+import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const StaffContext = createContext(null);
 
@@ -42,6 +43,8 @@ export function StaffProvider({ children }) {
   // Library state
   const [library, setLibrary] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  // Optional data-quality filter applied in Manage Library (set from the Dashboard)
+  const [attentionFilter, setAttentionFilter] = useState('');
 
   // Bulk operation state
   const [csvImportText, setCsvImportText] = useState('');
@@ -49,6 +52,12 @@ export function StaffProvider({ children }) {
 
   // BGG import state
   const [bggIdInput, setBggIdInput] = useState('');
+  const [isAddingGame, setIsAddingGame] = useState(false);
+
+  // Last bulk operation results (shown inline in the bulk panels)
+  const [bulkImportResult, setBulkImportResult] = useState(null);
+  const [bulkCategorizeResult, setBulkCategorizeResult] = useState(null);
+  const [isBulkRunning, setIsBulkRunning] = useState(false);
 
   // Toast notifications
   const [toast, setToast] = useState({ message: '', type: 'info' });
@@ -65,9 +74,35 @@ export function StaffProvider({ children }) {
   /**
    * Show toast notification
    */
+  const toastTimer = useRef(null);
   const showToast = useCallback((message, type = 'info', ms = 2000) => {
+    // Clear any pending timer so an older toast can't wipe a newer one
+    if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast({ message, type });
-    setTimeout(() => setToast({ message: '', type: 'info' }), ms);
+    // Errors/warnings stay a little longer so they can be read
+    const duration = type === 'error' ? Math.max(ms, 4000) : ms;
+    toastTimer.current = setTimeout(() => setToast({ message: '', type: 'info' }), duration);
+  }, []);
+
+  useEffect(() => () => toastTimer.current && clearTimeout(toastTimer.current), []);
+
+  /**
+   * Promise-based confirmation dialog (replaces window.confirm).
+   * confirm({ title, message, confirmLabel, tone, requireText }) -> Promise<boolean>
+   */
+  const [confirmState, setConfirmState] = useState(null);
+  const confirm = useCallback(
+    (options) =>
+      new Promise((resolve) => {
+        setConfirmState({ ...options, resolve });
+      }),
+    []
+  );
+  const settleConfirm = useCallback((result) => {
+    setConfirmState((cur) => {
+      cur?.resolve(result);
+      return null;
+    });
   }, []);
 
   /**
@@ -118,36 +153,43 @@ export function StaffProvider({ children }) {
   }, [isValidating, loadLibrary]);
 
   /**
+   * Derived state - owned games only (buy list / wishlist are managed elsewhere)
+   */
+  const ownedLibrary = useMemo(
+    () => library.filter((g) => !g.status || g.status === 'OWNED'),
+    [library]
+  );
+
+  /**
    * Derived state - stats
    */
   const stats = useMemo(() => {
-    const total = library.length;
-    const rated = library.filter((g) => typeof g.average_rating === 'number' && g.average_rating > 0);
+    const total = ownedLibrary.length;
+    const rated = ownedLibrary.filter((g) => typeof g.average_rating === 'number' && g.average_rating > 0);
     const avg =
       rated.length > 0
         ? (rated.reduce((s, g) => s + g.average_rating, 0) / rated.length).toFixed(1)
         : 'N/A';
     return { total, avgRating: avg };
-  }, [library]);
+  }, [ownedLibrary]);
 
   /**
-   * Derived state - category counts
+   * Derived state - category counts (owned games only, matching the lists)
    */
-  const counts = useMemo(() => computeCounts(library), [library]);
+  const counts = useMemo(() => computeCounts(ownedLibrary), [ownedLibrary]);
 
   /**
    * Derived state - filtered library
    */
   const filteredLibrary = useMemo(() => {
-    // First filter to only show OWNED games (exclude BUY_LIST and WISHLIST)
-    const ownedGames = library.filter((g) => !g.status || g.status === 'OWNED');
+    const ownedGames = ownedLibrary;
 
     // Then filter by category
     if (selectedCategory === 'all') return ownedGames;
     if (selectedCategory === 'uncategorized')
       return ownedGames.filter((g) => !g.mana_meeple_category);
     return ownedGames.filter((g) => g.mana_meeple_category === selectedCategory);
-  }, [library, selectedCategory]);
+  }, [ownedLibrary, selectedCategory]);
 
   /**
    * Add game by BGG ID with retry logic
@@ -168,7 +210,7 @@ export function StaffProvider({ children }) {
           const result = await importFromBGG(bggId);
           showToast(`Added "${result.title}" successfully!`, 'success');
           await loadLibrary();
-          return; // Success - exit retry loop
+          return true; // Success - exit retry loop
         } catch (error) {
           // Check if it's an HTTP error with response
           const status = error.response?.status;
@@ -177,7 +219,7 @@ export function StaffProvider({ children }) {
           // Don't retry on 4xx errors (client errors) except rate limiting
           if (status && status >= 400 && status < 500 && status !== 429) {
             showToast(`Failed to add game: ${errorMessage}`, 'error', 4000);
-            return; // Exit - client error won't be fixed by retry
+            return false; // Exit - client error won't be fixed by retry
           }
 
           // For server errors, rate limiting, or network errors, retry if attempts left
@@ -196,6 +238,7 @@ export function StaffProvider({ children }) {
           }
         }
       }
+      return false;
     },
     [loadLibrary, showToast]
   );
@@ -203,8 +246,12 @@ export function StaffProvider({ children }) {
   /**
    * Handle add game button
    */
-  const handleAddGame = useCallback(() => {
-    const id = parseInt(bggIdInput.trim());
+  const handleAddGame = useCallback(async () => {
+    if (isAddingGame) return;
+    // Accept a pasted BGG URL as well as a bare ID
+    const raw = bggIdInput.trim();
+    const urlMatch = raw.match(/boardgame(?:expansion)?\/(\d+)/i);
+    const id = parseInt(urlMatch ? urlMatch[1] : raw, 10);
     if (isNaN(id) || id <= 0) {
       showToast('Please enter a valid BGG ID', 'error');
       return;
@@ -214,9 +261,15 @@ export function StaffProvider({ children }) {
       showToast(`"${existing.title}" is already in your library`, 'warning', 4000);
       return;
     }
-    addGameByBggId(id);
-    setBggIdInput('');
-  }, [bggIdInput, addGameByBggId, library, showToast]);
+    setIsAddingGame(true);
+    try {
+      // Keep the input until the import succeeds so a failure can be retried
+      const ok = await addGameByBggId(id);
+      if (ok) setBggIdInput('');
+    } finally {
+      setIsAddingGame(false);
+    }
+  }, [bggIdInput, addGameByBggId, library, showToast, isAddingGame]);
 
   /**
    * Open edit category modal
@@ -263,17 +316,25 @@ export function StaffProvider({ children }) {
    */
   const doBulkImport = useCallback(
     async () => {
-      if (!csvImportText.trim()) return;
+      if (!csvImportText.trim() || isBulkRunning) return;
+      setIsBulkRunning(true);
       try {
-        await bulkImportCsv(csvImportText);
-        showToast('Import finished', 'success');
-        await loadLibrary();
+        const result = await bulkImportCsv(csvImportText);
+        // The server imports in the background, so report what was actually queued
+        setBulkImportResult({
+          message: result?.message || 'Import started',
+          count: result?.count,
+          at: new Date(),
+        });
+        showToast(result?.message || 'Import started in the background', 'success', 4000);
         setCsvImportText('');
       } catch (e) {
-        showToast('Bulk import failed', 'error');
+        showToast(e.response?.data?.detail || 'Bulk import failed', 'error');
+      } finally {
+        setIsBulkRunning(false);
       }
     },
-    [csvImportText, loadLibrary, showToast]
+    [csvImportText, showToast, isBulkRunning]
   );
 
   /**
@@ -281,17 +342,32 @@ export function StaffProvider({ children }) {
    */
   const doBulkCategorize = useCallback(
     async () => {
-      if (!csvCategorizeText.trim()) return;
+      if (!csvCategorizeText.trim() || isBulkRunning) return;
+      setIsBulkRunning(true);
       try {
-        await bulkCategorizeCsv(csvCategorizeText);
-        showToast('Categorization finished', 'success');
+        const result = await bulkCategorizeCsv(csvCategorizeText);
+        setBulkCategorizeResult({
+          updated: result?.updated || [],
+          not_found: result?.not_found || [],
+          errors: result?.errors || [],
+          at: new Date(),
+        });
+        const u = result?.updated?.length || 0;
+        const problems = (result?.not_found?.length || 0) + (result?.errors?.length || 0);
+        showToast(
+          `Categorized ${u} game(s)${problems ? `, ${problems} need attention` : ''}`,
+          problems ? 'warning' : 'success',
+          4000
+        );
         await loadLibrary();
         setCsvCategorizeText('');
       } catch (e) {
-        showToast('Bulk categorize failed', 'error');
+        showToast(e.response?.data?.detail || 'Bulk categorize failed', 'error');
+      } finally {
+        setIsBulkRunning(false);
       }
     },
-    [csvCategorizeText, loadLibrary, showToast]
+    [csvCategorizeText, loadLibrary, showToast, isBulkRunning]
   );
 
   /**
@@ -300,8 +376,13 @@ export function StaffProvider({ children }) {
   const updateGameData = useCallback(
     async (gameId, updates) => {
       try {
-        await updateGame(gameId, updates);
-        await loadLibrary();
+        const updated = await updateGame(gameId, updates);
+        if (updated && typeof updated === 'object' && updated.id === gameId) {
+          // Patch in place - avoids re-downloading the whole library per edit
+          setLibrary((prev) => prev.map((g) => (g.id === gameId ? { ...g, ...updated } : g)));
+        } else {
+          await loadLibrary();
+        }
         showToast('Game updated', 'success');
       } catch (e) {
         showToast('Failed to update game', 'error');
@@ -318,7 +399,7 @@ export function StaffProvider({ children }) {
     async (gameId) => {
       try {
         await deleteGame(gameId);
-        await loadLibrary();
+        setLibrary((prev) => prev.filter((g) => g.id !== gameId));
         showToast('Game deleted', 'success');
       } catch (e) {
         showToast('Failed to delete game', 'error');
@@ -335,12 +416,20 @@ export function StaffProvider({ children }) {
     library,
     selectedCategory,
     setSelectedCategory,
+    attentionFilter,
+    setAttentionFilter,
     csvImportText,
     setCsvImportText,
     csvCategorizeText,
     setCsvCategorizeText,
     bggIdInput,
     setBggIdInput,
+    isAddingGame,
+    bulkImportResult,
+    bulkCategorizeResult,
+    isBulkRunning,
+    ownedLibrary,
+    confirm,
     toast,
     modalOpen,
     pendingGame,
@@ -367,7 +456,22 @@ export function StaffProvider({ children }) {
     showToast,
   };
 
-  return <StaffContext.Provider value={value}>{children}</StaffContext.Provider>;
+  return (
+    <StaffContext.Provider value={value}>
+      {children}
+      {confirmState && (
+        <ConfirmDialog
+          title={confirmState.title}
+          message={confirmState.message}
+          confirmLabel={confirmState.confirmLabel}
+          tone={confirmState.tone}
+          requireText={confirmState.requireText}
+          onConfirm={() => settleConfirm(true)}
+          onCancel={() => settleConfirm(false)}
+        />
+      )}
+    </StaffContext.Provider>
+  );
 }
 
 /**
@@ -379,4 +483,16 @@ export function useStaff() {
     throw new Error('useStaff must be used within StaffProvider');
   }
   return context;
+}
+
+/**
+ * Hook returning an async confirm(options) -> boolean.
+ * Uses the in-app dialog inside StaffProvider; falls back to window.confirm
+ * when rendered standalone (e.g. isolated component tests).
+ */
+export function useConfirm() {
+  const context = useContext(StaffContext);
+  if (context?.confirm) return context.confirm;
+  return async (options = {}) =>
+    window.confirm([options.title, options.message].filter(Boolean).join('\n\n'));
 }

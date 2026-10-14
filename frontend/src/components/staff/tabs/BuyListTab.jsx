@@ -1,5 +1,7 @@
 // src/components/staff/tabs/BuyListTab.jsx
 import React, { useState, useEffect, useRef } from "react";
+import { useConfirm } from "../../../context/StaffContext";
+import Thumbnail from "../../common/Thumbnail";
 import {
   getBuyListGames,
   getLastPriceUpdate,
@@ -8,7 +10,6 @@ import {
   removeFromBuyList,
   importPrices,
   bulkImportBuyListCSV,
-  imageProxyUrl,
   updateGame,
   importFromBGG,
 } from "../../../api/client";
@@ -39,13 +40,29 @@ export function BuyListTab() {
   });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef(null);
+  const confirm = useConfirm();
 
-  // Load buy list and last update on mount
+  // Banners auto-dismiss (errors linger longer so they can be read)
+  useEffect(() => {
+    if (!success) return undefined;
+    const t = setTimeout(() => setSuccess(null), 6000);
+    return () => clearTimeout(t);
+  }, [success]);
+  useEffect(() => {
+    if (!error) return undefined;
+    const t = setTimeout(() => setError(null), 10000);
+    return () => clearTimeout(t);
+  }, [error]);
+
+  // Load the buy list whenever filters change; the price-update stamp only on mount
   useEffect(() => {
     loadBuyList();
-    loadLastUpdate();
   }, [filters]);
+  useEffect(() => {
+    loadLastUpdate();
+  }, []);
 
   const loadBuyList = async () => {
     try {
@@ -85,7 +102,7 @@ export function BuyListTab() {
     try {
       setError(null);
       setSuccess(null);
-      setLoading(true);
+      setIsImporting(true);
 
       // Show immediate feedback that import is starting
       setSuccess("⏳ Import started... This may take several minutes for large datasets. Please wait...");
@@ -108,8 +125,9 @@ export function BuyListTab() {
       } else {
         setError(`Failed to import prices: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
       }
+      setSuccess(null);
     } finally {
-      setLoading(false);
+      setIsImporting(false);
     }
   };
 
@@ -137,7 +155,8 @@ export function BuyListTab() {
   };
 
   const handleRemove = async (id) => {
-    if (!window.confirm("Remove this game from the buy list?")) return;
+    const ok = await confirm({ title: "Remove this game from the buy list?", confirmLabel: "Remove", tone: "danger" });
+    if (!ok) return;
 
     try {
       setError(null);
@@ -151,7 +170,12 @@ export function BuyListTab() {
   };
 
   const handleMoveToOwned = async (item) => {
-    if (!window.confirm(`Move "${item.title}" to owned collection?`)) return;
+    const ok = await confirm({
+      title: `Move "${item.title}" to your owned collection?`,
+      message: "It will be added to the public library and refreshed from BoardGameGeek.",
+      confirmLabel: "Move to owned",
+    });
+    if (!ok) return;
 
     try {
       setError(null);
@@ -331,9 +355,10 @@ export function BuyListTab() {
             </button>
             <button
               onClick={handleImportPrices}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              disabled={isImporting}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
-              ↻ Import Prices
+              {isImporting ? "Importing…" : "↻ Import Prices"}
             </button>
           </div>
         </div>
@@ -419,19 +444,21 @@ export function BuyListTab() {
 
       {/* Error/Success Messages */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-          {error}
+        <div role="alert" className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 flex justify-between gap-4">
+          <span>{error}</span>
+          <button onClick={() => setError(null)} aria-label="Dismiss error" className="text-red-700 hover:text-red-900">✕</button>
         </div>
       )}
       {success && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-green-700">
-          {success}
+        <div role="status" className="bg-green-50 border border-green-200 rounded-lg p-4 text-green-700 flex justify-between gap-4">
+          <span>{success}</span>
+          <button onClick={() => setSuccess(null)} aria-label="Dismiss message" className="text-green-700 hover:text-green-900">✕</button>
         </div>
       )}
 
       {/* Buy List Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        {loading ? (
+      <div className={`bg-white rounded-lg shadow overflow-hidden transition-opacity ${loading && buyList.length > 0 ? "opacity-60" : ""}`} aria-busy={loading}>
+        {loading && buyList.length === 0 ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : buyList.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
@@ -463,25 +490,7 @@ export function BuyListTab() {
                     {editingId === item.id ? (
                       <>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
-                            {item.cloudinary_url || item.image_url ? (
-                              <img
-                                src={imageProxyUrl(item.cloudinary_url || item.image_url)}
-                                alt={item.title}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  // SECURITY: Use createElement instead of innerHTML to prevent XSS
-                                  e.target.style.display = 'none';
-                                  const fallback = document.createElement('span');
-                                  fallback.className = 'text-xs text-gray-400';
-                                  fallback.textContent = 'No img';
-                                  e.target.parentElement.replaceChild(fallback, e.target);
-                                }}
-                              />
-                            ) : (
-                              <span className="text-xs text-gray-400">No img</span>
-                            )}
-                          </div>
+                          <Thumbnail src={item.cloudinary_url || item.image_url} alt={item.title} />
                         </td>
                         <td className="px-4 py-3">
                           <input
@@ -578,25 +587,7 @@ export function BuyListTab() {
                     ) : (
                       <>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <div className="w-12 h-12 rounded overflow-hidden bg-gray-100 flex items-center justify-center">
-                            {item.cloudinary_url || item.image_url ? (
-                              <img
-                                src={imageProxyUrl(item.cloudinary_url || item.image_url)}
-                                alt={item.title}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  // SECURITY: Use createElement instead of innerHTML to prevent XSS
-                                  e.target.style.display = 'none';
-                                  const fallback = document.createElement('span');
-                                  fallback.className = 'text-xs text-gray-400';
-                                  fallback.textContent = 'No img';
-                                  e.target.parentElement.replaceChild(fallback, e.target);
-                                }}
-                              />
-                            ) : (
-                              <span className="text-xs text-gray-400">No img</span>
-                            )}
-                          </div>
+                          <Thumbnail src={item.cloudinary_url || item.image_url} alt={item.title} />
                         </td>
                         <td className="px-4 py-3 text-gray-700">
                           {item.rank || "-"}
@@ -704,7 +695,7 @@ export function BuyListTab() {
 
       {/* Add Game Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-auto">
             <div className="p-6">
               <h3 className="text-lg font-semibold mb-4">Add Game to Buy List by BGG ID</h3>
@@ -826,7 +817,7 @@ export function BuyListTab() {
 
       {/* Bulk Import CSV Modal */}
       {showBulkImportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
             <div className="p-6">
               <h3 className="text-lg font-semibold mb-4">Bulk Import Buy List from CSV</h3>

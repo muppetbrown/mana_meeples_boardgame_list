@@ -4,14 +4,17 @@ import { useStaff } from "../../../context/StaffContext";
 import { BulkCategorizePanel } from "../BulkPanels";
 import { CATEGORY_KEYS, CATEGORY_LABELS } from "../../../constants/categories";
 import { bulkUpdateNZDesigners } from "../../../api/client";
+import BulkResultSummary from "../BulkResultSummary";
 
 /**
  * Categories tab - Manage game categorization and NZ designer flags
  */
 export function CategoriesTab() {
   const {
-    library,
+    ownedLibrary,
     counts,
+    isBulkRunning,
+    bulkCategorizeResult,
     csvCategorizeText,
     setCsvCategorizeText,
     doBulkCategorize,
@@ -22,11 +25,13 @@ export function CategoriesTab() {
 
   const [nzDesignersText, setNzDesignersText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [nzResult, setNzResult] = useState(null);
+  const [dismissedCategorize, setDismissedCategorize] = useState(null);
 
   // Get uncategorized games
   const uncategorizedGames = useMemo(() => {
-    return library.filter((g) => !g.mana_meeple_category);
-  }, [library]);
+    return ownedLibrary.filter((g) => !g.mana_meeple_category);
+  }, [ownedLibrary]);
 
   // Handle NZ Designer bulk update
   const handleBulkNZDesigners = async () => {
@@ -39,29 +44,13 @@ export function CategoriesTab() {
     try {
       const result = await bulkUpdateNZDesigners(nzDesignersText);
       const msg = `Updated: ${result.updated?.length || 0}, Not found: ${result.not_found?.length || 0}, Errors: ${result.errors?.length || 0}`;
-      showToast(msg, "success");
-
-      // Download log file
-      const ts = new Date().toISOString().replace(/[:.]/g, "-");
-      const log = [
-        "Updated:",
-        ...(result.updated || []),
-        "",
-        "Not found:",
-        ...(result.not_found || []),
-        "",
-        "Errors:",
-        ...(result.errors || []),
-        "",
-      ].join("\n");
-
-      const blob = new Blob([log], { type: "text/plain;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `nz-designers-${ts}.log.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const problems = (result.not_found?.length || 0) + (result.errors?.length || 0);
+      showToast(msg, problems ? "warning" : "success", 4000);
+      setNzResult({
+        updated: result.updated || [],
+        not_found: result.not_found || [],
+        errors: result.errors || [],
+      });
 
       setNzDesignersText("");
       await loadLibrary();
@@ -145,6 +134,9 @@ export function CategoriesTab() {
           value={csvCategorizeText}
           onChange={setCsvCategorizeText}
           onSubmit={doBulkCategorize}
+          busy={isBulkRunning}
+          result={bulkCategorizeResult && bulkCategorizeResult !== dismissedCategorize ? bulkCategorizeResult : null}
+          onDismissResult={() => setDismissedCategorize(bulkCategorizeResult)}
         />
       </div>
 
@@ -189,9 +181,7 @@ export function CategoriesTab() {
           {isLoading ? "Updating..." : "Update NZ Designer Flags"}
         </button>
 
-        <div className="mt-3 text-xs text-gray-600">
-          <strong>Note:</strong> A log file will be downloaded after the update completes showing which games were updated, not found, or had errors.
-        </div>
+        <BulkResultSummary result={nzResult} logName="nz-designers" onDismiss={() => setNzResult(null)} />
       </div>
 
       {/* Category Distribution Visualization */}

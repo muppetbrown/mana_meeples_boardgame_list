@@ -58,6 +58,7 @@ describe('ManageLibraryTab', () => {
   const mockDeleteGameData = vi.fn();
   const mockUpdateGameData = vi.fn();
   const mockShowToast = vi.fn();
+  const mockConfirm = vi.fn();
 
   const mockGames = [
     {
@@ -125,14 +126,17 @@ describe('ManageLibraryTab', () => {
     deleteGameData: mockDeleteGameData,
     updateGameData: mockUpdateGameData,
     showToast: mockShowToast,
+    confirm: mockConfirm,
+    attentionFilter: '',
+    setAttentionFilter: vi.fn(),
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
     useStaff.mockReturnValue(defaultStaffContext);
 
-    // Mock window.confirm
-    global.window.confirm = vi.fn(() => true);
+    // In-app confirm dialog (resolves true by default)
+    mockConfirm.mockResolvedValue(true);
 
     // Mock URL.createObjectURL and revokeObjectURL
     global.URL.createObjectURL = vi.fn(() => 'blob:mock-url');
@@ -149,7 +153,7 @@ describe('ManageLibraryTab', () => {
 
       expect(screen.getByText('Your Library')).toBeInTheDocument();
       expect(screen.getByText(/Showing/)).toBeInTheDocument();
-      expect(screen.getByText(/games/)).toBeInTheDocument();
+      expect(screen.getByText(/of/, { selector: 'div' })).toBeInTheDocument();
     });
 
     test('renders search input', () => {
@@ -428,7 +432,7 @@ describe('ManageLibraryTab', () => {
       await user.click(fetchSleeveButton);
 
       await waitFor(() => {
-        expect(window.confirm).toHaveBeenCalled();
+        expect(mockConfirm).toHaveBeenCalled();
         expect(apiClient.triggerSleeveFetch).toHaveBeenCalledWith([1]);
         expect(mockShowToast).toHaveBeenCalledWith(
           'Sleeve fetch workflow triggered for 1 game(s)',
@@ -439,7 +443,7 @@ describe('ManageLibraryTab', () => {
 
     test('does not trigger sleeve fetch when confirmation cancelled', async () => {
       const user = userEvent.setup();
-      window.confirm.mockReturnValue(false);
+      mockConfirm.mockResolvedValue(false);
 
       render(<ManageLibraryTab />);
 
@@ -450,7 +454,7 @@ describe('ManageLibraryTab', () => {
       await user.click(fetchSleeveButton);
 
       await waitFor(() => {
-        expect(window.confirm).toHaveBeenCalled();
+        expect(mockConfirm).toHaveBeenCalled();
         expect(apiClient.triggerSleeveFetch).not.toHaveBeenCalled();
       });
     });
@@ -546,7 +550,42 @@ describe('ManageLibraryTab', () => {
     test('displays category badges', () => {
       render(<ManageLibraryTab />);
 
-      expect(screen.getByText('Core Strategy & Epics')).toBeInTheDocument();
+      // Category is an inline-editable select showing the current value
+      expect(screen.getByLabelText('Category for Gloomhaven')).toHaveValue('CORE_STRATEGY');
+    });
+
+    test('changing the inline category saves it immediately', async () => {
+      const user = userEvent.setup();
+      mockUpdateGameData.mockResolvedValue({});
+      render(<ManageLibraryTab />);
+      await user.selectOptions(screen.getByLabelText('Category for Gloomhaven'), 'KIDS_FAMILIES');
+      expect(mockUpdateGameData).toHaveBeenCalledWith(1, { mana_meeple_category: 'KIDS_FAMILIES' });
+    });
+
+    test('paginates long libraries at 50 per page', async () => {
+      const user = userEvent.setup();
+      const many = Array.from({ length: 120 }, (_, i) => ({
+        id: i + 1,
+        title: `Game ${String(i + 1).padStart(3, '0')}`,
+        bgg_id: 1000 + i,
+        mana_meeple_category: 'CORE_STRATEGY',
+        date_added: `2025-01-01T00:00:${String(i % 60).padStart(2, '0')}Z`,
+      }));
+      useStaff.mockReturnValue({ ...defaultStaffContext, filteredLibrary: many, library: many });
+      render(<ManageLibraryTab />);
+      expect(screen.getAllByText('Edit Game')).toHaveLength(50);
+      expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+      await user.click(screen.getByText('Next →'));
+      expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
+    });
+
+    test('selection drops games that are filtered out', async () => {
+      const user = userEvent.setup();
+      render(<ManageLibraryTab />);
+      await user.click(screen.getByLabelText('Select Gloomhaven'));
+      expect(screen.getByText('1 game(s) selected')).toBeInTheDocument();
+      await user.type(screen.getByPlaceholderText(/Search by title/), 'Wingspan');
+      expect(screen.getByText('0 game(s) selected')).toBeInTheDocument();
     });
 
     test('displays uncategorized badge for games without category', () => {
@@ -613,7 +652,6 @@ describe('ManageLibraryTab', () => {
 
       await waitFor(() => {
         expect(mockUpdateGameData).toHaveBeenCalledWith(1, { title: 'Updated Game' });
-        expect(mockShowToast).toHaveBeenCalledWith('Game details updated successfully', 'success');
         expect(screen.queryByTestId('game-edit-modal')).not.toBeInTheDocument();
       });
     });
@@ -630,9 +668,9 @@ describe('ManageLibraryTab', () => {
       const saveButton = screen.getByText('Save');
       await user.click(saveButton);
 
-      await waitFor(() => {
-        expect(mockShowToast).toHaveBeenCalledWith('Failed to update game details', 'error');
-      });
+      // updateGameData reports the error; the modal stays open so edits aren't lost
+      await waitFor(() => expect(mockUpdateGameData).toHaveBeenCalled());
+      expect(screen.getByTestId('game-edit-modal')).toBeInTheDocument();
     });
 
     test('deletes game with confirmation', async () => {
@@ -645,21 +683,21 @@ describe('ManageLibraryTab', () => {
       await user.click(deleteButtons[0]);
 
       await waitFor(() => {
-        expect(window.confirm).toHaveBeenCalledWith('Delete "Gloomhaven"?');
+        expect(mockConfirm).toHaveBeenCalledWith(expect.objectContaining({ title: 'Delete "Gloomhaven"?', tone: 'danger' }));
         expect(mockDeleteGameData).toHaveBeenCalledWith(1);
       });
     });
 
     test('does not delete game when confirmation cancelled', async () => {
       const user = userEvent.setup();
-      window.confirm.mockReturnValue(false);
+      mockConfirm.mockResolvedValue(false);
 
       render(<ManageLibraryTab />);
 
       const deleteButtons = screen.getAllByText('Delete');
       await user.click(deleteButtons[0]);
 
-      expect(window.confirm).toHaveBeenCalled();
+      expect(mockConfirm).toHaveBeenCalled();
       expect(mockDeleteGameData).not.toHaveBeenCalled();
     });
 
@@ -672,9 +710,8 @@ describe('ManageLibraryTab', () => {
       const deleteButtons = screen.getAllByText('Delete');
       await user.click(deleteButtons[0]);
 
-      await waitFor(() => {
-        expect(mockShowToast).toHaveBeenCalledWith('Delete failed', 'error');
-      });
+      // deleteGameData already shows the failure toast; the component must not throw
+      await waitFor(() => expect(mockDeleteGameData).toHaveBeenCalledWith(1));
     });
   });
 

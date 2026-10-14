@@ -60,11 +60,28 @@ describe('BulkImportPanel', () => {
       expect(mockOnSubmit).toHaveBeenCalledTimes(1);
     });
 
-    test('allows submitting with empty textarea', () => {
-      render(<BulkImportPanel value="" onChange={mockOnChange} onSubmit={mockOnSubmit} />);
-      const importButton = screen.getByRole('button', { name: /Import/i });
+    test('disables submit when textarea is empty and shows the line count otherwise', () => {
+      const { rerender } = render(<BulkImportPanel value="" onChange={mockOnChange} onSubmit={mockOnSubmit} />);
+      const importButton = screen.getByRole('button', { name: /^Import/i });
+      expect(importButton).toBeDisabled();
       fireEvent.click(importButton);
-      expect(mockOnSubmit).toHaveBeenCalledTimes(1);
+      expect(mockOnSubmit).not.toHaveBeenCalled();
+
+      rerender(<BulkImportPanel value={'1\n2\n3'} onChange={mockOnChange} onSubmit={mockOnSubmit} />);
+      expect(screen.getByRole('button', { name: 'Import (3 lines)' })).toBeEnabled();
+    });
+
+    test('disables controls while busy', () => {
+      render(<BulkImportPanel value="1" onChange={mockOnChange} onSubmit={mockOnSubmit} busy />);
+      expect(screen.getByRole('button', { name: 'Working…' })).toBeDisabled();
+      expect(screen.getByRole('textbox')).toBeDisabled();
+    });
+
+    test('shows the queued message after a background import starts', () => {
+      render(
+        <BulkImportPanel value="" onChange={mockOnChange} onSubmit={mockOnSubmit} queued={{ message: 'Started importing 2 line(s)' }} />
+      );
+      expect(screen.getByRole('status')).toHaveTextContent('Started importing 2 line(s)');
     });
 
     test('handles multi-line CSV input', () => {

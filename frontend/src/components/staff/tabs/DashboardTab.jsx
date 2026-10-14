@@ -1,32 +1,66 @@
 // src/components/staff/tabs/DashboardTab.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useStaff } from "../../../context/StaffContext";
-import { getHealthCheck, getDbHealthCheck } from "../../../api/client";
+import {
+  getHealthCheck,
+  getDbHealthCheck,
+  getBackgroundFailures,
+  resolveBackgroundFailure,
+  getCircuitBreakerStatus,
+} from "../../../api/client";
+import { ATTENTION_FILTERS, attentionCounts } from "../../../utils/libraryQuality";
 
 /**
- * Dashboard tab - Landing page with overview and quick actions
+ * Dashboard tab - what needs doing, system health, and quick actions
  */
 export function DashboardTab({ onTabChange }) {
-  const { stats, counts } = useStaff();
+  const { stats, ownedLibrary, library, setAttentionFilter, setSelectedCategory, showToast } = useStaff();
   const [health, setHealth] = useState({ api: null, db: null, loading: true });
+  const [monitoring, setMonitoring] = useState({ failures: null, breaker: null, loading: true });
+  const [refreshedAt, setRefreshedAt] = useState(null);
 
-  // Load health status on mount
-  useEffect(() => {
-    const loadHealth = async () => {
-      try {
-        const [apiHealth, dbHealth] = await Promise.all([
-          getHealthCheck(),
-          getDbHealthCheck(),
-        ]);
-        setHealth({ api: apiHealth, db: dbHealth, loading: false });
-      } catch (error) {
-        console.error("Failed to load health status:", error);
-        setHealth({ api: null, db: null, loading: false });
-      }
-    };
-
-    loadHealth();
+  const loadHealth = useCallback(async () => {
+    setHealth((h) => ({ ...h, loading: true }));
+    try {
+      const [apiHealth, dbHealth] = await Promise.all([getHealthCheck(), getDbHealthCheck()]);
+      setHealth({ api: apiHealth, db: dbHealth, loading: false });
+    } catch (error) {
+      console.error("Failed to load health status:", error);
+      setHealth({ api: null, db: null, loading: false });
+    }
   }, []);
+
+  const loadMonitoring = useCallback(async () => {
+    setMonitoring((m) => ({ ...m, loading: true }));
+    const [failures, breaker] = await Promise.allSettled([
+      getBackgroundFailures({ resolved: false, limit: 10 }),
+      getCircuitBreakerStatus(),
+    ]);
+    setMonitoring({
+      failures: failures.status === "fulfilled" ? failures.value : null,
+      breaker: breaker.status === "fulfilled" ? breaker.value : null,
+      loading: false,
+    });
+  }, []);
+
+  const refreshAll = useCallback(async () => {
+    await Promise.all([loadHealth(), loadMonitoring()]);
+    setRefreshedAt(new Date());
+  }, [loadHealth, loadMonitoring]);
+
+  useEffect(() => {
+    refreshAll();
+  }, [refreshAll]);
+
+  const resolveFailure = async (id) => {
+    try {
+      await resolveBackgroundFailure(id);
+      showToast("Marked as resolved", "success");
+      loadMonitoring();
+    } catch {
+      showToast("Could not resolve failure", "error");
+    }
+  };
 
   const getHealthStatus = () => {
     if (health.loading) return { label: "Checking...", color: "bg-gray-100 text-gray-600" };
@@ -40,131 +74,217 @@ export function DashboardTab({ onTabChange }) {
   };
 
   const healthStatus = getHealthStatus();
-  const uncategorizedCount = counts.uncategorized || 0;
+  const attention = useMemo(() => attentionCounts(ownedLibrary), [ownedLibrary]);
+  const attentionTotal = ATTENTION_FILTERS.reduce((n, f) => n + (attention[f.key] > 0 ? 1 : 0), 0);
+  const buyListCount = useMemo(
+    () => library.filter((g) => g.status === "BUY_LIST").length,
+    [library]
+  );
+  const recentlyAdded = useMemo(
+    () =>
+      [...ownedLibrary]
+        .filter((g) => g.date_added)
+        .sort((a, b) => new Date(b.date_added) - new Date(a.date_added))
+        .slice(0, 5),
+    [ownedLibrary]
+  );
+
+  const openAttention = (f) => {
+    setSelectedCategory("all");
+    setAttentionFilter(f.key);
+    onTabChange("manage-library");
+  };
+
+  const failures = monitoring.failures;
+  const breaker = monitoring.breaker;
+  const unresolved = failures?.unresolved_failures ?? 0;
 
   return (
     <div className="space-y-6">
-      {/* System Health Widget */}
-      <div className="bg-white rounded-2xl p-6 shadow">
-        <h2 className="text-xl font-semibold mb-4">System Status</h2>
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className={`p-4 rounded-lg ${healthStatus.color}`}>
-            <div className="text-sm font-medium mb-1">Overall Status</div>
-            <div className="text-lg font-semibold">{healthStatus.label}</div>
-          </div>
-          <div className="p-4 rounded-lg bg-blue-50 border border-blue-100">
-            <div className="text-sm text-blue-600 font-medium mb-1">API Status</div>
-            <div className="text-lg font-semibold text-blue-800">
-              {health.loading ? "..." : health.api?.status || "Unknown"}
-            </div>
-          </div>
-          <div className="p-4 rounded-lg bg-blue-50 border border-blue-100">
-            <div className="text-sm text-blue-600 font-medium mb-1">Database Status</div>
-            <div className="text-lg font-semibold text-blue-800">
-              {health.loading ? "..." : health.db?.status || "Unknown"}
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Quick Stats */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg p-5 shadow">
-          <div className="text-sm text-gray-600 mb-1">Total Games</div>
+          <div className="text-sm text-gray-600 mb-1">Games in library</div>
           <div className="text-3xl font-bold text-purple-700">{stats.total}</div>
         </div>
         <div className="bg-white rounded-lg p-5 shadow">
-          <div className="text-sm text-gray-600 mb-1">Average BGG Rating</div>
+          <div className="text-sm text-gray-600 mb-1">Average BGG rating</div>
           <div className="text-3xl font-bold text-blue-700">{stats.avgRating}</div>
         </div>
         <div className="bg-white rounded-lg p-5 shadow">
-          <div className="text-sm text-gray-600 mb-1">Uncategorized</div>
-          <div className="text-3xl font-bold text-orange-700">{uncategorizedCount}</div>
+          <div className="text-sm text-gray-600 mb-1">On the buy list</div>
+          <button
+            onClick={() => onTabChange("buy-list")}
+            className="text-3xl font-bold text-emerald-700 hover:underline"
+          >
+            {buyListCount}
+          </button>
+        </div>
+        <div className="bg-white rounded-lg p-5 shadow">
+          <div className="text-sm text-gray-600 mb-1">Open background failures</div>
+          <div className={`text-3xl font-bold ${unresolved > 0 ? "text-red-700" : "text-gray-700"}`}>
+            {monitoring.loading && !failures ? "…" : failures ? unresolved : "—"}
+          </div>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Needs attention */}
       <div className="bg-white rounded-2xl p-6 shadow">
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid md:grid-cols-2 gap-4">
-          <button
-            onClick={() => onTabChange("add-games")}
-            className="p-6 text-left rounded-lg border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50 transition-colors group"
-          >
-            <div className="text-lg font-semibold text-purple-700 mb-2 group-hover:text-purple-800">
-              📥 Add New Games
-            </div>
-            <div className="text-sm text-gray-600">
-              Import games from BoardGameGeek or add manually
-            </div>
-          </button>
-
-          <button
-            onClick={() => onTabChange("manage-library")}
-            className="p-6 text-left rounded-lg border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 transition-colors group"
-          >
-            <div className="text-lg font-semibold text-blue-700 mb-2 group-hover:text-blue-800">
-              📚 Manage Library
-            </div>
-            <div className="text-sm text-gray-600">
-              Browse, edit, and organize your game collection
-            </div>
-          </button>
-
-          <button
-            onClick={() => onTabChange("categories")}
-            className="p-6 text-left rounded-lg border-2 border-green-200 hover:border-green-400 hover:bg-green-50 transition-colors group"
-          >
-            <div className="text-lg font-semibold text-green-700 mb-2 group-hover:text-green-800">
-              🏷️ Manage Categories
-            </div>
-            <div className="text-sm text-gray-600">
-              Categorize games and manage NZ designer flags
-              {uncategorizedCount > 0 && (
-                <span className="ml-2 px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
-                  {uncategorizedCount} uncategorized
-                </span>
-              )}
-            </div>
-          </button>
-
-          <button
-            onClick={() => onTabChange("advanced")}
-            className="p-6 text-left rounded-lg border-2 border-gray-200 hover:border-gray-400 hover:bg-gray-50 transition-colors group"
-          >
-            <div className="text-lg font-semibold text-gray-700 mb-2 group-hover:text-gray-800">
-              ⚙️ Advanced Tools
-            </div>
-            <div className="text-sm text-gray-600">
-              System maintenance, debugging, and data export
-            </div>
-          </button>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Needs attention</h2>
+          <span className="text-sm text-gray-500">
+            {ownedLibrary.length === 0
+              ? "No games loaded"
+              : attentionTotal === 0
+                ? "All clear 🎉"
+                : `${attentionTotal} check${attentionTotal === 1 ? "" : "s"} with issues`}
+          </span>
+        </div>
+        <div className="grid md:grid-cols-3 gap-3">
+          {ATTENTION_FILTERS.map((f) => {
+            const n = attention[f.key];
+            return (
+              <button
+                key={f.key}
+                onClick={() => (f.tab && n > 0 && f.key === "uncategorized" ? onTabChange(f.tab) : openAttention(f))}
+                disabled={n === 0}
+                className={`p-4 text-left rounded-lg border-2 transition-colors ${
+                  n > 0
+                    ? "border-orange-200 hover:border-orange-400 hover:bg-orange-50"
+                    : "border-gray-100 bg-gray-50 text-gray-400 cursor-default"
+                }`}
+              >
+                <div className={`text-2xl font-bold ${n > 0 ? "text-orange-700" : "text-gray-400"}`}>{n}</div>
+                <div className="text-sm font-medium">{f.label}</div>
+                {n > 0 && <div className="text-xs text-gray-500 mt-1">Click to review →</div>}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Tips & Shortcuts */}
-      <div className="bg-linear-to-r from-purple-50 to-blue-50 rounded-2xl p-6 border border-purple-100">
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">💡 Quick Tips</h3>
-        <ul className="space-y-2 text-sm text-gray-700">
-          <li className="flex items-start gap-2">
-            <span className="text-purple-600 font-bold">•</span>
-            <span>
-              <strong>Adding games?</strong> Use BGG ID import for automatic data retrieval. Find IDs in the URL on boardgamegeek.com
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-purple-600 font-bold">•</span>
-            <span>
-              <strong>Need to categorize many games?</strong> Use the bulk categorize CSV feature in the Categories tab
-            </span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-purple-600 font-bold">•</span>
-            <span>
-              <strong>System running slow?</strong> Check Performance Stats in Advanced Tools to diagnose issues
-            </span>
-          </li>
-        </ul>
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* System health & monitoring */}
+        <div className="bg-white rounded-2xl p-6 shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">System status</h2>
+            <button
+              onClick={refreshAll}
+              disabled={health.loading || monitoring.loading}
+              className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+            >
+              ↻ Refresh
+            </button>
+          </div>
+          <div className="space-y-3">
+            <div className={`p-4 rounded-lg ${healthStatus.color}`}>
+              <div className="text-sm font-medium mb-1">Overall</div>
+              <div className="text-lg font-semibold">{healthStatus.label}</div>
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
+                <div className="text-blue-600 font-medium">API</div>
+                <div className="font-semibold text-blue-800">{health.loading ? "…" : health.api?.status || "Unknown"}</div>
+              </div>
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-100">
+                <div className="text-blue-600 font-medium">Database</div>
+                <div className="font-semibold text-blue-800">{health.loading ? "…" : health.db?.status || "Unknown"}</div>
+              </div>
+              <div
+                className={`p-3 rounded-lg border ${
+                  breaker?.state === "closed" ? "bg-blue-50 border-blue-100" : "bg-amber-50 border-amber-200"
+                }`}
+                title={breaker?.description}
+              >
+                <div className="text-blue-600 font-medium">BGG</div>
+                <div className="font-semibold text-blue-800">
+                  {monitoring.loading && !breaker ? "…" : breaker ? (breaker.state === "closed" ? "healthy" : breaker.state) : "Unknown"}
+                </div>
+              </div>
+            </div>
+            {breaker && breaker.state !== "closed" && (
+              <p className="text-xs text-amber-800 bg-amber-50 rounded p-2">
+                BoardGameGeek requests are being limited ({breaker.description}). Imports may fail until it recovers.
+              </p>
+            )}
+            {refreshedAt && (
+              <p className="text-xs text-gray-400">Updated {refreshedAt.toLocaleTimeString("en-NZ")}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Failures */}
+        <div className="bg-white rounded-2xl p-6 shadow">
+          <h2 className="text-xl font-semibold mb-4">Background failures</h2>
+          {!failures ? (
+            <p className="text-sm text-gray-500">{monitoring.loading ? "Loading…" : "Failure data unavailable."}</p>
+          ) : failures.failures.length === 0 ? (
+            <p className="text-sm text-green-700">No unresolved failures. 👍</p>
+          ) : (
+            <ul className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+              {failures.failures.map((f) => (
+                <li key={f.id} className="py-2 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-800">
+                      {f.task_type}
+                      {f.game_id ? ` · game #${f.game_id}` : ""}
+                    </div>
+                    <div className="text-xs text-gray-500 truncate" title={f.error_message}>
+                      {f.error_message}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => resolveFailure(f.id)}
+                    className="shrink-0 text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200"
+                  >
+                    Resolve
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
+      {/* Recently added + quick actions */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl p-6 shadow">
+          <h2 className="text-xl font-semibold mb-4">Recently added</h2>
+          {recentlyAdded.length === 0 ? (
+            <p className="text-sm text-gray-500">No games yet.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {recentlyAdded.map((g) => (
+                <li key={g.id} className="py-2 flex justify-between text-sm">
+                  <span className="font-medium text-gray-800 truncate">{g.title}</span>
+                  <span className="text-gray-500 shrink-0 ml-3">
+                    {new Date(g.date_added).toLocaleDateString("en-NZ", { day: "numeric", month: "short" })}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl p-6 shadow">
+          <h2 className="text-xl font-semibold mb-4">Quick actions</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              ["add-games", "📥 Add games", "border-purple-200 hover:border-purple-400 hover:bg-purple-50"],
+              ["manage-library", "📚 Manage library", "border-blue-200 hover:border-blue-400 hover:bg-blue-50"],
+              ["categories", "🏷️ Categories", "border-green-200 hover:border-green-400 hover:bg-green-50"],
+              ["advanced", "⚙️ Advanced tools", "border-gray-200 hover:border-gray-400 hover:bg-gray-50"],
+            ].map(([id, label, cls]) => (
+              <button
+                key={id}
+                onClick={() => onTabChange(id)}
+                className={`p-4 text-left rounded-lg border-2 font-medium text-gray-800 transition-colors ${cls}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

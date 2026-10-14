@@ -1,387 +1,193 @@
 /**
- * DashboardTab tests - Landing page with overview and quick actions
+ * DashboardTab tests - needs-attention checks, system health, monitoring
  */
-import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DashboardTab } from '../DashboardTab';
 import * as apiClient from '../../../../api/client';
 
-// Mock API client
 vi.mock('../../../../api/client', () => ({
   getHealthCheck: vi.fn(),
   getDbHealthCheck: vi.fn(),
+  getBackgroundFailures: vi.fn(),
+  resolveBackgroundFailure: vi.fn(),
+  getCircuitBreakerStatus: vi.fn(),
 }));
 
-// Mock useStaff hook
 vi.mock('../../../../context/StaffContext', () => ({
   useStaff: vi.fn(),
 }));
 
 import { useStaff } from '../../../../context/StaffContext';
 
-describe('DashboardTab', () => {
-  const mockOnTabChange = vi.fn();
+const game = (over) => ({
+  id: Math.random(),
+  title: 'Game',
+  status: 'OWNED',
+  mana_meeple_category: 'CORE_STRATEGY',
+  has_sleeves: 'found',
+  image_url: 'x.jpg',
+  designers: ['A'],
+  complexity: 2.5,
+  bgg_id: 1,
+  date_added: '2025-01-02T00:00:00Z',
+  ...over,
+});
 
-  const defaultStaffContext = {
-    stats: {
-      total: 150,
-      avgRating: '7.8',
-    },
-    counts: {
-      all: 150,
-      COOP_ADVENTURE: 30,
-      CORE_STRATEGY: 40,
-      GATEWAY_STRATEGY: 50,
-      KIDS_FAMILIES: 20,
-      PARTY_ICEBREAKERS: 10,
-      uncategorized: 5,
-    },
-  };
+describe('DashboardTab', () => {
+  const onTabChange = vi.fn();
+  const setAttentionFilter = vi.fn();
+  const setSelectedCategory = vi.fn();
+  const showToast = vi.fn();
+
+  const owned = [
+    game({ id: 1, title: 'Clean Game' }),
+    game({ id: 2, title: 'Needs Category', mana_meeple_category: null }),
+    game({ id: 3, title: 'No Image', image_url: null }),
+    game({ id: 4, title: 'Unknown Sleeves', has_sleeves: null }),
+  ];
+
+  const ctx = (over = {}) => ({
+    stats: { total: 4, avgRating: '7.8' },
+    ownedLibrary: owned,
+    library: [...owned, game({ id: 9, status: 'BUY_LIST' })],
+    setAttentionFilter,
+    setSelectedCategory,
+    showToast,
+    ...over,
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default successful health checks
     apiClient.getHealthCheck.mockResolvedValue({ status: 'healthy' });
     apiClient.getDbHealthCheck.mockResolvedValue({ status: 'healthy' });
-
-    // Mock useStaff hook with default context
-    useStaff.mockReturnValue(defaultStaffContext);
+    apiClient.getBackgroundFailures.mockResolvedValue({
+      unresolved_failures: 0,
+      failures: [],
+    });
+    apiClient.getCircuitBreakerStatus.mockResolvedValue({ state: 'closed', description: 'ok' });
+    useStaff.mockReturnValue(ctx());
   });
 
-  afterEach(() => {
-    vi.clearAllTimers();
+  test('shows stats from context including buy list count', async () => {
+    render(<DashboardTab onTabChange={onTabChange} />);
+    expect(screen.getByText('Games in library')).toBeInTheDocument();
+    expect(screen.getByText('7.8')).toBeInTheDocument();
+    expect(screen.getByText('On the buy list').nextSibling).toHaveTextContent('1');
+    await screen.findByText('All Systems Operational');
   });
 
-  describe('Rendering', () => {
-    test('renders dashboard with all sections', async () => {
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      // System Status section
-      expect(screen.getByText('System Status')).toBeInTheDocument();
-
-      // Quick Stats section
-      expect(screen.getByText('Total Games')).toBeInTheDocument();
-      expect(screen.getByText('Average BGG Rating')).toBeInTheDocument();
-      expect(screen.getByText('Uncategorized')).toBeInTheDocument();
-
-      // Quick Actions section
-      expect(screen.getByText('Quick Actions')).toBeInTheDocument();
-
-      // Tips section
-      expect(screen.getByText('💡 Quick Tips')).toBeInTheDocument();
-    });
-
-    test('displays correct stats from context', () => {
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      expect(screen.getByText('150')).toBeInTheDocument(); // Total games
-      expect(screen.getByText('7.8')).toBeInTheDocument(); // Average rating
-      expect(screen.getByText('5')).toBeInTheDocument(); // Uncategorized count
-    });
-
-    test('displays zero values correctly', () => {
-      const zeroStaffContext = {
-        stats: { total: 0, avgRating: 'N/A' },
-        counts: { all: 0, uncategorized: 0 },
-      };
-
-      useStaff.mockReturnValue(zeroStaffContext);
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      // Check for "0" in Total Games stat (using getAllByText to verify it's present)
-      const zeroElements = screen.getAllByText('0');
-      expect(zeroElements.length).toBeGreaterThan(0);
-
-      expect(screen.getByText('N/A')).toBeInTheDocument();
-    });
+  test('shows counts for each needs-attention check', async () => {
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    expect(screen.getByText('Uncategorized').previousSibling).toHaveTextContent('1');
+    expect(screen.getByText('Missing image').previousSibling).toHaveTextContent('1');
+    expect(screen.getByText('Sleeve status unknown').previousSibling).toHaveTextContent('1');
+    expect(screen.getByText('Missing designers').previousSibling).toHaveTextContent('0');
   });
 
-  describe('System Health', () => {
-    test('shows loading state initially', () => {
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      expect(screen.getByText('Checking...')).toBeInTheDocument();
-      expect(screen.getAllByText('...')).toHaveLength(2); // API and DB status
-    });
-
-    test('shows healthy status when all systems operational', async () => {
-      apiClient.getHealthCheck.mockResolvedValue({ status: 'healthy' });
-      apiClient.getDbHealthCheck.mockResolvedValue({ status: 'healthy' });
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      await waitFor(() => {
-        expect(screen.getByText('All Systems Operational')).toBeInTheDocument();
-      });
-
-      expect(screen.getAllByText('healthy')).toHaveLength(2);
-    });
-
-    test('shows unknown status when health checks fail', async () => {
-      apiClient.getHealthCheck.mockRejectedValue(new Error('Network error'));
-      apiClient.getDbHealthCheck.mockRejectedValue(new Error('Network error'));
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      await waitFor(() => {
-        expect(screen.getByText('System Status Unknown')).toBeInTheDocument();
-      });
-
-      expect(screen.getAllByText('Unknown')).toHaveLength(2);
-    });
-
-    test('shows issues detected when API unhealthy', async () => {
-      apiClient.getHealthCheck.mockResolvedValue({ status: 'unhealthy' });
-      apiClient.getDbHealthCheck.mockResolvedValue({ status: 'healthy' });
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      await waitFor(() => {
-        expect(screen.getByText('System Issues Detected')).toBeInTheDocument();
-      });
-    });
-
-    test('shows issues detected when DB unhealthy', async () => {
-      apiClient.getHealthCheck.mockResolvedValue({ status: 'healthy' });
-      apiClient.getDbHealthCheck.mockResolvedValue({ status: 'unhealthy' });
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      await waitFor(() => {
-        expect(screen.getByText('System Issues Detected')).toBeInTheDocument();
-      });
-    });
-
-    test('fetches health status on mount', async () => {
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      await waitFor(() => {
-        expect(apiClient.getHealthCheck).toHaveBeenCalledTimes(1);
-        expect(apiClient.getDbHealthCheck).toHaveBeenCalledTimes(1);
-      });
-    });
-
-    test('handles partial health check failures', async () => {
-      apiClient.getHealthCheck.mockResolvedValue({ status: 'healthy' });
-      apiClient.getDbHealthCheck.mockRejectedValue(new Error('DB error'));
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      await waitFor(() => {
-        expect(screen.getByText('System Status Unknown')).toBeInTheDocument();
-      });
-    });
+  test('clicking an attention card applies the filter and opens Manage Library', async () => {
+    const user = userEvent.setup();
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    await user.click(screen.getByText('Missing image'));
+    expect(setSelectedCategory).toHaveBeenCalledWith('all');
+    expect(setAttentionFilter).toHaveBeenCalledWith('no_image');
+    expect(onTabChange).toHaveBeenCalledWith('manage-library');
   });
 
-  describe('Quick Actions', () => {
-    test('renders all quick action buttons', () => {
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      expect(screen.getByText('📥 Add New Games')).toBeInTheDocument();
-      expect(screen.getByText('📚 Manage Library')).toBeInTheDocument();
-      expect(screen.getByText('🏷️ Manage Categories')).toBeInTheDocument();
-      expect(screen.getByText('⚙️ Advanced Tools')).toBeInTheDocument();
-    });
-
-    test('navigates to add-games tab when Add New Games clicked', async () => {
-      const user = userEvent.setup();
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      const addGamesButton = screen.getByText('📥 Add New Games').closest('button');
-      await user.click(addGamesButton);
-
-      expect(mockOnTabChange).toHaveBeenCalledWith('add-games');
-      expect(mockOnTabChange).toHaveBeenCalledTimes(1);
-    });
-
-    test('navigates to manage-library tab when Manage Library clicked', async () => {
-      const user = userEvent.setup();
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      const manageLibraryButton = screen.getByText('📚 Manage Library').closest('button');
-      await user.click(manageLibraryButton);
-
-      expect(mockOnTabChange).toHaveBeenCalledWith('manage-library');
-    });
-
-    test('navigates to categories tab when Manage Categories clicked', async () => {
-      const user = userEvent.setup();
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      const categoriesButton = screen.getByText('🏷️ Manage Categories').closest('button');
-      await user.click(categoriesButton);
-
-      expect(mockOnTabChange).toHaveBeenCalledWith('categories');
-    });
-
-    test('navigates to advanced tab when Advanced Tools clicked', async () => {
-      const user = userEvent.setup();
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      const advancedButton = screen.getByText('⚙️ Advanced Tools').closest('button');
-      await user.click(advancedButton);
-
-      expect(mockOnTabChange).toHaveBeenCalledWith('advanced');
-    });
-
-    test('shows uncategorized badge on categories button when games exist', () => {
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      expect(screen.getByText('5 uncategorized')).toBeInTheDocument();
-    });
-
-    test('hides uncategorized badge when count is zero', () => {
-      const contextWithZeroUncategorized = {
-        ...defaultStaffContext,
-        counts: { ...defaultStaffContext.counts, uncategorized: 0 },
-      };
-
-      useStaff.mockReturnValue(contextWithZeroUncategorized);
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      expect(screen.queryByText('0 uncategorized')).not.toBeInTheDocument();
-    });
-
-    test('shows correct uncategorized count in badge', () => {
-      const contextWithManyUncategorized = {
-        ...defaultStaffContext,
-        counts: { ...defaultStaffContext.counts, uncategorized: 25 },
-      };
-
-      useStaff.mockReturnValue(contextWithManyUncategorized);
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      expect(screen.getByText('25 uncategorized')).toBeInTheDocument();
-    });
+  test('uncategorized card jumps to the Categories tab', async () => {
+    const user = userEvent.setup();
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    await user.click(screen.getByText('Uncategorized'));
+    expect(onTabChange).toHaveBeenCalledWith('categories');
   });
 
-  describe('Quick Tips', () => {
-    test('renders all quick tips', () => {
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      expect(screen.getByText(/Adding games\?/)).toBeInTheDocument();
-      expect(screen.getByText(/Need to categorize many games\?/)).toBeInTheDocument();
-      expect(screen.getByText(/System running slow\?/)).toBeInTheDocument();
-    });
-
-    test('tips mention relevant features', () => {
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      expect(screen.getByText(/BGG ID import/)).toBeInTheDocument();
-      expect(screen.getByText(/bulk categorize CSV/)).toBeInTheDocument();
-      expect(screen.getByText(/Performance Stats/)).toBeInTheDocument();
-    });
+  test('zero-count cards are disabled', async () => {
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    expect(screen.getByText('Missing designers').closest('button')).toBeDisabled();
   });
 
-  describe('Integration with StaffContext', () => {
-    test('updates when context stats change', () => {
-      useStaff.mockReturnValue(defaultStaffContext);
-
-      const { rerender } = render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      expect(screen.getByText('150')).toBeInTheDocument();
-
-      const updatedContext = {
-        stats: { total: 200, avgRating: '8.2' },
-        counts: { ...defaultStaffContext.counts, uncategorized: 10 },
-      };
-
-      // Update mock return value for rerender
-      useStaff.mockReturnValue(updatedContext);
-
-      rerender(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      expect(screen.getByText('200')).toBeInTheDocument();
-      expect(screen.getByText('8.2')).toBeInTheDocument();
-      expect(screen.getByText('10')).toBeInTheDocument();
-    });
-
-    test('handles missing context gracefully', () => {
-      const minimalContext = {
-        stats: { total: 0, avgRating: 'N/A' },
-        counts: {},
-      };
-
-      useStaff.mockReturnValue(minimalContext);
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      // Check for "0" in Total Games stat (using getAllByText to verify it's present)
-      const zeroElements = screen.getAllByText('0');
-      expect(zeroElements.length).toBeGreaterThan(0);
-
-      expect(screen.getByText('N/A')).toBeInTheDocument();
-    });
+  test('shows all clear when nothing needs attention', async () => {
+    useStaff.mockReturnValue(ctx({ ownedLibrary: [owned[0]] }));
+    render(<DashboardTab onTabChange={onTabChange} />);
+    expect(await screen.findByText(/All clear/)).toBeInTheDocument();
   });
 
-  describe('Accessibility', () => {
-    test('quick action buttons are keyboard accessible', async () => {
-      const user = userEvent.setup();
-
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      const addGamesButton = screen.getByText('📥 Add New Games').closest('button');
-
-      addGamesButton.focus();
-      expect(addGamesButton).toHaveFocus();
-
-      await user.keyboard('{Enter}');
-      expect(mockOnTabChange).toHaveBeenCalledWith('add-games');
-    });
-
-    test('all action buttons have descriptive text', () => {
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      expect(screen.getByText(/Import games from BoardGameGeek/)).toBeInTheDocument();
-      expect(screen.getByText(/Browse, edit, and organize/)).toBeInTheDocument();
-      expect(screen.getByText(/Categorize games and manage/)).toBeInTheDocument();
-      expect(screen.getByText(/System maintenance, debugging/)).toBeInTheDocument();
-    });
+  test('reports issues when the database is unhealthy', async () => {
+    apiClient.getDbHealthCheck.mockResolvedValue({ status: 'unhealthy' });
+    render(<DashboardTab onTabChange={onTabChange} />);
+    expect(await screen.findByText('System Issues Detected')).toBeInTheDocument();
   });
 
-  describe('Error Handling', () => {
-    test('handles console errors gracefully during health check', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  test('reports unknown status when health checks fail', async () => {
+    apiClient.getHealthCheck.mockRejectedValue(new Error('down'));
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<DashboardTab onTabChange={onTabChange} />);
+    expect(await screen.findByText('System Status Unknown')).toBeInTheDocument();
+    spy.mockRestore();
+  });
 
-      apiClient.getHealthCheck.mockRejectedValue(new Error('Network failure'));
-      apiClient.getDbHealthCheck.mockRejectedValue(new Error('Network failure'));
+  test('warns when the BGG circuit breaker is open', async () => {
+    apiClient.getCircuitBreakerStatus.mockResolvedValue({ state: 'open', description: 'Service is down' });
+    render(<DashboardTab onTabChange={onTabChange} />);
+    expect(await screen.findByText(/BoardGameGeek requests are being limited/)).toBeInTheDocument();
+  });
 
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
-
-      await waitFor(() => {
-        expect(consoleErrorSpy).toHaveBeenCalledWith(
-          'Failed to load health status:',
-          expect.any(Error)
-        );
-      });
-
-      consoleErrorSpy.mockRestore();
+  test('lists unresolved background failures and resolves one', async () => {
+    const user = userEvent.setup();
+    apiClient.getBackgroundFailures.mockResolvedValue({
+      unresolved_failures: 1,
+      failures: [{ id: 7, task_type: 'bgg_import', game_id: 3, error_message: 'timeout' }],
     });
+    apiClient.resolveBackgroundFailure.mockResolvedValue({ success: true });
+    render(<DashboardTab onTabChange={onTabChange} />);
+    expect(await screen.findByText(/bgg_import/)).toBeInTheDocument();
+    await user.click(screen.getByText('Resolve'));
+    await waitFor(() => expect(apiClient.resolveBackgroundFailure).toHaveBeenCalledWith(7));
+    expect(showToast).toHaveBeenCalledWith('Marked as resolved', 'success');
+  });
 
-    test('component remains functional after health check errors', async () => {
-      const user = userEvent.setup();
+  test('tolerates monitoring endpoints failing', async () => {
+    apiClient.getBackgroundFailures.mockRejectedValue(new Error('500'));
+    apiClient.getCircuitBreakerStatus.mockRejectedValue(new Error('500'));
+    render(<DashboardTab onTabChange={onTabChange} />);
+    expect(await screen.findByText('Failure data unavailable.')).toBeInTheDocument();
+  });
 
-      apiClient.getHealthCheck.mockRejectedValue(new Error('Error'));
-      apiClient.getDbHealthCheck.mockRejectedValue(new Error('Error'));
+  test('refresh re-fetches health and monitoring data', async () => {
+    const user = userEvent.setup();
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    await user.click(screen.getByText(/Refresh/));
+    await waitFor(() => expect(apiClient.getHealthCheck).toHaveBeenCalledTimes(2));
+    expect(apiClient.getBackgroundFailures).toHaveBeenCalledTimes(2);
+  });
 
-      render(<DashboardTab onTabChange={mockOnTabChange} />);
+  test('quick actions navigate to their tabs', async () => {
+    const user = userEvent.setup();
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    await user.click(screen.getByText('📥 Add games'));
+    expect(onTabChange).toHaveBeenCalledWith('add-games');
+    await user.click(screen.getByText('⚙️ Advanced tools'));
+    expect(onTabChange).toHaveBeenCalledWith('advanced');
+  });
 
-      await waitFor(() => {
-        expect(screen.getByText('System Status Unknown')).toBeInTheDocument();
-      });
-
-      // Quick actions should still work
-      const addGamesButton = screen.getByText('📥 Add New Games').closest('button');
-      await user.click(addGamesButton);
-
-      expect(mockOnTabChange).toHaveBeenCalledWith('add-games');
-    });
+  test('lists recently added games, newest first', async () => {
+    useStaff.mockReturnValue(
+      ctx({
+        ownedLibrary: [
+          game({ id: 1, title: 'Older', date_added: '2025-01-01T00:00:00Z' }),
+          game({ id: 2, title: 'Newer', date_added: '2025-03-01T00:00:00Z' }),
+        ],
+      })
+    );
+    render(<DashboardTab onTabChange={onTabChange} />);
+    const items = await screen.findAllByText(/^(Older|Newer)$/);
+    expect(items[0]).toHaveTextContent('Newer');
   });
 });

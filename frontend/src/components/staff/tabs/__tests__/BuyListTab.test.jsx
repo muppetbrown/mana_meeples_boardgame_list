@@ -548,7 +548,9 @@ describe('BuyListTab', () => {
       const moveButton = screen.getByText('→ Owned');
       await user.click(moveButton);
 
-      expect(window.confirm).toHaveBeenCalledWith('Move "Test Game" to owned collection?');
+      expect(window.confirm).toHaveBeenCalledWith(
+        expect.stringContaining('Move "Test Game" to your owned collection?')
+      );
 
       await waitFor(() => {
         expect(apiClient.updateGame).toHaveBeenCalledWith(101, {

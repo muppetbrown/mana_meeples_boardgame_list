@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useConfirm } from '../../context/StaffContext';
 import { getGameSleeves, updateSleeveStatus, createGameSleeve, deleteGameSleeve, updateGameSleeveStatus } from '../../api/client';
 
 const EMPTY_FORM = { card_name: '', width_mm: '', height_mm: '', quantity: '', notes: '' };
@@ -13,6 +14,7 @@ const STATUS_INFO = {
 };
 
 export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate }) {
+  const confirm = useConfirm();
   const [sleeves, setSleeves] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -88,7 +90,8 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
   };
 
   const handleDeleteSleeve = async (sleeveId) => {
-    if (!window.confirm('Remove this sleeve requirement?')) return;
+    const ok = await confirm({ title: 'Remove this sleeve requirement?', confirmLabel: 'Remove', tone: 'danger' });
+    if (!ok) return;
     try {
       await deleteGameSleeve(sleeveId);
       await loadSleeves();

@@ -1,59 +1,21 @@
 import React, { useState, useCallback } from "react";
-import { bulkUpdateNZDesigners, bulkUpdateAfterGameIDs, reimportAllGames, fetchAllSleeveData, backfillCloudinaryUrls, fixDatabaseSequence, getDebugCategories, getDebugDatabaseInfo, getDebugPerformance, exportGamesCSV, getHealthCheck, getDbHealthCheck } from "../../api/client";
+import { bulkUpdateAfterGameIDs, reimportAllGames, fetchAllSleeveData, backfillCloudinaryUrls, fixDatabaseSequence, getDebugCategories, getDebugDatabaseInfo, getDebugPerformance, exportGamesCSV, getHealthCheck, getDbHealthCheck } from "../../api/client";
 import SleeveFetchStatus from "./SleeveFetchStatus";
+import BulkResultSummary, { downloadTextFile } from "./BulkResultSummary";
+import { useConfirm } from "../../context/StaffContext";
 
 export function AdminToolsPanel({ onToast, onLibraryReload }) {
-  const [nzDesignersText, setNzDesignersText] = useState("");
   const [afterGameText, setAfterGameText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [afterGameResult, setAfterGameResult] = useState(null);
+  // Name of the operation currently running (null = idle); only that button shows progress
+  const [busy, setBusy] = useState(null);
+  const isLoading = busy !== null;
+  const confirm = useConfirm();
   const [debugData, setDebugData] = useState(null);
   const [debugType, setDebugType] = useState("");
   const [sleeveFetchPollToken, setSleeveFetchPollToken] = useState(0);
 
-  const downloadText = useCallback((name, text) => {
-    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = name;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, []);
-
-  const handleBulkNZDesigners = useCallback(async () => {
-    if (!nzDesignersText.trim()) {
-      onToast("Please enter CSV data", "error");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const result = await bulkUpdateNZDesigners(nzDesignersText);
-      const msg = `Updated: ${result.updated?.length || 0}, Not found: ${result.not_found?.length || 0}, Errors: ${result.errors?.length || 0}`;
-      onToast(msg, "success");
-
-      const ts = new Date().toISOString().replace(/[:.]/g, "-");
-      const log = [
-        "Updated:",
-        ...(result.updated || []),
-        "",
-        "Not found:",
-        ...(result.not_found || []),
-        "",
-        "Errors:",
-        ...(result.errors || []),
-        "",
-      ].join("\n");
-      downloadText(`nz-designers-${ts}.log.txt`, log);
-
-      setNzDesignersText("");
-      if (onLibraryReload) await onLibraryReload();
-    } catch (error) {
-      onToast("Bulk NZ designers update failed", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [nzDesignersText, onToast, onLibraryReload, downloadText]);
+  const downloadText = downloadTextFile;
 
   const handleBulkAfterGameIDs = useCallback(async () => {
     if (!afterGameText.trim()) {
@@ -61,41 +23,40 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
       return;
     }
 
-    setIsLoading(true);
+    setBusy("aftergame");
     try {
       const result = await bulkUpdateAfterGameIDs(afterGameText);
-      const msg = `Updated: ${result.updated?.length || 0}, Not found: ${result.not_found?.length || 0}, Errors: ${result.errors?.length || 0}`;
-      onToast(msg, "success");
-
-      const ts = new Date().toISOString().replace(/[:.]/g, "-");
-      const log = [
-        "Updated:",
-        ...(result.updated || []),
-        "",
-        "Not found:",
-        ...(result.not_found || []),
-        "",
-        "Errors:",
-        ...(result.errors || []),
-        "",
-      ].join("\n");
-      downloadText(`aftergame-ids-${ts}.log.txt`, log);
-
+      const problems = (result.not_found?.length || 0) + (result.errors?.length || 0);
+      onToast(
+        `Updated: ${result.updated?.length || 0}, Not found: ${result.not_found?.length || 0}, Errors: ${result.errors?.length || 0}`,
+        problems ? "warning" : "success"
+      );
+      setAfterGameResult({
+        updated: result.updated || [],
+        not_found: result.not_found || [],
+        errors: result.errors || [],
+      });
       setAfterGameText("");
       if (onLibraryReload) await onLibraryReload();
     } catch (error) {
       onToast("Bulk AfterGame IDs update failed", "error");
     } finally {
-      setIsLoading(false);
+      setBusy(null);
     }
-  }, [afterGameText, onToast, onLibraryReload, downloadText]);
+  }, [afterGameText, onToast, onLibraryReload]);
 
   const handleReimportAll = useCallback(async () => {
-    if (!window.confirm("This will re-import ALL games from BGG and may take several minutes. Continue?")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Re-import ALL games from BoardGameGeek?",
+      message:
+        "This overwrites BGG-sourced data (ratings, descriptions, images, etc.) for every game and may take several minutes. Per-game edits you've made to category/expansion/sleeve fields are not touched.\n\nTo refresh only some games, select them in Manage Library instead.",
+      confirmLabel: "Re-import everything",
+      tone: "danger",
+      requireText: "reimport",
+    });
+    if (!ok) return;
 
-    setIsLoading(true);
+    setBusy("reimport");
     onToast("Re-importing all games... This may take several minutes", "info", 5000);
 
     try {
@@ -105,16 +66,19 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
     } catch (error) {
       onToast("Re-import failed", "error");
     } finally {
-      setIsLoading(false);
+      setBusy(null);
     }
-  }, [onToast, onLibraryReload]);
+  }, [onToast, onLibraryReload, confirm]);
 
   const handleFetchSleeveData = useCallback(async () => {
-    if (!window.confirm("This will fetch sleeve data for ALL games using web scraping and may take several minutes. Continue?")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Fetch sleeve data for ALL games?",
+      message: "This scrapes sleeve data for every game and may take several minutes.",
+      confirmLabel: "Fetch all",
+    });
+    if (!ok) return;
 
-    setIsLoading(true);
+    setBusy("sleeves");
     onToast("Fetching sleeve data for all games... This may take several minutes", "info", 5000);
 
     try {
@@ -126,32 +90,38 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
     } catch (error) {
       onToast("Failed to start sleeve data fetch", "error");
     } finally {
-      setIsLoading(false);
+      setBusy(null);
     }
-  }, [onToast, onLibraryReload]);
+  }, [onToast, onLibraryReload, confirm]);
 
   const handleFixSequence = useCallback(async () => {
-    if (!window.confirm("This will reset the database ID sequence. This is safe and fixes 'duplicate key' errors. Continue?")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Fix the database ID sequence?",
+      message: "This is safe and fixes 'duplicate key' errors when adding games.",
+      confirmLabel: "Fix sequence",
+    });
+    if (!ok) return;
 
-    setIsLoading(true);
+    setBusy("sequence");
     try {
       const result = await fixDatabaseSequence();
       onToast(`Sequence fixed! Next ID will be: ${result.next_id}`, "success");
     } catch (error) {
       onToast("Failed to fix sequence", "error");
     } finally {
-      setIsLoading(false);
+      setBusy(null);
     }
-  }, [onToast]);
+  }, [onToast, confirm]);
 
   const handleBackfillCloudinary = useCallback(async () => {
-    if (!window.confirm("This will pre-generate Cloudinary URLs for all games with images. This improves image load times by ~50-150ms per image. Continue?")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Backfill Cloudinary URLs?",
+      message: "Pre-generates optimized image URLs for all games with images (about 50-150ms faster per image).",
+      confirmLabel: "Backfill",
+    });
+    if (!ok) return;
 
-    setIsLoading(true);
+    setBusy("cloudinary");
     onToast("Backfilling Cloudinary URLs...", "info", 3000);
 
     try {
@@ -168,12 +138,12 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
     } catch (error) {
       onToast("Cloudinary URL backfill failed", "error");
     } finally {
-      setIsLoading(false);
+      setBusy(null);
     }
-  }, [onToast]);
+  }, [onToast, confirm]);
 
   const handleDebugInfo = useCallback(async (type) => {
-    setIsLoading(true);
+    setBusy("debug");
     setDebugType(type);
 
     try {
@@ -201,12 +171,12 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
       onToast(`Failed to get ${type} info`, "error");
       setDebugData(null);
     } finally {
-      setIsLoading(false);
+      setBusy(null);
     }
   }, [onToast]);
 
   const handleExportCSV = useCallback(async () => {
-    setIsLoading(true);
+    setBusy("export");
     try {
       const csvData = await exportGamesCSV();
       const ts = new Date().toISOString().replace(/[:.]/g, "-");
@@ -215,37 +185,12 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
     } catch (error) {
       onToast("CSV export failed", "error");
     } finally {
-      setIsLoading(false);
+      setBusy(null);
     }
   }, [onToast, downloadText]);
 
   return (
     <div className="space-y-6">
-      {/* NZ Designers Bulk Update */}
-      <div className="bg-white rounded-2xl p-6 shadow">
-        <h3 className="text-lg font-semibold mb-2">Bulk Update NZ Designers</h3>
-        <p className="text-sm text-gray-600 mb-2">
-          CSV format: <code>bgg_id,nz_designer</code> (true/false or 1/0)
-        </p>
-        <textarea
-          className="w-full h-32 border rounded-lg p-2 font-mono text-sm mb-2"
-          placeholder="12345,true
-67890,false"
-          value={nzDesignersText}
-          onChange={(e) => setNzDesignersText(e.target.value)}
-          disabled={isLoading}
-        />
-        <button
-          className={`px-4 py-2 rounded-lg text-white ${
-            isLoading ? "bg-gray-400" : "bg-orange-600 hover:bg-orange-700"
-          }`}
-          onClick={handleBulkNZDesigners}
-          disabled={isLoading || !nzDesignersText.trim()}
-        >
-          {isLoading ? "Updating..." : "Update NZ Designers"}
-        </button>
-      </div>
-
       {/* AfterGame IDs Bulk Update */}
       <div className="bg-white rounded-2xl p-6 shadow">
         <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
@@ -277,8 +222,9 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
           onClick={handleBulkAfterGameIDs}
           disabled={isLoading || !afterGameText.trim()}
         >
-          {isLoading ? "Updating..." : "Update AfterGame IDs"}
+          {busy === "aftergame" ? "Updating..." : "Update AfterGame IDs"}
         </button>
+        <BulkResultSummary result={afterGameResult} logName="aftergame-ids" onDismiss={() => setAfterGameResult(null)} />
       </div>
 
       {/* Advanced Operations */}
@@ -292,7 +238,7 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
             onClick={handleReimportAll}
             disabled={isLoading}
           >
-            {isLoading ? "Re-importing..." : "Re-import All Games"}
+            {busy === "reimport" ? "Re-importing..." : "Re-import All Games"}
           </button>
 
           <button

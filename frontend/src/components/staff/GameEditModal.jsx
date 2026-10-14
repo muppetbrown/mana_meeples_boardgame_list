@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { CATEGORY_KEYS, CATEGORY_LABELS } from '../../constants/categories';
 import SleevesListTable from './SleevesListTable';
+import Modal from '../common/Modal';
 
 /**
  * Unified modal for editing all game properties:
@@ -11,6 +12,8 @@ import SleevesListTable from './SleevesListTable';
  */
 export default function GameEditModal({ game, library, onSave, onClose, onSleeveUpdate }) {
   const [activeTab, setActiveTab] = useState('category');
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     // Category
     mana_meeple_category: null,
@@ -60,8 +63,6 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
     return uuidPattern.test(str);
   };
 
-  const [validationErrors, setValidationErrors] = React.useState([]);
-
   const handleSubmit = (e) => {
     e.preventDefault();
     const errors = [];
@@ -103,7 +104,8 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
       aftergame_game_id: formData.aftergame_game_id || null,
     };
 
-    onSave(saveData);
+    setIsSaving(true);
+    Promise.resolve(onSave(saveData)).finally(() => setIsSaving(false));
   };
 
   const tabs = [
@@ -114,20 +116,22 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+    <Modal onClose={onClose} labelledBy="edit-game-title">
         {/* Header */}
         <div className="bg-linear-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-t-2xl">
-          <h2 className="text-2xl font-bold">Edit Game</h2>
+          <h2 id="edit-game-title" className="text-2xl font-bold">Edit Game</h2>
           <p className="text-purple-100 mt-1 text-sm">{game.title}</p>
         </div>
 
         {/* Tab Navigation */}
         <div className="border-b border-gray-200 bg-gray-50">
-          <div className="flex">
+          <div className="flex" role="tablist" aria-label="Game edit sections">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 px-6 py-4 text-sm font-semibold transition-all ${
                   activeTab === tab.id
@@ -219,10 +223,11 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
                 <div className="space-y-4 border-l-4 border-purple-300 pl-4">
                   {/* Expansion Type */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label htmlFor="expansion_type" className="block text-sm font-semibold text-gray-700 mb-2">
                       Expansion Type
                     </label>
                     <select
+                      id="expansion_type"
                       value={formData.expansion_type}
                       onChange={(e) => handleChange('expansion_type', e.target.value)}
                       className="w-full border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-2 outline-none transition-all"
@@ -240,10 +245,11 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
 
                   {/* Base Game Selection */}
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <label htmlFor="base_game_id" className="block text-sm font-semibold text-gray-700 mb-2">
                       Base Game (Optional)
                     </label>
                     <select
+                      id="base_game_id"
                       value={formData.base_game_id || ''}
                       onChange={(e) => handleChange('base_game_id', e.target.value ? e.target.value : null)}
                       className="w-full border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-2 outline-none transition-all"
@@ -367,7 +373,7 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
 
           {/* Validation Errors */}
           {validationErrors.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <div role="alert" className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
               <p className="text-sm font-semibold text-red-800 mb-2">Please fix the following errors:</p>
               <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
                 {validationErrors.map((error, index) => (
@@ -378,7 +384,7 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 justify-end pt-6 mt-6 border-t">
+          <div className="flex gap-3 justify-end py-4 mt-6 border-t sticky bottom-0 bg-white">
             <button
               type="button"
               onClick={onClose}
@@ -388,13 +394,13 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 rounded-lg bg-linear-to-r from-purple-600 to-indigo-600 text-white font-medium hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
+              disabled={isSaving}
+              className="px-6 py-2.5 rounded-lg disabled:opacity-60 bg-linear-to-r from-purple-600 to-indigo-600 text-white font-medium hover:from-purple-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl"
             >
-              Save Changes
+              {isSaving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }
