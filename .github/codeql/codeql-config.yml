@@ -5,3 +5,5 @@ paths-ignore:
   - frontend/build
   - htmlcov
   - "**/*.min.js"
+  # Design handoff prototypes (HTML/JS reference mockups, not shipped code)
+  - design_handoff_library_mobile_redesign
