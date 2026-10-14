@@ -1,6 +1,6 @@
 from decimal import Decimal
 
-from models import Sleeve, SleeveProduct
+from models import SleeveProduct
 from services.sleeve_matching import find_matching_products, best_match_for_order, to_decimal
 
 
