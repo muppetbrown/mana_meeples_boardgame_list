@@ -34,8 +34,8 @@ class TestGetClientIP:
 
         ip = get_client_ip(request)
 
-        # Should use first IP from X-Forwarded-For
-        assert ip == "203.0.113.1"
+        # One trusted proxy: the client is the LAST entry (the left ones are caller-supplied)
+        assert ip == "192.168.1.1"
 
     def test_get_client_ip_x_forwarded_for_single(self):
         """Test X-Forwarded-For with single IP"""
@@ -55,7 +55,7 @@ class TestGetClientIP:
 
         ip = get_client_ip(request)
 
-        assert ip == "203.0.113.10"
+        assert ip == "10.0.0.1"
 
     def test_get_client_ip_no_client(self):
         """Test IP extraction when client is None"""

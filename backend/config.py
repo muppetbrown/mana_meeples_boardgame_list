@@ -105,6 +105,11 @@ if not SESSION_SECRET:
 JWT_EXPIRATION_DAYS = int(os.getenv("JWT_EXPIRATION_DAYS", "7"))
 
 # GitHub configuration for triggering workflows
+# Number of reverse proxies in front of the app that append to X-Forwarded-For (Render's
+# load balancer = 1). The client IP is the Nth entry from the RIGHT; anything further left
+# is client-supplied and can be spoofed. Set to 0 to ignore X-Forwarded-For entirely.
+TRUSTED_PROXY_COUNT = int(os.getenv("TRUSTED_PROXY_COUNT", "1"))
+
 GITHUB_TOKEN = os.getenv("GITHUB_TOKEN", "")
 GITHUB_REPO_OWNER = os.getenv("GITHUB_REPO_OWNER", "muppetbrown")
 GITHUB_REPO_NAME = os.getenv("GITHUB_REPO_NAME", "mana_meeples_boardgame_list")

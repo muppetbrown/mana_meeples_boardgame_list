@@ -374,8 +374,7 @@ npm run test:ci
 **Import errors:**
 ```bash
 # Install dependencies
-pip install -r requirements.txt
-pip install pytest pytest-cov pytest-asyncio
+pip install -r requirements-dev.txt   # includes requirements.txt + pytest tooling
 ```
 
 **Database connection errors:**

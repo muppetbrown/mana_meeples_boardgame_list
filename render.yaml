@@ -16,6 +16,11 @@ services:
         value: https://mana-meeples-boardgame-list-opgf.onrender.com
       - key: CORS_ORIGINS
         value: https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz,https://library.manaandmeeples.co.nz,https://mana-meeples-library-web.onrender.com
+      # Proxies in front of the app that append to X-Forwarded-For. The deploy log prints the
+      # real entry count on the first request ("X-Forwarded-For arrived with N entries"); raise this if
+      # the chain is longer than expected, or users will share one rate-limit bucket.
+      - key: TRUSTED_PROXY_COUNT
+        value: "1"
       # Secrets - set in the Render dashboard (never committed)
       - key: DATABASE_URL
         sync: false
