@@ -2,7 +2,7 @@
  * SleeveInventoryTab tests - products, auto-match, ready-to-sleeve, to-order, CSV export
  */
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SleeveInventoryTab } from '../SleeveInventoryTab';
 import * as apiClient from '../../../../api/client';
@@ -191,5 +191,147 @@ describe('SleeveInventoryTab', () => {
     expect(await screen.findByText(/No games have sleevable requirements/)).toBeInTheDocument();
     await user.click(screen.getByText('To Order'));
     expect(await screen.findByText(/Nothing to order/)).toBeInTheDocument();
+  });
+
+  describe('stock filter and size groups', () => {
+    const prod = (id, name, w, h, inStock, ordered = 0) => ({
+      id, distributor: 'D', item_id: `S${id}`, name, width_mm: w, height_mm: h,
+      sleeves_per_pack: 100, price: 4, in_stock: inStock, ordered, ordered_sleeves: ordered * 100,
+    });
+    const products = [
+      prod(1, 'Euro Pack A', 59, 92, 200),
+      prod(2, 'Mini US Pack', 41, 63, 0, 2),
+      prod(3, 'American Pack', 57, 88, 50),
+      prod(4, 'Weird Size', 100, 100, 10),
+    ];
+    const headings = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent.replace(/\s*\d.*$/, '').trim());
+
+    beforeEach(() => {
+      apiClient.getSleeveProducts.mockResolvedValue(products);
+    });
+
+    test('groups products under named size groups by default, Other last', async () => {
+      render(<SleeveInventoryTab />);
+      await screen.findByText('Euro Pack A');
+      expect(headings()).toEqual(['Mini American', 'Standard American', 'Standard European', 'Other sizes']);
+      const euro = screen.getByRole('region', { name: 'Standard European sleeves' });
+      expect(within(euro).getByText('Euro Pack A')).toBeInTheDocument();
+      expect(within(euro).getByText(/1 product · 200 sleeves in stock/)).toBeInTheDocument();
+    });
+
+    test('group by size can be switched off for a flat table', async () => {
+      const user = userEvent.setup();
+      render(<SleeveInventoryTab />);
+      await screen.findByText('Euro Pack A');
+      await user.click(screen.getByLabelText('Group by size'));
+      expect(screen.queryByRole('region', { name: /sleeves$/ })).not.toBeInTheDocument();
+      expect(screen.getAllByRole('row')).toHaveLength(5); // header + 4 products
+    });
+
+    test('"In stock" hides out-of-stock products and updates the summary', async () => {
+      const user = userEvent.setup();
+      render(<SleeveInventoryTab />);
+      await screen.findByText('Euro Pack A');
+      await user.selectOptions(screen.getByLabelText('Stock'), 'in_stock');
+      expect(screen.queryByText('Mini US Pack')).not.toBeInTheDocument();
+      expect(screen.getByText('Euro Pack A')).toBeInTheDocument();
+      expect(screen.getByText(/of 4/)).toBeInTheDocument();
+    });
+
+    test('out of stock and on order filters', async () => {
+      const user = userEvent.setup();
+      render(<SleeveInventoryTab />);
+      await screen.findByText('Euro Pack A');
+      await user.selectOptions(screen.getByLabelText('Stock'), 'out_of_stock');
+      expect(screen.getByText('Mini US Pack')).toBeInTheDocument();
+      expect(screen.queryByText('Euro Pack A')).not.toBeInTheDocument();
+      await user.selectOptions(screen.getByLabelText('Stock'), 'on_order');
+      expect(screen.getByText('Mini US Pack')).toBeInTheDocument();
+      expect(screen.queryByText('American Pack')).not.toBeInTheDocument();
+    });
+
+    test('size group filter shows one group; name keywords beat size', async () => {
+      const user = userEvent.setup();
+      render(<SleeveInventoryTab />);
+      await screen.findByText('Euro Pack A');
+      await user.selectOptions(screen.getByLabelText('Size group'), 'mini_american');
+      expect(screen.getByText('Mini US Pack')).toBeInTheDocument();
+      expect(screen.queryByText('Euro Pack A')).not.toBeInTheDocument();
+    });
+
+    test('combined filters with no matches show an empty state and Reset filters restores the list', async () => {
+      const user = userEvent.setup();
+      render(<SleeveInventoryTab />);
+      await screen.findByText('Euro Pack A');
+      await user.selectOptions(screen.getByLabelText('Stock'), 'out_of_stock');
+      await user.selectOptions(screen.getByLabelText('Size group'), 'standard_european');
+      expect(screen.getByText('No products match these filters.')).toBeInTheDocument();
+      await user.click(screen.getByText('Reset filters'));
+      expect(screen.getByText('Euro Pack A')).toBeInTheDocument();
+      expect(screen.getByText('Weird Size')).toBeInTheDocument();
+    });
+
+    test('stock filter is only offered on the inventory section', async () => {
+      const user = userEvent.setup();
+      render(<SleeveInventoryTab />);
+      await screen.findByText('Euro Pack A');
+      await user.click(screen.getByText('To Order'));
+      expect(screen.queryByLabelText('Stock')).not.toBeInTheDocument();
+    });
+
+    test('to-order list is grouped with subtotals and filterable by size group', async () => {
+      const user = userEvent.setup();
+      apiClient.getToOrderList.mockResolvedValue([
+        { width_mm: 59, height_mm: 92, total_needed: 300, deficit: 100, product: { product_name: 'Euro', distributor: 'D', item_id: 'E', packs_to_buy: 1, price_per_pack: 4, total_cost: 4 }, game_names: ['A'] },
+        { width_mm: 41, height_mm: 63, total_needed: 50, deficit: 50, product: { product_name: 'Mini', distributor: 'D', item_id: 'M', packs_to_buy: 1, price_per_pack: 3, total_cost: 3 }, game_names: ['B'] },
+        { width_mm: 41, height_mm: 63, total_needed: 20, deficit: 20, product: null, game_names: ['C'] },
+      ]);
+      render(<SleeveInventoryTab />);
+      await user.click(await screen.findByText('To Order'));
+      const mini = await screen.findByRole('region', { name: 'Mini American order list' });
+      expect(within(mini).getByText(/2 sizes · deficit 70 · \$3\.00/)).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Standard European order list' })).toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText('Size group'), 'standard_european');
+      expect(screen.queryByRole('region', { name: 'Mini American order list' })).not.toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText('Size group'), 'tarot');
+      expect(screen.getByText(/Nothing to order in this size group/)).toBeInTheDocument();
+    });
+
+    test('ready-to-sleeve can be filtered by size group and shows a group badge', async () => {
+      const user = userEvent.setup();
+      apiClient.getToSleeveList.mockResolvedValue([
+        { game_id: 1, game_title: 'Euro Game', all_ready: true, ready_count: 1, total_count: 1,
+          sleeves: [{ sleeve_id: 1, ready: true, card_name: null, width_mm: 59, height_mm: 92, quantity: 10, product_name: 'P', product_stock: 50 }] },
+        { game_id: 2, game_title: 'Mini Game', all_ready: true, ready_count: 1, total_count: 1,
+          sleeves: [{ sleeve_id: 2, ready: true, card_name: null, width_mm: 41, height_mm: 63, quantity: 10, product_name: 'P', product_stock: 50 }] },
+      ]);
+      render(<SleeveInventoryTab />);
+      await user.click(await screen.findByText('Ready to Sleeve'));
+      expect(await screen.findByText('Euro Game')).toBeInTheDocument();
+      expect(screen.getByText('Standard European')).toBeInTheDocument();
+      await user.selectOptions(screen.getByLabelText('Size group'), 'mini_american');
+      expect(screen.queryByText('Euro Game')).not.toBeInTheDocument();
+      expect(screen.getByText('Mini Game')).toBeInTheDocument();
+      await user.selectOptions(screen.getByLabelText('Size group'), 'tarot');
+      expect(screen.getByText(/No games ready to sleeve in this size group/)).toBeInTheDocument();
+    });
+
+    test('order CSV includes a size group column', async () => {
+      const user = userEvent.setup();
+      let blobText = '';
+      window.URL.createObjectURL = vi.fn((blob) => {
+        blob.text().then((t) => (blobText = t));
+        return 'blob:x';
+      });
+      window.URL.revokeObjectURL = vi.fn();
+      render(<SleeveInventoryTab />);
+      await user.click(await screen.findByText('To Order'));
+      await user.click(await screen.findByText('Export CSV'));
+      await waitFor(() => expect(blobText).not.toBe(''));
+      expect(blobText.split('\n')[0]).toContain('"Size group"');
+      expect(blobText).toContain('"Standard Card Game"'); // 63x88 fixture
+    });
   });
 });
