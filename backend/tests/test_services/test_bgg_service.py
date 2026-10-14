@@ -949,3 +949,39 @@ class TestGameTypeClassification:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
+
+class TestHostileXmlIsRejected:
+    """BGG responses are parsed with defusedxml (entity-expansion / XXE protection)."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            # "Billion laughs" entity expansion
+            ('<?xml version="1.0"?><!DOCTYPE lolz [<!ENTITY lol "lol">'
+             '<!ENTITY lol2 "&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;&lol;">]>'
+             '<items><item id="1">&lol2;</item></items>'),
+            # External entity (XXE)
+            ('<?xml version="1.0"?><!DOCTYPE x [<!ENTITY xxe SYSTEM "file:///etc/passwd">]>'
+            "<items><item id=\"1\">&xxe;</item></items>"),
+        ],
+    )
+    async def test_entity_declarations_are_rejected(self, payload):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.text = payload
+        mock_response.content = payload.encode()
+        mock_response.encoding = "utf-8"
+        mock_response.headers = {"content-type": "application/xml"}
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            with pytest.raises(BGGServiceError, match="Failed to parse"):
+                await fetch_bgg_thing(12345)

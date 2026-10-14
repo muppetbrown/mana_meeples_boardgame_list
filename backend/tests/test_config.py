@@ -256,24 +256,6 @@ class TestSessionConfiguration:
 
             assert config.SESSION_SECRET == custom_secret
 
-    def test_session_timeout_default(self):
-        """Test session timeout defaults to 3600 seconds"""
-        with patch.dict(os.environ, {}, clear=True):
-            import importlib
-            import config
-            importlib.reload(config)
-
-            assert config.SESSION_TIMEOUT_SECONDS == 3600
-
-    def test_session_timeout_custom(self):
-        """Test custom session timeout"""
-        with patch.dict(os.environ, {"SESSION_TIMEOUT_SECONDS": "7200"}):
-            import importlib
-            import config
-            importlib.reload(config)
-
-            assert config.SESSION_TIMEOUT_SECONDS == 7200
-
     def test_jwt_expiration_default(self):
         """Test JWT expiration defaults to 7 days"""
         with patch.dict(os.environ, {}, clear=True):
@@ -423,43 +405,6 @@ class TestRedisConfiguration:
                 importlib.reload(config)
 
                 assert config.REDIS_ENABLED == expected
-
-
-class TestDebugConfiguration:
-    """Test debug and development settings"""
-
-    def test_save_debug_info_default(self):
-        """Test SAVE_DEBUG_INFO defaults to false"""
-        with patch.dict(os.environ, {}, clear=True):
-            import importlib
-            import config
-            importlib.reload(config)
-
-            assert config.SAVE_DEBUG_INFO is False
-
-    def test_save_debug_info_enabled(self):
-        """Test SAVE_DEBUG_INFO can be enabled"""
-        test_cases = ["true", "1", "yes"]
-
-        for value in test_cases:
-            with patch.dict(os.environ, {"SAVE_DEBUG_INFO": value}):
-                import importlib
-                import config
-                importlib.reload(config)
-
-                assert config.SAVE_DEBUG_INFO is True
-
-    def test_save_debug_info_disabled(self):
-        """Test SAVE_DEBUG_INFO disabled values"""
-        test_cases = ["false", "0", "no", "anything"]
-
-        for value in test_cases:
-            with patch.dict(os.environ, {"SAVE_DEBUG_INFO": value}):
-                import importlib
-                import config
-                importlib.reload(config)
-
-                assert config.SAVE_DEBUG_INFO is False
 
 
 class TestDatabaseURLValidation:

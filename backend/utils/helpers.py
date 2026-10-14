@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import Request
-from models import Game, Sleeve
+from models import Game
 
 logger = logging.getLogger(__name__)
 
@@ -306,8 +306,8 @@ def make_absolute_url(request: Request, url: Optional[str]) -> Optional[str]:
 
     Examples:
         >>> # Assuming request.base_url is "https://example.com"
-        >>> make_absolute_url(request, "/thumbs/image.jpg")
-        'https://example.com/thumbs/image.jpg'
+        >>> make_absolute_url(request, "/images/example.jpg")
+        'https://example.com/images/example.jpg'
         >>> make_absolute_url(request, "https://external.com/image.jpg")
         'https://external.com/image.jpg'
     """

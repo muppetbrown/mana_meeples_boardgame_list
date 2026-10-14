@@ -78,13 +78,6 @@ RATE_LIMIT_ATTEMPTS = int(os.getenv("RATE_LIMIT_ATTEMPTS", "5"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "300"))  # 5 minutes
 DISABLE_RATE_LIMITING = os.getenv("DISABLE_RATE_LIMITING", "false").lower() in ("true", "1", "yes")
 
-# Debug configuration for BGG data extraction
-SAVE_DEBUG_INFO = os.getenv("SAVE_DEBUG_INFO", "false").lower() in (
-    "true",
-    "1",
-    "yes",
-)
-
 # Session configuration
 # In production, set SESSION_SECRET to a secure random value
 # Generate with: python -c "import secrets; print(secrets.token_hex(32))"
@@ -106,9 +99,6 @@ if not SESSION_SECRET:
         "Sessions will reset on restart. Not suitable for multi-instance deployment. "
         "Set SESSION_SECRET in .env or environment variables."
     )
-
-# Session timeout (1 hour by default)
-SESSION_TIMEOUT_SECONDS = int(os.getenv("SESSION_TIMEOUT_SECONDS", "3600"))
 
 # JWT configuration
 # JWT tokens are valid for 7 days by default
@@ -144,6 +134,16 @@ DB_POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "15"))  # Permanent connections
 DB_MAX_OVERFLOW = int(os.getenv("DB_MAX_OVERFLOW", "20"))  # Burst capacity
 DB_POOL_TIMEOUT = int(os.getenv("DB_POOL_TIMEOUT", "30"))  # Connection wait timeout
 DB_POOL_RECYCLE = int(os.getenv("DB_POOL_RECYCLE", "900"))  # Recycle every 15 min (conservative for cloud PostgreSQL like Render)
+
+# PostgreSQL safety timeouts (see utils/db_settings.py). By default Postgres waits forever
+# for a table lock, which makes a blocked migration hang a deploy silently.
+# 0 disables a timeout.
+DB_LOCK_TIMEOUT_SECONDS = float(os.getenv("DB_LOCK_TIMEOUT_SECONDS", "10"))  # app queries
+DB_IDLE_IN_TX_TIMEOUT_SECONDS = float(os.getenv("DB_IDLE_IN_TX_TIMEOUT_SECONDS", "60"))  # leaked transactions
+MIGRATION_LOCK_TIMEOUT_SECONDS = float(os.getenv("MIGRATION_LOCK_TIMEOUT_SECONDS", "30"))  # alembic DDL
+
+# Max time startup cache warming may delay the server accepting connections
+STARTUP_CACHE_WARM_TIMEOUT_SECONDS = float(os.getenv("STARTUP_CACHE_WARM_TIMEOUT_SECONDS", "20"))
 
 # Slow query threshold for logging (Performance Monitoring)
 SLOW_QUERY_THRESHOLD_SECONDS = float(os.getenv("SLOW_QUERY_THRESHOLD_SECONDS", "1.0"))

@@ -9,7 +9,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # Import your models and database config
 from models import Base
-from config import DATABASE_URL
+from config import DATABASE_URL, MIGRATION_LOCK_TIMEOUT_SECONDS
+from utils.db_settings import install_session_settings
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -65,6 +66,14 @@ def run_migrations_online() -> None:
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
+    # A migration that cannot get its table lock must FAIL (loudly) rather than wait
+    # forever and hang the deploy. No idle-in-transaction cap: DDL can legitimately run long.
+    install_session_settings(
+        connectable,
+        lock_timeout_s=MIGRATION_LOCK_TIMEOUT_SECONDS,
+        idle_in_tx_timeout_s=0,
+        application_name="alembic-migration",
+    )
 
     with connectable.connect() as connection:
         context.configure(
@@ -72,6 +81,7 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             compare_type=True,  # Detect column type changes
             compare_server_default=True,  # Detect default value changes
+            transaction_per_migration=True,  # Release table locks between migrations
         )
 
         with context.begin_transaction():

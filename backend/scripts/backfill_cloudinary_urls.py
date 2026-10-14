@@ -146,7 +146,7 @@ def backfill_cloudinary_urls(
                     if cloudinary_service.enabled:
                         logger.debug(f"  URL: {cloudinary_url[:100]}...")
                     else:
-                        logger.debug(f"  URL: (Cloudinary disabled, using fallback)")
+                        logger.debug("  URL: (Cloudinary disabled, using fallback)")
 
             except Exception as e:
                 stats['failed'] += 1
@@ -209,7 +209,7 @@ def print_summary(stats: dict, dry_run: bool):
 
     logger.info("")
     logger.info("Performance Impact:")
-    logger.info(f"  - Image load time improvement: ~50-150ms per game")
+    logger.info("  - Image load time improvement: ~50-150ms per game")
     logger.info(f"  - Total time saved per page load: ~{stats['updated'] * 0.1:.1f}s (assuming 10 games/page)")
     logger.info("")
 

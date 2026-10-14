@@ -298,22 +298,6 @@ class TestBGGImportFlowIntegration:
         data = response.json()
         assert 'created_at' in data or 'id' in data
 
-    def test_import_thumbnail_download_trigger(self, client, admin_headers):
-        """Should trigger thumbnail download for imported game"""
-        mock_bgg_data = {
-            'title': 'Thumbnail Test',
-            'bgg_id': 88888,
-            'thumbnail_url': 'https://example.com/thumb.jpg'
-        }
-
-        with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock, return_value=mock_bgg_data):
-            with patch('services.image_service.ImageService.download_and_update_game_thumbnail') as mock_download:
-                response = client.post(
-                    '/api/admin/import/bgg?bgg_id=88888',
-                    headers=admin_headers
-                )
-
-        assert response.status_code == 201
         # Thumbnail download may be async, so just verify import succeeded
 
     def test_import_special_characters_in_title(self, client, admin_headers):
@@ -462,7 +446,6 @@ class TestBGGImportFlowIntegration:
 
     def test_import_bgg_api_retry_logic(self, client, admin_headers):
         """Should retry BGG API calls on transient failures"""
-        from unittest.mock import call
 
         # First call fails, second succeeds
         with patch('api.routers.admin.fetch_bgg_thing', new_callable=AsyncMock) as mock_fetch:

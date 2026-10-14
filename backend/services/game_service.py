@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session, selectinload
 from models import Game
 from exceptions import GameNotFoundError, ValidationError
 from utils.helpers import parse_categories, categorize_game
-from config import API_BASE
 
 logger = logging.getLogger(__name__)
 def _sl(v: object) -> str:

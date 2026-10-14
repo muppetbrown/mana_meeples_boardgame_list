@@ -371,7 +371,6 @@ class TestImportPricesFromJSON:
         db_session.commit()
 
         # Create actual price_data directory structure
-        import os
         backend_dir = Path(__file__).parent.parent.parent
         price_data_dir = backend_dir / "price_data"
         price_data_dir.mkdir(exist_ok=True)

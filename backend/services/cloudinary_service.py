@@ -58,7 +58,7 @@ class CloudinaryService:
         Returns:
             Public ID string (e.g., "abc123def456" or "boardgame-library/abc123def456")
         """
-        url_hash = hashlib.md5(url.encode()).hexdigest()
+        url_hash = hashlib.md5(url.encode(), usedforsecurity=False).hexdigest()
         if include_folder:
             return f"{self.folder}/{url_hash}"
         return url_hash

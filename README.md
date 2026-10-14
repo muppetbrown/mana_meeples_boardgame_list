@@ -68,13 +68,11 @@ mana_meeples_boardgame_list/
 │   ├── refactoring/             # Code review & refactoring docs
 │   └── misc/                    # Other documentation
 │
-├── 📁 tests/                    # Test suite
-│   ├── test_main.py
-│   └── test_db_connection.py
+├── 📁 backend/tests/            # Backend test suite (pytest)
 │
-└── 📁 scripts/                  # Utility scripts
-    ├── thumbs.py                # Thumbnail management
-    └── game_cats.csv            # Category data
+└── 📁 scripts/                  # Repo-level utility scripts
+    ├── fetch_all_sleeves.py     # Used by the fetch_sleeves GitHub workflow
+    └── game_cats.csv            # Category data for bulk categorize
 ```
 
 ## 🚀 Quick Start

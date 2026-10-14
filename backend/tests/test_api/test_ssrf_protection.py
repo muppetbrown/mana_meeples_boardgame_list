@@ -324,7 +324,6 @@ class TestSSRFProtection:
     def test_unicode_hostname_handled(self):
         """Unicode hostname (IDN) should be handled"""
         from api.routers.public import validate_url_against_ssrf
-        import socket
 
         # IDN domains get converted to punycode
         with patch('api.routers.public.socket.gethostbyname', return_value='93.184.216.34'):

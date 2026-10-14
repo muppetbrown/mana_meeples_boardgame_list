@@ -705,7 +705,7 @@ class TestImageProxyCloudinary:
 
     def test_image_proxy_cloudinary_enabled(self, client, db_session):
         """Test image proxy when Cloudinary is enabled"""
-        from unittest.mock import patch, AsyncMock
+        from unittest.mock import patch
 
         bgg_url = "https://cf.geekdo-images.com/test.jpg"
 

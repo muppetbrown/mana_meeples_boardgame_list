@@ -22,6 +22,7 @@ os.environ["CORS_ORIGINS"] = "http://localhost:3000,http://test"
 os.environ["DISABLE_RATE_LIMITING"] = "true"
 
 import database
+import models
 from main import app
 
 
@@ -66,11 +67,11 @@ def db_engine():
         connect_args={"check_same_thread": False},
         poolclass=StaticPool  # Use StaticPool for thread-safe in-memory SQLite
     )
-    database.Base.metadata.create_all(engine)
+    models.Base.metadata.create_all(engine)
     yield engine
     # Safely cleanup - ignore errors if connections are already closed
     try:
-        database.Base.metadata.drop_all(engine)
+        models.Base.metadata.drop_all(engine)
     except Exception as _cleanup_err:  # noqa: BLE001 — intentional teardown swallow
         logger.debug("Engine drop_all cleanup error (ignored): %s", _cleanup_err)
     try:
@@ -107,7 +108,6 @@ def client(db_engine):
     """Create a test API client with database override"""
     db_module = database
     from unittest.mock import AsyncMock
-    from sqlalchemy.pool import StaticPool
 
     # Store original engine and SessionLocal
     original_engine = db_module.engine
@@ -317,7 +317,6 @@ async def async_client(db_engine):
     from httpx import AsyncClient, ASGITransport
     db_module = database
     from unittest.mock import AsyncMock
-    from sqlalchemy.pool import StaticPool
     from sqlalchemy.orm import sessionmaker
 
     # Store originals

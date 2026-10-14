@@ -6,6 +6,9 @@ Sprint 16: Added rate limiting to prevent BGG API abuse
 """
 import asyncio
 import xml.etree.ElementTree as ET
+
+from defusedxml.common import DefusedXmlException
+from defusedxml.ElementTree import fromstring as safe_fromstring
 from typing import Dict, Any
 from xml.etree.ElementTree import Element
 from datetime import datetime, timedelta
@@ -179,9 +182,9 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
     headers = {}
     if BGG_API_KEY:
         headers["Authorization"] = f"Bearer {BGG_API_KEY}"
-        logger.info(f"Using BGG API key for authentication")
+        logger.info("Using BGG API key for authentication")
     else:
-        logger.warning(f"No BGG API key configured - request may be rate limited")
+        logger.warning("No BGG API key configured - request may be rate limited")
 
     # Initialize variables outside of try blocks to ensure they're in scope for exception handlers
     response = None
@@ -435,7 +438,12 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
             )
 
         # Try to parse the XML (use the validated response_text, not original response.text)
-        root = ET.fromstring(response_text)
+        # BGG is an external service: parse with defusedxml so a hostile or corrupted
+        # response (entity-expansion "billion laughs", external entities) is rejected.
+        try:
+            root = safe_fromstring(response_text)
+        except DefusedXmlException as e:
+            raise ET.ParseError(f"Unsafe XML rejected: {e}") from e
         logger.info(
             f"Successfully parsed XML for game {_sl(bgg_id)}. Root tag: {_sl(root.tag)}"
         )

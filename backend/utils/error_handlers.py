@@ -145,5 +145,5 @@ def handle_generic_error(e: Exception, operation: str) -> HTTPException:
     # Don't expose internal error details to users
     return HTTPException(
         status_code=500,
-        detail=f"An error occurred while processing your request. Please try again later."
+        detail="An error occurred while processing your request. Please try again later."
     )

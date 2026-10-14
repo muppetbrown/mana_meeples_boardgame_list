@@ -44,7 +44,7 @@ def make_cache_key(*args, **kwargs) -> str:
     key_string = "|".join(key_parts)
 
     # Hash it to get a fixed-length key
-    return hashlib.md5(key_string.encode()).hexdigest()
+    return hashlib.md5(key_string.encode(), usedforsecurity=False).hexdigest()
 
 
 def cached_query(ttl_seconds: int = DEFAULT_TTL_SECONDS):
