@@ -6,6 +6,7 @@ Tests API performance benchmarks and response times
 """
 
 import pytest
+import statistics
 import time
 from models import Game
 
@@ -119,16 +120,28 @@ class TestAPIPerformance:
         assert duration < 0.5, f"Large page size took {duration:.3f}s, expected <0.5s"
 
     def test_sort_performance(self, client, large_game_dataset):
-        """Sorting should not significantly impact performance"""
+        """Sorting should not significantly impact performance.
+
+        Uses the median of several runs per sort rather than a single
+        sample, since a single request on a shared CI runner is prone to
+        one-off scheduling noise (GC pause, neighbour load, etc.).
+        """
         sorts = ['title_asc', 'year_desc', 'rating_desc']
+        runs_per_sort = 5
 
         for sort in sorts:
-            start = time.time()
-            response = client.get(f'/api/public/games?sort={sort}&page_size=24')
-            duration = time.time() - start
+            durations = []
+            for _ in range(runs_per_sort):
+                start = time.time()
+                response = client.get(f'/api/public/games?sort={sort}&page_size=24')
+                durations.append(time.time() - start)
+                assert response.status_code == 200
 
-            assert response.status_code == 200
-            assert duration < 0.25, f"Sort {sort} took {duration:.3f}s, expected <0.25s"
+            median_duration = statistics.median(durations)
+            assert median_duration < 0.25, (
+                f"Sort {sort} median took {median_duration:.3f}s over {runs_per_sort} runs "
+                f"(all: {[f'{d:.3f}' for d in durations]}), expected <0.25s"
+            )
 
     def test_nz_designer_filter_performance(self, client, large_game_dataset):
         """NZ designer filtering should be efficient"""
