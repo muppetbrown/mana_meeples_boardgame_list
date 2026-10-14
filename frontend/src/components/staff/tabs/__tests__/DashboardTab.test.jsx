@@ -190,4 +190,39 @@ describe('DashboardTab', () => {
     const items = await screen.findAllByText(/^(Older|Newer)$/);
     expect(items[0]).toHaveTextContent('Newer');
   });
+
+  test('shows an error toast when resolving a failure fails', async () => {
+    const user = userEvent.setup();
+    apiClient.getBackgroundFailures.mockResolvedValue({
+      unresolved_failures: 1,
+      failures: [{ id: 8, task_type: 'thumb', game_id: null, error_message: 'x' }],
+    });
+    apiClient.resolveBackgroundFailure.mockRejectedValue(new Error('no'));
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await user.click(await screen.findByText('Resolve'));
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Could not resolve failure', 'error'));
+  });
+
+  test('buy list count links to the Buy List tab', async () => {
+    const user = userEvent.setup();
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    await user.click(screen.getByText('On the buy list').nextSibling);
+    expect(onTabChange).toHaveBeenCalledWith('buy-list');
+  });
+
+  test('shows the half-open breaker state and singular check wording', async () => {
+    apiClient.getCircuitBreakerStatus.mockResolvedValue({ state: 'half_open', description: 'Recovering' });
+    useStaff.mockReturnValue(ctx({ ownedLibrary: [owned[0], owned[1]] }));
+    render(<DashboardTab onTabChange={onTabChange} />);
+    expect(await screen.findByText('half_open')).toBeInTheDocument();
+    expect(screen.getByText('1 check with issues')).toBeInTheDocument();
+  });
+
+  test('says no games loaded for an empty library', async () => {
+    useStaff.mockReturnValue(ctx({ ownedLibrary: [], library: [] }));
+    render(<DashboardTab onTabChange={onTabChange} />);
+    expect(await screen.findByText('No games loaded')).toBeInTheDocument();
+    expect(screen.getByText('No games yet.')).toBeInTheDocument();
+  });
 });
