@@ -117,10 +117,18 @@ describe('SleeveInventoryTab', () => {
     await user.type(screen.getByPlaceholderText('Height (mm) *'), '90');
     await user.type(screen.getByPlaceholderText('Sleeves/Pack *'), '50');
     await user.type(screen.getByPlaceholderText('Price/Pack *'), '3.5');
+    await user.type(screen.getByPlaceholderText('Item ID / SKU'), 'SKU-9');
+    await user.clear(screen.getByPlaceholderText('In Stock (sleeves)'));
+    await user.type(screen.getByPlaceholderText('In Stock (sleeves)'), '120');
+    await user.clear(screen.getByPlaceholderText('Ordered (packs)'));
+    await user.type(screen.getByPlaceholderText('Ordered (packs)'), '3');
     await user.click(screen.getByRole('button', { name: 'Add Product' }));
     await waitFor(() =>
       expect(apiClient.createSleeveProduct).toHaveBeenCalledWith(
-        expect.objectContaining({ distributor: 'Dist', name: 'New', width_mm: 60, height_mm: 90, sleeves_per_pack: 50, price: 3.5 })
+        expect.objectContaining({
+          distributor: 'Dist', item_id: 'SKU-9', name: 'New', width_mm: 60, height_mm: 90,
+          sleeves_per_pack: 50, price: 3.5, in_stock: 120, ordered: 3,
+        })
       )
     );
     expect(await screen.findByText('Product added')).toBeInTheDocument();
@@ -217,6 +225,26 @@ describe('SleeveInventoryTab', () => {
       const euro = screen.getByRole('region', { name: 'Standard European sleeves' });
       expect(within(euro).getByText('Euro Pack A')).toBeInTheDocument();
       expect(within(euro).getByText(/1 product · 200 sleeves in stock/)).toBeInTheDocument();
+    });
+
+    test('group headers pluralise product counts', async () => {
+      apiClient.getSleeveProducts.mockResolvedValue([
+        prod(1, 'Euro A', 59, 92, 100),
+        prod(2, 'Euro B', 59, 92, 50),
+      ]);
+      render(<SleeveInventoryTab />);
+      await screen.findByText('Euro A');
+      expect(screen.getByText(/2 products · 150 sleeves in stock/)).toBeInTheDocument();
+    });
+
+    test('to-order list can be shown flat without group headings', async () => {
+      const user = userEvent.setup();
+      render(<SleeveInventoryTab />);
+      await user.click(await screen.findByText('To Order'));
+      expect((await screen.findAllByRole('region', { name: /order list$/})).length).toBeGreaterThan(0);
+      await user.click(screen.getByLabelText('Group by size'));
+      expect(screen.queryByRole('region', { name: /order list$/ })).not.toBeInTheDocument();
+      expect(screen.getByText('No matching product')).toBeInTheDocument();
     });
 
     test('group by size can be switched off for a flat table', async () => {

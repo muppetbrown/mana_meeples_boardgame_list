@@ -62,6 +62,36 @@ describe('ManageLibraryTab extras', () => {
     expect(titles()).toEqual(['Gamma', 'Beta', 'Alpha']); // uncategorised last
   });
 
+  test('category sort breaks ties by title, including among uncategorized games', async () => {
+    const user = userEvent.setup();
+    const tied = [
+      { ...games[0], id: 11, title: 'Zulu', mana_meeple_category: 'CORE_STRATEGY' },
+      { ...games[0], id: 12, title: 'Echo', mana_meeple_category: 'CORE_STRATEGY' },
+      { ...games[1], id: 13, title: 'Yankee', mana_meeple_category: null },
+      { ...games[1], id: 14, title: 'Bravo', mana_meeple_category: null },
+    ];
+    useStaff.mockReturnValue(ctx({ filteredLibrary: tied, library: tied }));
+    render(<ManageLibraryTab />);
+    await user.selectOptions(screen.getByLabelText('Sort library'), 'category');
+    const order = screen.getAllByText(/^(Zulu|Echo|Yankee|Bravo)$/).map((n) => n.textContent);
+    expect(order).toEqual(['Echo', 'Zulu', 'Bravo', 'Yankee']);
+  });
+
+  test('category sort tolerates games with no title', async () => {
+    const user = userEvent.setup();
+    const untitled = [
+      { ...games[0], id: 21, title: undefined, mana_meeple_category: 'CORE_STRATEGY', bgg_id: 901 },
+      { ...games[0], id: 22, title: undefined, mana_meeple_category: 'CORE_STRATEGY', bgg_id: 902 },
+      { ...games[0], id: 23, title: 'Named', mana_meeple_category: 'CORE_STRATEGY', bgg_id: 903 },
+      { ...games[0], id: 24, title: undefined, mana_meeple_category: 'CORE_STRATEGY', bgg_id: 904 },
+    ];
+    useStaff.mockReturnValue(ctx({ filteredLibrary: untitled, library: untitled }));
+    render(<ManageLibraryTab />);
+    await user.selectOptions(screen.getByLabelText('Sort library'), 'category');
+    expect(screen.getAllByText('Edit Game')).toHaveLength(4);
+    expect(screen.getByText('Named')).toBeInTheDocument();
+  });
+
   test('searches by designer and BGG id', async () => {
     const user = userEvent.setup();
     render(<ManageLibraryTab />);

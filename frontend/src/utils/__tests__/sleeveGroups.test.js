@@ -31,6 +31,11 @@ describe('classifySleeve by size', () => {
     expect(classifySleeve({ width_mm: undefined, height_mm: null })).toBe(OTHER_GROUP);
   });
 
+  test('an exact tie between overlapping groups goes to the earlier one', () => {
+    // 57.5 x 89.5 is equally far from Standard American (56x87) and Standard European (59x92)
+    expect(sz(57.5, 89.5)).toBe('standard_american');
+  });
+
   test('picks the nearest group when windows overlap', () => {
     expect(sz(59, 92)).toBe('standard_european');
     expect(sz(56, 88)).toBe('standard_american');
