@@ -8,8 +8,9 @@ import os
 import logging
 import httpx
 import traceback
+import re
 from typing import Optional
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote, urljoin, urlparse
 from sqlalchemy.orm import Session
 from tenacity import (
     retry,
@@ -34,6 +35,11 @@ BGG_IMAGE_HOSTS = ("cf.geekdo-images.com", "cf.geekdo-static.com")
 
 # Maximum redirects followed (each hop is re-validated)
 MAX_PROXY_REDIRECTS = 3
+
+# Characters allowed in the path / query of a proxied image URL (RFC 3986
+# pchar plus "/" and "?"), which covers BGG's /img/..=/fit-in/WxH/filters:...() URLs.
+_SAFE_PATH_RE = re.compile(r"^/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*$")
+_SAFE_QUERY_RE = re.compile(r"^[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*$")
 
 
 class UntrustedImageURLError(ValueError):
@@ -87,7 +93,23 @@ def build_trusted_image_url(url: str) -> str:
         raise UntrustedImageURLError("Image host is not allowed")
 
     path = parsed.path or "/"
-    return origin + path + (f"?{parsed.query}" if parsed.query else "")
+    query = parsed.query
+
+    # The origin is fixed, but the path/query still come from the caller: keep
+    # them to a strict character set and refuse dot-segments (including
+    # percent-encoded ones) and encoded separators so they can't walk out of
+    # the intended directory or smuggle extra URL structure.
+    decoded_path = unquote(path)
+    if (
+        not _SAFE_PATH_RE.match(path)
+        or not _SAFE_QUERY_RE.match(query)
+        or "\\" in decoded_path
+        or any(segment in (".", "..") for segment in decoded_path.split("/"))
+        or re.search(r"%2f|%5c", path + query, re.IGNORECASE)
+    ):
+        raise UntrustedImageURLError("Malformed image URL")
+
+    return origin + path + (f"?{query}" if query else "")
 
 
 class ImageService:
