@@ -82,6 +82,23 @@ describe('ManageLibraryTab extras', () => {
     expect(titles()).toEqual(['Alpha']);
   });
 
+  test('"Still to be sleeved" filter shows only games with unfinished sleeve work', async () => {
+    const sleeveGames = [
+      { ...games[0], has_sleeves: 'found', fully_sleeved: false },   // Beta: to sleeve
+      { ...games[1], has_sleeves: 'found', fully_sleeved: true },    // Alpha: done
+      { ...games[2], has_sleeves: 'none', fully_sleeved: false },    // Gamma: no sleeves needed
+    ];
+    useStaff.mockReturnValue(
+      ctx({ filteredLibrary: sleeveGames, library: sleeveGames, attentionFilter: 'to_sleeve' })
+    );
+    const user = userEvent.setup();
+    render(<ManageLibraryTab />);
+    expect(titles()).toEqual(['Beta']);
+    expect(screen.getByRole('option', { name: 'Needs attention: Still to be sleeved' })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Data quality filter'), 'to_sleeve');
+    expect(setAttentionFilter).toHaveBeenCalledWith('to_sleeve');
+  });
+
   test('select all / clear selection', async () => {
     const user = userEvent.setup();
     render(<ManageLibraryTab />);

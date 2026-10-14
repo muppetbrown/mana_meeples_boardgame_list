@@ -27,6 +27,7 @@ const game = (over) => ({
   status: 'OWNED',
   mana_meeple_category: 'CORE_STRATEGY',
   has_sleeves: 'found',
+  fully_sleeved: true,
   image_url: 'x.jpg',
   designers: ['A'],
   complexity: 2.5,
@@ -85,6 +86,20 @@ describe('DashboardTab', () => {
     expect(screen.getByText('Missing image').previousSibling).toHaveTextContent('1');
     expect(screen.getByText('Sleeve status unknown').previousSibling).toHaveTextContent('1');
     expect(screen.getByText('Missing designers').previousSibling).toHaveTextContent('0');
+    expect(screen.getByText('Still to be sleeved').previousSibling).toHaveTextContent('0');
+  });
+
+  test('counts games still to be sleeved and opens the filtered library', async () => {
+    const user = userEvent.setup();
+    useStaff.mockReturnValue(
+      ctx({ ownedLibrary: [owned[0], game({ id: 5, title: 'Half sleeved', fully_sleeved: false })] })
+    );
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    expect(screen.getByText('Still to be sleeved').previousSibling).toHaveTextContent('1');
+    await user.click(screen.getByText('Still to be sleeved'));
+    expect(setAttentionFilter).toHaveBeenCalledWith('to_sleeve');
+    expect(onTabChange).toHaveBeenCalledWith('manage-library');
   });
 
   test('clicking an attention card applies the filter and opens Manage Library', async () => {
