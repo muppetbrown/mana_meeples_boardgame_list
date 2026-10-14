@@ -9,6 +9,7 @@ import GameEditModal from "../GameEditModal";
 import SleeveShoppingListModal from "../SleeveShoppingListModal";
 import SleeveFetchStatus from "../SleeveFetchStatus";
 import { ATTENTION_FILTERS } from "../../../utils/libraryQuality";
+import AttentionHelp from "../AttentionHelp";
 
 /**
  * Manage Library tab - Browse, edit, and delete games in compact table view
@@ -68,8 +69,11 @@ export function ManageLibraryTab() {
       } else if (sortBy === "year") {
         return (b.year || 0) - (a.year || 0);
       } else if (sortBy === "category") {
-        return (a.mana_meeple_category || "~").localeCompare(b.mana_meeple_category || "~") ||
-          (a.title || "").localeCompare(b.title || "");
+        // Uncategorized games sort last (localeCompare would put a "~" sentinel first)
+        const ca = a.mana_meeple_category;
+        const cb = b.mana_meeple_category;
+        if (!ca !== !cb) return ca ? -1 : 1;
+        return (ca || "").localeCompare(cb || "") || (a.title || "").localeCompare(b.title || "");
       } else if (sortBy === "date_added") {
         // Sort by date_added descending (newest first)
         const dateA = a.date_added ? new Date(a.date_added) : new Date(0);
@@ -349,6 +353,13 @@ export function ManageLibraryTab() {
           selected={selectedCategory}
           counts={counts}
           onChange={setSelectedCategory}
+        />
+
+        {/* Guidance for the active needs-attention filter */}
+        <AttentionHelp
+          filterKey={attentionFilter}
+          count={searchFilteredLibrary.length}
+          onClear={() => setAttentionFilter("")}
         />
       </div>
 

@@ -137,3 +137,35 @@ describe('BulkResultSummary', () => {
     expect(buildBulkLog(result)).toBe('Updated:\nok 1\n\nNot found:\nmissing 1\n\nErrors:\nbad line\n');
   });
 });
+
+describe('Modal edge cases', () => {
+  test('Tab is swallowed when the dialog has nothing focusable', async () => {
+    const user = userEvent.setup();
+    render(
+      <Modal onClose={() => {}} label="empty">
+        <p>No controls</p>
+      </Modal>
+    );
+    // focus falls back to the dialog panel itself
+    expect(screen.getByRole('dialog')).toHaveFocus();
+    await user.tab();
+    expect(screen.getByRole('dialog')).toHaveFocus();
+  });
+
+  test('keys other than Tab/Escape are ignored', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<Modal onClose={onClose} label="x"><button>A</button></Modal>);
+    await user.keyboard('a');
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test('closeOnBackdrop=false ignores backdrop clicks', () => {
+    const onClose = vi.fn();
+    const { container } = render(
+      <Modal onClose={onClose} label="x" closeOnBackdrop={false}><button>A</button></Modal>
+    );
+    fireEvent.mouseDown(container.firstChild);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});

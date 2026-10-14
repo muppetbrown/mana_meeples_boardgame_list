@@ -27,6 +27,7 @@ const game = (over) => ({
   status: 'OWNED',
   mana_meeple_category: 'CORE_STRATEGY',
   has_sleeves: 'found',
+  fully_sleeved: true,
   image_url: 'x.jpg',
   designers: ['A'],
   complexity: 2.5,
@@ -85,6 +86,20 @@ describe('DashboardTab', () => {
     expect(screen.getByText('Missing image').previousSibling).toHaveTextContent('1');
     expect(screen.getByText('Sleeve status unknown').previousSibling).toHaveTextContent('1');
     expect(screen.getByText('Missing designers').previousSibling).toHaveTextContent('0');
+    expect(screen.getByText('Still to be sleeved').previousSibling).toHaveTextContent('0');
+  });
+
+  test('counts games still to be sleeved and opens the filtered library', async () => {
+    const user = userEvent.setup();
+    useStaff.mockReturnValue(
+      ctx({ ownedLibrary: [owned[0], game({ id: 5, title: 'Half sleeved', fully_sleeved: false })] })
+    );
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    expect(screen.getByText('Still to be sleeved').previousSibling).toHaveTextContent('1');
+    await user.click(screen.getByText('Still to be sleeved'));
+    expect(setAttentionFilter).toHaveBeenCalledWith('to_sleeve');
+    expect(onTabChange).toHaveBeenCalledWith('manage-library');
   });
 
   test('clicking an attention card applies the filter and opens Manage Library', async () => {
@@ -189,5 +204,49 @@ describe('DashboardTab', () => {
     render(<DashboardTab onTabChange={onTabChange} />);
     const items = await screen.findAllByText(/^(Older|Newer)$/);
     expect(items[0]).toHaveTextContent('Newer');
+  });
+
+  test('shows an error toast when resolving a failure fails', async () => {
+    const user = userEvent.setup();
+    apiClient.getBackgroundFailures.mockResolvedValue({
+      unresolved_failures: 1,
+      failures: [{ id: 8, task_type: 'thumb', game_id: null, error_message: 'x' }],
+    });
+    apiClient.resolveBackgroundFailure.mockRejectedValue(new Error('no'));
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await user.click(await screen.findByText('Resolve'));
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Could not resolve failure', 'error'));
+  });
+
+  test('buy list count links to the Buy List tab', async () => {
+    const user = userEvent.setup();
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    await user.click(screen.getByText('On the buy list').nextSibling);
+    expect(onTabChange).toHaveBeenCalledWith('buy-list');
+  });
+
+  test('shows the half-open breaker state and singular check wording', async () => {
+    apiClient.getCircuitBreakerStatus.mockResolvedValue({ state: 'half_open', description: 'Recovering' });
+    useStaff.mockReturnValue(ctx({ ownedLibrary: [owned[0], owned[1]] }));
+    render(<DashboardTab onTabChange={onTabChange} />);
+    expect(await screen.findByText('half_open')).toBeInTheDocument();
+    expect(screen.getByText('1 check with issues')).toBeInTheDocument();
+  });
+
+  test('says no games loaded for an empty library', async () => {
+    useStaff.mockReturnValue(ctx({ ownedLibrary: [], library: [] }));
+    render(<DashboardTab onTabChange={onTabChange} />);
+    expect(await screen.findByText('No games loaded')).toBeInTheDocument();
+    expect(screen.getByText('No games yet.')).toBeInTheDocument();
+  });
+
+  test('attention cards show a one-line fix hint', async () => {
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    expect(screen.getByText('Re-import from BGG to pull the image.')).toBeInTheDocument();
+    expect(screen.getByText('Fetch sleeve data, or mark "no sleeves needed".')).toBeInTheDocument();
+    // zero-count cards stay quiet
+    expect(screen.queryByText('Re-import from BGG to pull designers.')).not.toBeInTheDocument();
   });
 });
