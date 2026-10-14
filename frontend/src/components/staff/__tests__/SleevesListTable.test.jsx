@@ -11,6 +11,9 @@ import * as apiClient from '../../../api/client';
 vi.mock('../../../api/client', () => ({
   getGameSleeves: vi.fn(),
   updateSleeveStatus: vi.fn(),
+  createGameSleeve: vi.fn(),
+  deleteGameSleeve: vi.fn(),
+  updateGameSleeveStatus: vi.fn(),
 }));
 
 describe('SleevesListTable', () => {
@@ -444,6 +447,51 @@ describe('SleevesListTable', () => {
 
       expect(screen.getByRole('columnheader', { name: /sleeved/i })).toBeInTheDocument();
       expect(screen.getByRole('columnheader', { name: /card type/i })).toBeInTheDocument();
+    });
+  });
+
+  describe('Adding a sleeve requirement', () => {
+    test('sends decimal width and height to the API without truncating them', async () => {
+      const user = userEvent.setup();
+      apiClient.createGameSleeve.mockResolvedValue({ id: 99 });
+
+      render(<SleevesListTable gameId={1} onSleeveUpdate={mockOnSleeveUpdate} />);
+
+      await user.click(await screen.findByText('+ Add Sleeve Requirement'));
+
+      const width = screen.getByPlaceholderText('Width (mm)');
+      const height = screen.getByPlaceholderText('Height (mm)');
+
+      // Decimal sizes must be accepted by the inputs (step="any")
+      expect(width).toHaveAttribute('step', 'any');
+      expect(height).toHaveAttribute('step', 'any');
+
+      await user.type(width, '63.5');
+      await user.type(height, '88.9');
+      await user.type(screen.getByPlaceholderText('Quantity'), '60');
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      await waitFor(() => {
+        expect(apiClient.createGameSleeve).toHaveBeenCalledWith(
+          1,
+          expect.objectContaining({ width_mm: 63.5, height_mm: 88.9, quantity: 60 })
+        );
+      });
+    });
+
+    test('rejects a zero or negative size', async () => {
+      const user = userEvent.setup();
+
+      render(<SleevesListTable gameId={1} onSleeveUpdate={mockOnSleeveUpdate} />);
+
+      await user.click(await screen.findByText('+ Add Sleeve Requirement'));
+      await user.type(screen.getByPlaceholderText('Width (mm)'), '0');
+      await user.type(screen.getByPlaceholderText('Height (mm)'), '88');
+      await user.type(screen.getByPlaceholderText('Quantity'), '10');
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+
+      expect(await screen.findByText('Width and height must be greater than zero.')).toBeInTheDocument();
+      expect(apiClient.createGameSleeve).not.toHaveBeenCalled();
     });
   });
 });
