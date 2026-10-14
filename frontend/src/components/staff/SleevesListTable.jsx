@@ -108,12 +108,18 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
     e?.preventDefault?.();
     setAddError(null);
 
-    const width_mm = parseInt(addForm.width_mm, 10);
-    const height_mm = parseInt(addForm.height_mm, 10);
+    // Card sizes can be fractional (e.g. 63.5 x 88.9 mm); quantity is a whole number.
+    const width_mm = parseFloat(addForm.width_mm);
+    const height_mm = parseFloat(addForm.height_mm);
     const quantity = parseInt(addForm.quantity, 10);
 
     if (!Number.isFinite(width_mm) || !Number.isFinite(height_mm) || !Number.isFinite(quantity)) {
       setAddError('Width, height, and quantity must be numbers.');
+      return;
+    }
+
+    if (width_mm <= 0 || height_mm <= 0) {
+      setAddError('Width and height must be greater than zero.');
       return;
     }
 
@@ -211,6 +217,8 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
             />
             <input
               type="number"
+              step="any"
+              min="0"
               placeholder="Width (mm)"
               value={addForm.width_mm}
               onChange={(e) => setAddForm({ ...addForm, width_mm: e.target.value })}
@@ -218,6 +226,8 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
             />
             <input
               type="number"
+              step="any"
+              min="0"
               placeholder="Height (mm)"
               value={addForm.height_mm}
               onChange={(e) => setAddForm({ ...addForm, height_mm: e.target.value })}
