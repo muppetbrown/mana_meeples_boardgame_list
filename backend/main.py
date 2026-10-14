@@ -8,15 +8,12 @@ import json
 import logging
 import time
 from datetime import datetime, timezone
-from collections import defaultdict
 from contextlib import asynccontextmanager
 
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-from starlette.types import ASGIApp, Receive, Scope, Send
 from shared.rate_limiting import (
     get_limiter,
     get_rate_limit_exception_handler,
@@ -30,7 +27,7 @@ from exceptions import (
     ValidationError,
     DatabaseError,
 )
-from config import HTTP_TIMEOUT, CORS_ORIGINS
+from config import HTTP_TIMEOUT, CORS_ORIGINS, STARTUP_CACHE_WARM_TIMEOUT_SECONDS
 from middleware.logging import RequestLoggingMiddleware
 from middleware.security import SecurityHeadersMiddleware
 from middleware.cache import APICacheControlMiddleware
@@ -106,7 +103,7 @@ if os.getenv("SENTRY_DSN"):
     sentry_sdk.init(
         dsn=os.getenv("SENTRY_DSN"),
         environment=os.getenv("ENVIRONMENT", "production"),
-        release=os.getenv("GIT_COMMIT_SHA", "unknown"),  # Track releases
+        release=os.getenv("GIT_COMMIT_SHA") or os.getenv("RENDER_GIT_COMMIT") or "unknown",  # Track releases (Render sets RENDER_GIT_COMMIT)
         # Performance monitoring
         integrations=[
             FastApiIntegration(),
@@ -173,9 +170,6 @@ logger = logging.getLogger(__name__)
 # ------------------------------------------------------------------------------
 # Configuration
 # ------------------------------------------------------------------------------
-
-# Thumbnail storage directory (ephemeral on Render free tier)
-THUMBS_DIR = os.getenv("THUMBS_DIR", "/tmp/thumbs")
 
 # Single shared HTTP client
 httpx_client = httpx.AsyncClient(follow_redirects=True, timeout=HTTP_TIMEOUT)
@@ -287,12 +281,19 @@ async def lifespan(app: FastAPI):
     # Run `alembic upgrade head` before starting the application
     # See: backend/alembic/ for migration files
 
-    os.makedirs(THUMBS_DIR, exist_ok=True)
-    logger.info(f"Thumbnails directory: {THUMBS_DIR}")
-
     # Sprint 12: Warm cache for popular queries (runs in thread pool to avoid blocking the event loop)
+    # Time-boxed: uvicorn does not accept connections until startup finishes, so a slow or
+    # blocked warm-up query must never be able to stall a deploy (Render waits for the port).
     import asyncio
-    await asyncio.to_thread(warm_cache)
+    try:
+        await asyncio.wait_for(
+            asyncio.to_thread(warm_cache), timeout=STARTUP_CACHE_WARM_TIMEOUT_SECONDS
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "Cache warming still running after %ss - continuing startup without waiting",
+            STARTUP_CACHE_WARM_TIMEOUT_SECONDS,
+        )
 
     logger.info("API startup complete")
 
@@ -435,30 +436,6 @@ async def database_error_handler(request: Request, exc: DatabaseError):
 # ------------------------------------------------------------------------------
 
 
-# Cache headers for thumbnail images
-class CacheThumbsMiddleware:
-    """Add cache headers to thumbnail responses"""
-
-    def __init__(self, app: ASGIApp):
-        self.app = app
-
-    async def __call__(self, scope: Scope, receive: Receive, send: Send):
-        async def send_wrapper(message):
-            if message["type"] == "http.response.start":
-                path = scope.get("path", "")
-                if path.startswith("/thumbs/"):
-                    headers = message.setdefault("headers", [])
-                    headers.append(
-                        (
-                            b"cache-control",
-                            b"public, max-age=31536000, immutable",
-                        )
-                    )
-            await send(message)
-
-        await self.app(scope, receive, send_wrapper)
-
-
 # CORS configuration - Must be set up BEFORE adding middleware
 # Parse CORS origins from environment or use defaults
 cors_origins_from_env = CORS_ORIGINS
@@ -485,7 +462,6 @@ logger.info(f"CORS origins configured: {cors_origins}")
 # Add middleware in reverse order (last added = first executed)
 # IMPORTANT: CORS must be added LAST to execute FIRST and handle preflight requests
 app.add_middleware(RequestLoggingMiddleware)
-app.add_middleware(CacheThumbsMiddleware)
 app.add_middleware(APICacheControlMiddleware)
 app.add_middleware(RequestIDMiddleware)  # Request ID propagation for distributed tracing
 app.add_middleware(SecurityHeadersMiddleware)
@@ -521,8 +497,6 @@ logger.info("CORS middleware configured and added to application")
 # Static files
 # ------------------------------------------------------------------------------
 
-os.makedirs(THUMBS_DIR, exist_ok=True)
-app.mount("/thumbs", StaticFiles(directory=THUMBS_DIR), name="thumbs")
 
 # ------------------------------------------------------------------------------
 # Router registration with API versioning

@@ -1,6 +1,17 @@
 # Backend Scripts
 
-Utility scripts for database maintenance and operations.
+Scripts that are actually run by CI/Render or by hand. Anything that was a one-off data fix has been
+removed (it stays in git history); schema changes belong in Alembic migrations (`backend/alembic/`).
+
+| Script | Used by | Purpose |
+|---|---|---|
+| `run_migrations.py` | `fetch-buy-list-prices` workflow | Run `alembic upgrade head` from a script |
+| `export_buy_list.py` | `fetch-buy-list-prices` workflow | Export the buy list for the price fetcher |
+| `fetch_buy_list_prices.py` | `fetch-buy-list-prices` workflow | Scrape store prices into `price_data/` |
+| `seed_e2e_data.py` | `test.yml` (E2E job) | Seed a database for the Playwright tests |
+| `backfill_cloudinary_urls.py` | by hand (also an admin endpoint) | Cache Cloudinary URLs for existing games |
+
+Stuck or hanging deploys: see [`docs/operations/STUCK_DEPLOY.md`](../../docs/operations/STUCK_DEPLOY.md).
 
 ## Backfill Cloudinary URLs
 

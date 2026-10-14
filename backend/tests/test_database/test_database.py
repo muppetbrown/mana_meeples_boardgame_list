@@ -10,7 +10,6 @@ from unittest.mock import Mock, patch
 from sqlalchemy.exc import OperationalError, DatabaseError
 import database
 db_ping = database.db_ping
-init_db = database.init_db
 get_db = database.get_db
 get_read_db = database.get_read_db
 
@@ -62,34 +61,6 @@ class TestDbPing:
         result = db_ping()
 
         assert result is False
-
-
-class TestInitDb:
-    """Test database initialization"""
-
-    @patch('database.Base')
-    @patch('database.engine')
-    def test_init_db_creates_tables(self, mock_engine, mock_base):
-        """Test init_db creates all tables"""
-        mock_metadata = Mock()
-        mock_base.metadata = mock_metadata
-
-        init_db()
-
-        mock_metadata.create_all.assert_called_once_with(bind=mock_engine)
-
-    @patch('database.Base')
-    @patch('database.engine')
-    def test_init_db_propagates_errors(self, mock_engine, mock_base):
-        """Test init_db propagates database errors"""
-        mock_metadata = Mock()
-        mock_base.metadata = mock_metadata
-        mock_metadata.create_all.side_effect = OperationalError(
-            "Cannot create tables", params=None, orig=None
-        )
-
-        with pytest.raises(OperationalError):
-            init_db()
 
 
 class TestGetDb:
@@ -238,20 +209,3 @@ class TestDatabaseIntegration:
 
         # Session should be closed
         mock_session.close.assert_called()
-
-    @patch('database.engine')
-    def test_ping_and_init_workflow(self, mock_engine):
-        """Test typical ping and init workflow"""
-        mock_connection = Mock()
-        mock_engine.connect.return_value.__enter__.return_value = mock_connection
-        mock_connection.exec_driver_sql.return_value = True
-
-        # Ping database
-        assert db_ping() is True
-
-        # Initialize database
-        with patch('database.Base') as mock_base:
-            mock_metadata = Mock()
-            mock_base.metadata = mock_metadata
-            init_db()
-            mock_metadata.create_all.assert_called_once()

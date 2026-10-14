@@ -252,7 +252,6 @@ class TestAPIPerformance:
 
     def test_memory_efficiency(self, client, large_game_dataset):
         """Large result sets should not cause memory issues"""
-        import sys
 
         # Get memory before
         # Note: This is a simplified check

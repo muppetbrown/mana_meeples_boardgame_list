@@ -4,7 +4,6 @@ Tests the rate limiting implementation for admin login and other protected endpo
 """
 import time
 from unittest.mock import patch
-from datetime import datetime
 from collections import defaultdict
 
 
@@ -60,93 +59,6 @@ class TestRateLimitTracker:
         tracker = RateLimitTracker()
         key = tracker._get_redis_key("192.168.1.100")
         assert key == "ratelimit:admin:192.168.1.100"
-
-
-class TestSessionStorage:
-    """Unit tests for the SessionStorage class"""
-
-    def test_set_and_get_session(self):
-        """Should be able to set and retrieve sessions"""
-        from shared.rate_limiting import SessionStorage
-
-        storage = SessionStorage()
-        storage._memory_sessions = {}
-        storage._redis_client = None
-
-        session_data = {"user": "admin", "created_at": datetime.now()}
-        storage.set_session("test_token_123", session_data, 3600)
-
-        retrieved = storage.get_session("test_token_123")
-        assert retrieved is not None
-        assert retrieved["user"] == "admin"
-
-    def test_get_nonexistent_session(self):
-        """Getting nonexistent session should return None"""
-        from shared.rate_limiting import SessionStorage
-
-        storage = SessionStorage()
-        storage._memory_sessions = {}
-        storage._redis_client = None
-
-        result = storage.get_session("nonexistent_token")
-        assert result is None
-
-    def test_delete_session(self):
-        """Should be able to delete sessions"""
-        from shared.rate_limiting import SessionStorage
-
-        storage = SessionStorage()
-        storage._memory_sessions = {}
-        storage._redis_client = None
-
-        session_data = {"user": "admin"}
-        storage.set_session("token_to_delete", session_data, 3600)
-
-        # Verify it exists
-        assert storage.get_session("token_to_delete") is not None
-
-        # Delete it
-        result = storage.delete_session("token_to_delete")
-        assert result is True
-
-        # Verify it's gone
-        assert storage.get_session("token_to_delete") is None
-
-    def test_delete_nonexistent_session(self):
-        """Deleting nonexistent session should return False"""
-        from shared.rate_limiting import SessionStorage
-
-        storage = SessionStorage()
-        storage._memory_sessions = {}
-        storage._redis_client = None
-
-        result = storage.delete_session("nonexistent_token")
-        assert result is False
-
-    def test_redis_key_format(self):
-        """Redis key should be formatted correctly"""
-        from shared.rate_limiting import SessionStorage
-
-        storage = SessionStorage()
-        key = storage._get_redis_key("my_session_token")
-        assert key == "session:my_session_token"
-
-    def test_datetime_serialization(self):
-        """datetime objects should be serialized/deserialized correctly"""
-        from shared.rate_limiting import SessionStorage
-
-        storage = SessionStorage()
-        storage._memory_sessions = {}
-        storage._redis_client = None
-
-        now = datetime.now()
-        session_data = {"created_at": now, "other_field": "value"}
-
-        storage.set_session("datetime_test", session_data, 3600)
-        retrieved = storage.get_session("datetime_test")
-
-        assert retrieved is not None
-        assert "created_at" in retrieved
 
 
 class TestRateLimitingUtilities:

@@ -109,7 +109,7 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
                     qty_text = quantity_elem.text.strip()
                     quantity = int(qty_text.upper().replace('QTY', '').strip())
                 except (NoSuchElementException, ValueError):
-                    logger.debug(f"Could not parse quantity for card, defaulting to 0")
+                    logger.debug("Could not parse quantity for card, defaulting to 0")
                 
                 card_name = None
                 try:

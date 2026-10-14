@@ -21,7 +21,6 @@ from fastapi import Request
 from main import (
     before_send_sentry,
     StructuredFormatter,
-    CacheThumbsMiddleware,
     game_not_found_handler,
     validation_error_handler,
     bgg_service_error_handler,
@@ -29,7 +28,6 @@ from main import (
 )
 # Background tasks moved to services
 from services.background_tasks import (
-    download_and_update_thumbnail,
     reimport_single_game,
 )
 from exceptions import (
@@ -247,47 +245,6 @@ class TestBackgroundTasks:
     """
 
     @pytest.mark.asyncio
-    async def test_download_and_update_thumbnail(self, db_session):
-        """Should download thumbnail and update game record"""
-        # Create a test game
-        game = Game(
-            id=1,
-            title="Test Game",
-            bgg_id=12345,
-            image="https://example.com/old.jpg"
-        )
-        db_session.add(game)
-        db_session.commit()
-
-        with patch("services.background_tasks.SessionLocal", return_value=db_session), \
-             patch("services.image_service.ImageService.download_and_update_game_thumbnail", return_value=True):
-
-            await download_and_update_thumbnail(1, "https://example.com/new.jpg")
-
-    @pytest.mark.asyncio
-    async def test_download_and_update_thumbnail_game_not_found(self, db_session):
-        """Should handle case when game doesn't exist"""
-        with patch("services.background_tasks.SessionLocal", return_value=db_session):
-            # Should not raise exception
-            await download_and_update_thumbnail(999, "https://example.com/new.jpg")
-
-    @pytest.mark.asyncio
-    async def test_download_and_update_thumbnail_download_fails(self, db_session):
-        """Should handle download failure gracefully"""
-        game = Game(
-            id=1,
-            title="Test Game",
-            bgg_id=12345
-        )
-        db_session.add(game)
-        db_session.commit()
-
-        with patch("services.background_tasks.SessionLocal", return_value=db_session), \
-             patch("services.image_service.ImageService.download_and_update_game_thumbnail", return_value=False):
-
-            await download_and_update_thumbnail(1, "https://example.com/new.jpg")
-
-    @pytest.mark.asyncio
     async def test_reimport_single_game(self, db_session):
         """Should reimport game with BGG data"""
         game = Game(
@@ -404,85 +361,3 @@ class TestExceptionHandlers:
 # Middleware Tests
 # ------------------------------------------------------------------------------
 
-
-class TestCacheThumbsMiddleware:
-    """Test thumbnail caching middleware"""
-
-    @pytest.mark.asyncio
-    async def test_caches_thumbnail_response(self):
-        """Should cache thumbnail responses"""
-        # Mock the ASGI app
-        async def mock_app(scope, receive, send):
-            await send({
-                "type": "http.response.start",
-                "status": 200,
-                "headers": [],
-            })
-            await send({
-                "type": "http.response.body",
-                "body": b"test",
-            })
-
-        middleware = CacheThumbsMiddleware(app=mock_app)
-
-        # ASGI scope for thumbnail request
-        scope = {
-            "type": "http",
-            "path": "/thumbs/game123.jpg",
-        }
-
-        # Track sent messages
-        sent_messages = []
-
-        async def mock_receive():
-            return {"type": "http.request"}
-
-        async def mock_send(message):
-            sent_messages.append(message)
-
-        await middleware(scope, mock_receive, mock_send)
-
-        # Check that cache headers were added
-        response_start = sent_messages[0]
-        headers = dict(response_start["headers"])
-        assert b"cache-control" in headers
-        assert b"public, max-age=31536000, immutable" in headers[b"cache-control"]
-
-    @pytest.mark.asyncio
-    async def test_does_not_cache_non_thumbnail_requests(self):
-        """Should not cache non-thumbnail requests"""
-        # Mock the ASGI app
-        async def mock_app(scope, receive, send):
-            await send({
-                "type": "http.response.start",
-                "status": 200,
-                "headers": [],
-            })
-            await send({
-                "type": "http.response.body",
-                "body": b"test",
-            })
-
-        middleware = CacheThumbsMiddleware(app=mock_app)
-
-        # ASGI scope for API request
-        scope = {
-            "type": "http",
-            "path": "/api/games",
-        }
-
-        # Track sent messages
-        sent_messages = []
-
-        async def mock_receive():
-            return {"type": "http.request"}
-
-        async def mock_send(message):
-            sent_messages.append(message)
-
-        await middleware(scope, mock_receive, mock_send)
-
-        # Check that cache headers were not added
-        response_start = sent_messages[0]
-        headers = dict(response_start.get("headers", []))
-        assert b"cache-control" not in headers

@@ -78,3 +78,18 @@ htmlcov/
 # Playwright generated output
 playwright-report/
 test-results/
+
+# Test / coverage output (generated)
+htmlcov/
+coverage.json
+coverage.xml
+.coverage
+pytest-report.xml
+backend/.mypy_cache/
+playwright-report/
+test-results/
+
+# Editor / agent scratch files
+tmpclaude-*
+*.orig
+*.rej

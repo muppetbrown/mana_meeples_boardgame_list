@@ -10,8 +10,10 @@ from config import (
     DB_POOL_TIMEOUT,
     DB_POOL_RECYCLE,
     SLOW_QUERY_THRESHOLD_SECONDS,
+    DB_LOCK_TIMEOUT_SECONDS,
+    DB_IDLE_IN_TX_TIMEOUT_SECONDS,
 )
-from models import Base
+from utils.db_settings import install_session_settings
 import logging
 import time
 import os
@@ -46,6 +48,13 @@ logger.info(
     f"Configuring primary database engine for: {DATABASE_URL.split('@')[0] if '@' in DATABASE_URL else DATABASE_URL}@..."
 )
 engine = create_engine(DATABASE_URL, **engine_kwargs)
+# Bound lock waits and close leaked idle transactions (no-op on SQLite)
+install_session_settings(
+    engine,
+    lock_timeout_s=DB_LOCK_TIMEOUT_SECONDS,
+    idle_in_tx_timeout_s=DB_IDLE_IN_TX_TIMEOUT_SECONDS,
+    application_name="mana-meeples-api",
+)
 SessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine
 )
@@ -57,6 +66,12 @@ if READ_REPLICA_URL:
         f"Configuring read replica engine for: {READ_REPLICA_URL.split('@')[0] if '@' in READ_REPLICA_URL else 'configured'}@..."
     )
     read_engine = create_engine(READ_REPLICA_URL, **engine_kwargs)
+    install_session_settings(
+        read_engine,
+        lock_timeout_s=DB_LOCK_TIMEOUT_SECONDS,
+        idle_in_tx_timeout_s=DB_IDLE_IN_TX_TIMEOUT_SECONDS,
+        application_name="mana-meeples-api-read",
+    )
     ReadSessionLocal = sessionmaker(
         autocommit=False, autoflush=False, bind=read_engine
     )
@@ -126,13 +141,9 @@ def db_ping() -> bool:
         return False
 
 
-def init_db():
-    Base.metadata.create_all(bind=engine)
-
-
-# Legacy migration function removed - now using Alembic for all database migrations
-# See: backend/alembic/ for migration files
-# To run migrations: alembic upgrade head
+# Schema changes are managed exclusively by Alembic (see backend/alembic/).
+# Run `alembic upgrade head` before starting the app - there is intentionally no
+# create_all() here, which would bypass migration history.
 
 
 def get_db():
@@ -161,41 +172,3 @@ def get_read_db():
     finally:
         db.close()
 
-
-def get_pool_stats():
-    """
-    Get database connection pool statistics for monitoring.
-    
-    Performance Tuning: Use this endpoint to monitor pool health and adjust
-    DB_POOL_SIZE/DB_MAX_OVERFLOW if you see pool exhaustion warnings.
-    
-    Returns:
-        Dictionary with pool statistics for primary and read replica (if configured)
-    """
-    stats = {
-        "primary": {
-            "size": engine.pool.size(),
-            "checked_in": engine.pool.checkedin(),
-            "checked_out": engine.pool.checkedout(),
-            "overflow": engine.pool.overflow(),
-            "total_connections": engine.pool.size() + engine.pool.overflow(),
-            "config": {
-                "pool_size": DB_POOL_SIZE,
-                "max_overflow": DB_MAX_OVERFLOW,
-                "pool_timeout": DB_POOL_TIMEOUT,
-                "pool_recycle": DB_POOL_RECYCLE,
-            }
-        }
-    }
-    
-    # Add read replica stats if configured
-    if READ_REPLICA_URL and read_engine != engine:
-        stats["read_replica"] = {
-            "size": read_engine.pool.size(),
-            "checked_in": read_engine.pool.checkedin(),
-            "checked_out": read_engine.pool.checkedout(),
-            "overflow": read_engine.pool.overflow(),
-            "total_connections": read_engine.pool.size() + read_engine.pool.overflow(),
-        }
-    
-    return stats

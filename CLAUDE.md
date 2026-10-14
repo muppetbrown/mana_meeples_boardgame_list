@@ -10,7 +10,7 @@
 - **Platform**: Render.com hosting
 - **Database**: PostgreSQL with BoardGameGeek API synchronization
 - **Table**: `boardgames` (migrated from SQLite `games` table)
-- **API Base**: `https://mana-meeples-boardgame-list.onrender.com`
+- **API Base**: `https://mana-meeples-boardgame-list-opgf.onrender.com`
 
 ### Frontend (React)
 - **Platform**: Render.com static site hosting
@@ -37,7 +37,6 @@ thumbnail_url = Column(String(512), nullable=True)  # BGG thumbnail
 image = Column(String(512), nullable=True)  # BGG full-size image (higher quality)
 created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 bgg_id = Column(Integer, unique=True, nullable=True, index=True)
-thumbnail_file = Column(String(256), nullable=True)  # Local cached thumbnail
 mana_meeple_category = Column(String(50), nullable=True, index=True)  # Our 5 categories
 description = Column(Text, nullable=True)
 designers = Column(JSON, nullable=True)  # Array of designer names
@@ -73,7 +72,7 @@ is_sleeved = Column(Boolean, nullable=True, default=False, index=True)  # Whethe
 ### Image Handling
 - **thumbnail_url**: Standard BGG thumbnail (may be low quality)
 - **image**: Full-size BGG image URL (higher quality solution for display issues)
-- **thumbnail_file**: Local cached copy for performance
+- **cloudinary_url**: Cached Cloudinary URL (images are optimised/served via Cloudinary; no local thumbnail files)
 
 ### BGG Data Fields
 - **complexity**: BGG complexity rating (1-5) - **CRITICAL for catalogue cards**
@@ -188,7 +187,7 @@ SESSION_SECRET=<secure-secret-for-jwt-signing>
 JWT_EXPIRATION_DAYS=7
 CORS_ORIGINS=https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz,https://library.manaandmeeples.co.nz,https://mana-meeples-library-web.onrender.com
 DATABASE_URL=postgresql://tcg_admin:<password>@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles
-PUBLIC_BASE_URL=https://mana-meeples-boardgame-list.onrender.com
+PUBLIC_BASE_URL=https://mana-meeples-boardgame-list-opgf.onrender.com
 PYTHON_VERSION=3.11.9
 ```
 
@@ -253,7 +252,7 @@ pool_pre_ping=True   # Test connections before use
 **Status**: ✅ COMPLETED (December 2025)
 
 **Redis Configuration**:
-- **Purpose**: Session storage and rate limiting for multi-instance horizontal scaling
+- **Purpose**: Shared admin-login rate limiting for multi-instance horizontal scaling (admin auth itself is stateless JWT)
 - **Provider**: Configurable (Render Redis, Upstash, Redis Labs, or self-hosted)
 - **Fallback**: Automatic in-memory fallback when Redis unavailable
 - **Driver**: redis 5.0.1 (async-compatible Python client)
@@ -261,7 +260,7 @@ pool_pre_ping=True   # Test connections before use
 **Architecture Features**:
 - **Graceful degradation**: System works with or without Redis
 - **Connection pooling**: Automatic connection management with health checks
-- **TTL-based expiration**: Automatic cleanup of expired sessions and rate limit data
+- **TTL-based expiration**: Automatic cleanup of expired rate limit data
 - **Dual-mode operation**: Redis-first with in-memory fallback
 
 **Redis Client Settings** (redis_client.py):
@@ -277,14 +276,7 @@ decode_responses=True       # Auto-decode to strings
 ```bash
 REDIS_URL=redis://localhost:6379/0  # Redis connection URL
 REDIS_ENABLED=true                   # Enable/disable Redis (fallback to memory)
-SESSION_TIMEOUT_SECONDS=3600         # Session expiration (1 hour default)
 ```
-
-**Session Storage** (shared/rate_limiting.py):
-- **Class**: `SessionStorage` - Handles admin sessions with Redis backend
-- **Storage**: `session:{token}` keys with automatic TTL expiration
-- **Data**: JSON-serialized session data (created_at, IP, etc.)
-- **Methods**: `set_session()`, `get_session()`, `delete_session()`
 
 **Rate Limiting** (shared/rate_limiting.py):
 - **Class**: `RateLimitTracker` - Tracks authentication attempts per IP
@@ -316,21 +308,19 @@ services:
 ```
 
 **Testing**:
-- **Script**: `backend/test_redis_integration.py`
-- **Test Coverage**: Connection, operations, session storage, rate limiting
-- **Usage**: `python backend/test_redis_integration.py` (requires Redis running)
+- **Tests**: `backend/tests/test_redis/` and `backend/tests/test_shared/test_rate_limiting.py` (run with `pytest`; Redis is mocked)
 
 **Production Deployment**:
 - **Recommended**: Render Redis or Upstash (managed Redis services)
 - **Configuration**: Set `REDIS_URL` and `REDIS_ENABLED=true` in environment
 - **Monitoring**: Health check endpoint + Redis metrics (memory, connections, keys)
-- **Benefits**: Multi-instance deployment, session persistence across restarts
+- **Benefits**: Multi-instance deployment with shared login rate limits
 
 **Migration Impact**:
 - **Backward compatible**: System works with or without Redis
 - **No data loss**: In-memory fallback for development and single-instance deployments
 - **Zero downtime**: Can enable/disable Redis without service interruption
-- **Multi-instance ready**: Supports horizontal scaling with shared session state
+- **Multi-instance ready**: Supports horizontal scaling with shared rate-limit state
 
 **Documentation**:
 - **Setup Guide**: `REDIS_SETUP.md` - Comprehensive Redis deployment instructions

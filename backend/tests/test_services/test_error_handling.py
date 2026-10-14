@@ -4,9 +4,7 @@ Tests for Sprint 5: Error Handling & Monitoring
 Tests circuit breaker, retry logic, and background task failure tracking
 """
 import pytest
-from unittest.mock import patch
 
-import httpx
 
 
 class TestCircuitBreaker:
@@ -15,7 +13,7 @@ class TestCircuitBreaker:
     @pytest.mark.asyncio
     async def test_circuit_breaker_basic_functionality(self):
         """Circuit breaker should be initialized and available"""
-        from bgg_service import bgg_circuit_breaker, _is_bgg_available
+        from bgg_service import bgg_circuit_breaker
 
         # Circuit breaker should exist
         assert bgg_circuit_breaker is not None
@@ -34,59 +32,8 @@ class TestCircuitBreaker:
         assert isinstance(result, bool)
 
 
-class TestRetryLogic:
-    """Test retry logic with tenacity"""
-
-    @pytest.mark.asyncio
-    async def test_image_service_has_retry_decorator(self):
-        """Download thumbnail method should have retry decorator"""
-        from services.image_service import ImageService
-        import inspect
-
-        # Check that download_thumbnail has the retry decorator
-        # The presence of tenacity retry attributes indicates the decorator is applied
-        assert hasattr(ImageService.download_thumbnail, "__wrapped__") or \
-               hasattr(ImageService.download_thumbnail, "retry") or \
-               "retry" in str(ImageService.download_thumbnail)
-
-
 class TestBackgroundTaskFailureTracking:
     """Test background task failure tracking"""
-
-    @pytest.mark.asyncio
-    async def test_record_background_task_failure(self):
-        """Should record background task failure in database"""
-        from services.image_service import ImageService
-        from models import BackgroundTaskFailure
-        from unittest.mock import MagicMock
-
-        mock_db = MagicMock()
-        image_service = ImageService(mock_db)
-
-        test_error = ValueError("Test error message")
-
-        await image_service._record_background_task_failure(
-            task_type="thumbnail_download",
-            game_id=123,
-            error=test_error,
-            url="https://example.com/image.jpg",
-            retry_count=3,
-        )
-
-        # Verify database add and commit were called
-        mock_db.add.assert_called_once()
-        mock_db.commit.assert_called_once()
-
-        # Verify the failure object was created with correct data
-        added_failure = mock_db.add.call_args[0][0]
-        assert isinstance(added_failure, BackgroundTaskFailure)
-        assert added_failure.task_type == "thumbnail_download"
-        assert added_failure.game_id == 123
-        assert added_failure.error_message == "Test error message"
-        assert added_failure.error_type == "ValueError"
-        assert added_failure.retry_count == 3
-        assert added_failure.url == "https://example.com/image.jpg"
-        assert added_failure.resolved is False
 
     @pytest.mark.asyncio
     async def test_background_task_failure_model(self):
@@ -113,37 +60,6 @@ class TestBackgroundTaskFailureTracking:
 
 class TestSentryIntegration:
     """Test Sentry error reporting"""
-
-    @pytest.mark.asyncio
-    async def test_sentry_captures_download_failures(self):
-        """Sentry should capture download failures with context"""
-        from services.image_service import ImageService
-        from models import Game
-        from unittest.mock import MagicMock
-
-        mock_db = MagicMock()
-        mock_game = MagicMock(spec=Game)
-        mock_game.id = 123
-        mock_game.title = "Test Game"
-
-        mock_db.get.return_value = mock_game
-
-        image_service = ImageService(mock_db)
-
-        with patch("httpx.AsyncClient.get") as mock_get:
-            mock_get.side_effect = httpx.NetworkError("Network error")
-
-            with patch("sentry_sdk.capture_exception") as mock_sentry:
-                with patch.object(
-                    image_service, "_record_background_task_failure"
-                ):
-                    await image_service.download_and_update_game_thumbnail(
-                        game_id=123, thumbnail_url="https://example.com/image.jpg"
-                    )
-
-                # Verify Sentry was called
-                mock_sentry.assert_called()
-
 
 class TestMonitoringEndpoints:
     """Test error monitoring API endpoints"""

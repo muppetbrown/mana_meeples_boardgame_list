@@ -17,7 +17,7 @@ from models import BuyListGame, Game
 
 def export_buy_list():
     """Export buy list to CSV for price scraping"""
-    print(f"Connecting to database...")
+    print("Connecting to database...")
 
     engine = create_engine(DATABASE_URL)
     SessionLocal = sessionmaker(bind=engine)

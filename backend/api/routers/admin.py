@@ -137,7 +137,6 @@ async def create_game(
 ):
     """Create a new game (admin only)"""
     # Import httpx_client from main
-    from main import httpx_client
 
     try:
         # Use service layer
@@ -445,7 +444,6 @@ async def fix_sequence(
         # SECURITY FIX: Use SQLAlchemy's identifier quoting to prevent SQL injection
         # Even though we have a whitelist, using proper identifier quoting is defense-in-depth
         from sqlalchemy import inspect, func
-        from sqlalchemy.sql import quoted_name
 
         # Option 1: Use SQLAlchemy's table inspection for safety
         inspector = inspect(db.get_bind())
@@ -457,7 +455,6 @@ async def fix_sequence(
 
         # Get the current maximum ID using SQLAlchemy's func
         # This is safer than raw SQL with f-strings
-        from models import Base
 
         # Map table names to model classes for type-safe queries
         table_models = {
