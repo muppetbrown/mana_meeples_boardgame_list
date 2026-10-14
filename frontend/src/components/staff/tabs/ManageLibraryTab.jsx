@@ -9,6 +9,7 @@ import GameEditModal from "../GameEditModal";
 import SleeveShoppingListModal from "../SleeveShoppingListModal";
 import SleeveFetchStatus from "../SleeveFetchStatus";
 import { ATTENTION_FILTERS } from "../../../utils/libraryQuality";
+import AttentionHelp from "../AttentionHelp";
 
 /**
  * Manage Library tab - Browse, edit, and delete games in compact table view
@@ -352,6 +353,13 @@ export function ManageLibraryTab() {
           selected={selectedCategory}
           counts={counts}
           onChange={setSelectedCategory}
+        />
+
+        {/* Guidance for the active needs-attention filter */}
+        <AttentionHelp
+          filterKey={attentionFilter}
+          count={searchFilteredLibrary.length}
+          onClear={() => setAttentionFilter("")}
         />
       </div>
 

@@ -156,7 +156,12 @@ export function DashboardTab({ onTabChange }) {
               >
                 <div className={`text-2xl font-bold ${n > 0 ? "text-orange-700" : "text-gray-400"}`}>{n}</div>
                 <div className="text-sm font-medium">{f.label}</div>
-                {n > 0 && <div className="text-xs text-gray-500 mt-1">Click to review →</div>}
+                {n > 0 && (
+                  <>
+                    <div className="text-xs text-gray-600 mt-1">{f.hint}</div>
+                    <div className="text-xs text-orange-700 mt-1">Review &amp; how to fix →</div>
+                  </>
+                )}
               </button>
             );
           })}

@@ -51,4 +51,12 @@ describe('libraryQuality', () => {
     expect(TO_BE_SLEEVED({ has_sleeves: null, fully_sleeved: false })).toBe(false);
     expect(TO_BE_SLEEVED({ has_sleeves: 'not_found' })).toBe(false);
   });
+
+  test('every check explains how to fix it', () => {
+    ATTENTION_FILTERS.forEach((f) => {
+      expect(f.hint, `${f.key} hint`).toBeTruthy();
+      expect(f.fix.why, `${f.key} why`).toBeTruthy();
+      expect(f.fix.steps.length, `${f.key} steps`).toBeGreaterThan(0);
+    });
+  });
 });

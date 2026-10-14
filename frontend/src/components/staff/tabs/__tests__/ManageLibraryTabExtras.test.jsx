@@ -99,6 +99,23 @@ describe('ManageLibraryTab extras', () => {
     expect(setAttentionFilter).toHaveBeenCalledWith('to_sleeve');
   });
 
+  test('shows "how to fix" guidance for the active filter and can clear it', async () => {
+    const user = userEvent.setup();
+    useStaff.mockReturnValue(ctx({ attentionFilter: 'sleeves_unknown', filteredLibrary: games.map((g) => ({ ...g, has_sleeves: null })) }));
+    render(<ManageLibraryTab />);
+    const help = screen.getByRole('region', { name: 'How to fix: Sleeve status unknown' });
+    expect(help).toHaveTextContent('Fetch Sleeve Data');
+    expect(help).toHaveTextContent('Mark No Sleeves Needed');
+    expect(help).toHaveTextContent('3 games');
+    await user.click(screen.getByText('Clear filter'));
+    expect(setAttentionFilter).toHaveBeenCalledWith('');
+  });
+
+  test('no guidance panel when no quality filter is active', () => {
+    render(<ManageLibraryTab />);
+    expect(screen.queryByText('How to fix this')).not.toBeInTheDocument();
+  });
+
   test('select all / clear selection', async () => {
     const user = userEvent.setup();
     render(<ManageLibraryTab />);

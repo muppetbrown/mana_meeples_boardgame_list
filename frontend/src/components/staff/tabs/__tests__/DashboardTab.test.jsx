@@ -240,4 +240,13 @@ describe('DashboardTab', () => {
     expect(await screen.findByText('No games loaded')).toBeInTheDocument();
     expect(screen.getByText('No games yet.')).toBeInTheDocument();
   });
+
+  test('attention cards show a one-line fix hint', async () => {
+    render(<DashboardTab onTabChange={onTabChange} />);
+    await screen.findByText('All Systems Operational');
+    expect(screen.getByText('Re-import from BGG to pull the image.')).toBeInTheDocument();
+    expect(screen.getByText('Fetch sleeve data, or mark "no sleeves needed".')).toBeInTheDocument();
+    // zero-count cards stay quiet
+    expect(screen.queryByText('Re-import from BGG to pull designers.')).not.toBeInTheDocument();
+  });
 });
