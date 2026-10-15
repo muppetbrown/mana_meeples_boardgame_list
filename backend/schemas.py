@@ -80,8 +80,6 @@ class FixSequenceRequest(BaseModel):
         allowed_tables = {
             "boardgames",
             "buy_list_games",
-            "price_snapshots",
-            "price_offers",
             "sleeves"
         }
         if v not in allowed_tables:
@@ -120,13 +118,11 @@ class PrintLabelsRequest(BaseModel):
 
 
 class BuyListGameCreate(BaseModel):
-    """Schema for adding a game to the buy list by BGG ID"""
+    """Schema for adding a game to the 'games to add' list by BGG ID"""
 
     bgg_id: int
     rank: Optional[int] = None
-    bgo_link: Optional[str] = None
-    lpg_rrp: Optional[float] = None
-    lpg_status: Optional[str] = None
+    notes: Optional[str] = None
 
     @field_validator("bgg_id")
     @classmethod
@@ -137,53 +133,11 @@ class BuyListGameCreate(BaseModel):
 
 
 class BuyListGameUpdate(BaseModel):
-    """Schema for updating buy list game details"""
+    """Schema for updating a 'games to add' entry"""
 
     rank: Optional[int] = None
-    bgo_link: Optional[str] = None
-    lpg_rrp: Optional[float] = None
-    lpg_status: Optional[str] = None
+    notes: Optional[str] = None
     on_buy_list: Optional[bool] = None
-
-
-class PriceSnapshotOut(BaseModel):
-    """Schema for price snapshot output"""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    game_id: int
-    checked_at: str
-    low_price: Optional[float] = None
-    mean_price: Optional[float] = None
-    best_price: Optional[float] = None
-    best_store: Optional[str] = None
-    discount_pct: Optional[float] = None
-    delta: Optional[float] = None
-
-
-class BuyListGameOut(BaseModel):
-    """Schema for buy list game output with game details and latest prices"""
-
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    game_id: int
-    rank: Optional[int] = None
-    bgo_link: Optional[str] = None
-    lpg_rrp: Optional[float] = None
-    lpg_status: Optional[str] = None
-    on_buy_list: bool
-    created_at: str
-    updated_at: str
-    # Game details
-    title: str
-    thumbnail_url: Optional[str] = None
-    bgg_id: Optional[int] = None
-    # Latest price data
-    latest_price: Optional[PriceSnapshotOut] = None
-    # Computed field
-    buy_filter: Optional[bool] = None
 
 
 # ------------------------------------------------------------------------------

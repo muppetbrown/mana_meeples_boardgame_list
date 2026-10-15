@@ -4,43 +4,40 @@ import { useConfirm } from "../../../context/StaffContext";
 import Thumbnail from "../../common/Thumbnail";
 import {
   getBuyListGames,
-  getLastPriceUpdate,
+  getLibraryGaps,
   addToBuyList,
   updateBuyListGame,
   removeFromBuyList,
-  importPrices,
   bulkImportBuyListCSV,
   updateGame,
   importFromBGG,
 } from "../../../api/client";
+import { CATEGORY_LABELS } from "../../../constants/categories";
+
+const PLAYER_COUNT_LABELS = {
+  "1": "1 player", "2": "2 players", "3": "3 players", "4": "4 players",
+  "5": "5 players", "6": "6 players", "7": "7 players", "8": "8 players",
+  "9+": "9+ players",
+};
 
 /**
- * Buy List tab - Manage games to purchase with pricing data
+ * Games to Add tab - a gap-aware list of candidate games worth buying,
+ * curated by rank and notes rather than tracked online prices.
  */
 export function BuyListTab() {
   const [buyList, setBuyList] = useState([]);
+  const [gaps, setGaps] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState(null);
-  const [filters, setFilters] = useState({
-    lpg_status: "",
-    buy_filter: "",
-    sort_by: "title",
-    sort_desc: false,
-  });
+  const [sortBy, setSortBy] = useState("rank");
+  const [sortDesc, setSortDesc] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkImportModal, setShowBulkImportModal] = useState(false);
   const [addBggId, setAddBggId] = useState("");
-  const [addFormData, setAddFormData] = useState({
-    rank: "",
-    bgo_link: "",
-    lpg_rrp: "",
-    lpg_status: "",
-  });
+  const [addFormData, setAddFormData] = useState({ rank: "", notes: "" });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef(null);
   const confirm = useConfirm();
 
@@ -56,89 +53,39 @@ export function BuyListTab() {
     return () => clearTimeout(t);
   }, [error]);
 
-  // Load the buy list whenever filters change; the price-update stamp only on mount
   useEffect(() => {
     loadBuyList();
-  }, [filters]);
+  }, [sortBy, sortDesc]);
   useEffect(() => {
-    loadLastUpdate();
+    loadGaps();
   }, []);
 
   const loadBuyList = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      // Build clean query params, excluding empty values
-      const params = {};
-      if (filters.lpg_status) params.lpg_status = filters.lpg_status;
-      if (filters.buy_filter !== "") {
-        // Pass buy_filter value directly as string (supports "true", "false", "no_price")
-        params.buy_filter = filters.buy_filter;
-      }
-      params.sort_by = filters.sort_by;
-      params.sort_desc = filters.sort_desc;
-
-      const data = await getBuyListGames(params);
+      const data = await getBuyListGames({ sort_by: sortBy, sort_desc: sortDesc });
       setBuyList(data.items || []);
     } catch (err) {
-      console.error("Failed to load buy list:", err);
-      setError("Failed to load buy list");
+      console.error("Failed to load games to add:", err);
+      setError("Failed to load games to add");
     } finally {
       setLoading(false);
     }
   };
 
-  const loadLastUpdate = async () => {
+  const loadGaps = async () => {
     try {
-      const data = await getLastPriceUpdate();
-      setLastUpdate(data);
+      const data = await getLibraryGaps();
+      setGaps(data);
     } catch (err) {
-      console.error("Failed to load last update:", err);
-    }
-  };
-
-  const handleImportPrices = async () => {
-    try {
-      setError(null);
-      setSuccess(null);
-      setIsImporting(true);
-
-      // Show immediate feedback that import is starting
-      setSuccess("⏳ Import started... This may take several minutes for large datasets. Please wait...");
-
-      const result = await importPrices("latest_prices.json");
-
-      // Show detailed results
-      const message = `✅ Import completed! ${result.imported} prices imported, ${result.skipped} skipped${result.total ? ` (out of ${result.total} total)` : ''}`;
-      setSuccess(message);
-
-      // Reload data
-      await loadBuyList();
-      await loadLastUpdate();
-    } catch (err) {
-      console.error("Failed to import prices:", err);
-
-      // Provide helpful error message
-      if (err.message?.includes('timeout')) {
-        setError("⚠️ Import timed out (>5 min). The operation may still be processing. Please refresh in a moment and check if prices were updated.");
-      } else {
-        setError(`Failed to import prices: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
-      }
-      setSuccess(null);
-    } finally {
-      setIsImporting(false);
+      console.error("Failed to load library gaps:", err);
     }
   };
 
   const handleEdit = (item) => {
     setEditingId(item.id);
-    setEditForm({
-      rank: item.rank || "",
-      bgo_link: item.bgo_link || "",
-      lpg_rrp: item.lpg_rrp || "",
-      lpg_status: item.lpg_status || "",
-    });
+    setEditForm({ rank: item.rank || "", notes: item.notes || "" });
   };
 
   const handleSaveEdit = async () => {
@@ -155,13 +102,13 @@ export function BuyListTab() {
   };
 
   const handleRemove = async (id) => {
-    const ok = await confirm({ title: "Remove this game from the buy list?", confirmLabel: "Remove", tone: "danger" });
+    const ok = await confirm({ title: "Remove this game from the list?", confirmLabel: "Remove", tone: "danger" });
     if (!ok) return;
 
     try {
       setError(null);
       await removeFromBuyList(id);
-      setSuccess("Removed from buy list");
+      setSuccess("Removed from the list");
       await loadBuyList();
     } catch (err) {
       console.error("Failed to remove:", err);
@@ -186,13 +133,13 @@ export function BuyListTab() {
         date_added: new Date().toISOString(),
       });
 
-      // Update the buy list entry to mark as not on buy list
+      // Update the buy list entry to mark as not on the list
       await updateBuyListGame(item.id, {
         on_buy_list: false,
       });
 
       // Force a BGG reimport to ensure all derived fields (nz_designer, mana_meeple_category,
-      // etc.) are fully populated — buy list additions may have used an older import path
+      // etc.) are fully populated — additions here may have used an older import path
       let reimportFailed = false;
       if (item.bgg_id) {
         try {
@@ -209,6 +156,7 @@ export function BuyListTab() {
         setSuccess(`"${item.title}" moved to owned collection!`);
       }
       await loadBuyList();
+      await loadGaps();
     } catch (err) {
       console.error("Failed to move to owned:", err);
       setError("Failed to move game to owned collection");
@@ -232,25 +180,18 @@ export function BuyListTab() {
       const payload = {
         bgg_id: bggIdNum,
         rank: addFormData.rank ? parseInt(addFormData.rank) : null,
-        bgo_link: addFormData.bgo_link || null,
-        lpg_rrp: addFormData.lpg_rrp ? parseFloat(addFormData.lpg_rrp) : null,
-        lpg_status: addFormData.lpg_status || null,
+        notes: addFormData.notes || null,
       };
 
       await addToBuyList(payload);
-      setSuccess("Added to buy list (imported from BGG if needed)");
+      setSuccess("Added to the list (imported from BGG if needed)");
       setShowAddModal(false);
       setAddBggId("");
-      setAddFormData({
-        rank: "",
-        bgo_link: "",
-        lpg_rrp: "",
-        lpg_status: "",
-      });
+      setAddFormData({ rank: "", notes: "" });
       await loadBuyList();
     } catch (err) {
-      console.error("Failed to add to buy list:", err);
-      setError(err.response?.data?.detail || "Failed to add to buy list");
+      console.error("Failed to add game:", err);
+      setError(err.response?.data?.detail || "Failed to add game");
     }
   };
 
@@ -279,65 +220,51 @@ export function BuyListTab() {
       setShowBulkImportModal(false);
       await loadBuyList();
 
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     } catch (err) {
       console.error("Failed to import CSV:", err);
       setError(err.response?.data?.detail || "Failed to import CSV");
-      // Reset file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     }
   };
 
-  const formatPrice = (price) => {
-    return price ? `$${parseFloat(price).toFixed(2)}` : "-";
-  };
+  const gapCategories = (gaps?.category_gaps || []).filter((g) => g.is_gap);
+  const gapPlayerCounts = (gaps?.player_count_gaps || []).filter((g) => g.is_gap);
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "-";
-    return new Date(dateStr).toLocaleDateString("en-NZ", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
-
-  const getBuyFilterBadge = (buyFilter) => {
-    if (buyFilter === true) {
-      return (
-        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">
-          BUY NOW
+  const renderGapMatchBadges = (gapMatch) => {
+    if (!gapMatch) return null;
+    const badges = [];
+    if (gapMatch.category_is_gap) {
+      badges.push(
+        <span key="category" className="px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-100 text-emerald-700">
+          Fills category gap
         </span>
       );
     }
-    return null;
-  };
-
-  const getStatusColor = (status) => {
-    const colors = {
-      AVAILABLE: "bg-green-100 text-green-700",
-      BACK_ORDER: "bg-yellow-100 text-yellow-700",
-      NOT_FOUND: "bg-gray-100 text-gray-700",
-      BACK_ORDER_OOS: "bg-red-100 text-red-700",
-    };
-    return colors[status] || "bg-gray-100 text-gray-700";
+    for (const count of gapMatch.matching_player_count_gaps || []) {
+      badges.push(
+        <span key={`players-${count}`} className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
+          Fills {PLAYER_COUNT_LABELS[count] || `${count} players`} gap
+        </span>
+      );
+    }
+    if (badges.length === 0) return null;
+    return <div className="flex flex-wrap gap-1 mt-1">{badges}</div>;
   };
 
   return (
     <div className="space-y-6">
-      {/* Header with Actions */}
+      {/* Header */}
       <div className="bg-white rounded-2xl p-6 shadow">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold">Buy List Management</h2>
+            <h2 className="text-xl font-semibold">Games to Add</h2>
             <p className="text-sm text-gray-600 mt-1">
-              Manage games to purchase and track prices
+              Candidate games worth buying, with notes on why — now bought directly through distributors
             </p>
           </div>
           <div className="flex gap-2">
@@ -353,90 +280,72 @@ export function BuyListTab() {
             >
               📥 Bulk Import CSV
             </button>
-            <button
-              onClick={handleImportPrices}
-              disabled={isImporting}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              {isImporting ? "Importing…" : "↻ Import Prices"}
-            </button>
           </div>
         </div>
+      </div>
 
-        {/* Last Update */}
-        {lastUpdate?.last_updated && (
-          <div className="text-sm text-gray-600">
-            Last price update:{" "}
-            <span className="font-medium">
-              {formatDate(lastUpdate.last_updated)}
-            </span>
+      {/* Library gaps */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <h3 className="text-lg font-semibold mb-3">Where the collection is thin</h3>
+        {!gaps ? (
+          <p className="text-sm text-gray-500">Loading gap analysis…</p>
+        ) : gaps.total_games === 0 ? (
+          <p className="text-sm text-gray-500">Add games to the owned collection to see gap analysis.</p>
+        ) : gapCategories.length === 0 && gapPlayerCounts.length === 0 ? (
+          <p className="text-sm text-green-700">No significant gaps detected. 👍</p>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-4">
+            {gapCategories.length > 0 && (
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-2">Under-represented categories</div>
+                <div className="flex flex-wrap gap-2">
+                  {gapCategories.map((g) => (
+                    <span key={g.category} className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                      {CATEGORY_LABELS[g.category] || g.category} ({g.pct_of_collection}%)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {gapPlayerCounts.length > 0 && (
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-2">Thin player-count coverage</div>
+                <div className="flex flex-wrap gap-2">
+                  {gapPlayerCounts.map((g) => (
+                    <span key={g.player_count} className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                      {PLAYER_COUNT_LABELS[g.player_count] || g.player_count} ({g.games_supporting} games)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Filters */}
+      {/* Sort controls */}
       <div className="bg-white rounded-lg p-4 shadow">
         <div className="grid md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              LPG Status
-            </label>
-            <select
-              value={filters.lpg_status}
-              onChange={(e) =>
-                setFilters({ ...filters, lpg_status: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            >
-              <option value="">All</option>
-              <option value="AVAILABLE">Available</option>
-              <option value="BACK_ORDER">Back Order</option>
-              <option value="NOT_FOUND">Not Found</option>
-              <option value="BACK_ORDER_OOS">Back Order OOS</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Buy Filter
-            </label>
-            <select
-              value={filters.buy_filter}
-              onChange={(e) =>
-                setFilters({ ...filters, buy_filter: e.target.value })
-              }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-            >
-              <option value="">All</option>
-              <option value="true">Buy Now</option>
-              <option value="false">Not Recommended</option>
-              <option value="no_price">No Price Data</option>
-            </select>
-          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Sort By
             </label>
             <select
-              value={filters.sort_by}
-              onChange={(e) =>
-                setFilters({ ...filters, sort_by: e.target.value })
-              }
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             >
               <option value="rank">Rank</option>
               <option value="title">Title</option>
               <option value="updated_at">Last Updated</option>
-              <option value="discount">Discount %</option>
             </select>
           </div>
           <div className="flex items-end">
             <button
-              onClick={() =>
-                setFilters({ ...filters, sort_desc: !filters.sort_desc })
-              }
+              onClick={() => setSortDesc(!sortDesc)}
               className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
-              {filters.sort_desc ? "↓ Desc" : "↑ Asc"}
+              {sortDesc ? "↓ Desc" : "↑ Asc"}
             </button>
           </div>
         </div>
@@ -456,13 +365,13 @@ export function BuyListTab() {
         </div>
       )}
 
-      {/* Buy List Table */}
+      {/* Games to Add Table */}
       <div className={`bg-white rounded-lg shadow overflow-hidden transition-opacity ${loading && buyList.length > 0 ? "opacity-60" : ""}`} aria-busy={loading}>
         {loading && buyList.length === 0 ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : buyList.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No games in buy list
+            No games on the list yet
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -472,15 +381,7 @@ export function BuyListTab() {
                   <th className="px-4 py-3 text-left font-semibold">Image</th>
                   <th className="px-4 py-3 text-left font-semibold">Rank</th>
                   <th className="px-4 py-3 text-left font-semibold">Game</th>
-                  <th className="px-4 py-3 text-left font-semibold">LPG Status</th>
-                  <th className="px-4 py-3 text-left font-semibold">LPG RRP</th>
-                  <th className="px-4 py-3 text-left font-semibold">Low $</th>
-                  <th className="px-4 py-3 text-left font-semibold">Mean $</th>
-                  <th className="px-4 py-3 text-left font-semibold">Best $</th>
-                  <th className="px-4 py-3 text-left font-semibold">Store</th>
-                  <th className="px-4 py-3 text-left font-semibold">Discount %</th>
-                  <th className="px-4 py-3 text-left font-semibold">Delta</th>
-                  <th className="px-4 py-3 text-left font-semibold">Filter</th>
+                  <th className="px-4 py-3 text-left font-semibold">Notes</th>
                   <th className="px-4 py-3 text-right font-semibold">Actions</th>
                 </tr>
               </thead>
@@ -502,73 +403,22 @@ export function BuyListTab() {
                             className="w-20 px-2 py-1 border rounded"
                           />
                         </td>
-                        <td className="px-4 py-3" colSpan="10">
+                        <td className="px-4 py-3" colSpan="2">
                           <div className="space-y-2">
                             <div className="font-medium">{item.title}</div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <label className="text-xs text-gray-600">
-                                  LPG Status
-                                </label>
-                                <select
-                                  value={editForm.lpg_status}
-                                  onChange={(e) =>
-                                    setEditForm({
-                                      ...editForm,
-                                      lpg_status: e.target.value,
-                                    })
-                                  }
-                                  className="w-full px-2 py-1 border rounded text-sm"
-                                >
-                                  <option value="">-</option>
-                                  <option value="AVAILABLE">Available</option>
-                                  <option value="BACK_ORDER">Back Order</option>
-                                  <option value="NOT_FOUND">Not Found</option>
-                                  <option value="BACK_ORDER_OOS">
-                                    Back Order OOS
-                                  </option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="text-xs text-gray-600">
-                                  LPG RRP
-                                </label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={editForm.lpg_rrp}
-                                  onChange={(e) =>
-                                    setEditForm({
-                                      ...editForm,
-                                      lpg_rrp: e.target.value,
-                                    })
-                                  }
-                                  className="w-full px-2 py-1 border rounded text-sm"
-                                  placeholder="0.00"
-                                />
-                              </div>
-                              <div className="col-span-2">
-                                <label className="text-xs text-gray-600">
-                                  BGO Link
-                                </label>
-                                <input
-                                  type="url"
-                                  value={editForm.bgo_link}
-                                  onChange={(e) =>
-                                    setEditForm({
-                                      ...editForm,
-                                      bgo_link: e.target.value,
-                                    })
-                                  }
-                                  className="w-full px-2 py-1 border rounded text-sm"
-                                  placeholder="https://boardgameoracle.com/..."
-                                />
-                              </div>
-                            </div>
+                            <textarea
+                              value={editForm.notes}
+                              onChange={(e) =>
+                                setEditForm({ ...editForm, notes: e.target.value })
+                              }
+                              placeholder="Why this fills a gap, or other curation notes"
+                              className="w-full px-2 py-1 border rounded text-sm"
+                              rows={2}
+                            />
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <div className="flex gap-1">
+                          <div className="flex gap-1 justify-end">
                             <button
                               onClick={handleSaveEdit}
                               className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700"
@@ -594,71 +444,10 @@ export function BuyListTab() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="font-medium">{item.title}</div>
-                          {item.bgo_link && (
-                            <a
-                              href={item.bgo_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-blue-600 hover:underline"
-                            >
-                              BGO ↗
-                            </a>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {item.lpg_status ? (
-                            <span
-                              className={`px-2 py-1 text-xs rounded-full ${getStatusColor(
-                                item.lpg_status
-                              )}`}
-                            >
-                              {item.lpg_status.replace(/_/g, " ")}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-gray-700">
-                          {formatPrice(item.lpg_rrp)}
+                          {renderGapMatchBadges(item.gap_match)}
                         </td>
                         <td className="px-4 py-3 text-gray-600">
-                          {item.latest_price?.low_price
-                            ? formatPrice(item.latest_price.low_price)
-                            : "-"}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {item.latest_price?.mean_price
-                            ? formatPrice(item.latest_price.mean_price)
-                            : "-"}
-                        </td>
-                        <td className="px-4 py-3 text-gray-700 font-medium">
-                          {item.latest_price?.best_price
-                            ? formatPrice(item.latest_price.best_price)
-                            : "-"}
-                        </td>
-                        <td className="px-4 py-3 text-gray-600 text-xs">
-                          {item.latest_price?.best_store || "-"}
-                        </td>
-                        <td className="px-4 py-3">
-                          {item.latest_price?.discount_pct ? (
-                            <span className="text-green-700 font-medium">
-                              {item.latest_price.discount_pct.toFixed(1)}%
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {item.latest_price?.delta !== null && item.latest_price?.delta !== undefined ? (
-                            <span className={item.latest_price.delta > 0 ? "text-green-700 font-medium" : "text-red-700 font-medium"}>
-                              {item.latest_price.delta > 0 ? "+" : ""}{item.latest_price.delta.toFixed(1)}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {getBuyFilterBadge(item.buy_filter)}
+                          {item.notes || "-"}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1 justify-end">
@@ -698,13 +487,12 @@ export function BuyListTab() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-auto">
             <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Add Game to Buy List by BGG ID</h3>
+              <h3 className="text-lg font-semibold mb-4">Add a Candidate Game by BGG ID</h3>
               <p className="text-sm text-gray-600 mb-4">
                 Enter a BoardGameGeek ID. If the game isn't in your library, it will be automatically imported.
               </p>
 
               <div className="space-y-4">
-                {/* BGG ID Input */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     BGG ID <span className="text-red-500">*</span>
@@ -722,7 +510,6 @@ export function BuyListTab() {
                   </p>
                 </div>
 
-                {/* Rank */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Priority Rank (optional)
@@ -737,51 +524,16 @@ export function BuyListTab() {
                   />
                 </div>
 
-                {/* BoardGameOracle Link */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    BoardGameOracle Link (optional)
+                    Notes (optional)
                   </label>
-                  <input
-                    type="url"
-                    value={addFormData.bgo_link}
-                    onChange={(e) => setAddFormData({ ...addFormData, bgo_link: e.target.value })}
-                    placeholder="https://boardgameoracle.com/en-NZ/price/..."
+                  <textarea
+                    value={addFormData.notes}
+                    onChange={(e) => setAddFormData({ ...addFormData, notes: e.target.value })}
+                    placeholder="Why this game is worth adding"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                {/* LPG Status */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    LPG Status (optional)
-                  </label>
-                  <select
-                    value={addFormData.lpg_status}
-                    onChange={(e) => setAddFormData({ ...addFormData, lpg_status: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="">Select status...</option>
-                    <option value="AVAILABLE">Available</option>
-                    <option value="BACK_ORDER">Back Order</option>
-                    <option value="NOT_FOUND">Not Found</option>
-                    <option value="BACK_ORDER_OOS">Back Order OOS</option>
-                  </select>
-                </div>
-
-                {/* LPG RRP */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    LPG RRP (optional)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={addFormData.lpg_rrp}
-                    onChange={(e) => setAddFormData({ ...addFormData, lpg_rrp: e.target.value })}
-                    placeholder="0.00"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    min="0"
+                    rows={3}
                   />
                 </div>
               </div>
@@ -791,12 +543,7 @@ export function BuyListTab() {
                   onClick={() => {
                     setShowAddModal(false);
                     setAddBggId("");
-                    setAddFormData({
-                      rank: "",
-                      bgo_link: "",
-                      lpg_rrp: "",
-                      lpg_status: "",
-                    });
+                    setAddFormData({ rank: "", notes: "" });
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
@@ -807,7 +554,7 @@ export function BuyListTab() {
                   disabled={!addBggId.trim()}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Add to Buy List
+                  Add to List
                 </button>
               </div>
             </div>
@@ -820,9 +567,9 @@ export function BuyListTab() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full">
             <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Bulk Import Buy List from CSV</h3>
+              <h3 className="text-lg font-semibold mb-4">Bulk Import Games to Add from CSV</h3>
               <p className="text-sm text-gray-600 mb-4">
-                Upload a CSV file with the following columns to add multiple games to your buy list:
+                Upload a CSV file with the following columns to add multiple candidate games:
               </p>
 
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
@@ -830,16 +577,14 @@ export function BuyListTab() {
                 <ul className="text-xs text-gray-700 space-y-1 list-disc list-inside">
                   <li><strong>bgg_id</strong> (required) - BoardGameGeek ID</li>
                   <li><strong>rank</strong> (optional) - Priority rank (numeric)</li>
-                  <li><strong>bgo_link</strong> (optional) - BoardGameOracle URL</li>
-                  <li><strong>lpg_rrp</strong> (optional) - Lets Play Games RRP price</li>
-                  <li><strong>lpg_status</strong> (optional) - AVAILABLE, BACK_ORDER, NOT_FOUND, or BACK_ORDER_OOS</li>
+                  <li><strong>notes</strong> (optional) - Curation notes</li>
                 </ul>
                 <div className="mt-3 text-xs text-gray-600">
                   <strong>Example CSV:</strong>
                   <pre className="bg-white p-2 rounded border mt-1 overflow-x-auto">
-bgg_id,rank,bgo_link,lpg_rrp,lpg_status
-174430,1,https://boardgameoracle.com/...,199.99,AVAILABLE
-167791,2,,149.99,NOT_FOUND</pre>
+bgg_id,rank,notes
+174430,1,Fills the Core Strategy gap
+167791,2,Good for large groups</pre>
                 </div>
               </div>
 
@@ -864,7 +609,7 @@ bgg_id,rank,bgo_link,lpg_rrp,lpg_status
 
               <p className="text-xs text-gray-500 mb-4">
                 <strong>Note:</strong> Games not in your database will be automatically imported from BoardGameGeek.
-                Existing buy list entries will be updated with new values from the CSV.
+                Existing entries will be updated with new values from the CSV.
               </p>
 
               <div className="flex justify-end">

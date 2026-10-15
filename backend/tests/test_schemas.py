@@ -23,8 +23,6 @@ from schemas import (
     FixSequenceRequest,
     BuyListGameCreate,
     BuyListGameUpdate,
-    PriceSnapshotOut,
-    BuyListGameOut,
 )
 
 
@@ -309,7 +307,7 @@ class TestFixSequenceRequestSchema:
 
     def test_fix_sequence_valid_tables(self):
         """Test FixSequenceRequest with all valid table names"""
-        valid_tables = ["boardgames", "buy_list_games", "price_snapshots", "price_offers", "sleeves"]
+        valid_tables = ["boardgames", "buy_list_games", "sleeves"]
 
         for table in valid_tables:
             req = FixSequenceRequest(table_name=table)
@@ -345,25 +343,19 @@ class TestBuyListGameCreateSchema:
         create = BuyListGameCreate(bgg_id=174430)
         assert create.bgg_id == 174430
         assert create.rank is None
-        assert create.bgo_link is None
-        assert create.lpg_rrp is None
-        assert create.lpg_status is None
+        assert create.notes is None
 
     def test_buy_list_create_all_fields(self):
         """Test BuyListGameCreate with all fields"""
         create = BuyListGameCreate(
             bgg_id=174430,
             rank=1,
-            bgo_link="https://boardgameoracle.com/game/174430",
-            lpg_rrp=150.00,
-            lpg_status="Available"
+            notes="Fills a gap in Party & Icebreakers"
         )
 
         assert create.bgg_id == 174430
         assert create.rank == 1
-        assert create.bgo_link == "https://boardgameoracle.com/game/174430"
-        assert create.lpg_rrp == 150.00
-        assert create.lpg_status == "Available"
+        assert create.notes == "Fills a gap in Party & Icebreakers"
 
     def test_buy_list_create_invalid_bgg_id(self):
         """Test BuyListGameCreate rejects invalid BGG IDs"""
@@ -384,9 +376,7 @@ class TestBuyListGameUpdateSchema:
         """Test BuyListGameUpdate with all fields as None"""
         update = BuyListGameUpdate()
         assert update.rank is None
-        assert update.bgo_link is None
-        assert update.lpg_rrp is None
-        assert update.lpg_status is None
+        assert update.notes is None
         assert update.on_buy_list is None
 
     def test_buy_list_update_partial(self):
@@ -394,117 +384,19 @@ class TestBuyListGameUpdateSchema:
         update = BuyListGameUpdate(rank=5, on_buy_list=False)
         assert update.rank == 5
         assert update.on_buy_list is False
-        assert update.bgo_link is None
+        assert update.notes is None
 
     def test_buy_list_update_all_fields(self):
         """Test BuyListGameUpdate with all fields"""
         update = BuyListGameUpdate(
             rank=2,
-            bgo_link="https://example.com",
-            lpg_rrp=99.99,
-            lpg_status="In Stock",
+            notes="Looks good for the gap in 7-8 player games",
             on_buy_list=True
         )
 
         assert update.rank == 2
-        assert update.bgo_link == "https://example.com"
-        assert update.lpg_rrp == 99.99
-        assert update.lpg_status == "In Stock"
+        assert update.notes == "Looks good for the gap in 7-8 player games"
         assert update.on_buy_list is True
-
-
-class TestPriceSnapshotOutSchema:
-    """Test PriceSnapshotOut schema"""
-
-    def test_price_snapshot_minimal(self):
-        """Test PriceSnapshotOut with minimal required fields"""
-        snapshot = PriceSnapshotOut(
-            id=1,
-            game_id=100,
-            checked_at="2025-12-27T10:00:00"
-        )
-
-        assert snapshot.id == 1
-        assert snapshot.game_id == 100
-        assert snapshot.checked_at == "2025-12-27T10:00:00"
-        assert snapshot.low_price is None
-
-    def test_price_snapshot_all_fields(self):
-        """Test PriceSnapshotOut with all fields"""
-        snapshot = PriceSnapshotOut(
-            id=1,
-            game_id=100,
-            checked_at="2025-12-27T10:00:00",
-            low_price=89.99,
-            mean_price=95.00,
-            best_price=85.00,
-            best_store="Game Store",
-            discount_pct=15.5,
-            delta=-5.00
-        )
-
-        assert snapshot.id == 1
-        assert snapshot.game_id == 100
-        assert snapshot.low_price == 89.99
-        assert snapshot.mean_price == 95.00
-        assert snapshot.best_price == 85.00
-        assert snapshot.best_store == "Game Store"
-        assert snapshot.discount_pct == 15.5
-        assert snapshot.delta == -5.00
-
-
-class TestBuyListGameOutSchema:
-    """Test BuyListGameOut schema"""
-
-    def test_buy_list_game_out_minimal(self):
-        """Test BuyListGameOut with minimal required fields"""
-        game_out = BuyListGameOut(
-            id=1,
-            game_id=100,
-            on_buy_list=True,
-            created_at="2025-12-27T10:00:00",
-            updated_at="2025-12-27T10:00:00",
-            title="Test Game"
-        )
-
-        assert game_out.id == 1
-        assert game_out.game_id == 100
-        assert game_out.on_buy_list is True
-        assert game_out.title == "Test Game"
-        assert game_out.rank is None
-        assert game_out.latest_price is None
-
-    def test_buy_list_game_out_with_price(self):
-        """Test BuyListGameOut with latest price snapshot"""
-        price_snapshot = PriceSnapshotOut(
-            id=1,
-            game_id=100,
-            checked_at="2025-12-27T10:00:00",
-            best_price=85.00,
-            best_store="Game Store"
-        )
-
-        game_out = BuyListGameOut(
-            id=1,
-            game_id=100,
-            rank=1,
-            bgo_link="https://example.com",
-            lpg_rrp=100.00,
-            lpg_status="Available",
-            on_buy_list=True,
-            created_at="2025-12-27T10:00:00",
-            updated_at="2025-12-27T10:00:00",
-            title="Gloomhaven",
-            thumbnail_url="https://example.com/thumb.jpg",
-            bgg_id=174430,
-            latest_price=price_snapshot
-        )
-
-        assert game_out.title == "Gloomhaven"
-        assert game_out.bgg_id == 174430
-        assert game_out.latest_price is not None
-        assert game_out.latest_price.best_price == 85.00
-        assert game_out.latest_price.best_store == "Game Store"
 
 
 class TestSchemaSeralization:
@@ -542,10 +434,10 @@ class TestSchemaSeralization:
         data = {
             "bgg_id": 174430,
             "rank": 1,
-            "bgo_link": "https://example.com"
+            "notes": "Fills a gap in Party & Icebreakers"
         }
 
         create = BuyListGameCreate(**data)
         assert create.bgg_id == 174430
         assert create.rank == 1
-        assert create.bgo_link == "https://example.com"
+        assert create.notes == "Fills a gap in Party & Icebreakers"

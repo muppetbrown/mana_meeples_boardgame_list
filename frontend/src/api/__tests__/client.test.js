@@ -500,8 +500,8 @@ describe('API Client', () => {
       expect(result).toEqual(mockResponse.data);
     });
 
-    test('addToBuyList adds game to buy list', async () => {
-      const data = { game_id: 1, rank: 5, lpg_rrp: 49.99 };
+    test('addToBuyList adds game to the list', async () => {
+      const data = { bgg_id: 174430, rank: 5, notes: 'fills a gap' };
       const mockResponse = { data: { id: 1, ...data } };
       mockAxiosInstance.post.mockResolvedValue(mockResponse);
 
@@ -511,8 +511,8 @@ describe('API Client', () => {
       expect(result).toEqual(mockResponse.data);
     });
 
-    test('updateBuyListGame updates buy list entry', async () => {
-      const data = { rank: 3, lpg_status: 'in_stock' };
+    test('updateBuyListGame updates a games-to-add entry', async () => {
+      const data = { rank: 3, notes: 'revised priority' };
       const mockResponse = { data: { id: 1, ...data } };
       mockAxiosInstance.put.mockResolvedValue(mockResponse);
 
@@ -522,7 +522,7 @@ describe('API Client', () => {
       expect(result).toEqual(mockResponse.data);
     });
 
-    test('removeFromBuyList removes game from buy list', async () => {
+    test('removeFromBuyList removes game from the list', async () => {
       const mockResponse = { data: { success: true } };
       mockAxiosInstance.delete.mockResolvedValue(mockResponse);
 
@@ -532,29 +532,15 @@ describe('API Client', () => {
       expect(result).toEqual(mockResponse.data);
     });
 
-    test('importPrices imports price data', async () => {
-      const mockResponse = { data: { imported: 50 } };
-      mockAxiosInstance.post.mockResolvedValue(mockResponse);
-
-      const result = await apiClient.importPrices('prices.json');
-
-      expect(mockAxiosInstance.post).toHaveBeenCalledWith(
-        '/admin/buy-list/import-prices',
-        null,
-        {
-          params: { source_file: 'prices.json' },
-        }
-      );
-      expect(result).toEqual(mockResponse.data);
-    });
-
-    test('getLastPriceUpdate fetches last update timestamp', async () => {
-      const mockResponse = { data: { last_updated: '2024-01-01', source_file: 'prices.json' } };
+    test('getLibraryGaps fetches category and player-count gap analysis', async () => {
+      const mockResponse = {
+        data: { total_games: 10, category_gaps: [], player_count_gaps: [] },
+      };
       mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
-      const result = await apiClient.getLastPriceUpdate();
+      const result = await apiClient.getLibraryGaps();
 
-      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/admin/buy-list/last-updated');
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/admin/buy-list/gaps');
       expect(result).toEqual(mockResponse.data);
     });
 
