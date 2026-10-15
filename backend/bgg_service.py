@@ -540,6 +540,77 @@ async def fetch_bgg_thing(bgg_id: int, retries: int = HTTP_RETRIES) -> Dict[str,
         )
 
 
+async def search_bgg(query: str, limit: int = 5, retries: int = HTTP_RETRIES) -> list:
+    """
+    Search BoardGameGeek by title via /xmlapi2/search. Returns up to `limit`
+    matches as [{"bgg_id": int, "title": str, "year": int | None}], in BGG's
+    own relevance order.
+
+    Best-effort: used to pre-resolve a likely BGG ID for AI-suggested games,
+    not as a user-facing lookup, so any failure (circuit open, timeout, bad
+    XML) returns an empty list rather than raising.
+    """
+    try:
+        bgg_circuit_breaker.call(lambda: None)
+    except CircuitBreakerError:
+        logger.warning(f"BGG circuit breaker is open, skipping search for {_sl(query)!r}")
+        return []
+
+    await bgg_rate_limiter.acquire()
+
+    url = "https://boardgamegeek.com/xmlapi2/search"
+    params = {"query": query, "type": "boardgame"}
+    headers = {}
+    if BGG_API_KEY:
+        headers["Authorization"] = f"Bearer {BGG_API_KEY}"
+
+    root = None
+    async with httpx.AsyncClient(timeout=float(HTTP_TIMEOUT)) as client:
+        for attempt in range(retries):
+            try:
+                response = await client.get(url, params=params, headers=headers)
+                if response.status_code in (202, 401, 500, 503):
+                    await asyncio.sleep((2**attempt) + (attempt * 0.5))
+                    continue
+                response.raise_for_status()
+                root = safe_fromstring(response.content)
+                strip_namespace(root)
+                _record_bgg_success()
+                break
+            except (httpx.TimeoutException, httpx.HTTPError, DefusedXmlException) as e:
+                logger.warning(f"BGG search failed for {_sl(query)!r} (attempt {attempt + 1}): {e}")
+                if attempt == retries - 1:
+                    _record_bgg_transient_failure()
+                    return []
+                await asyncio.sleep((2**attempt) + (attempt * 0.5))
+
+    if root is None:
+        return []
+
+    results = []
+    for item in root.findall("item"):
+        try:
+            bgg_id = int(item.get("id"))
+        except (TypeError, ValueError):
+            continue
+        name_el = item.find("name")
+        title = name_el.get("value") if name_el is not None else None
+        if not title:
+            continue
+        year = None
+        year_el = item.find("yearpublished")
+        if year_el is not None:
+            try:
+                year = int(year_el.get("value"))
+            except (TypeError, ValueError):
+                year = None
+        results.append({"bgg_id": bgg_id, "title": title, "year": year})
+        if len(results) >= limit:
+            break
+
+    return results
+
+
 def _extract_comprehensive_game_data(item: Element, bgg_id: int) -> Dict[str, Any]:
     """Extract comprehensive game data from BGG XML response"""
     data = {"bgg_id": bgg_id}

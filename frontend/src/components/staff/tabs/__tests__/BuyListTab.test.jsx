@@ -17,6 +17,8 @@ vi.mock('../../../../api/client', () => ({
   imageProxyUrl: vi.fn((url) => `proxy:${url}`),
   updateGame: vi.fn(),
   importFromBGG: vi.fn().mockResolvedValue({}),
+  reorderBuyList: vi.fn(),
+  suggestBuyListGames: vi.fn(),
 }));
 
 describe('BuyListTab', () => {
@@ -762,6 +764,181 @@ describe('BuyListTab', () => {
       });
 
       expect(screen.queryByText('Fills category gap')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Sort by gaps filled', () => {
+    test('selecting Gaps Filled defaults to descending order', async () => {
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      apiClient.getBuyListGames.mockClear();
+      await user.selectOptions(screen.getByDisplayValue('Rank'), 'gaps_filled');
+
+      await waitFor(() => {
+        expect(apiClient.getBuyListGames).toHaveBeenCalledWith(
+          expect.objectContaining({ sort_by: 'gaps_filled', sort_desc: true })
+        );
+      });
+      expect(screen.getByText('↓ Desc')).toBeInTheDocument();
+    });
+  });
+
+  describe('Re-rank', () => {
+    test('re-ranks from the current order and switches sort back to Rank', async () => {
+      const user = userEvent.setup();
+      const secondItem = { ...mockBuyListItem, id: 2, title: 'Second Game' };
+      apiClient.getBuyListGames.mockResolvedValue({ items: [mockBuyListItem, secondItem] });
+      apiClient.reorderBuyList.mockResolvedValue({
+        items: [
+          { ...mockBuyListItem, rank: 1 },
+          { ...secondItem, rank: 2 },
+        ],
+      });
+
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('🔢 Re-rank from this order'));
+
+      await waitFor(() => {
+        expect(apiClient.reorderBuyList).toHaveBeenCalledWith([1, 2]);
+      });
+      expect(screen.getByText('Re-ranked 2 game(s)')).toBeInTheDocument();
+    });
+
+    test('re-rank button is disabled when the list is empty', async () => {
+      apiClient.getBuyListGames.mockResolvedValue({ items: [] });
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('🔢 Re-rank from this order')).toBeDisabled();
+      });
+    });
+
+    test('does nothing when the confirm dialog is declined', async () => {
+      const user = userEvent.setup();
+      window.confirm = vi.fn(() => false);
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('🔢 Re-rank from this order'));
+
+      expect(apiClient.reorderBuyList).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Suggest Additional Games', () => {
+    const mockSuggestion = {
+      title: 'Wingspan',
+      year: 2019,
+      category_key: 'GATEWAY_STRATEGY',
+      reason: 'Fits the gateway strategy gap.',
+      suggested_bgg_id: 266192,
+      suggested_bgg_title: 'Wingspan',
+      suggested_bgg_year: 2019,
+      bgg_search_url: 'https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=Wingspan',
+    };
+    const unresolvedSuggestion = {
+      title: 'Obscure Game',
+      year: null,
+      category_key: null,
+      reason: 'Hard to pin down on BGG.',
+      suggested_bgg_id: null,
+      suggested_bgg_title: null,
+      suggested_bgg_year: null,
+      bgg_search_url: 'https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=Obscure+Game',
+    };
+
+    test('requests and renders suggestions', async () => {
+      const user = userEvent.setup();
+      apiClient.suggestBuyListGames.mockResolvedValue({ suggestions: [mockSuggestion] });
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('💡 Suggest Additional Games'));
+
+      expect(await screen.findByText('Wingspan (2019)')).toBeInTheDocument();
+      expect(screen.getByText('Fits the gateway strategy gap.')).toBeInTheDocument();
+      expect(screen.getByText(/Matched: Wingspan/)).toBeInTheDocument();
+      expect(screen.getByText('💡 Suggest More')).toBeInTheDocument();
+    });
+
+    test('shows an error when no suggestions come back', async () => {
+      apiClient.suggestBuyListGames.mockResolvedValue({ suggestions: [] });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('💡 Suggest Additional Games'));
+
+      expect(await screen.findByText(/didn't return any suggestions/)).toBeInTheDocument();
+    });
+
+    test('shows the API error message on failure', async () => {
+      apiClient.suggestBuyListGames.mockRejectedValue({
+        response: { data: { detail: 'ANTHROPIC_API_KEY is not configured' } },
+      });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('💡 Suggest Additional Games'));
+
+      expect(await screen.findByText('ANTHROPIC_API_KEY is not configured')).toBeInTheDocument();
+    });
+
+    test('adds a resolved suggestion to the list with one click', async () => {
+      apiClient.suggestBuyListGames.mockResolvedValue({ suggestions: [mockSuggestion] });
+      apiClient.addToBuyList.mockResolvedValue({});
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('💡 Suggest Additional Games'));
+      await screen.findByText('Wingspan (2019)');
+
+      await user.click(screen.getByText('+ Add to List'));
+
+      await waitFor(() => {
+        expect(apiClient.addToBuyList).toHaveBeenCalledWith({
+          bgg_id: 266192,
+          notes: 'Fits the gateway strategy gap.',
+        });
+      });
+      expect(await screen.findByText('Added "Wingspan" to the list')).toBeInTheDocument();
+      expect(screen.queryByText('Wingspan (2019)')).not.toBeInTheDocument();
+    });
+
+    test('unresolved suggestions open the manual Add Game modal with notes prefilled', async () => {
+      apiClient.suggestBuyListGames.mockResolvedValue({ suggestions: [unresolvedSuggestion] });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('💡 Suggest Additional Games'));
+      await screen.findByText('Obscure Game');
+      expect(screen.getByText(/No confident BGG match/)).toBeInTheDocument();
+
+      await user.click(screen.getByText('+ Add Manually'));
+
+      expect(await screen.findByText('Add a Candidate Game by BGG ID')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Hard to pin down on BGG.')).toBeInTheDocument();
+    });
+
+    test('dismissing a suggestion removes its card', async () => {
+      apiClient.suggestBuyListGames.mockResolvedValue({ suggestions: [mockSuggestion] });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('💡 Suggest Additional Games'));
+      await screen.findByText('Wingspan (2019)');
+
+      await user.click(screen.getByLabelText('Dismiss suggestion: Wingspan'));
+
+      expect(screen.queryByText('Wingspan (2019)')).not.toBeInTheDocument();
     });
   });
 });

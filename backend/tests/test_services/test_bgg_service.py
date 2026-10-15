@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 
 from bgg_service import (
     fetch_bgg_thing,
+    search_bgg,
     _extract_comprehensive_game_data,
     _get_game_classification,
     BGGServiceError,
@@ -985,3 +986,156 @@ class TestHostileXmlIsRejected:
 
             with pytest.raises(BGGServiceError, match="Failed to parse"):
                 await fetch_bgg_thing(12345)
+
+
+SAMPLE_SEARCH_XML = """<?xml version="1.0" encoding="utf-8"?>
+<items total="2" termsofuse="https://boardgamegeek.com/xmlapi/termsofuse">
+    <item type="boardgame" id="174430">
+        <name type="primary" value="Gloomhaven" />
+        <yearpublished value="2017" />
+    </item>
+    <item type="boardgame" id="291457">
+        <name type="primary" value="Gloomhaven: Jaws of the Lion" />
+        <yearpublished value="2020" />
+    </item>
+</items>"""
+
+
+class TestSearchBGG:
+    """Test search_bgg() - BGG title search used by the AI suggestion feature."""
+
+    @pytest.mark.asyncio
+    async def test_search_successful(self):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.content = SAMPLE_SEARCH_XML.encode()
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            results = await search_bgg("Gloomhaven")
+
+        assert results == [
+            {"bgg_id": 174430, "title": "Gloomhaven", "year": 2017},
+            {"bgg_id": 291457, "title": "Gloomhaven: Jaws of the Lion", "year": 2020},
+        ]
+
+    @pytest.mark.asyncio
+    async def test_search_respects_limit(self):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.content = SAMPLE_SEARCH_XML.encode()
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            results = await search_bgg("Gloomhaven", limit=1)
+
+        assert len(results) == 1
+        assert results[0]["bgg_id"] == 174430
+
+    @pytest.mark.asyncio
+    async def test_search_no_results(self):
+        empty_xml = '<?xml version="1.0"?><items total="0"></items>'
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.content = empty_xml.encode()
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            results = await search_bgg("Not A Real Game Xyzzy")
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_search_retries_on_202_then_succeeds(self):
+        mock_response_202 = Mock()
+        mock_response_202.status_code = 202
+
+        mock_response_200 = Mock()
+        mock_response_200.status_code = 200
+        mock_response_200.content = SAMPLE_SEARCH_XML.encode()
+        mock_response_200.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(side_effect=[mock_response_202, mock_response_200])
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            with patch("asyncio.sleep") as mock_sleep:
+                results = await search_bgg("Gloomhaven")
+
+        assert mock_client.get.call_count == 2
+        assert mock_sleep.called
+        assert len(results) == 2
+
+    @pytest.mark.asyncio
+    async def test_search_returns_empty_list_on_repeated_failure(self):
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            with patch("asyncio.sleep"):
+                results = await search_bgg("Gloomhaven", retries=2)
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_search_returns_empty_list_when_circuit_breaker_open(self):
+        from pybreaker import CircuitBreakerError
+
+        with patch("bgg_service.bgg_circuit_breaker.call", side_effect=CircuitBreakerError("open")):
+            results = await search_bgg("Gloomhaven")
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_search_skips_items_missing_name_or_id(self):
+        malformed_xml = """<?xml version="1.0"?>
+        <items>
+            <item type="boardgame" id="not-a-number">
+                <name type="primary" value="Bad ID Game" />
+            </item>
+            <item type="boardgame" id="42">
+                <yearpublished value="2020" />
+            </item>
+            <item type="boardgame" id="43">
+                <name type="primary" value="Good Game" />
+            </item>
+        </items>"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.content = malformed_xml.encode()
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            results = await search_bgg("Good Game")
+
+        assert results == [{"bgg_id": 43, "title": "Good Game", "year": None}]

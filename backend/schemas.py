@@ -107,6 +107,29 @@ class BuyListGameUpdate(BaseModel):
     on_buy_list: Optional[bool] = None
 
 
+class SuggestGamesRequest(BaseModel):
+    """Schema for requesting AI-generated 'games to add' suggestions."""
+
+    count: int = Field(default=6, ge=1, le=12)
+
+
+class BuyListReorderRequest(BaseModel):
+    """Schema for re-ranking 'games to add' entries from a given display order.
+
+    ordered_ids lists buy-list entry IDs in the desired priority order (first
+    = highest priority); each one's rank is set to its 1-based position.
+    """
+
+    ordered_ids: List[int]
+
+    @field_validator("ordered_ids")
+    @classmethod
+    def validate_not_empty(cls, v):
+        if not v:
+            raise ValueError("ordered_ids must not be empty")
+        return v
+
+
 # ------------------------------------------------------------------------------
 # Phase 1 Performance Optimization Schemas
 # ------------------------------------------------------------------------------
