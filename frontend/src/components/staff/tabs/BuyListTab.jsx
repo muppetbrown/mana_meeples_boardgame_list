@@ -14,6 +14,7 @@ import {
   reorderBuyList,
   suggestBuyListGames,
   getTrendingGames,
+  getAwardWinners,
 } from "../../../api/client";
 import { CATEGORY_LABELS } from "../../../constants/categories";
 import { parseBggId } from "../../../utils/bgg";
@@ -64,6 +65,10 @@ export function BuyListTab() {
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [trendingError, setTrendingError] = useState(null);
   const [addingTrendingId, setAddingTrendingId] = useState(null);
+  const [awardWinners, setAwardWinners] = useState([]);
+  const [awardWinnersLoading, setAwardWinnersLoading] = useState(true);
+  const [awardWinnersError, setAwardWinnersError] = useState(null);
+  const [addingAwardWinnerKey, setAddingAwardWinnerKey] = useState(null);
   const fileInputRef = useRef(null);
   const confirm = useConfirm();
 
@@ -87,6 +92,9 @@ export function BuyListTab() {
   }, []);
   useEffect(() => {
     loadTrending();
+  }, []);
+  useEffect(() => {
+    loadAwardWinners();
   }, []);
 
   const loadBuyList = async () => {
@@ -141,6 +149,42 @@ export function BuyListTab() {
       setError(err.response?.data?.detail || "Failed to add trending game");
     } finally {
       setAddingTrendingId(null);
+    }
+  };
+
+  const loadAwardWinners = async () => {
+    setAwardWinnersLoading(true);
+    setAwardWinnersError(null);
+    try {
+      const data = await getAwardWinners(6);
+      setAwardWinners(data.award_winners || []);
+    } catch (err) {
+      console.error("Failed to load award winners:", err);
+      setAwardWinnersError("Failed to load award winners");
+    } finally {
+      setAwardWinnersLoading(false);
+    }
+  };
+
+  const handleAddAwardWinner = async (entry) => {
+    const key = `${entry.award}-${entry.year}`;
+    setAddingAwardWinnerKey(key);
+    try {
+      setError(null);
+      await addToBuyList({
+        bgg_id: entry.bgg_id,
+        notes: `${entry.award_label} ${entry.year}`,
+      });
+      setSuccess(`Added "${entry.title}" to the list`);
+      setAwardWinners((prev) =>
+        prev.map((w) => (w.award === entry.award && w.year === entry.year ? { ...w, status: "on_buy_list" } : w))
+      );
+      await loadBuyList();
+    } catch (err) {
+      console.error("Failed to add award winner:", err);
+      setError(err.response?.data?.detail || "Failed to add award winner");
+    } finally {
+      setAddingAwardWinnerKey(null);
     }
   };
 
@@ -662,6 +706,92 @@ export function BuyListTab() {
                       {game.status === "new" && (
                         <button
                           onClick={() => handleAddTrending(game)}
+                          disabled={adding}
+                          className="flex-1 px-2 py-1 text-xs rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {adding ? "…" : "+ Add"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Award Winners */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h3 className="text-lg font-semibold">🏆 Award Winners</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Recent Spiel des Jahres, Kennerspiel des Jahres, and Kinderspiel des Jahres winners
+            </p>
+          </div>
+          <button
+            onClick={loadAwardWinners}
+            disabled={awardWinnersLoading}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {awardWinnersLoading ? "Loading…" : "↻ Refresh"}
+          </button>
+        </div>
+
+        {awardWinnersError && (
+          <div role="alert" className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {awardWinnersError}
+          </div>
+        )}
+
+        {awardWinnersLoading && awardWinners.length === 0 ? (
+          <p className="text-sm text-gray-500">Loading award winners…</p>
+        ) : awardWinners.length === 0 && !awardWinnersError ? (
+          <p className="text-sm text-gray-500">No award winner data available right now.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="flex gap-3 pb-1" style={{ width: "max-content" }}>
+              {awardWinners.map((entry) => {
+                const key = `${entry.award}-${entry.year}`;
+                const adding = addingAwardWinnerKey === key;
+                return (
+                  <div key={key} className="w-40 shrink-0 border rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-1 mb-1">
+                      <span className="text-xs font-semibold text-gray-400">
+                        {entry.award_label} {entry.year}
+                      </span>
+                      {entry.status === "owned" && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-green-100 text-green-700">
+                          Owned
+                        </span>
+                      )}
+                      {entry.status === "on_buy_list" && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-blue-100 text-blue-700">
+                          On list
+                        </span>
+                      )}
+                    </div>
+                    <Thumbnail src={entry.thumbnail_url} alt={entry.title} />
+                    <div className="text-sm font-medium mt-2 line-clamp-2" title={entry.title}>
+                      {entry.title}
+                    </div>
+                    <div className="mt-2 flex gap-1">
+                      <a
+                        href={
+                          entry.bgg_id
+                            ? `https://boardgamegeek.com/boardgame/${entry.bgg_id}`
+                            : entry.bgg_search_url
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 px-2 py-1 text-xs text-center rounded border border-gray-300 hover:bg-gray-50"
+                      >
+                        {entry.bgg_id ? "View" : "Search BGG"}
+                      </a>
+                      {entry.status === "new" && entry.bgg_id && (
+                        <button
+                          onClick={() => handleAddAwardWinner(entry)}
                           disabled={adding}
                           className="flex-1 px-2 py-1 text-xs rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >

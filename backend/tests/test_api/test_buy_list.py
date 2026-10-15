@@ -813,3 +813,51 @@ class TestGetTrendingGames:
     def test_requires_auth(self, client):
         response = client.get("/api/admin/buy-list/trending")
         assert response.status_code in (401, 403)
+
+
+class TestGetAwardWinners:
+    """Test GET /api/admin/buy-list/award-winners"""
+
+    def test_returns_award_winners(self, client, admin_headers):
+        winners = [
+            {
+                "year": 2024,
+                "award": "spiel_des_jahres",
+                "award_label": "Spiel des Jahres",
+                "title": "Sky Team",
+                "bgg_id": 373106,
+                "thumbnail_url": None,
+                "status": "new",
+                "bgg_search_url": "https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=Sky+Team",
+            },
+        ]
+        with patch(
+            "api.routers.buy_list.get_award_winners", new_callable=AsyncMock, return_value=winners
+        ):
+            response = client.get("/api/admin/buy-list/award-winners", headers=admin_headers)
+
+        assert response.status_code == 200
+        assert response.json() == {"award_winners": winners}
+
+    def test_fetch_failure_returns_500(self, client, admin_headers):
+        with patch(
+            "api.routers.buy_list.get_award_winners",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("BGG unreachable"),
+        ):
+            response = client.get("/api/admin/buy-list/award-winners", headers=admin_headers)
+
+        assert response.status_code == 500
+
+    def test_respects_years_query_param(self, client, admin_headers):
+        with patch(
+            "api.routers.buy_list.get_award_winners", new_callable=AsyncMock, return_value=[]
+        ) as mock_winners:
+            client.get("/api/admin/buy-list/award-winners", params={"years": 3}, headers=admin_headers)
+
+        mock_winners.assert_awaited_once()
+        assert mock_winners.call_args.kwargs.get("years") == 3
+
+    def test_requires_auth(self, client):
+        response = client.get("/api/admin/buy-list/award-winners")
+        assert response.status_code in (401, 403)

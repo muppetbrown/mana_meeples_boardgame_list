@@ -547,6 +547,18 @@ export async function getTrendingGames(limit = 20) {
   return r.data;
 }
 
+/**
+ * Curated Spiel des Jahres / Kennerspiel des Jahres / Kinderspiel des Jahres
+ * winners, annotated with whether each is already owned or already on the
+ * games-to-add list.
+ * @param {number} years - How many most-recent award years to include, per award
+ * @returns {Promise<Object>} { award_winners: [{ year, award, award_label, title, bgg_id, thumbnail_url, status, bgg_search_url }] }
+ */
+export async function getAwardWinners(years = 6) {
+  const r = await api.get("/admin/buy-list/award-winners", { params: { years } });
+  return r.data;
+}
+
 // ============================================================================
 // SLEEVE MANAGEMENT API METHODS
 // ============================================================================
