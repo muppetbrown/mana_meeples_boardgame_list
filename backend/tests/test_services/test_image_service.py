@@ -1,11 +1,10 @@
 """Tests for ImageService business logic layer."""
 import pytest
-from unittest.mock import Mock, AsyncMock, MagicMock, patch, mock_open
+from unittest.mock import Mock, AsyncMock
 from urllib.parse import urlparse
 import httpx
 
 from services.image_service import ImageService
-from models import Game
 
 
 class TestImageService:
