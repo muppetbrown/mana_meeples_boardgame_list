@@ -16,7 +16,6 @@ from datetime import datetime, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError
-from decimal import Decimal
 
 from models import (
     Base,

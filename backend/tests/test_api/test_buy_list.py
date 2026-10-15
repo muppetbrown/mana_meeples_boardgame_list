@@ -9,8 +9,6 @@ gap-match annotation on list/add/update responses.
 import io
 from unittest.mock import patch
 
-import pytest
-
 from api.routers.buy_list import build_buy_list_response
 from models import BuyListGame, Game
 
