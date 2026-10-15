@@ -7,7 +7,7 @@ gap-match annotation on list/add/update responses.
 """
 
 import io
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 from api.routers.buy_list import build_buy_list_response
 from models import BuyListGame, Game
@@ -528,3 +528,187 @@ class TestBulkImportCSVBehavior:
         assert response.status_code == 200
 
         assert db_session.query(Game).filter_by(bgg_id=444).one_or_none() is None
+
+
+class TestListBuyListGamesGapsFilledSort:
+    """Test GET /api/admin/buy-list/games?sort_by=gaps_filled"""
+
+    def test_sort_by_gaps_filled_puts_most_gap_filling_first(self, client, db_session, admin_headers):
+        # 10 owned games, all CORE_STRATEGY, all supporting 2-4 players ->
+        # every other category is a gap, and most player-count buckets are too.
+        for i in range(10):
+            db_session.add(
+                Game(
+                    title=f"Owned {i}", bgg_id=2000 + i, status="OWNED",
+                    mana_meeple_category="CORE_STRATEGY", players_min=2, players_max=4,
+                )
+            )
+        db_session.flush()
+
+        no_gap_game = Game(
+            title="No Gap Game", bgg_id=1,
+            mana_meeple_category="CORE_STRATEGY", players_min=2, players_max=4,
+        )
+        category_gap_game = Game(
+            title="Category Gap Game", bgg_id=2,
+            mana_meeple_category="PARTY_ICEBREAKERS", players_min=2, players_max=4,
+        )
+        double_gap_game = Game(
+            title="Double Gap Game", bgg_id=3,
+            mana_meeple_category="KIDS_FAMILIES", players_min=6, players_max=10,
+        )
+        db_session.add_all([no_gap_game, category_gap_game, double_gap_game])
+        db_session.flush()
+        db_session.add_all([
+            BuyListGame(game_id=no_gap_game.id, on_buy_list=True),
+            BuyListGame(game_id=category_gap_game.id, on_buy_list=True),
+            BuyListGame(game_id=double_gap_game.id, on_buy_list=True),
+        ])
+        db_session.commit()
+
+        response = client.get(
+            "/api/admin/buy-list/games",
+            params={"sort_by": "gaps_filled", "sort_desc": "true"},
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+        titles = [item["title"] for item in response.json()["items"]]
+        assert titles[0] == "Double Gap Game"
+        assert titles[-1] == "No Gap Game"
+
+        # Ascending flips it
+        response_asc = client.get(
+            "/api/admin/buy-list/games",
+            params={"sort_by": "gaps_filled", "sort_desc": "false"},
+            headers=admin_headers,
+        )
+        titles_asc = [item["title"] for item in response_asc.json()["items"]]
+        assert titles_asc[0] == "No Gap Game"
+        assert titles_asc[-1] == "Double Gap Game"
+
+
+class TestReorderBuyList:
+    """Test PUT /api/admin/buy-list/reorder"""
+
+    def test_reorder_sets_sequential_ranks(self, client, db_session, admin_headers):
+        g1, g2, g3 = Game(title="First", bgg_id=1), Game(title="Second", bgg_id=2), Game(title="Third", bgg_id=3)
+        db_session.add_all([g1, g2, g3])
+        db_session.flush()
+        b1 = BuyListGame(game_id=g1.id, rank=10, on_buy_list=True)
+        b2 = BuyListGame(game_id=g2.id, rank=20, on_buy_list=True)
+        b3 = BuyListGame(game_id=g3.id, rank=30, on_buy_list=True)
+        db_session.add_all([b1, b2, b3])
+        db_session.commit()
+        for entry in (b1, b2, b3):
+            db_session.refresh(entry)
+
+        response = client.put(
+            "/api/admin/buy-list/reorder",
+            headers=admin_headers,
+            json={"ordered_ids": [b3.id, b1.id, b2.id]},
+        )
+        assert response.status_code == 200
+        ranks_by_title = {item["title"]: item["rank"] for item in response.json()["items"]}
+        assert ranks_by_title["Third"] == 1
+        assert ranks_by_title["First"] == 2
+        assert ranks_by_title["Second"] == 3
+
+    def test_reorder_unknown_id_returns_404(self, client, db_session, admin_headers):
+        game = Game(title="Solo", bgg_id=1)
+        db_session.add(game)
+        db_session.flush()
+        entry = BuyListGame(game_id=game.id, rank=1, on_buy_list=True)
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+
+        response = client.put(
+            "/api/admin/buy-list/reorder",
+            headers=admin_headers,
+            json={"ordered_ids": [entry.id, 999999]},
+        )
+        assert response.status_code == 404
+
+    def test_reorder_empty_list_rejected(self, client, admin_headers):
+        response = client.put(
+            "/api/admin/buy-list/reorder", headers=admin_headers, json={"ordered_ids": []}
+        )
+        assert response.status_code == 422
+
+    def test_reorder_requires_auth(self, client):
+        response = client.put("/api/admin/buy-list/reorder", json={"ordered_ids": [1]})
+        assert response.status_code in (401, 403)
+
+    def test_reorder_error_returns_500(self, client, db_session, admin_headers):
+        game = Game(title="Solo", bgg_id=1)
+        db_session.add(game)
+        db_session.flush()
+        entry = BuyListGame(game_id=game.id, rank=1, on_buy_list=True)
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+
+        with patch("api.routers.buy_list.compute_library_gaps", side_effect=Exception("boom")):
+            response = client.put(
+                "/api/admin/buy-list/reorder",
+                headers=admin_headers,
+                json={"ordered_ids": [entry.id]},
+            )
+        assert response.status_code == 500
+
+
+class TestSuggestGames:
+    """Test POST /api/admin/buy-list/suggest"""
+
+    def test_suggest_returns_suggestions(self, client, admin_headers):
+        fake_suggestions = [
+            {
+                "title": "Wingspan", "year": 2019, "category_key": "GATEWAY_STRATEGY",
+                "reason": "Fits the gap.", "suggested_bgg_id": 266192,
+                "suggested_bgg_title": "Wingspan", "suggested_bgg_year": 2019,
+                "bgg_search_url": "https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=Wingspan",
+            }
+        ]
+        with patch(
+            "api.routers.buy_list.generate_suggestions", new_callable=AsyncMock, return_value=fake_suggestions
+        ):
+            response = client.post("/api/admin/buy-list/suggest", headers=admin_headers, json={"count": 1})
+        assert response.status_code == 200
+        assert response.json()["suggestions"] == fake_suggestions
+
+    def test_suggest_default_count(self, client, admin_headers):
+        with patch(
+            "api.routers.buy_list.generate_suggestions", new_callable=AsyncMock, return_value=[]
+        ) as mock_gen:
+            response = client.post("/api/admin/buy-list/suggest", headers=admin_headers, json={})
+        assert response.status_code == 200
+        mock_gen.assert_awaited_once()
+        assert mock_gen.call_args.kwargs["count"] == 6
+
+    def test_suggest_unavailable_returns_503(self, client, admin_headers):
+        from services.game_suggestion_service import SuggestionServiceError
+
+        with patch(
+            "api.routers.buy_list.generate_suggestions",
+            new_callable=AsyncMock,
+            side_effect=SuggestionServiceError("ANTHROPIC_API_KEY is not configured"),
+        ):
+            response = client.post("/api/admin/buy-list/suggest", headers=admin_headers, json={"count": 3})
+        assert response.status_code == 503
+
+    def test_suggest_unexpected_error_returns_500(self, client, admin_headers):
+        with patch(
+            "api.routers.buy_list.generate_suggestions",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("boom"),
+        ):
+            response = client.post("/api/admin/buy-list/suggest", headers=admin_headers, json={"count": 3})
+        assert response.status_code == 500
+
+    def test_suggest_requires_auth(self, client):
+        response = client.post("/api/admin/buy-list/suggest", json={"count": 3})
+        assert response.status_code in (401, 403)
+
+    def test_suggest_count_out_of_range_rejected(self, client, admin_headers):
+        response = client.post("/api/admin/buy-list/suggest", headers=admin_headers, json={"count": 50})
+        assert response.status_code == 422

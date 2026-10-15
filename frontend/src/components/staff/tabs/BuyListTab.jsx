@@ -11,6 +11,8 @@ import {
   bulkImportBuyListCSV,
   updateGame,
   importFromBGG,
+  reorderBuyList,
+  suggestBuyListGames,
 } from "../../../api/client";
 import { CATEGORY_LABELS } from "../../../constants/categories";
 import { parseBggId } from "../../../utils/bgg";
@@ -39,6 +41,11 @@ export function BuyListTab() {
   const [addFormData, setAddFormData] = useState({ rank: "", notes: "" });
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const [reranking, setReranking] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestError, setSuggestError] = useState(null);
+  const [addingSuggestionId, setAddingSuggestionId] = useState(null);
   const fileInputRef = useRef(null);
   const confirm = useConfirm();
 
@@ -197,6 +204,81 @@ export function BuyListTab() {
     }
   };
 
+  const handleReRank = async () => {
+    if (buyList.length === 0) return;
+    const ok = await confirm({
+      title: `Re-rank ${buyList.length} game(s) from the current sort order?`,
+      message:
+        "Sets each game's priority rank (1, 2, 3, …) to match the order shown right now, overwriting existing ranks.",
+      confirmLabel: "Re-rank",
+    });
+    if (!ok) return;
+
+    setReranking(true);
+    try {
+      setError(null);
+      const orderedIds = buyList.map((item) => item.id);
+      const result = await reorderBuyList(orderedIds);
+      setBuyList(result.items || []);
+      setSortBy("rank");
+      setSortDesc(false);
+      setSuccess(`Re-ranked ${orderedIds.length} game(s)`);
+    } catch (err) {
+      console.error("Failed to re-rank:", err);
+      setError(err.response?.data?.detail || "Failed to re-rank");
+    } finally {
+      setReranking(false);
+    }
+  };
+
+  const handleSuggestGames = async () => {
+    setSuggestLoading(true);
+    setSuggestError(null);
+    try {
+      const data = await suggestBuyListGames(6);
+      const results = data.suggestions || [];
+      setSuggestions(results);
+      if (results.length === 0) {
+        setSuggestError("Claude didn't return any suggestions. Try again in a moment.");
+      }
+    } catch (err) {
+      console.error("Failed to get suggestions:", err);
+      setSuggestError(err.response?.data?.detail || "Failed to get suggestions");
+    } finally {
+      setSuggestLoading(false);
+    }
+  };
+
+  const dismissSuggestion = (suggestion) => {
+    setSuggestions((prev) => prev.filter((s) => s !== suggestion));
+  };
+
+  const handleAddSuggestion = async (suggestion) => {
+    if (!suggestion.suggested_bgg_id) return;
+    setAddingSuggestionId(suggestion.suggested_bgg_id);
+    try {
+      setError(null);
+      await addToBuyList({ bgg_id: suggestion.suggested_bgg_id, notes: suggestion.reason });
+      setSuccess(`Added "${suggestion.title}" to the list`);
+      dismissSuggestion(suggestion);
+      await loadBuyList();
+    } catch (err) {
+      console.error("Failed to add suggested game:", err);
+      setError(err.response?.data?.detail || "Failed to add suggested game");
+    } finally {
+      setAddingSuggestionId(null);
+    }
+  };
+
+  // No confident BGG match was resolved server-side - open the manual Add
+  // Game modal pre-filled with Claude's reasoning so staff can paste in the
+  // ID they find via "Search on BGG".
+  const handleAddSuggestionManually = (suggestion) => {
+    setAddBggId("");
+    setAddFormData({ rank: "", notes: suggestion.reason });
+    setShowAddModal(true);
+  };
+
   const handleBulkImportCSV = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -325,6 +407,101 @@ export function BuyListTab() {
         )}
       </div>
 
+      {/* AI-suggested additions */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h3 className="text-lg font-semibold">Suggest Additional Games</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Asks Claude for games worth adding, grounded in what's owned and where the collection is thin.
+            </p>
+          </div>
+          <button
+            onClick={handleSuggestGames}
+            disabled={suggestLoading}
+            className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          >
+            {suggestLoading ? "Thinking…" : suggestions.length > 0 ? "💡 Suggest More" : "💡 Suggest Additional Games"}
+          </button>
+        </div>
+
+        {suggestError && (
+          <div role="alert" className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {suggestError}
+          </div>
+        )}
+
+        {suggestions.length > 0 && (
+          <div className="grid md:grid-cols-2 gap-3">
+            {suggestions.map((s) => {
+              const resolved = Boolean(s.suggested_bgg_id);
+              const bggUrl = resolved
+                ? `https://boardgamegeek.com/boardgame/${s.suggested_bgg_id}`
+                : s.bgg_search_url;
+              const adding = addingSuggestionId === s.suggested_bgg_id && resolved;
+              return (
+                <div key={`${s.title}-${s.year ?? ""}`} className="border rounded-lg p-4 relative">
+                  <button
+                    onClick={() => dismissSuggestion(s)}
+                    aria-label={`Dismiss suggestion: ${s.title}`}
+                    className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-sm"
+                  >
+                    ✕
+                  </button>
+                  <div className="pr-5">
+                    <div className="font-semibold">
+                      {s.title}
+                      {s.year ? ` (${s.year})` : ""}
+                    </div>
+                    {s.category_key && (
+                      <span className="inline-block mt-1 px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+                        {CATEGORY_LABELS[s.category_key] || s.category_key}
+                      </span>
+                    )}
+                    <p className="text-sm text-gray-600 mt-2">{s.reason}</p>
+                    <p className="text-xs mt-2">
+                      {resolved ? (
+                        <span className="text-green-700">
+                          Matched: {s.suggested_bgg_title} {s.suggested_bgg_year ? `(${s.suggested_bgg_year})` : ""} · BGG #{s.suggested_bgg_id}
+                        </span>
+                      ) : (
+                        <span className="text-amber-700">No confident BGG match — search below, then add manually</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <a
+                      href={bggUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 hover:bg-gray-50"
+                    >
+                      🔍 Search on BGG
+                    </a>
+                    {resolved ? (
+                      <button
+                        onClick={() => handleAddSuggestion(s)}
+                        disabled={adding}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {adding ? "Adding…" : "+ Add to List"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleAddSuggestionManually(s)}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200"
+                      >
+                        + Add Manually
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Sort controls */}
       <div className="bg-white rounded-lg p-4 shadow">
         <div className="grid md:grid-cols-4 gap-4">
@@ -334,12 +511,18 @@ export function BuyListTab() {
             </label>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
+              onChange={(e) => {
+                const next = e.target.value;
+                setSortBy(next);
+                // Most-gaps-filled first is almost always what you want here
+                if (next === "gaps_filled") setSortDesc(true);
+              }}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             >
               <option value="rank">Rank</option>
               <option value="title">Title</option>
               <option value="updated_at">Last Updated</option>
+              <option value="gaps_filled">Gaps Filled</option>
             </select>
           </div>
           <div className="flex items-end">
@@ -348,6 +531,16 @@ export function BuyListTab() {
               className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
             >
               {sortDesc ? "↓ Desc" : "↑ Asc"}
+            </button>
+          </div>
+          <div className="flex items-end">
+            <button
+              onClick={handleReRank}
+              disabled={reranking || buyList.length === 0}
+              title="Set each game's priority rank to match the order shown right now"
+              className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+            >
+              {reranking ? "Re-ranking…" : "🔢 Re-rank from this order"}
             </button>
           </div>
         </div>

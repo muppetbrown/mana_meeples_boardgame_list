@@ -512,6 +512,30 @@ export async function bulkImportBuyListCSV(file) {
   return r.data;
 }
 
+/**
+ * Re-rank 'games to add' entries to match a given display order: the Nth id
+ * in orderedIds gets rank N (1-based).
+ * @param {number[]} orderedIds - Buy list entry IDs in desired priority order
+ * @returns {Promise<Object>} Response with total and items array (freshly ranked)
+ */
+export async function reorderBuyList(orderedIds) {
+  const r = await api.put("/admin/buy-list/reorder", { ordered_ids: orderedIds });
+  return r.data;
+}
+
+/**
+ * Ask Claude for games worth adding, grounded in this library's actual
+ * collection and gap analysis. Each suggestion is best-effort matched to a
+ * BGG ID so it can be added with one click; otherwise a BGG search link is
+ * provided instead.
+ * @param {number} count - How many suggestions to request (1-12)
+ * @returns {Promise<Object>} { suggestions: [...] }
+ */
+export async function suggestBuyListGames(count = 6) {
+  const r = await api.post("/admin/buy-list/suggest", { count });
+  return r.data;
+}
+
 // ============================================================================
 // SLEEVE MANAGEMENT API METHODS
 // ============================================================================

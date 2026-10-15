@@ -73,6 +73,11 @@ BGG_API_KEY = os.getenv("BGG_API_KEY", "")
 if not BGG_API_KEY:
     _log.warning("BGG_API_KEY not set - BGG API requests may be rate limited or fail")
 
+# Anthropic (Claude) API configuration - used for the "Suggest Additional Games" feature
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+if not ANTHROPIC_API_KEY and not os.getenv("CI"):
+    _log.warning("ANTHROPIC_API_KEY not set - game suggestion requests will be unavailable")
+
 # Rate limiting configuration
 RATE_LIMIT_ATTEMPTS = int(os.getenv("RATE_LIMIT_ATTEMPTS", "5"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "300"))  # 5 minutes

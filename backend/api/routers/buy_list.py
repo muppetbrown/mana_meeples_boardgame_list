@@ -20,7 +20,8 @@ from sqlalchemy.orm import Session, joinedload
 from api.dependencies import require_admin_auth
 from database import get_db
 from models import BuyListGame, Game
-from schemas import BuyListGameCreate, BuyListGameUpdate
+from schemas import BuyListGameCreate, BuyListGameUpdate, BuyListReorderRequest, SuggestGamesRequest
+from services.game_suggestion_service import SuggestionServiceError, generate_suggestions
 from services.gap_analysis import annotate_candidate, compute_library_gaps
 
 logger = logging.getLogger(__name__)
@@ -65,6 +66,14 @@ def build_buy_list_response(
     return result
 
 
+def _gaps_filled_count(result: Dict[str, Any]) -> int:
+    """How many library gaps a 'games to add' entry's gap_match would fill."""
+    gap_match = result.get("gap_match") or {}
+    count = 1 if gap_match.get("category_is_gap") else 0
+    count += len(gap_match.get("matching_player_count_gaps") or [])
+    return count
+
+
 # ------------------------------------------------------------------------------
 # Library Gap Analysis
 # ------------------------------------------------------------------------------
@@ -83,6 +92,25 @@ async def get_library_gaps(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Failed to compute library gaps")
 
 
+@router.post("/suggest", dependencies=[Depends(require_admin_auth)])
+async def suggest_games(data: SuggestGamesRequest, db: Session = Depends(get_db)):
+    """
+    Ask Claude for games worth adding, grounded in this library's actual
+    collection and gap analysis. Each suggestion is best-effort matched to a
+    BGG ID via BGG search so the frontend can offer a one-click add; a
+    suggestion with no confident match still gets a BGG search link.
+    """
+    try:
+        suggestions = await generate_suggestions(db, count=data.count)
+        return {"suggestions": suggestions}
+    except SuggestionServiceError as e:
+        logger.warning(f"Suggestion request unavailable: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error generating game suggestions: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate game suggestions")
+
+
 # ------------------------------------------------------------------------------
 # 'Games to Add' Management Endpoints
 # ------------------------------------------------------------------------------
@@ -92,7 +120,7 @@ async def get_library_gaps(db: Session = Depends(get_db)):
 async def list_buy_list_games(
     db: Session = Depends(get_db),
     on_buy_list: Optional[bool] = Query(None, description="Filter by on_buy_list status"),
-    sort_by: str = Query("rank", description="Sort field: rank, title, updated_at"),
+    sort_by: str = Query("rank", description="Sort field: rank, title, updated_at, gaps_filled"),
     sort_desc: bool = Query(False, description="Sort in descending order"),
 ):
     """
@@ -120,10 +148,15 @@ async def list_buy_list_games(
                 desc(BuyListGame.updated_at) if sort_desc else BuyListGame.updated_at
             )
         else:
+            # gaps_filled (and any unrecognized value) - gap count isn't a column,
+            # so fetch in a stable base order and sort in Python below.
             stmt = stmt.order_by(BuyListGame.rank.nullslast())
 
         buy_list_entries = db.execute(stmt).scalars().all()
         results = [build_buy_list_response(entry, gaps) for entry in buy_list_entries]
+
+        if sort_by == "gaps_filled":
+            results.sort(key=_gaps_filled_count, reverse=sort_desc)
 
         return {"total": len(results), "items": results}
 
@@ -258,6 +291,56 @@ async def update_buy_list_game(
         logger.error(f"Error updating buy list game: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to update buy list game")
+
+
+@router.put("/reorder", dependencies=[Depends(require_admin_auth)])
+async def reorder_buy_list(data: BuyListReorderRequest, db: Session = Depends(get_db)):
+    """
+    Re-rank 'games to add' entries to match a given display order: the Nth id
+    in ordered_ids gets rank N (1-based). Used by the "Re-rank" action, which
+    captures whatever order the list is currently sorted in (e.g. by gaps
+    filled) and turns it into persisted priority numbers.
+    """
+    try:
+        entries = db.execute(
+            select(BuyListGame).where(BuyListGame.id.in_(data.ordered_ids))
+        ).scalars().all()
+        entries_by_id = {entry.id: entry for entry in entries}
+
+        missing = [i for i in data.ordered_ids if i not in entries_by_id]
+        if missing:
+            raise HTTPException(
+                status_code=404, detail=f"Buy list entries not found: {missing}"
+            )
+
+        now = datetime.now(timezone.utc)
+        for position, entry_id in enumerate(data.ordered_ids, start=1):
+            entry = entries_by_id[entry_id]
+            entry.rank = position
+            entry.updated_at = now
+
+        db.commit()
+
+        gaps = compute_library_gaps(db)
+        stmt = (
+            select(BuyListGame)
+            .options(joinedload(BuyListGame.game))
+            .where(BuyListGame.on_buy_list == True)  # noqa: E712
+            .order_by(BuyListGame.rank.nullslast())
+        )
+        buy_list_entries = db.execute(stmt).scalars().all()
+        results = [build_buy_list_response(entry, gaps) for entry in buy_list_entries]
+
+        logger.info(f"Re-ranked {len(data.ordered_ids)} buy list entries")
+
+        return {"total": len(results), "items": results}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error re-ranking buy list: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to re-rank buy list")
 
 
 @router.delete("/games/{buy_list_id}", dependencies=[Depends(require_admin_auth)])
