@@ -569,6 +569,29 @@ export async function dismissHLStockSignal(hlInternalId) {
   return r.data;
 }
 
+/**
+ * BoardGameGeek's current "Hotness" list, annotated with whether each game
+ * is already owned or already on the games-to-add list.
+ * @param {number} limit - How many trending games to return (1-50)
+ * @returns {Promise<Object>} { trending: [{ bgg_id, rank, title, year, thumbnail_url, status }] }
+ */
+export async function getTrendingGames(limit = 20) {
+  const r = await api.get("/admin/buy-list/trending", { params: { limit } });
+  return r.data;
+}
+
+/**
+ * Curated Spiel des Jahres / Kennerspiel des Jahres / Kinderspiel des Jahres
+ * winners, annotated with whether each is already owned or already on the
+ * games-to-add list.
+ * @param {number} years - How many most-recent award years to include, per award
+ * @returns {Promise<Object>} { award_winners: [{ year, award, award_label, title, bgg_id, thumbnail_url, status, bgg_search_url }] }
+ */
+export async function getAwardWinners(years = 6) {
+  const r = await api.get("/admin/buy-list/award-winners", { params: { years } });
+  return r.data;
+}
+
 // ============================================================================
 // SLEEVE MANAGEMENT API METHODS
 // ============================================================================

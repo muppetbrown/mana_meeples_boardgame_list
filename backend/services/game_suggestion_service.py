@@ -15,10 +15,10 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from bgg_service import search_bgg
+from bgg_service import get_hot_games, search_bgg
 from config import ANTHROPIC_API_KEY
 from models import BuyListGame, Game
-from services.gap_analysis import compute_library_gaps
+from services.gap_analysis import COMPLEXITY_LABELS, PLAYTIME_LABELS, compute_library_gaps
 from utils.helpers import CATEGORY_KEYS
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,12 @@ class SuggestionServiceError(Exception):
     """Raised when suggestions can't be generated (missing key, API failure)."""
 
 
-def _build_prompt(db: Session, count: int) -> tuple[str, str]:
+# How many BGG Hot List entries to mention in the prompt - context, not a
+# target list of its own, so this stays small relative to the owned list.
+MAX_TRENDING_IN_PROMPT = 15
+
+
+async def _build_prompt(db: Session, count: int) -> tuple[str, str]:
     gaps = compute_library_gaps(db)
 
     owned_rows = db.execute(
@@ -84,6 +89,16 @@ def _build_prompt(db: Session, count: int) -> tuple[str, str]:
         for g in gaps["player_count_gaps"]
         if g["is_gap"]
     ]
+    gap_complexity_bands = [
+        f"{COMPLEXITY_LABELS[g['complexity_band']]} ({g['pct_of_collection']}% of collection)"
+        for g in gaps["complexity_gaps"]
+        if g["is_gap"]
+    ]
+    gap_playtime_bands = [
+        f"{PLAYTIME_LABELS[g['playtime_band']]} ({g['pct_of_collection']}% of collection)"
+        for g in gaps["playtime_gaps"]
+        if g["is_gap"]
+    ]
 
     owned_lines = [
         f"- {title}" + (f" ({category})" if category else "") + (f" [{year}]" if year else "")
@@ -95,6 +110,16 @@ def _build_prompt(db: Session, count: int) -> tuple[str, str]:
         else ""
     )
 
+    try:
+        trending = await get_hot_games(limit=MAX_TRENDING_IN_PROMPT)
+    except Exception as e:
+        logger.warning(f"BGG hot list fetch failed while building suggestion prompt: {e}")
+        trending = []
+    trending_lines = [
+        f"#{g['rank']} {g['title']}" + (f" ({g['year']})" if g["year"] else "")
+        for g in trending
+    ]
+
     system = (
         "You are helping curate the board game library for Mana & Meeples, a board game cafe. "
         "The library is used for walk-in cafe play, gaming conventions, and corporate team-building "
@@ -103,15 +128,20 @@ def _build_prompt(db: Session, count: int) -> tuple[str, str]:
         "a game that is already owned or already on the games-to-add list below. Prefer games that "
         "are well-regarded (generally BGG-rated 7.0+) and currently in print or easy to find, and "
         "favor games that would plausibly fill one of the collection's noted gaps, without ignoring "
-        "strong games outside those gaps."
+        "strong games outside those gaps. The current BoardGameGeek trending list is extra context, "
+        "not a mandate - weigh it alongside fit for this library, don't just restate it."
     )
 
     user = (
         f"Suggest {count} board games worth adding to this library.\n\n"
         f"Collection size: {gaps['total_games']} owned games.\n\n"
         f"Under-represented categories (gaps): {', '.join(gap_categories) or 'none currently flagged'}\n"
-        f"Thin player-count coverage (gaps): {', '.join(gap_player_counts) or 'none currently flagged'}\n\n"
-        f"Already owned ({len(owned_rows)} games):\n"
+        f"Thin player-count coverage (gaps): {', '.join(gap_player_counts) or 'none currently flagged'}\n"
+        f"Thin complexity coverage (gaps): {', '.join(gap_complexity_bands) or 'none currently flagged'}\n"
+        f"Thin playtime coverage (gaps): {', '.join(gap_playtime_bands) or 'none currently flagged'}\n\n"
+        f"Currently trending on BoardGameGeek (recent community activity):\n"
+        + ("\n".join(trending_lines) if trending_lines else "(trending data unavailable right now)")
+        + f"\n\nAlready owned ({len(owned_rows)} games):\n"
         + "\n".join(owned_lines)
         + truncated_note
         + "\n\nAlready on the games-to-add list (do not re-suggest these): "
@@ -131,7 +161,7 @@ async def generate_suggestions(db: Session, count: int = 6) -> List[dict]:
             "ANTHROPIC_API_KEY is not configured - set it in the backend environment to enable suggestions"
         )
 
-    system, user = _build_prompt(db, count)
+    system, user = await _build_prompt(db, count)
     client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
     try:
