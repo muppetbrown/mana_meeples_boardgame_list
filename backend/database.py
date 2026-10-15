@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, event
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
 from config import (
@@ -46,7 +46,7 @@ logger.info(
 
 # Primary database engine (write operations)
 logger.info(
-    f"Configuring primary database engine for: {DATABASE_URL.split('@')[0] if '@' in DATABASE_URL else DATABASE_URL}@..."
+    f"Configuring primary database engine for: {make_url(DATABASE_URL).render_as_string(hide_password=True)}"
 )
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 # Bound lock waits and close leaked idle transactions (no-op on SQLite)
@@ -64,7 +64,7 @@ SessionLocal = sessionmaker(
 # Falls back to primary database if READ_REPLICA_URL is not configured
 if READ_REPLICA_URL:
     logger.info(
-        f"Configuring read replica engine for: {READ_REPLICA_URL.split('@')[0] if '@' in READ_REPLICA_URL else 'configured'}@..."
+        f"Configuring read replica engine for: {make_url(READ_REPLICA_URL).render_as_string(hide_password=True)}"
     )
     read_engine = create_engine(READ_REPLICA_URL, **engine_kwargs)
     install_session_settings(
@@ -89,7 +89,7 @@ else:
 # with the main pool budget.
 if HL_STOCK_DATABASE_URL:
     logger.info(
-        f"Configuring HL stock engine for: {HL_STOCK_DATABASE_URL.split('@')[0] if '@' in HL_STOCK_DATABASE_URL else 'configured'}@..."
+        f"Configuring HL stock engine for: {make_url(HL_STOCK_DATABASE_URL).render_as_string(hide_password=True)}"
     )
     hl_stock_engine = create_engine(
         HL_STOCK_DATABASE_URL,
