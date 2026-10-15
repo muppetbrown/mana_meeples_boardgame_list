@@ -1,24 +1,27 @@
 # api/routers/buy_list.py
 """
-Buy List API endpoints for managing games to purchase and tracking prices.
-Admin-only endpoints for managing buy list, LPG status, and price data.
+'Games to add' API endpoints: a curated, gap-aware list of candidate games
+to add to the collection. Admin-only.
+
+Replaces the earlier price-tracking buy list (BoardGameOracle scraping,
+LPG RRP/status) now that games are bought through direct distributor
+accounts rather than being hunted for the best online price.
 """
 import csv
 import io
-import json
 import logging
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, joinedload
 
 from api.dependencies import require_admin_auth
 from database import get_db
-from models import BuyListGame, Game, PriceOffer, PriceSnapshot
+from models import BuyListGame, Game
 from schemas import BuyListGameCreate, BuyListGameUpdate
+from services.gap_analysis import annotate_candidate, compute_library_gaps
 
 logger = logging.getLogger(__name__)
 _sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
@@ -27,64 +30,15 @@ _sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for log
 router = APIRouter(prefix="/api/admin/buy-list", tags=["buy-list"])
 
 
-def compute_buy_filter(
-    best_price: Optional[float],
-    lpg_status: Optional[str],
-    lpg_rrp: Optional[float],
-    discount_pct: Optional[float],
-) -> bool:
-    """
-    Compute whether a game should be filtered/highlighted for buying.
-
-    Excel formula logic:
-    =LET(
-      b, [@BEST],
-      s, [@[LPG_Status]],
-      r, [@[LPG_RRP]],
-      d, [@Discount],
-      OR(
-        AND(
-          OR(s={"AVAILABLE","BACK_ORDER"}),
-          IF(ISNUMBER(b), AND(b<>0, b*2<=r), FALSE)
-        ),
-        AND(
-          OR(s={"NOT_FOUND","BACK_ORDER_OOS"}),
-          d>30
-        )
-      )
-    )
-    """
-    if not lpg_status:
-        return False
-
-    # Condition 1: Status is AVAILABLE or BACK_ORDER, and best price * 2 <= RRP
-    if lpg_status in ["AVAILABLE", "BACK_ORDER"]:
-        if best_price and lpg_rrp and best_price > 0:
-            if best_price * 2 <= lpg_rrp:
-                return True
-
-    # Condition 2: Status is NOT_FOUND or BACK_ORDER_OOS, and discount > 30%
-    if lpg_status in ["NOT_FOUND", "BACK_ORDER_OOS"]:
-        if discount_pct and discount_pct > 30:
-            return True
-
-    return False
-
-
 def build_buy_list_response(
-    buy_list_entry: BuyListGame, latest_price: Optional[PriceSnapshot] = None
+    buy_list_entry: BuyListGame, gaps: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
-    """Build buy list response with computed buy_filter field"""
-    from datetime import timezone
-
-    # Convert to dict
+    """Build a 'games to add' response, optionally annotated with gap matches."""
     result = {
         "id": buy_list_entry.id,
         "game_id": buy_list_entry.game_id,
         "rank": buy_list_entry.rank,
-        "bgo_link": buy_list_entry.bgo_link,
-        "lpg_rrp": float(buy_list_entry.lpg_rrp) if buy_list_entry.lpg_rrp else None,
-        "lpg_status": buy_list_entry.lpg_status,
+        "notes": buy_list_entry.notes,
         "on_buy_list": buy_list_entry.on_buy_list,
         "created_at": buy_list_entry.created_at.replace(tzinfo=timezone.utc).isoformat(),
         "updated_at": buy_list_entry.updated_at.replace(tzinfo=timezone.utc).isoformat(),
@@ -97,52 +51,40 @@ def build_buy_list_response(
             buy_list_entry.game.image if buy_list_entry.game else None
         ),
         "bgg_id": buy_list_entry.game.bgg_id if buy_list_entry.game else None,
-        # Latest price data
-        "latest_price": None,
-        "buy_filter": None,
+        "mana_meeple_category": (
+            buy_list_entry.game.mana_meeple_category if buy_list_entry.game else None
+        ),
+        "players_min": buy_list_entry.game.players_min if buy_list_entry.game else None,
+        "players_max": buy_list_entry.game.players_max if buy_list_entry.game else None,
+        "gap_match": None,
     }
 
-    if latest_price:
-        result["latest_price"] = {
-            "id": latest_price.id,
-            "game_id": latest_price.game_id,
-            "checked_at": latest_price.checked_at.replace(tzinfo=timezone.utc).isoformat(),
-            "low_price": (
-                float(latest_price.low_price) if latest_price.low_price else None
-            ),
-            "mean_price": (
-                float(latest_price.mean_price) if latest_price.mean_price else None
-            ),
-            "best_price": (
-                float(latest_price.best_price) if latest_price.best_price else None
-            ),
-            "best_store": latest_price.best_store,
-            "discount_pct": (
-                float(latest_price.discount_pct) if latest_price.discount_pct else None
-            ),
-            "disc_mean_pct": (
-                float(latest_price.disc_mean_pct) if latest_price.disc_mean_pct else None
-            ),
-            "delta": float(latest_price.delta) if latest_price.delta else None,
-        }
-
-        # Compute buy filter
-        result["buy_filter"] = compute_buy_filter(
-            best_price=(
-                float(latest_price.best_price) if latest_price.best_price else None
-            ),
-            lpg_status=buy_list_entry.lpg_status,
-            lpg_rrp=float(buy_list_entry.lpg_rrp) if buy_list_entry.lpg_rrp else None,
-            discount_pct=(
-                float(latest_price.discount_pct) if latest_price.discount_pct else None
-            ),
-        )
+    if gaps is not None and buy_list_entry.game:
+        result["gap_match"] = annotate_candidate(buy_list_entry.game, gaps)
 
     return result
 
 
 # ------------------------------------------------------------------------------
-# Buy List Management Endpoints
+# Library Gap Analysis
+# ------------------------------------------------------------------------------
+
+
+@router.get("/gaps", dependencies=[Depends(require_admin_auth)])
+async def get_library_gaps(db: Session = Depends(get_db)):
+    """
+    Where the owned collection is thin: category balance and player-count
+    coverage, each compared against an even split across their own buckets.
+    """
+    try:
+        return compute_library_gaps(db)
+    except Exception as e:
+        logger.error(f"Error computing library gaps: {e}")
+        raise HTTPException(status_code=500, detail="Failed to compute library gaps")
+
+
+# ------------------------------------------------------------------------------
+# 'Games to Add' Management Endpoints
 # ------------------------------------------------------------------------------
 
 
@@ -150,41 +92,28 @@ def build_buy_list_response(
 async def list_buy_list_games(
     db: Session = Depends(get_db),
     on_buy_list: Optional[bool] = Query(None, description="Filter by on_buy_list status"),
-    lpg_status: Optional[str] = Query(None, description="Filter by LPG status"),
-    buy_filter: Optional[str] = Query(
-        None, description="Filter by computed buy_filter value: 'true', 'false', or 'no_price'"
-    ),
-    sort_by: str = Query("rank", description="Sort field: rank, title, updated_at, discount"),
+    sort_by: str = Query("rank", description="Sort field: rank, title, updated_at"),
     sort_desc: bool = Query(False, description="Sort in descending order"),
 ):
     """
-    Get all games on the buy list with their latest pricing data.
-    Supports filtering and sorting.
-
-    buy_filter options:
-    - 'true' or 'buy_now': Show games recommended to buy now
-    - 'false' or 'not_recommended': Show games not recommended to buy
-    - 'no_price': Show games with no BGO price data AND LPG status is NOT_FOUND or BACK_ORDER_OOS
+    Get all candidate games on the 'games to add' list, annotated with which
+    library gaps (if any) each one would help fill. Supports filtering and sorting.
     """
     try:
-        # Base query with eager loading
+        gaps = compute_library_gaps(db)
+
         stmt = (
             select(BuyListGame)
             .options(joinedload(BuyListGame.game))
             .where(BuyListGame.on_buy_list == True)
         )
 
-        # Apply filters
         if on_buy_list is not None:
             stmt = stmt.where(BuyListGame.on_buy_list == on_buy_list)
 
-        if lpg_status:
-            stmt = stmt.where(BuyListGame.lpg_status == lpg_status)
-
-        # Apply sorting
         if sort_by == "rank":
             stmt = stmt.order_by(
-                desc(BuyListGame.rank) if sort_desc else BuyListGame.rank
+                desc(BuyListGame.rank) if sort_desc else BuyListGame.rank.nullslast()
             )
         elif sort_by == "title":
             stmt = stmt.join(Game).order_by(
@@ -194,94 +123,17 @@ async def list_buy_list_games(
             stmt = stmt.order_by(
                 desc(BuyListGame.updated_at) if sort_desc else BuyListGame.updated_at
             )
-        elif sort_by == "discount":
-            # For discount sorting, we need to handle it after fetching
-            # because we need the latest price snapshot per game
-            # So we'll get all entries and sort in Python
-            pass
         else:
-            # Default to rank
             stmt = stmt.order_by(BuyListGame.rank.nullslast())
 
         buy_list_entries = db.execute(stmt).scalars().all()
-
-        # Get latest price snapshots for all games
-        game_ids = [entry.game_id for entry in buy_list_entries]
-        if game_ids:
-            # Subquery to get latest checked_at per game
-            latest_dates = (
-                select(
-                    PriceSnapshot.game_id,
-                    func.max(PriceSnapshot.checked_at).label("max_date"),
-                )
-                .where(PriceSnapshot.game_id.in_(game_ids))
-                .group_by(PriceSnapshot.game_id)
-                .subquery()
-            )
-
-            # Get full price snapshots for latest dates
-            latest_prices = db.execute(
-                select(PriceSnapshot)
-                .join(
-                    latest_dates,
-                    (PriceSnapshot.game_id == latest_dates.c.game_id)
-                    & (PriceSnapshot.checked_at == latest_dates.c.max_date),
-                )
-            ).scalars().all()
-
-            # Create lookup dict
-            price_lookup = {price.game_id: price for price in latest_prices}
-        else:
-            price_lookup = {}
-
-        # Build response with computed buy_filter
-        results = []
-        for entry in buy_list_entries:
-            latest_price = price_lookup.get(entry.game_id)
-            result = build_buy_list_response(entry, latest_price)
-
-            # Apply buy_filter filter if requested
-            if buy_filter is not None:
-                # Handle string values: "true", "false", "no_price"
-                if buy_filter == "no_price":
-                    # Show games with no BGO price data AND status is NOT_FOUND or BACK_ORDER_OOS
-                    # No price data means either:
-                    # 1. No price snapshot record at all (latest_price is None)
-                    # 2. Price snapshot exists but has no actual prices (best_price is None)
-                    has_no_price = (
-                        result["latest_price"] is None or
-                        result["latest_price"]["best_price"] is None
-                    )
-                    is_not_found_or_oos = entry.lpg_status in ["NOT_FOUND", "BACK_ORDER_OOS"]
-                    if has_no_price and is_not_found_or_oos:
-                        results.append(result)
-                elif buy_filter in ["true", "buy_now"]:
-                    # Show games recommended to buy (buy_filter == True)
-                    if result["buy_filter"] is True:
-                        results.append(result)
-                elif buy_filter in ["false", "not_recommended"]:
-                    # Show games not recommended (buy_filter == False)
-                    if result["buy_filter"] is False:
-                        results.append(result)
-            else:
-                results.append(result)
-
-        # Sort by discount if requested (needs to be done after building results)
-        if sort_by == "discount":
-            results.sort(
-                key=lambda x: (
-                    x["latest_price"]["discount_pct"]
-                    if x["latest_price"] and x["latest_price"]["discount_pct"] is not None
-                    else -1
-                ),
-                reverse=sort_desc
-            )
+        results = [build_buy_list_response(entry, gaps) for entry in buy_list_entries]
 
         return {"total": len(results), "items": results}
 
     except Exception as e:
-        logger.error(f"Error listing buy list games: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve buy list")
+        logger.error(f"Error listing games to add: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve games to add")
 
 
 @router.post("/games", dependencies=[Depends(require_admin_auth)])
@@ -289,7 +141,7 @@ async def add_to_buy_list(
     data: BuyListGameCreate, db: Session = Depends(get_db)
 ):
     """
-    Add a game to the buy list by BGG ID.
+    Add a candidate game to the 'games to add' list by BGG ID.
     If the game doesn't exist in the database, it will be imported from BoardGameGeek first.
     """
     try:
@@ -348,9 +200,7 @@ async def add_to_buy_list(
         buy_list_entry = BuyListGame(
             game_id=game.id,
             rank=data.rank,
-            bgo_link=data.bgo_link,
-            lpg_rrp=data.lpg_rrp,
-            lpg_status=data.lpg_status,
+            notes=data.notes,
             on_buy_list=True,
         )
 
@@ -364,7 +214,7 @@ async def add_to_buy_list(
 
         logger.info(f"Added game '{game.title}' (BGG ID {data.bgg_id}) to buy list")
 
-        return build_buy_list_response(buy_list_entry)
+        return build_buy_list_response(buy_list_entry, compute_library_gaps(db))
 
     except HTTPException:
         raise
@@ -378,7 +228,7 @@ async def add_to_buy_list(
 async def update_buy_list_game(
     buy_list_id: int, data: BuyListGameUpdate, db: Session = Depends(get_db)
 ):
-    """Update buy list game details (rank, LPG status, etc.)"""
+    """Update a 'games to add' entry (rank, notes, on_buy_list)"""
     try:
         buy_list_entry = db.execute(
             select(BuyListGame).where(BuyListGame.id == buy_list_id)
@@ -389,12 +239,8 @@ async def update_buy_list_game(
         # Update fields
         if data.rank is not None:
             buy_list_entry.rank = data.rank
-        if data.bgo_link is not None:
-            buy_list_entry.bgo_link = data.bgo_link
-        if data.lpg_rrp is not None:
-            buy_list_entry.lpg_rrp = data.lpg_rrp
-        if data.lpg_status is not None:
-            buy_list_entry.lpg_status = data.lpg_status
+        if data.notes is not None:
+            buy_list_entry.notes = data.notes
         if data.on_buy_list is not None:
             buy_list_entry.on_buy_list = data.on_buy_list
 
@@ -406,17 +252,9 @@ async def update_buy_list_game(
         # Access game relationship to ensure it's loaded
         _ = buy_list_entry.game
 
-        # Get latest price
-        latest_price = db.execute(
-            select(PriceSnapshot)
-            .where(PriceSnapshot.game_id == buy_list_entry.game_id)
-            .order_by(desc(PriceSnapshot.checked_at))
-            .limit(1)
-        ).scalar_one_or_none()
-
         logger.info(f"Updated buy list entry {_sl(buy_list_id)}")
 
-        return build_buy_list_response(buy_list_entry, latest_price)
+        return build_buy_list_response(buy_list_entry, compute_library_gaps(db))
 
     except HTTPException:
         raise
@@ -428,7 +266,7 @@ async def update_buy_list_game(
 
 @router.delete("/games/{buy_list_id}", dependencies=[Depends(require_admin_auth)])
 async def remove_from_buy_list(buy_list_id: int, db: Session = Depends(get_db)):
-    """Remove a game from the buy list"""
+    """Remove a game from the 'games to add' list"""
     try:
         buy_list_entry = db.execute(
             select(BuyListGame).where(BuyListGame.id == buy_list_id)
@@ -500,15 +338,7 @@ async def _bulk_import_buy_list_csv_task(text_content: str) -> None:
                     except ValueError:
                         logger.warning(f"Row {row_num}: Invalid rank '{_sl(row['rank'])}'")
 
-                lpg_rrp = None
-                if row.get("lpg_rrp", "").strip():
-                    try:
-                        lpg_rrp = float(row["lpg_rrp"])
-                    except ValueError:
-                        logger.warning(f"Row {row_num}: Invalid lpg_rrp '{_sl(row['lpg_rrp'])}'")
-
-                bgo_link = row.get("bgo_link", "").strip() or None
-                lpg_status = row.get("lpg_status", "").strip() or None
+                notes = row.get("notes", "").strip() or None
 
                 # Check if game exists in database
                 game = db.execute(
@@ -564,12 +394,8 @@ async def _bulk_import_buy_list_csv_task(text_content: str) -> None:
                     # Update existing entry
                     if rank is not None:
                         existing.rank = rank
-                    if bgo_link:
-                        existing.bgo_link = bgo_link
-                    if lpg_rrp is not None:
-                        existing.lpg_rrp = lpg_rrp
-                    if lpg_status:
-                        existing.lpg_status = lpg_status
+                    if notes:
+                        existing.notes = notes
                     existing.updated_at = datetime.now(timezone.utc)
                     updated_count += 1
                 else:
@@ -577,9 +403,7 @@ async def _bulk_import_buy_list_csv_task(text_content: str) -> None:
                     buy_list_entry = BuyListGame(
                         game_id=game.id,
                         rank=rank,
-                        bgo_link=bgo_link,
-                        lpg_rrp=lpg_rrp,
-                        lpg_status=lpg_status,
+                        notes=notes,
                         on_buy_list=True,
                     )
                     db.add(buy_list_entry)
@@ -611,14 +435,12 @@ async def bulk_import_buy_list_csv(
     file: UploadFile = File(...),
 ):
     """
-    Bulk import games to buy list from CSV file.
+    Bulk import candidate games to the 'games to add' list from CSV file.
 
-    Expected CSV columns: bgg_id, rank, bgo_link, lpg_rrp, lpg_status
+    Expected CSV columns: bgg_id, rank, notes
     - bgg_id: Required - BoardGameGeek ID
     - rank: Optional - Numeric rank/priority
-    - bgo_link: Optional - BoardGameOracle link
-    - lpg_rrp: Optional - Lets Play Games RRP price
-    - lpg_status: Optional - LPG stock status (AVAILABLE, BACK_ORDER, NOT_FOUND, etc.)
+    - notes: Optional - Curation notes (e.g. why this fills a gap)
 
     Games not in database will be auto-imported from BoardGameGeek. Runs in
     the background since new rows require a BGG fetch each - see
@@ -655,177 +477,3 @@ async def bulk_import_buy_list_csv(
         "message": f"Started importing {row_count} row(s) from CSV in the background. Check server logs for results.",
         "count": row_count,
     }
-
-
-# ------------------------------------------------------------------------------
-# Price Data Endpoints
-# ------------------------------------------------------------------------------
-
-
-@router.post("/import-prices", dependencies=[Depends(require_admin_auth)])
-async def import_prices_from_json(
-    source_file: str = Query(..., description="Filename of JSON price data"),
-    db: Session = Depends(get_db),
-):
-    """
-    Import price data from GitHub Actions JSON output.
-    Expected file location: backend/price_data/{source_file}
-
-    Uses batch processing to prevent blocking and improve performance.
-    """
-    try:
-        # Load JSON file — resolve file path from a trusted directory enumeration
-        # so user input never touches path construction; it is only used as a
-        # lookup key against the set of files that actually exist in price_data/.
-        price_data_dir = (Path(__file__).parent.parent.parent / "price_data").resolve()
-        known_files: dict[str, Path] = {
-            p.name: p for p in price_data_dir.iterdir() if p.is_file()
-        }
-        json_file = known_files.get(source_file)
-
-        if json_file is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Price data file not found: {source_file}",
-            )
-
-        with open(json_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-
-        # Validate structure
-        if "checked_at" not in data or "games" not in data:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid JSON structure: must contain 'checked_at' and 'games'",
-            )
-
-        checked_at = datetime.fromisoformat(data["checked_at"])
-        games_data = data["games"]
-        total_games = len(games_data)
-
-        imported_count = 0
-        skipped_count = 0
-
-        # Batch size for commits to prevent large transactions from blocking
-        BATCH_SIZE = 50
-        batch_count = 0
-
-        logger.info(f"Starting price import for {total_games} games from {_sl(source_file)}")
-
-        for idx, game_data in enumerate(games_data, 1):
-            try:
-                # Find game by BGG ID or title
-                game = None
-                if "bgg_id" in game_data and game_data["bgg_id"]:
-                    game = db.execute(
-                        select(Game)
-                        .where(Game.bgg_id == game_data["bgg_id"])
-                    ).scalar_one_or_none()
-
-                if not game and "name" in game_data:
-                    game = db.execute(
-                        select(Game)
-                        .where(Game.title == game_data["name"])
-                    ).scalar_one_or_none()
-
-                if not game:
-                    logger.debug(
-                        f"Game not found for price import ({idx}/{total_games}): {game_data.get('name')}"
-                    )
-                    skipped_count += 1
-                    continue
-
-                # Create price snapshot
-                price_snapshot = PriceSnapshot(
-                    game_id=game.id,
-                    checked_at=checked_at,
-                    low_price=game_data.get("low_price"),
-                    mean_price=game_data.get("mean_price"),
-                    best_price=game_data.get("best_price"),
-                    best_store=game_data.get("best_store"),
-                    discount_pct=game_data.get("discount_pct"),
-                    disc_mean_pct=game_data.get("disc_mean_pct"),
-                    delta=game_data.get("delta"),
-                    source_file=source_file,
-                )
-                db.add(price_snapshot)
-
-                # Import price offers if present
-                if "offers" in game_data:
-                    for offer_data in game_data["offers"]:
-                        price_offer = PriceOffer(
-                            game_id=game.id,
-                            checked_at=checked_at,
-                            store=offer_data.get("store"),
-                            price_nzd=offer_data.get("price_nzd"),
-                            availability=offer_data.get("availability"),
-                            store_link=offer_data.get("store_link"),
-                            in_stock=offer_data.get("in_stock"),
-                        )
-                        db.add(price_offer)
-
-                imported_count += 1
-                batch_count += 1
-
-                # Commit in batches to prevent large transactions from blocking
-                if batch_count >= BATCH_SIZE:
-                    db.commit()
-                    batch_count = 0
-                    logger.info(f"Progress: {idx}/{total_games} games processed ({imported_count} imported, {skipped_count} skipped)")
-
-            except Exception as e:
-                logger.error(f"Error importing price for game ({idx}/{total_games}): {e}")
-                skipped_count += 1
-                # Don't let one error stop the entire import
-                continue
-
-        # Final commit for remaining items
-        if batch_count > 0:
-            db.commit()
-
-        logger.info(
-            f"Price import completed: {imported_count} imported, {skipped_count} skipped out of {total_games} total"
-        )
-
-        return {
-            "message": "Price data imported successfully",
-            "imported": imported_count,
-            "skipped": skipped_count,
-            "total": total_games,
-            "checked_at": checked_at.isoformat(),
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error importing prices from JSON: {e}")
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Failed to import price data")
-
-
-@router.get("/last-updated", dependencies=[Depends(require_admin_auth)])
-async def get_last_price_update(db: Session = Depends(get_db)):
-    """Get timestamp of last price update"""
-    try:
-        latest_snapshot = db.execute(
-            select(PriceSnapshot).order_by(desc(PriceSnapshot.checked_at)).limit(1)
-        ).scalar_one_or_none()
-
-        if not latest_snapshot:
-            return {"last_updated": None, "source_file": None}
-
-        # Ensure timestamp is treated as UTC and includes timezone in ISO string
-        # Database stores naive datetime but it's actually UTC
-        from datetime import timezone
-        timestamp_utc = latest_snapshot.checked_at.replace(tzinfo=timezone.utc)
-
-        return {
-            "last_updated": timestamp_utc.isoformat(),
-            "source_file": latest_snapshot.source_file,
-        }
-
-    except Exception as e:
-        logger.error(f"Error getting last price update: {e}")
-        raise HTTPException(
-            status_code=500, detail="Failed to get last price update"
-        )
