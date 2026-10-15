@@ -5,6 +5,7 @@ from sqlalchemy.pool import QueuePool
 from config import (
     DATABASE_URL,
     READ_REPLICA_URL,
+    HL_STOCK_DATABASE_URL,
     DB_POOL_SIZE,
     DB_MAX_OVERFLOW,
     DB_POOL_TIMEOUT,
@@ -79,6 +80,39 @@ else:
     logger.info("Read replica not configured - using primary database for reads")
     read_engine = engine
     ReadSessionLocal = SessionLocal
+
+
+# HL Timaru stock engine (optional, read-only connection to a separate retail
+# database on the same Render workspace, via a dedicated read-only Postgres
+# role). Kept to a small dedicated pool - this is a low-traffic admin-panel
+# query against someone else's database, not something that should compete
+# with the main pool budget.
+if HL_STOCK_DATABASE_URL:
+    logger.info(
+        f"Configuring HL stock engine for: {HL_STOCK_DATABASE_URL.split('@')[0] if '@' in HL_STOCK_DATABASE_URL else 'configured'}@..."
+    )
+    hl_stock_engine = create_engine(
+        HL_STOCK_DATABASE_URL,
+        poolclass=QueuePool,
+        pool_size=2,
+        max_overflow=3,
+        pool_timeout=DB_POOL_TIMEOUT,
+        pool_recycle=DB_POOL_RECYCLE,
+        pool_pre_ping=True,
+    )
+    install_session_settings(
+        hl_stock_engine,
+        lock_timeout_s=DB_LOCK_TIMEOUT_SECONDS,
+        idle_in_tx_timeout_s=DB_IDLE_IN_TX_TIMEOUT_SECONDS,
+        application_name="mana-meeples-hl-stock-read",
+    )
+    HLStockSessionLocal = sessionmaker(
+        autocommit=False, autoflush=False, bind=hl_stock_engine
+    )
+else:
+    logger.info("HL_STOCK_DATABASE_URL not configured - HL stock-signal panel unavailable")
+    hl_stock_engine = None
+    HLStockSessionLocal = None
 
 
 # ------------------------------------------------------------------------------

@@ -2,15 +2,20 @@
 Tests for the 'games to add' API endpoints (backend/api/routers/buy_list.py).
 
 Covers listing/sorting, adding (existing game and BGG auto-import),
-updating, removing, bulk CSV import, the library-gaps endpoint, and
-gap-match annotation on list/add/update responses.
+updating, removing, bulk CSV import, the library-gaps endpoint,
+gap-match annotation on list/add/update responses, and the HL Timaru
+stock-signal sync/link/dismiss endpoints.
 """
 
 import io
+from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, patch
 
+from sqlalchemy import select
+
 from api.routers.buy_list import build_buy_list_response
-from models import BuyListGame, Game
+from models import BuyListGame, Game, HLStockLink
+from services.hl_stock_service import HLStockServiceError
 
 
 class TestBuildBuyListResponse:
@@ -712,3 +717,220 @@ class TestSuggestGames:
     def test_suggest_count_out_of_range_rejected(self, client, admin_headers):
         response = client.post("/api/admin/buy-list/suggest", headers=admin_headers, json={"count": 50})
         assert response.status_code == 422
+
+
+def _fake_hl_item(internal_id, name, **overrides):
+    item = {
+        "internal_id": internal_id,
+        "name": name,
+        "sku": f"SKU-{internal_id}",
+        "current_stock": 3,
+        "price": 49.99,
+        "units_sold": 5,
+        "sale_days": 3,
+        "last_sale_date": date(2026, 10, 1),
+        "approx_revenue": 249.95,
+    }
+    item.update(overrides)
+    return item
+
+
+class TestListHLStockSignals:
+    """Test GET /api/admin/buy-list/hl-signals"""
+
+    def test_requires_auth(self, client):
+        response = client.get("/api/admin/buy-list/hl-signals")
+        assert response.status_code in (401, 403)
+
+    def test_unavailable_returns_503(self, client, admin_headers):
+        with patch(
+            "api.routers.buy_list.fetch_hl_board_game_signals",
+            side_effect=HLStockServiceError("HL_STOCK_DATABASE_URL not configured"),
+        ):
+            response = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers)
+        assert response.status_code == 503
+
+    def test_new_unmatched_product_is_returned_and_persisted(self, client, db_session, admin_headers):
+        fake_items = [_fake_hl_item(501, "Completely New Game")]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            response = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 1
+        item = data["items"][0]
+        assert item["hl_internal_id"] == 501
+        assert item["match_status"] == "unmatched"
+        assert item["linked_game"] is None
+        assert item["units_sold"] == 5
+        assert item["current_stock"] == 3
+
+        link = db_session.execute(
+            select(HLStockLink).where(HLStockLink.hl_internal_id == 501)
+        ).scalar_one()
+        assert link.game_id is None
+        assert link.hl_product_name == "Completely New Game"
+
+    def test_fuzzy_matches_existing_unowned_game(self, client, db_session, admin_headers):
+        game = Game(title="Wingspan: European Expansion", status="WISHLIST")
+        db_session.add(game)
+        db_session.commit()
+
+        fake_items = [_fake_hl_item(502, "Wingspan European Expansion")]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            response = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers)
+        assert response.status_code == 200
+        item = response.json()["items"][0]
+        assert item["match_status"] == "linked"
+        assert item["linked_game"]["title"] == "Wingspan: European Expansion"
+        assert item["match_confidence"] is not None
+
+    def test_excludes_already_owned_game(self, client, db_session, admin_headers):
+        game = Game(title="Catan", status="OWNED")
+        db_session.add(game)
+        db_session.flush()
+        db_session.add(HLStockLink(
+            hl_internal_id=503, game_id=game.id, hl_product_name="Catan",
+            last_synced_at=datetime.now(timezone.utc),
+        ))
+        db_session.commit()
+
+        fake_items = [_fake_hl_item(503, "Catan")]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            response = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers)
+        assert response.status_code == 200
+        assert response.json()["total"] == 0
+
+    def test_excludes_game_already_on_buy_list(self, client, db_session, admin_headers):
+        game = Game(title="Root", status="BUY_LIST")
+        db_session.add(game)
+        db_session.flush()
+        db_session.add(BuyListGame(game_id=game.id, on_buy_list=True))
+        db_session.add(HLStockLink(
+            hl_internal_id=504, game_id=game.id, hl_product_name="Root",
+            last_synced_at=datetime.now(timezone.utc),
+        ))
+        db_session.commit()
+
+        fake_items = [_fake_hl_item(504, "Root")]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            response = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers)
+        assert response.status_code == 200
+        assert response.json()["total"] == 0
+
+    def test_excludes_dismissed_product(self, client, db_session, admin_headers):
+        db_session.add(HLStockLink(
+            hl_internal_id=505, dismissed=True, hl_product_name="Junk Item",
+            last_synced_at=datetime.now(timezone.utc),
+        ))
+        db_session.commit()
+
+        fake_items = [_fake_hl_item(505, "Junk Item")]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            response = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers)
+        assert response.status_code == 200
+        assert response.json()["total"] == 0
+
+    def test_linked_product_is_not_rematched(self, client, db_session, admin_headers):
+        """A product already linked to a game keeps that link even if the
+        cached product name drifts from the matched title - it's never
+        silently re-resolved once confirmed."""
+        game = Game(title="Terraforming Mars", status="WISHLIST")
+        other_game = Game(title="Completely Different Game", status="WISHLIST")
+        db_session.add_all([game, other_game])
+        db_session.flush()
+        db_session.add(HLStockLink(
+            hl_internal_id=506, game_id=game.id, hl_product_name="Terraforming Mars",
+            match_confidence=None, last_synced_at=datetime.now(timezone.utc),
+        ))
+        db_session.commit()
+
+        fake_items = [_fake_hl_item(506, "Completely Different Game")]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            response = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers)
+        assert response.status_code == 200
+        item = response.json()["items"][0]
+        assert item["linked_game"]["title"] == "Terraforming Mars"
+
+    def test_sync_error_rolls_back_and_returns_500(self, client, admin_headers):
+        fake_items = [_fake_hl_item(507, "Some Game")]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items), \
+             patch("api.routers.buy_list.find_best_title_match", side_effect=RuntimeError("boom")):
+            response = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers)
+        assert response.status_code == 500
+
+
+class TestLinkHLStockSignal:
+    """Test POST /api/admin/buy-list/hl-signals/{id}/link"""
+
+    def test_requires_auth(self, client):
+        response = client.post("/api/admin/buy-list/hl-signals/1/link", json={"game_id": 1})
+        assert response.status_code in (401, 403)
+
+    def test_signal_not_found_returns_404(self, client, admin_headers):
+        response = client.post(
+            "/api/admin/buy-list/hl-signals/999/link", headers=admin_headers, json={"game_id": 1}
+        )
+        assert response.status_code == 404
+
+    def test_game_not_found_returns_404(self, client, db_session, admin_headers):
+        db_session.add(HLStockLink(
+            hl_internal_id=601, hl_product_name="Mystery Game",
+            last_synced_at=datetime.now(timezone.utc),
+        ))
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/buy-list/hl-signals/601/link", headers=admin_headers, json={"game_id": 999999}
+        )
+        assert response.status_code == 404
+
+    def test_link_success_clears_confidence_and_dismissed(self, client, db_session, admin_headers):
+        game = Game(title="Azul", status="WISHLIST")
+        db_session.add(game)
+        db_session.flush()
+        db_session.add(HLStockLink(
+            hl_internal_id=602, hl_product_name="Azul", match_confidence=70.0,
+            dismissed=True, last_synced_at=datetime.now(timezone.utc),
+        ))
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/buy-list/hl-signals/602/link", headers=admin_headers, json={"game_id": game.id}
+        )
+        assert response.status_code == 200
+        assert response.json()["linked_game_id"] == game.id
+
+        link = db_session.execute(
+            select(HLStockLink).where(HLStockLink.hl_internal_id == 602)
+        ).scalar_one()
+        assert link.game_id == game.id
+        assert link.match_confidence is None
+        assert link.dismissed is False
+
+
+class TestDismissHLStockSignal:
+    """Test POST /api/admin/buy-list/hl-signals/{id}/dismiss"""
+
+    def test_requires_auth(self, client):
+        response = client.post("/api/admin/buy-list/hl-signals/1/dismiss")
+        assert response.status_code in (401, 403)
+
+    def test_signal_not_found_returns_404(self, client, admin_headers):
+        response = client.post("/api/admin/buy-list/hl-signals/999/dismiss", headers=admin_headers)
+        assert response.status_code == 404
+
+    def test_dismiss_success(self, client, db_session, admin_headers):
+        db_session.add(HLStockLink(
+            hl_internal_id=701, hl_product_name="Dice Tower",
+            last_synced_at=datetime.now(timezone.utc),
+        ))
+        db_session.commit()
+
+        response = client.post("/api/admin/buy-list/hl-signals/701/dismiss", headers=admin_headers)
+        assert response.status_code == 200
+        assert response.json()["dismissed"] is True
+
+        link = db_session.execute(
+            select(HLStockLink).where(HLStockLink.hl_internal_id == 701)
+        ).scalar_one()
+        assert link.dismissed is True

@@ -130,6 +130,13 @@ class BuyListReorderRequest(BaseModel):
         return v
 
 
+class HLStockSignalLinkRequest(BaseModel):
+    """Schema for confirming/correcting the link between an HL Timaru stock
+    product and an existing game in this library."""
+
+    game_id: int
+
+
 # ------------------------------------------------------------------------------
 # Phase 1 Performance Optimization Schemas
 # ------------------------------------------------------------------------------
