@@ -73,7 +73,7 @@ function StaffViewContent() {
     const headerEl = headerRef.current;
     const topBarEl = topBarRef.current;
     if (!headerEl || !topBarEl || typeof ResizeObserver === "undefined") return undefined;
-    const update = () => {
+    const update = (_entries, _observer) => {
       document.documentElement.style.setProperty("--staff-header-h", `${headerEl.offsetHeight}px`);
       document.documentElement.style.setProperty("--staff-topbar-h", `${topBarEl.offsetHeight}px`);
     };
