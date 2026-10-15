@@ -13,6 +13,7 @@ import {
   importFromBGG,
   reorderBuyList,
   suggestBuyListGames,
+  getTrendingGames,
 } from "../../../api/client";
 import { CATEGORY_LABELS } from "../../../constants/categories";
 import { parseBggId } from "../../../utils/bgg";
@@ -21,6 +22,19 @@ const PLAYER_COUNT_LABELS = {
   "1": "1 player", "2": "2 players", "3": "3 players", "4": "4 players",
   "5": "5 players", "6": "6 players", "7": "7 players", "8": "8 players",
   "9+": "9+ players",
+};
+
+const COMPLEXITY_LABELS = {
+  light: "Light (under 2.0)",
+  medium: "Medium (2.0-3.0)",
+  heavy: "Heavy (3.0+)",
+};
+
+const PLAYTIME_LABELS = {
+  quick: "Quick (under 30 min)",
+  standard: "Standard (30-60 min)",
+  long: "Long (60-120 min)",
+  epic: "Epic (120+ min)",
 };
 
 /**
@@ -46,6 +60,10 @@ export function BuyListTab() {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestError, setSuggestError] = useState(null);
   const [addingSuggestionId, setAddingSuggestionId] = useState(null);
+  const [trending, setTrending] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [trendingError, setTrendingError] = useState(null);
+  const [addingTrendingId, setAddingTrendingId] = useState(null);
   const fileInputRef = useRef(null);
   const confirm = useConfirm();
 
@@ -66,6 +84,9 @@ export function BuyListTab() {
   }, [sortBy, sortDesc]);
   useEffect(() => {
     loadGaps();
+  }, []);
+  useEffect(() => {
+    loadTrending();
   }, []);
 
   const loadBuyList = async () => {
@@ -88,6 +109,38 @@ export function BuyListTab() {
       setGaps(data);
     } catch (err) {
       console.error("Failed to load library gaps:", err);
+    }
+  };
+
+  const loadTrending = async () => {
+    setTrendingLoading(true);
+    setTrendingError(null);
+    try {
+      const data = await getTrendingGames(20);
+      setTrending(data.trending || []);
+    } catch (err) {
+      console.error("Failed to load trending games:", err);
+      setTrendingError("Failed to load trending games from BoardGameGeek");
+    } finally {
+      setTrendingLoading(false);
+    }
+  };
+
+  const handleAddTrending = async (game) => {
+    setAddingTrendingId(game.bgg_id);
+    try {
+      setError(null);
+      await addToBuyList({ bgg_id: game.bgg_id, notes: `Trending on BoardGameGeek (#${game.rank})` });
+      setSuccess(`Added "${game.title}" to the list`);
+      setTrending((prev) =>
+        prev.map((g) => (g.bgg_id === game.bgg_id ? { ...g, status: "on_buy_list" } : g))
+      );
+      await loadBuyList();
+    } catch (err) {
+      console.error("Failed to add trending game:", err);
+      setError(err.response?.data?.detail || "Failed to add trending game");
+    } finally {
+      setAddingTrendingId(null);
     }
   };
 
@@ -318,6 +371,10 @@ export function BuyListTab() {
 
   const gapCategories = (gaps?.category_gaps || []).filter((g) => g.is_gap);
   const gapPlayerCounts = (gaps?.player_count_gaps || []).filter((g) => g.is_gap);
+  const gapComplexityBands = (gaps?.complexity_gaps || []).filter((g) => g.is_gap);
+  const gapPlaytimeBands = (gaps?.playtime_gaps || []).filter((g) => g.is_gap);
+  const hasAnyGaps =
+    gapCategories.length > 0 || gapPlayerCounts.length > 0 || gapComplexityBands.length > 0 || gapPlaytimeBands.length > 0;
 
   const renderGapMatchBadges = (gapMatch) => {
     if (!gapMatch) return null;
@@ -333,6 +390,20 @@ export function BuyListTab() {
       badges.push(
         <span key={`players-${count}`} className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
           Fills {PLAYER_COUNT_LABELS[count] || `${count} players`} gap
+        </span>
+      );
+    }
+    if (gapMatch.complexity_is_gap) {
+      badges.push(
+        <span key="complexity" className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+          Fills complexity gap
+        </span>
+      );
+    }
+    if (gapMatch.playtime_is_gap) {
+      badges.push(
+        <span key="playtime" className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
+          Fills playtime gap
         </span>
       );
     }
@@ -375,7 +446,7 @@ export function BuyListTab() {
           <p className="text-sm text-gray-500">Loading gap analysis…</p>
         ) : gaps.total_games === 0 ? (
           <p className="text-sm text-gray-500">Add games to the owned collection to see gap analysis.</p>
-        ) : gapCategories.length === 0 && gapPlayerCounts.length === 0 ? (
+        ) : !hasAnyGaps ? (
           <p className="text-sm text-green-700">No significant gaps detected. 👍</p>
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
@@ -398,6 +469,30 @@ export function BuyListTab() {
                   {gapPlayerCounts.map((g) => (
                     <span key={g.player_count} className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
                       {PLAYER_COUNT_LABELS[g.player_count] || g.player_count} ({g.games_supporting} games)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {gapComplexityBands.length > 0 && (
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-2">Thin complexity coverage</div>
+                <div className="flex flex-wrap gap-2">
+                  {gapComplexityBands.map((g) => (
+                    <span key={g.complexity_band} className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                      {COMPLEXITY_LABELS[g.complexity_band] || g.complexity_band} ({g.pct_of_collection}%)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {gapPlaytimeBands.length > 0 && (
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-2">Thin playtime coverage</div>
+                <div className="flex flex-wrap gap-2">
+                  {gapPlaytimeBands.map((g) => (
+                    <span key={g.playtime_band} className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                      {PLAYTIME_LABELS[g.playtime_band] || g.playtime_band} ({g.pct_of_collection}%)
                     </span>
                   ))}
                 </div>
@@ -498,6 +593,86 @@ export function BuyListTab() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Trending on BoardGameGeek */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h3 className="text-lg font-semibold">🔥 Trending on BoardGameGeek</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              BGG's current Hotness list — recent community activity, not a recommendation specific to this library
+            </p>
+          </div>
+          <button
+            onClick={loadTrending}
+            disabled={trendingLoading}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {trendingLoading ? "Loading…" : "↻ Refresh"}
+          </button>
+        </div>
+
+        {trendingError && (
+          <div role="alert" className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {trendingError}
+          </div>
+        )}
+
+        {trendingLoading && trending.length === 0 ? (
+          <p className="text-sm text-gray-500">Loading trending games…</p>
+        ) : trending.length === 0 && !trendingError ? (
+          <p className="text-sm text-gray-500">No trending data available right now.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="flex gap-3 pb-1" style={{ width: "max-content" }}>
+              {trending.map((game) => {
+                const adding = addingTrendingId === game.bgg_id;
+                return (
+                  <div key={game.bgg_id} className="w-40 shrink-0 border rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-1 mb-1">
+                      <span className="text-xs font-semibold text-gray-400">#{game.rank}</span>
+                      {game.status === "owned" && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-green-100 text-green-700">
+                          Owned
+                        </span>
+                      )}
+                      {game.status === "on_buy_list" && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-blue-100 text-blue-700">
+                          On list
+                        </span>
+                      )}
+                    </div>
+                    <Thumbnail src={game.thumbnail_url} alt={game.title} />
+                    <div className="text-sm font-medium mt-2 line-clamp-2" title={game.title}>
+                      {game.title}
+                    </div>
+                    {game.year && <div className="text-xs text-gray-500">{game.year}</div>}
+                    <div className="mt-2 flex gap-1">
+                      <a
+                        href={`https://boardgamegeek.com/boardgame/${game.bgg_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 px-2 py-1 text-xs text-center rounded border border-gray-300 hover:bg-gray-50"
+                      >
+                        View
+                      </a>
+                      {game.status === "new" && (
+                        <button
+                          onClick={() => handleAddTrending(game)}
+                          disabled={adding}
+                          className="flex-1 px-2 py-1 text-xs rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {adding ? "…" : "+ Add"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

@@ -6,8 +6,10 @@ player-count coverage analysis used by the 'games to add' dashboard.
 from models import Game
 from services.gap_analysis import (
     compute_category_gaps,
+    compute_complexity_gaps,
     compute_library_gaps,
     compute_player_count_gaps,
+    compute_playtime_gaps,
     annotate_candidate,
 )
 from utils.helpers import CATEGORY_KEYS
@@ -110,11 +112,105 @@ class TestComputePlayerCountGaps:
         assert all(g["games_supporting"] == 0 for g in gaps)
 
 
+class TestComputeComplexityGaps:
+    def test_empty_collection_flags_nothing(self, db_session):
+        gaps = compute_complexity_gaps(db_session)
+        assert len(gaps) == 3  # light, medium, heavy
+        assert all(g["is_gap"] is False for g in gaps)
+        assert all(g["count"] == 0 for g in gaps)
+
+    def test_games_bucketed_by_weight(self, db_session):
+        _add_owned_game(db_session, title="Light", bgg_id=1, complexity=1.2)
+        _add_owned_game(db_session, title="Medium", bgg_id=2, complexity=2.5)
+        _add_owned_game(db_session, title="Heavy", bgg_id=3, complexity=4.0)
+        _add_owned_game(db_session, title="Boundary low", bgg_id=4, complexity=2.0)
+        _add_owned_game(db_session, title="Boundary high", bgg_id=5, complexity=3.0)
+        db_session.commit()
+
+        by_band = {g["complexity_band"]: g for g in compute_complexity_gaps(db_session)}
+        assert by_band["light"]["count"] == 1  # 1.2
+        assert by_band["medium"]["count"] == 2  # 2.5 and the 2.0 boundary (medium starts at >=2.0)
+        assert by_band["heavy"]["count"] == 2  # 4.0 and the 3.0 boundary (heavy starts at >=3.0)
+
+    def test_underrepresented_band_is_flagged(self, db_session):
+        # 10 games, all heavy -> light and medium are gaps
+        for i in range(10):
+            _add_owned_game(db_session, title=f"Game {i}", bgg_id=i, complexity=4.0)
+        db_session.commit()
+
+        by_band = {g["complexity_band"]: g for g in compute_complexity_gaps(db_session)}
+        assert by_band["heavy"]["is_gap"] is False
+        assert by_band["light"]["is_gap"] is True
+        assert by_band["medium"]["is_gap"] is True
+
+    def test_unrated_games_excluded_from_counts(self, db_session):
+        _add_owned_game(db_session, title="Unrated", bgg_id=1, complexity=None)
+        db_session.commit()
+
+        gaps = compute_complexity_gaps(db_session)
+        assert sum(g["count"] for g in gaps) == 0
+
+
+class TestComputePlaytimeGaps:
+    def test_empty_collection_flags_nothing(self, db_session):
+        gaps = compute_playtime_gaps(db_session)
+        assert len(gaps) == 4  # quick, standard, long, epic
+        assert all(g["is_gap"] is False for g in gaps)
+        assert all(g["count"] == 0 for g in gaps)
+
+    def test_games_bucketed_by_playtime(self, db_session):
+        _add_owned_game(db_session, title="Quick", bgg_id=1, playtime_min=15, playtime_max=15)
+        _add_owned_game(db_session, title="Standard", bgg_id=2, playtime_min=30, playtime_max=45)
+        _add_owned_game(db_session, title="Long", bgg_id=3, playtime_min=60, playtime_max=90)
+        _add_owned_game(db_session, title="Epic", bgg_id=4, playtime_min=120, playtime_max=240)
+        db_session.commit()
+
+        by_band = {g["playtime_band"]: g for g in compute_playtime_gaps(db_session)}
+        assert by_band["quick"]["count"] == 1
+        assert by_band["standard"]["count"] == 1
+        assert by_band["long"]["count"] == 1
+        assert by_band["epic"]["count"] == 1
+
+    def test_uses_max_over_min_when_both_present(self, db_session):
+        # A 20-90 min game should land in "long" (uses the upper bound), not "quick"
+        _add_owned_game(db_session, title="Variable length", bgg_id=1, playtime_min=20, playtime_max=90)
+        db_session.commit()
+
+        by_band = {g["playtime_band"]: g for g in compute_playtime_gaps(db_session)}
+        assert by_band["long"]["count"] == 1
+        assert by_band["quick"]["count"] == 0
+
+    def test_falls_back_to_min_when_max_missing(self, db_session):
+        _add_owned_game(db_session, title="No max", bgg_id=1, playtime_min=25, playtime_max=None)
+        db_session.commit()
+
+        by_band = {g["playtime_band"]: g for g in compute_playtime_gaps(db_session)}
+        assert by_band["quick"]["count"] == 1
+
+    def test_underrepresented_band_is_flagged(self, db_session):
+        # 10 quick games -> standard, long, epic are all gaps
+        for i in range(10):
+            _add_owned_game(db_session, title=f"Game {i}", bgg_id=i, playtime_min=15, playtime_max=15)
+        db_session.commit()
+
+        by_band = {g["playtime_band"]: g for g in compute_playtime_gaps(db_session)}
+        assert by_band["quick"]["is_gap"] is False
+        assert by_band["epic"]["is_gap"] is True
+
+    def test_games_with_no_playtime_data_excluded(self, db_session):
+        _add_owned_game(db_session, title="No data", bgg_id=1, playtime_min=None, playtime_max=None)
+        db_session.commit()
+
+        gaps = compute_playtime_gaps(db_session)
+        assert sum(g["count"] for g in gaps) == 0
+
+
 class TestAnnotateCandidate:
     def test_flags_category_and_player_count_matches(self):
         game = Game(
             title="Candidate", mana_meeple_category="PARTY_ICEBREAKERS",
-            players_min=7, players_max=12,
+            players_min=7, players_max=12, complexity=1.5,
+            playtime_min=20, playtime_max=20,
         )
         gaps = {
             "total_games": 10,
@@ -126,14 +222,27 @@ class TestAnnotateCandidate:
                 {"player_count": "7", "games_supporting": 0, "pct_of_collection": 0.0, "is_gap": True},
                 {"player_count": "9+", "games_supporting": 0, "pct_of_collection": 0.0, "is_gap": True},
             ],
+            "complexity_gaps": [
+                {"complexity_band": "light", "count": 0, "pct_of_collection": 0.0, "is_gap": True},
+                {"complexity_band": "heavy", "count": 10, "pct_of_collection": 100.0, "is_gap": False},
+            ],
+            "playtime_gaps": [
+                {"playtime_band": "quick", "count": 0, "pct_of_collection": 0.0, "is_gap": True},
+                {"playtime_band": "epic", "count": 10, "pct_of_collection": 100.0, "is_gap": False},
+            ],
         }
 
         result = annotate_candidate(game, gaps)
         assert result["category_is_gap"] is True
         assert set(result["matching_player_count_gaps"]) == {"7", "9+"}
+        assert result["complexity_is_gap"] is True
+        assert result["playtime_is_gap"] is True
 
     def test_no_matches_when_candidate_fills_no_gap(self):
-        game = Game(title="Candidate", mana_meeple_category="CORE_STRATEGY", players_min=2, players_max=4)
+        game = Game(
+            title="Candidate", mana_meeple_category="CORE_STRATEGY", players_min=2, players_max=4,
+            complexity=2.5, playtime_min=45, playtime_max=45,
+        )
         gaps = {
             "total_games": 10,
             "category_gaps": [
@@ -142,19 +251,52 @@ class TestAnnotateCandidate:
             "player_count_gaps": [
                 {"player_count": "9+", "games_supporting": 0, "pct_of_collection": 0.0, "is_gap": True},
             ],
+            "complexity_gaps": [
+                {"complexity_band": "medium", "count": 10, "pct_of_collection": 100.0, "is_gap": False},
+            ],
+            "playtime_gaps": [
+                {"playtime_band": "standard", "count": 10, "pct_of_collection": 100.0, "is_gap": False},
+            ],
         }
 
         result = annotate_candidate(game, gaps)
         assert result["category_is_gap"] is False
         assert result["matching_player_count_gaps"] == []
+        assert result["complexity_is_gap"] is False
+        assert result["playtime_is_gap"] is False
+
+    def test_no_match_when_candidate_missing_complexity_or_playtime(self):
+        game = Game(title="Candidate", mana_meeple_category="CORE_STRATEGY")
+        gaps = {
+            "total_games": 10,
+            "category_gaps": [
+                {"category": "CORE_STRATEGY", "count": 10, "pct_of_collection": 100.0, "is_gap": False},
+            ],
+            "player_count_gaps": [],
+            "complexity_gaps": [
+                {"complexity_band": "light", "count": 0, "pct_of_collection": 0.0, "is_gap": True},
+            ],
+            "playtime_gaps": [
+                {"playtime_band": "quick", "count": 0, "pct_of_collection": 0.0, "is_gap": True},
+            ],
+        }
+
+        result = annotate_candidate(game, gaps)
+        assert result["complexity_is_gap"] is False
+        assert result["playtime_is_gap"] is False
 
 
 class TestComputeLibraryGaps:
     def test_full_payload_shape(self, db_session):
-        _add_owned_game(db_session, title="Game", bgg_id=1, mana_meeple_category="CORE_STRATEGY", players_min=2, players_max=4)
+        _add_owned_game(
+            db_session, title="Game", bgg_id=1, mana_meeple_category="CORE_STRATEGY",
+            players_min=2, players_max=4, complexity=2.5, playtime_min=45, playtime_max=45,
+        )
         db_session.commit()
 
         result = compute_library_gaps(db_session)
         assert result["total_games"] == 1
         assert len(result["category_gaps"]) == len(CATEGORY_KEYS)
         assert len(result["player_count_gaps"]) == 9
+        assert len(result["complexity_gaps"]) == 3
+        assert len(result["playtime_gaps"]) == 4

@@ -17,6 +17,7 @@ import xml.etree.ElementTree as ET
 
 from bgg_service import (
     fetch_bgg_thing,
+    get_hot_games,
     search_bgg,
     _extract_comprehensive_game_data,
     _get_game_classification,
@@ -1139,3 +1140,121 @@ class TestSearchBGG:
             results = await search_bgg("Good Game")
 
         assert results == [{"bgg_id": 43, "title": "Good Game", "year": None}]
+
+
+SAMPLE_HOT_XML = """<?xml version="1.0" encoding="utf-8"?>
+<items type="boardgame" termsofuse="https://boardgamegeek.com/xmlapi/termsofuse">
+    <item id="174430" rank="1">
+        <thumbnail value="https://cf.geekdo-images.com/thumb1.jpg" />
+        <name value="Gloomhaven" />
+        <yearpublished value="2017" />
+    </item>
+    <item id="266192" rank="2">
+        <thumbnail value="https://cf.geekdo-images.com/thumb2.jpg" />
+        <name value="Wingspan" />
+        <yearpublished value="2019" />
+    </item>
+</items>"""
+
+
+class TestGetHotGames:
+    """Test get_hot_games() - BGG Hot List used for the Trending panel/suggestions."""
+
+    @pytest.mark.asyncio
+    async def test_fetch_successful(self):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.content = SAMPLE_HOT_XML.encode()
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            results = await get_hot_games()
+
+        assert results == [
+            {
+                "bgg_id": 174430, "rank": 1, "title": "Gloomhaven", "year": 2017,
+                "thumbnail_url": "https://cf.geekdo-images.com/thumb1.jpg",
+            },
+            {
+                "bgg_id": 266192, "rank": 2, "title": "Wingspan", "year": 2019,
+                "thumbnail_url": "https://cf.geekdo-images.com/thumb2.jpg",
+            },
+        ]
+
+    @pytest.mark.asyncio
+    async def test_respects_limit(self):
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.content = SAMPLE_HOT_XML.encode()
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            results = await get_hot_games(limit=1)
+
+        assert len(results) == 1
+        assert results[0]["bgg_id"] == 174430
+
+    @pytest.mark.asyncio
+    async def test_skips_items_with_missing_rank_or_id(self):
+        malformed_xml = """<?xml version="1.0"?>
+        <items type="boardgame">
+            <item id="1">
+                <name value="No rank attribute" />
+            </item>
+            <item id="not-a-number" rank="1">
+                <name value="Bad ID" />
+            </item>
+            <item id="43" rank="3">
+                <name value="Good Entry" />
+            </item>
+        </items>"""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.content = malformed_xml.encode()
+        mock_response.raise_for_status = Mock()
+
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(return_value=mock_response)
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            results = await get_hot_games()
+
+        assert results == [{"bgg_id": 43, "rank": 3, "title": "Good Entry", "year": None, "thumbnail_url": None}]
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_list_on_repeated_failure(self):
+        with patch("httpx.AsyncClient") as mock_client_class:
+            mock_client = AsyncMock()
+            mock_client.get = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock()
+            mock_client_class.return_value = mock_client
+
+            with patch("asyncio.sleep"):
+                results = await get_hot_games(retries=2)
+
+        assert results == []
+
+    @pytest.mark.asyncio
+    async def test_returns_empty_list_when_circuit_breaker_open(self):
+        from pybreaker import CircuitBreakerError
+
+        with patch("bgg_service.bgg_circuit_breaker.call", side_effect=CircuitBreakerError("open")):
+            results = await get_hot_games()
+
+        assert results == []

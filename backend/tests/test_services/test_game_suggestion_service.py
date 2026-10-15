@@ -32,13 +32,27 @@ def _api_error(message="boom"):
     return anthropic.APIConnectionError(message=message, request=req)
 
 
+@pytest.fixture(autouse=True)
+def mock_hot_games():
+    """
+    _build_prompt calls get_hot_games for trending context on every call;
+    default to no trending data so tests don't make real network calls.
+    Override per-test with mock_hot_games.return_value = [...].
+    """
+    with patch(
+        "services.game_suggestion_service.get_hot_games", new_callable=AsyncMock, return_value=[]
+    ) as mock:
+        yield mock
+
+
 class TestBuildPrompt:
-    def test_includes_flagged_gaps_and_owned_titles(self, db_session):
+    @pytest.mark.asyncio
+    async def test_includes_flagged_gaps_and_owned_titles(self, db_session):
         for i in range(10):
             _owned_game(db_session, title=f"Game {i}", bgg_id=i, mana_meeple_category="CORE_STRATEGY")
         db_session.commit()
 
-        system, user = _build_prompt(db_session, count=5)
+        system, user = await _build_prompt(db_session, count=5)
 
         assert "Mana & Meeples" in system
         assert "Game 0" in user
@@ -46,7 +60,8 @@ class TestBuildPrompt:
         # Every category except CORE_STRATEGY has 0% share, so it's flagged as a gap
         assert "Gateway Strategy" in user
 
-    def test_excludes_list_names_already_queued_games(self, db_session):
+    @pytest.mark.asyncio
+    async def test_excludes_list_names_already_queued_games(self, db_session):
         _owned_game(db_session, title="Owned Game", bgg_id=1)
         candidate = Game(title="Candidate Game", bgg_id=2, status="BUY_LIST")
         db_session.add(candidate)
@@ -54,16 +69,62 @@ class TestBuildPrompt:
         db_session.add(BuyListGame(game_id=candidate.id, on_buy_list=True))
         db_session.commit()
 
-        _system, user = _build_prompt(db_session, count=5)
+        _system, user = await _build_prompt(db_session, count=5)
 
         assert "Owned Game" in user
         assert "Candidate Game" in user
         assert "do not re-suggest" in user.lower()
 
-    def test_no_gaps_flagged_message(self, db_session):
+    @pytest.mark.asyncio
+    async def test_no_gaps_flagged_message(self, db_session):
         # No owned games at all -> compute_library_gaps flags nothing
-        _system, user = _build_prompt(db_session, count=5)
+        _system, user = await _build_prompt(db_session, count=5)
         assert "none currently flagged" in user
+
+    @pytest.mark.asyncio
+    async def test_includes_complexity_and_playtime_gaps(self, db_session):
+        # 10 heavy, epic-length games -> light/medium complexity and
+        # quick/standard/long playtime bands are all flagged as gaps
+        for i in range(10):
+            _owned_game(
+                db_session, title=f"Game {i}", bgg_id=i,
+                complexity=4.0, playtime_min=180, playtime_max=180,
+            )
+        db_session.commit()
+
+        _system, user = await _build_prompt(db_session, count=5)
+
+        assert "Thin complexity coverage" in user
+        assert "Light (under 2.0)" in user
+        assert "Thin playtime coverage" in user
+        assert "Quick (under 30 min)" in user
+
+    @pytest.mark.asyncio
+    async def test_includes_trending_games(self, db_session, mock_hot_games):
+        mock_hot_games.return_value = [
+            {"bgg_id": 174430, "rank": 1, "title": "Gloomhaven", "year": 2017, "thumbnail_url": None},
+            {"bgg_id": 266192, "rank": 2, "title": "Wingspan", "year": 2019, "thumbnail_url": None},
+        ]
+
+        system, user = await _build_prompt(db_session, count=5)
+
+        assert "trending" in system.lower()
+        assert "Currently trending on BoardGameGeek" in user
+        assert "#1 Gloomhaven (2017)" in user
+        assert "#2 Wingspan (2019)" in user
+
+    @pytest.mark.asyncio
+    async def test_trending_unavailable_message_when_empty(self, db_session):
+        _system, user = await _build_prompt(db_session, count=5)
+        assert "(trending data unavailable right now)" in user
+
+    @pytest.mark.asyncio
+    async def test_trending_fetch_failure_does_not_break_prompt(self, db_session, mock_hot_games):
+        mock_hot_games.side_effect = RuntimeError("BGG unreachable")
+
+        _system, user = await _build_prompt(db_session, count=5)
+
+        assert "(trending data unavailable right now)" in user
 
 
 class TestGenerateSuggestions:
