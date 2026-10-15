@@ -102,7 +102,12 @@ describe('BuyListTab', () => {
         expect(screen.getByText('Where the collection is thin')).toBeInTheDocument();
       });
 
-      expect(screen.getByText(/Party & Icebreakers/)).toBeInTheDocument();
+      // The heading above renders immediately; the gap data it summarizes
+      // resolves asynchronously, so wait for that too rather than assuming
+      // it's already there once the heading is.
+      await waitFor(() => {
+        expect(screen.getByText(/Party & Icebreakers/)).toBeInTheDocument();
+      });
       expect(screen.getAllByText(/9\+ players/).length).toBeGreaterThan(0);
     });
 
