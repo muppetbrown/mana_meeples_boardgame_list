@@ -9,16 +9,15 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from models import BuyListGame, Game
-from services.award_winners import AWARD_WINNERS, get_award_winners
+from services.award_winners import AWARD_WINNERS, _bgg_match_cache, get_award_winners
 
 
 @pytest.fixture(autouse=True)
 def clear_bgg_match_cache():
     """The module-level resolution cache must not leak between tests."""
-    import services.award_winners as award_winners_module
-    award_winners_module._bgg_match_cache.clear()
+    _bgg_match_cache.clear()
     yield
-    award_winners_module._bgg_match_cache.clear()
+    _bgg_match_cache.clear()
 
 
 class TestAwardWinnersData:
