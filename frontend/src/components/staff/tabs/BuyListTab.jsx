@@ -13,6 +13,9 @@ import {
   importFromBGG,
   reorderBuyList,
   suggestBuyListGames,
+  getHLStockSignals,
+  linkHLStockSignal,
+  dismissHLStockSignal,
   getTrendingGames,
   getAwardWinners,
 } from "../../../api/client";
@@ -61,6 +64,11 @@ export function BuyListTab() {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestError, setSuggestError] = useState(null);
   const [addingSuggestionId, setAddingSuggestionId] = useState(null);
+  const [hlSignals, setHlSignals] = useState([]);
+  const [hlLoading, setHlLoading] = useState(false);
+  const [hlError, setHlError] = useState(null);
+  const [hlActionId, setHlActionId] = useState(null);
+  const [hlLinkInputs, setHlLinkInputs] = useState({});
   const [trending, setTrending] = useState([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [trendingError, setTrendingError] = useState(null);
@@ -376,6 +384,106 @@ export function BuyListTab() {
     setShowAddModal(true);
   };
 
+  const loadHLStockSignals = async () => {
+    setHlLoading(true);
+    setHlError(null);
+    try {
+      const data = await getHLStockSignals();
+      setHlSignals(data.items || []);
+    } catch (err) {
+      console.error("Failed to load HL stock signals:", err);
+      setHlError(err.response?.data?.detail || "Failed to check HL Timaru stock");
+    } finally {
+      setHlLoading(false);
+    }
+  };
+
+  const handleAddHLSignal = async (item) => {
+    const note = `Selling well at HL Timaru (${item.units_sold ?? 0} sold, ${item.current_stock ?? 0} in stock)`;
+
+    // Already fuzzy-matched to a game with a known BGG ID - add directly
+    if (item.linked_game?.bgg_id) {
+      setHlActionId(item.hl_internal_id);
+      try {
+        setError(null);
+        await addToBuyList({ bgg_id: item.linked_game.bgg_id, notes: note });
+        setSuccess(`Added "${item.linked_game.title}" to the list`);
+        setHlSignals((prev) => prev.filter((s) => s.hl_internal_id !== item.hl_internal_id));
+        await loadBuyList();
+      } catch (err) {
+        console.error("Failed to add HL stock signal to buy list:", err);
+        setError(err.response?.data?.detail || "Failed to add game");
+      } finally {
+        setHlActionId(null);
+      }
+      return;
+    }
+
+    // No confident match - open the manual Add Game modal pre-filled, same
+    // pattern as an unresolved AI suggestion.
+    setAddBggId("");
+    setAddFormData({ rank: "", notes: note });
+    setShowAddModal(true);
+  };
+
+  const handleConfirmHLSignalMatch = async (item) => {
+    if (!item.linked_game) return;
+    setHlActionId(item.hl_internal_id);
+    try {
+      setHlError(null);
+      await linkHLStockSignal(item.hl_internal_id, item.linked_game.id);
+      setHlSignals((prev) =>
+        prev.map((s) =>
+          s.hl_internal_id === item.hl_internal_id ? { ...s, match_confidence: null } : s
+        )
+      );
+    } catch (err) {
+      console.error("Failed to confirm HL stock signal match:", err);
+      setHlError(err.response?.data?.detail || "Failed to confirm match");
+    } finally {
+      setHlActionId(null);
+    }
+  };
+
+  const handleManualLinkHLSignal = async (item) => {
+    const gameId = parseInt(hlLinkInputs[item.hl_internal_id], 10);
+    if (!gameId) {
+      setHlError("Enter a valid library game ID to link");
+      return;
+    }
+    setHlActionId(item.hl_internal_id);
+    try {
+      setHlError(null);
+      await linkHLStockSignal(item.hl_internal_id, gameId);
+      setHlSignals((prev) => prev.filter((s) => s.hl_internal_id !== item.hl_internal_id));
+      setHlLinkInputs((prev) => {
+        const next = { ...prev };
+        delete next[item.hl_internal_id];
+        return next;
+      });
+      setSuccess(`Linked "${item.hl_product_name}" to game #${gameId}`);
+    } catch (err) {
+      console.error("Failed to link HL stock signal:", err);
+      setHlError(err.response?.data?.detail || "Game not found, or link failed");
+    } finally {
+      setHlActionId(null);
+    }
+  };
+
+  const handleDismissHLSignal = async (item) => {
+    setHlActionId(item.hl_internal_id);
+    try {
+      setHlError(null);
+      await dismissHLStockSignal(item.hl_internal_id);
+      setHlSignals((prev) => prev.filter((s) => s.hl_internal_id !== item.hl_internal_id));
+    } catch (err) {
+      console.error("Failed to dismiss HL stock signal:", err);
+      setHlError(err.response?.data?.detail || "Failed to dismiss");
+    } finally {
+      setHlActionId(null);
+    }
+  };
+
   const handleBulkImportCSV = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -634,6 +742,124 @@ export function BuyListTab() {
                       </button>
                     )}
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* HL Timaru stock signals */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h3 className="text-lg font-semibold">Selling Well at HL Timaru</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              Board games selling or in stock at the HL Timaru store that aren't yet owned or on this list.
+            </p>
+          </div>
+          <button
+            onClick={loadHLStockSignals}
+            disabled={hlLoading}
+            className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          >
+            {hlLoading ? "Checking…" : hlSignals.length > 0 ? "🔄 Refresh" : "🔄 Check HL Stock"}
+          </button>
+        </div>
+
+        {hlError && (
+          <div role="alert" className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {hlError}
+          </div>
+        )}
+
+        {!hlLoading && hlSignals.length === 0 && !hlError && (
+          <p className="text-sm text-gray-500">
+            Click "Check HL Stock" to pull current sales/stock data from the HL Timaru retail database.
+          </p>
+        )}
+
+        {hlSignals.length > 0 && (
+          <div className="grid md:grid-cols-2 gap-3">
+            {hlSignals.map((item) => {
+              const acting = hlActionId === item.hl_internal_id;
+              const matched = item.match_status === "linked" && item.linked_game;
+              const bggSearchUrl = `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(item.hl_product_name)}`;
+              return (
+                <div key={item.hl_internal_id} className="border rounded-lg p-4 relative">
+                  <button
+                    onClick={() => handleDismissHLSignal(item)}
+                    disabled={acting}
+                    aria-label={`Dismiss: ${item.hl_product_name}`}
+                    className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-sm disabled:opacity-50"
+                  >
+                    ✕
+                  </button>
+                  <div className="pr-5">
+                    <div className="font-semibold">{item.hl_product_name}</div>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {item.units_sold ?? 0} sold · {item.current_stock ?? 0} in stock
+                      {item.last_sale_date ? ` · last sale ${item.last_sale_date}` : ""}
+                    </p>
+                    <p className="text-xs mt-2">
+                      {matched ? (
+                        <span className="text-green-700">
+                          Matches: {item.linked_game.title}
+                          {item.match_confidence != null ? ` (${Math.round(item.match_confidence)}% match - unconfirmed)` : " (confirmed)"}
+                        </span>
+                      ) : (
+                        <span className="text-amber-700">No match found in this library</span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {matched && item.match_confidence != null && (
+                      <button
+                        onClick={() => handleConfirmHLSignalMatch(item)}
+                        disabled={acting}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 disabled:opacity-50"
+                      >
+                        ✓ Confirm match
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleAddHLSignal(item)}
+                      disabled={acting}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg bg-cyan-600 text-white hover:bg-cyan-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {acting ? "Working…" : "+ Add to List"}
+                    </button>
+                    {!matched && (
+                      <a
+                        href={bggSearchUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 hover:bg-gray-50"
+                      >
+                        🔍 Search on BGG
+                      </a>
+                    )}
+                  </div>
+                  {!matched && (
+                    <div className="flex gap-2 mt-2">
+                      <input
+                        type="number"
+                        value={hlLinkInputs[item.hl_internal_id] || ""}
+                        onChange={(e) =>
+                          setHlLinkInputs((prev) => ({ ...prev, [item.hl_internal_id]: e.target.value }))
+                        }
+                        placeholder="Library game ID (if the matcher missed it)"
+                        className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded"
+                      />
+                      <button
+                        onClick={() => handleManualLinkHLSignal(item)}
+                        disabled={acting || !hlLinkInputs[item.hl_internal_id]}
+                        className="px-3 py-1 text-xs font-medium rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Link
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}

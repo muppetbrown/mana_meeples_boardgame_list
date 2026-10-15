@@ -537,6 +537,39 @@ export async function suggestBuyListGames(count = 6) {
 }
 
 /**
+ * Board games selling well / in stock at HL Timaru that aren't yet in this
+ * library - a demand signal for what to add. Each item is tagged
+ * match_status: "linked" (fuzzy-matched to an existing game) or "unmatched"
+ * (a true new candidate).
+ * @returns {Promise<Object>} Response with total and items array
+ */
+export async function getHLStockSignals() {
+  const r = await api.get("/admin/buy-list/hl-signals");
+  return r.data;
+}
+
+/**
+ * Manually confirm or correct the link between an HL stock product and a
+ * game already in this library.
+ * @param {number} hlInternalId - HL Timaru product internal_id
+ * @param {number} gameId - This library's game id to link it to
+ */
+export async function linkHLStockSignal(hlInternalId, gameId) {
+  const r = await api.post(`/admin/buy-list/hl-signals/${hlInternalId}/link`, { game_id: gameId });
+  return r.data;
+}
+
+/**
+ * Mark an HL stock product as not a real board-game candidate (e.g.
+ * miscategorized at HL), excluding it from future signal lists.
+ * @param {number} hlInternalId - HL Timaru product internal_id
+ */
+export async function dismissHLStockSignal(hlInternalId) {
+  const r = await api.post(`/admin/buy-list/hl-signals/${hlInternalId}/dismiss`);
+  return r.data;
+}
+
+/**
  * BoardGameGeek's current "Hotness" list, annotated with whether each game
  * is already owned or already on the games-to-add list.
  * @param {number} limit - How many trending games to return (1-50)

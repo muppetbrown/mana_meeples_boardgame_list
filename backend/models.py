@@ -4,6 +4,7 @@ from sqlalchemy import (
     Integer,
     String,
     DateTime,
+    Date,
     Text,
     JSON,
     Float,
@@ -203,6 +204,40 @@ class BuyListGame(Base):
 
     __table_args__ = (
         Index("idx_buy_list_rank", "on_buy_list", "rank"),
+    )
+
+
+class HLStockLink(Base):
+    """
+    Links an HL Timaru retail product (by internal_id, read directly from the
+    HL Timaru Postgres database) to a game in this library, once confirmed -
+    so a match is never re-resolved by the fuzzy matcher once linked. game_id
+    is null until linked; dismissed=true means "not a real board-game
+    candidate" (e.g. a miscategorized item) and should be excluded from
+    future suggestion runs. Caches the last-synced HL stock/sales snapshot
+    so the UI panel has numbers to show without a fresh query every render.
+    """
+
+    __tablename__ = "hl_stock_links"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    hl_internal_id = Column(Integer, nullable=False, unique=True, index=True)
+    game_id = Column(Integer, ForeignKey("boardgames.id", ondelete="SET NULL"), nullable=True, index=True)
+    dismissed = Column(Boolean, default=False, nullable=False, index=True)
+    hl_product_name = Column(Text, nullable=False)
+    hl_current_stock = Column(Integer, nullable=True)
+    hl_units_sold = Column(Integer, nullable=True)
+    hl_last_sale_date = Column(Date, nullable=True)
+    hl_approx_revenue = Column(Numeric(10, 2), nullable=True)
+    match_confidence = Column(Float, nullable=True)  # fuzzy score at last auto-match; null once manually linked/dismissed
+    last_synced_at = Column(DateTime, default=utc_now, nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+    updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
+
+    game = relationship("Game")
+
+    __table_args__ = (
+        Index("idx_hl_stock_links_status", "dismissed", "game_id"),
     )
 
 

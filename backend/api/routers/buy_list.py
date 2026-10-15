@@ -20,11 +20,19 @@ from sqlalchemy.orm import Session, joinedload
 from api.dependencies import require_admin_auth
 from bgg_service import get_hot_games
 from database import get_db
-from models import BuyListGame, Game
-from schemas import BuyListGameCreate, BuyListGameUpdate, BuyListReorderRequest, SuggestGamesRequest
+from models import BuyListGame, Game, HLStockLink
+from schemas import (
+    BuyListGameCreate,
+    BuyListGameUpdate,
+    BuyListReorderRequest,
+    HLStockSignalLinkRequest,
+    SuggestGamesRequest,
+)
 from services.award_winners import get_award_winners
 from services.game_suggestion_service import SuggestionServiceError, generate_suggestions
 from services.gap_analysis import annotate_candidate, compute_library_gaps
+from services.hl_stock_matching import find_best_title_match
+from services.hl_stock_service import HLStockServiceError, fetch_hl_board_game_signals
 
 logger = logging.getLogger(__name__)
 _sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
@@ -443,6 +451,174 @@ async def remove_from_buy_list(buy_list_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=500, detail="Failed to remove game from buy list"
         )
+
+
+# ------------------------------------------------------------------------------
+# HL Timaru Stock Signals
+# ------------------------------------------------------------------------------
+
+
+def _build_hl_signal_response(link: HLStockLink, game: Optional[Game]) -> Dict[str, Any]:
+    return {
+        "hl_internal_id": link.hl_internal_id,
+        "hl_product_name": link.hl_product_name,
+        "current_stock": link.hl_current_stock,
+        "units_sold": link.hl_units_sold,
+        "last_sale_date": link.hl_last_sale_date.isoformat() if link.hl_last_sale_date else None,
+        "approx_revenue": float(link.hl_approx_revenue) if link.hl_approx_revenue is not None else None,
+        "match_status": "linked" if game else "unmatched",
+        "match_confidence": link.match_confidence,
+        "linked_game": (
+            {"id": game.id, "title": game.title, "status": game.status, "bgg_id": game.bgg_id}
+            if game else None
+        ),
+    }
+
+
+@router.get("/hl-signals", dependencies=[Depends(require_admin_auth)])
+async def list_hl_stock_signals(db: Session = Depends(get_db)):
+    """
+    Board games selling well / sitting in stock at HL Timaru that aren't yet
+    in this library - a demand signal for what to add. Reads live from HL's
+    retail database, upserts hl_stock_links (fuzzy-matching any newly-seen
+    product against this library's titles), and returns everything that
+    isn't dismissed and isn't already owned or already on this buy list -
+    those are already tracked, so resurfacing them here would be noise.
+    """
+    try:
+        hl_items = fetch_hl_board_game_signals()
+    except HLStockServiceError as e:
+        logger.warning(f"HL stock-signal fetch unavailable: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+
+    now = datetime.now(timezone.utc)
+    results = []
+
+    try:
+        for item in hl_items:
+            link = db.execute(
+                select(HLStockLink).where(HLStockLink.hl_internal_id == item["internal_id"])
+            ).scalar_one_or_none()
+
+            if link is None:
+                game, score = find_best_title_match(db, item["name"])
+                link = HLStockLink(
+                    hl_internal_id=item["internal_id"],
+                    hl_product_name=item["name"],
+                    game_id=game.id if game else None,
+                    match_confidence=score,
+                    last_synced_at=now,
+                )
+                db.add(link)
+            else:
+                link.hl_product_name = item["name"]
+                link.last_synced_at = now
+                # Only re-attempt a match while still unlinked - once a staff
+                # member confirms or dismisses a link, it's never re-resolved.
+                if link.game_id is None and not link.dismissed:
+                    game, score = find_best_title_match(db, item["name"])
+                    link.game_id = game.id if game else None
+                    link.match_confidence = score
+
+            link.hl_current_stock = item.get("current_stock")
+            link.hl_units_sold = item.get("units_sold")
+            link.hl_last_sale_date = item.get("last_sale_date")
+            link.hl_approx_revenue = item.get("approx_revenue")
+            link.updated_at = now
+
+            db.flush()
+
+            if link.dismissed:
+                continue
+
+            game = db.get(Game, link.game_id) if link.game_id else None
+            if game is not None and game.status == "OWNED":
+                continue
+            if game is not None:
+                already_queued = db.execute(
+                    select(BuyListGame).where(
+                        BuyListGame.game_id == game.id, BuyListGame.on_buy_list == True  # noqa: E712
+                    )
+                ).scalar_one_or_none()
+                if already_queued:
+                    continue
+
+            results.append(_build_hl_signal_response(link, game))
+
+        db.commit()
+    except Exception as e:
+        logger.error(f"Error syncing HL stock signals: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to sync HL stock signals")
+
+    results.sort(key=lambda r: r["units_sold"] or 0, reverse=True)
+    return {"total": len(results), "items": results}
+
+
+@router.post("/hl-signals/{hl_internal_id}/link", dependencies=[Depends(require_admin_auth)])
+async def link_hl_stock_signal(
+    hl_internal_id: int, data: HLStockSignalLinkRequest, db: Session = Depends(get_db)
+):
+    """Manually confirm or correct the link between an HL product and a game already in this library."""
+    try:
+        link = db.execute(
+            select(HLStockLink).where(HLStockLink.hl_internal_id == hl_internal_id)
+        ).scalar_one_or_none()
+        if not link:
+            raise HTTPException(
+                status_code=404,
+                detail="HL stock signal not found - run GET /hl-signals first to sync it",
+            )
+
+        game = db.execute(select(Game).where(Game.id == data.game_id)).scalar_one_or_none()
+        if not game:
+            raise HTTPException(status_code=404, detail="Game not found")
+
+        link.game_id = game.id
+        link.match_confidence = None  # manual link, not a fuzzy-match score
+        link.dismissed = False
+        link.updated_at = datetime.now(timezone.utc)
+        db.commit()
+
+        logger.info(f"Linked HL product {_sl(hl_internal_id)} to game '{game.title}'")
+
+        return {"hl_internal_id": hl_internal_id, "linked_game_id": game.id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error linking HL stock signal: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to link HL stock signal")
+
+
+@router.post("/hl-signals/{hl_internal_id}/dismiss", dependencies=[Depends(require_admin_auth)])
+async def dismiss_hl_stock_signal(hl_internal_id: int, db: Session = Depends(get_db)):
+    """Mark an HL product as not a real board-game candidate (e.g. miscategorized at HL)."""
+    try:
+        link = db.execute(
+            select(HLStockLink).where(HLStockLink.hl_internal_id == hl_internal_id)
+        ).scalar_one_or_none()
+        if not link:
+            raise HTTPException(
+                status_code=404,
+                detail="HL stock signal not found - run GET /hl-signals first to sync it",
+            )
+
+        link.dismissed = True
+        link.updated_at = datetime.now(timezone.utc)
+        db.commit()
+
+        logger.info(f"Dismissed HL stock signal {_sl(hl_internal_id)}")
+
+        return {"hl_internal_id": hl_internal_id, "dismissed": True}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error dismissing HL stock signal: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to dismiss HL stock signal")
 
 
 async def _bulk_import_buy_list_csv_task(text_content: str) -> None:

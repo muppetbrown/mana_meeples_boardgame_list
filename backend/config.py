@@ -57,6 +57,14 @@ elif DATABASE_URL.startswith("sqlite"):
 else:
     _log.warning("Unrecognized database URL format: %s...", DATABASE_URL[:20])
 
+# HL Timaru retail stock database (optional, read-only) - powers the "Selling
+# Well at HL" signal panel on the Games to Add / buy list tab. Same Render
+# workspace, separate Postgres instance; connect with a dedicated read-only role.
+HL_STOCK_DATABASE_URL = normalize_database_url(os.getenv("HL_STOCK_DATABASE_URL", ""))
+HL_STOCK_SALES_WINDOW_DAYS = int(os.getenv("HL_STOCK_SALES_WINDOW_DAYS", "90"))
+if not HL_STOCK_DATABASE_URL and not os.getenv("CI"):
+    _log.warning("HL_STOCK_DATABASE_URL not set - HL stock-signal panel will be unavailable")
+
 PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
 
 # API base URL for image proxying and absolute URLs
