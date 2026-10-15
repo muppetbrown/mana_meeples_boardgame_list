@@ -124,6 +124,45 @@ describe('AdminLogin Page', () => {
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
+  test('disables submit while rate-limit cooldown is active', async () => {
+    apiClient.adminLogin.mockRejectedValue({
+      response: { status: 429, data: { detail: 'Too many requests' } },
+    });
+
+    render(
+      <BrowserRouter>
+        <AdminLogin />
+      </BrowserRouter>
+    );
+
+    const tokenInput = screen.getByLabelText(/admin token/i);
+    const submitButton = screen.getByRole('button', { name: /sign in/i });
+
+    await userEvent.type(tokenInput, 'valid-token-123');
+    await userEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /try again in/i })).toBeDisabled();
+    });
+  });
+
+  test('toggles token visibility', async () => {
+    render(
+      <BrowserRouter>
+        <AdminLogin />
+      </BrowserRouter>
+    );
+
+    const tokenInput = screen.getByLabelText(/admin token/i);
+    expect(tokenInput).toHaveAttribute('type', 'password');
+
+    const toggleButton = screen.getByRole('button', { name: /show token/i });
+    await userEvent.click(toggleButton);
+
+    expect(tokenInput).toHaveAttribute('type', 'text');
+    expect(screen.getByRole('button', { name: /hide token/i })).toBeInTheDocument();
+  });
+
   test('displays network error', async () => {
     apiClient.adminLogin.mockRejectedValue({
       message: 'Network Error',
@@ -214,7 +253,7 @@ describe('AdminLogin Page', () => {
     expect(submitButton).not.toBeDisabled();
   });
 
-  test('navigates back when back button clicked', async () => {
+  test('navigates to the public catalogue when back button clicked', async () => {
     render(
       <BrowserRouter>
         <AdminLogin />
@@ -224,7 +263,9 @@ describe('AdminLogin Page', () => {
     const backButton = screen.getByRole('button', { name: /back to games/i });
     await userEvent.click(backButton);
 
-    expect(mockNavigate).toHaveBeenCalledWith(-1);
+    // Navigates to a known route rather than history.back(), which could land
+    // somewhere unexpected if this page was opened directly (e.g. a bookmark).
+    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
   test('updates token input when typing', async () => {

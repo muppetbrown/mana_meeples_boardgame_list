@@ -4,7 +4,7 @@ import SleeveFetchStatus from "./SleeveFetchStatus";
 import BulkResultSummary, { downloadTextFile } from "./BulkResultSummary";
 import { useConfirm } from "../../context/StaffContext";
 
-export function AdminToolsPanel({ onToast, onLibraryReload }) {
+export function AdminToolsPanel({ onToast, onLibraryReload, onBackgroundOperation }) {
   const [afterGameText, setAfterGameText] = useState("");
   const [afterGameResult, setAfterGameResult] = useState(null);
   // Name of the operation currently running (null = idle); only that button shows progress
@@ -83,16 +83,21 @@ export function AdminToolsPanel({ onToast, onLibraryReload }) {
 
     try {
       const result = await fetchAllSleeveData();
-      onToast(`Sleeve data fetch started! Processing ${result.total_games || 0} games in background`, "success");
+      const total = result.total_games || 0;
+      onToast(`Sleeve data fetch started! Processing ${total} games in background`, "success");
       // Bump the poll token so SleeveFetchStatus starts actively polling for progress.
       setSleeveFetchPollToken((t) => t + 1);
+      onBackgroundOperation?.({
+        label: `Sleeve data fetch (all ${total} games)`,
+        etaMs: Math.max(180000, total * 3000),
+      });
       if (onLibraryReload) await onLibraryReload();
     } catch (error) {
       onToast("Failed to start sleeve data fetch", "error");
     } finally {
       setBusy(null);
     }
-  }, [onToast, onLibraryReload, confirm]);
+  }, [onToast, onLibraryReload, confirm, onBackgroundOperation]);
 
   const handleFixSequence = useCallback(async () => {
     const ok = await confirm({

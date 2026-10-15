@@ -346,7 +346,7 @@ describe('BuyListTab', () => {
         expect(screen.getByText('Add a Candidate Game by BGG ID')).toBeInTheDocument();
       });
 
-      await user.type(screen.getByPlaceholderText('e.g., 174430 (Gloomhaven)'), '174430');
+      await user.type(screen.getByPlaceholderText('e.g., 174430 or a boardgamegeek.com/boardgame/... URL'), '174430');
       await user.type(screen.getByPlaceholderText('1 = highest priority'), '5');
       await user.type(screen.getByPlaceholderText('Why this game is worth adding'), 'Fills a gap');
 
@@ -369,13 +369,32 @@ describe('BuyListTab', () => {
       render(<BuyListTab />);
 
       await user.click(screen.getByText('+ Add Game'));
-      await user.type(screen.getByPlaceholderText('e.g., 174430 (Gloomhaven)'), '-123');
+      await user.type(screen.getByPlaceholderText('e.g., 174430 or a boardgamegeek.com/boardgame/... URL'), '-123');
       await user.click(screen.getByText('Add to List'));
 
       await waitFor(() => {
-        expect(screen.getByText('BGG ID must be a positive number')).toBeInTheDocument();
+        expect(screen.getByText('Please enter a valid BGG ID or BoardGameGeek URL')).toBeInTheDocument();
       });
       expect(apiClient.addToBuyList).not.toHaveBeenCalled();
+    });
+
+    test('accepts a pasted BoardGameGeek URL in place of a bare ID', async () => {
+      const user = userEvent.setup();
+      apiClient.addToBuyList.mockResolvedValue({});
+      render(<BuyListTab />);
+
+      await user.click(screen.getByText('+ Add Game'));
+      await user.type(
+        screen.getByPlaceholderText('e.g., 174430 or a boardgamegeek.com/boardgame/... URL'),
+        'https://boardgamegeek.com/boardgame/174430/gloomhaven'
+      );
+      await user.click(screen.getByText('Add to List'));
+
+      await waitFor(() => {
+        expect(apiClient.addToBuyList).toHaveBeenCalledWith(
+          expect.objectContaining({ bgg_id: 174430 })
+        );
+      });
     });
   });
 
@@ -481,7 +500,7 @@ describe('BuyListTab', () => {
       render(<BuyListTab />);
 
       await user.click(screen.getByText('+ Add Game'));
-      await user.type(screen.getByPlaceholderText('e.g., 174430 (Gloomhaven)'), '174430');
+      await user.type(screen.getByPlaceholderText('e.g., 174430 or a boardgamegeek.com/boardgame/... URL'), '174430');
       await user.click(screen.getByText('Cancel'));
 
       await waitFor(() => {
@@ -490,7 +509,7 @@ describe('BuyListTab', () => {
 
       // Re-opening should show the cleared form, not the stale value
       await user.click(screen.getByText('+ Add Game'));
-      expect(screen.getByPlaceholderText('e.g., 174430 (Gloomhaven)')).toHaveValue(null);
+      expect(screen.getByPlaceholderText('e.g., 174430 or a boardgamegeek.com/boardgame/... URL')).toHaveValue('');
     });
 
     test('handles add game error from the server', async () => {
@@ -503,7 +522,7 @@ describe('BuyListTab', () => {
       render(<BuyListTab />);
 
       await user.click(screen.getByText('+ Add Game'));
-      await user.type(screen.getByPlaceholderText('e.g., 174430 (Gloomhaven)'), '999999');
+      await user.type(screen.getByPlaceholderText('e.g., 174430 or a boardgamegeek.com/boardgame/... URL'), '999999');
       await user.click(screen.getByText('Add to List'));
 
       await waitFor(() => {

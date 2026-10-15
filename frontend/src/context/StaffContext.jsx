@@ -15,6 +15,7 @@ import {
   importFromBGG,
 } from '../api/client';
 import { CATEGORY_KEYS } from '../constants/categories';
+import { parseBggId } from '../utils/bgg';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 
 const StaffContext = createContext(null);
@@ -70,6 +71,22 @@ export function StaffProvider({ children }) {
   // Loading states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  /**
+   * Fire-and-forget background operations (CSV import, re-import selected, sleeve
+   * fetch, etc.) have no server-side job status to poll. This just tracks what was
+   * kicked off and when, so the Dashboard can show "what's in flight" instead of
+   * staff having to guess whether something finished.
+   */
+  const [recentOperations, setRecentOperations] = useState([]);
+  const addRecentOperation = useCallback(({ label, etaMs = 60000 }) => {
+    const entry = { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, label, startedAt: Date.now(), etaMs };
+    setRecentOperations((prev) => [entry, ...prev].slice(0, 8));
+    return entry.id;
+  }, []);
+  const dismissRecentOperation = useCallback((id) => {
+    setRecentOperations((prev) => prev.filter((op) => op.id !== id));
+  }, []);
 
   /**
    * Show toast notification
@@ -249,10 +266,8 @@ export function StaffProvider({ children }) {
   const handleAddGame = useCallback(async () => {
     if (isAddingGame) return;
     // Accept a pasted BGG URL as well as a bare ID
-    const raw = bggIdInput.trim();
-    const urlMatch = raw.match(/boardgame(?:expansion)?\/(\d+)/i);
-    const id = parseInt(urlMatch ? urlMatch[1] : raw, 10);
-    if (isNaN(id) || id <= 0) {
+    const id = parseBggId(bggIdInput);
+    if (!id) {
       showToast('Please enter a valid BGG ID', 'error');
       return;
     }
@@ -327,6 +342,11 @@ export function StaffProvider({ children }) {
           at: new Date(),
         });
         showToast(result?.message || 'Import started in the background', 'success', 4000);
+        const count = result?.count || 1;
+        addRecentOperation({
+          label: `Bulk import (${count} game${count === 1 ? '' : 's'})`,
+          etaMs: Math.max(30000, count * 8000),
+        });
         setCsvImportText('');
       } catch (e) {
         showToast(e.response?.data?.detail || 'Bulk import failed', 'error');
@@ -334,7 +354,7 @@ export function StaffProvider({ children }) {
         setIsBulkRunning(false);
       }
     },
-    [csvImportText, showToast, isBulkRunning]
+    [csvImportText, showToast, isBulkRunning, addRecentOperation]
   );
 
   /**
@@ -436,6 +456,9 @@ export function StaffProvider({ children }) {
     modalMode,
     isLoading,
     error,
+    recentOperations,
+    addRecentOperation,
+    dismissRecentOperation,
 
     // Derived state
     stats,

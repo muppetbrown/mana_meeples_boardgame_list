@@ -23,10 +23,11 @@ The admin token is securely stored in the `ADMIN_TOKEN` environment variable on 
 ### 3. Login Security Features
 
 The admin login system includes:
-- **Token Validation**: The token is verified against the backend before granting access
+- **Token Validation**: The admin token is checked against the backend once, at login
+- **JWT Session**: On success the backend issues a JWT (valid for `JWT_EXPIRATION_DAYS`, default 7 days). The frontend stores this JWT and sends it as `Authorization: Bearer <jwt>` on every subsequent admin request — the long-lived admin token itself is never sent again after login
 - **Rate Limiting**: Maximum 5 failed login attempts per 5 minutes per IP address
-- **Auto-Logout**: Invalid or expired tokens automatically redirect you back to login
-- **Session Persistence**: Your token is stored locally and validated on each page load
+- **Auto-Logout**: Invalid or expired JWTs automatically redirect you back to login
+- **Session Persistence**: Your JWT is stored locally and validated on each page load
 
 ---
 
@@ -168,7 +169,7 @@ bgg_id,nz_designer
 
 ## Admin API Endpoints
 
-All admin endpoints require the `X-Admin-Token` header for authentication.
+All admin endpoints (other than `/api/admin/login`) require a JWT obtained from `/api/admin/login`, sent as `Authorization: Bearer <jwt>`. There is no `X-Admin-Token` header — that header name described an earlier version of this system and no longer applies.
 
 ### Authentication
 - **GET** `/api/admin/validate` - Validate admin token

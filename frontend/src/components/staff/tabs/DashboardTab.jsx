@@ -10,14 +10,40 @@ import {
 } from "../../../api/client";
 import { ATTENTION_FILTERS, attentionCounts } from "../../../utils/libraryQuality";
 
+/** Format a millisecond duration as a short "Xm"/"Xs" label. */
+function formatElapsed(ms) {
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return "<1m";
+  if (minutes < 60) return `${minutes}m`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
 /**
  * Dashboard tab - what needs doing, system health, and quick actions
  */
 export function DashboardTab({ onTabChange }) {
-  const { stats, ownedLibrary, library, setAttentionFilter, setSelectedCategory, showToast } = useStaff();
+  const {
+    stats,
+    ownedLibrary,
+    library,
+    setAttentionFilter,
+    setSelectedCategory,
+    showToast,
+    recentOperations = [],
+    dismissRecentOperation,
+    loadLibrary,
+  } = useStaff();
   const [health, setHealth] = useState({ api: null, db: null, loading: true });
   const [monitoring, setMonitoring] = useState({ failures: null, breaker: null, loading: true });
   const [refreshedAt, setRefreshedAt] = useState(null);
+  // Forces a re-render every 15s so "started Xm ago" / "likely done" stay current
+  // while any background operation is still being tracked.
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (recentOperations.length === 0) return undefined;
+    const t = setInterval(() => forceTick((n) => n + 1), 15000);
+    return () => clearInterval(t);
+  }, [recentOperations.length]);
 
   const loadHealth = useCallback(async () => {
     setHealth((h) => ({ ...h, loading: true }));
@@ -167,6 +193,48 @@ export function DashboardTab({ onTabChange }) {
           })}
         </div>
       </div>
+
+      {/* Recent background operations */}
+      {recentOperations.length > 0 && (
+        <div className="bg-white rounded-2xl p-6 shadow">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xl font-semibold">Recent background operations</h2>
+            <button
+              onClick={loadLibrary}
+              className="text-sm px-3 py-1.5 rounded-lg border border-gray-300 hover:bg-gray-50"
+            >
+              ↻ Refresh library
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 mb-3">
+            These run on the server without a live progress indicator. "Likely done" is an estimate — refresh the
+            library or check Manage Library to confirm.
+          </p>
+          <ul className="divide-y divide-gray-100">
+            {recentOperations.map((op) => {
+              const elapsedMs = Date.now() - op.startedAt;
+              const done = elapsedMs >= op.etaMs;
+              return (
+                <li key={op.id} className="py-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-800 truncate">{op.label}</div>
+                    <div className={`text-xs ${done ? "text-green-700" : "text-blue-600"}`}>
+                      {done ? "Likely done" : "Running…"} · started {formatElapsed(elapsedMs)} ago
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => dismissRecentOperation?.(op.id)}
+                    aria-label={`Dismiss ${op.label}`}
+                    className="shrink-0 text-xs px-2 py-1 rounded bg-gray-100 hover:bg-gray-200"
+                  >
+                    Dismiss
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-6">
         {/* System health & monitoring */}

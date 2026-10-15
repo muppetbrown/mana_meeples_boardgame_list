@@ -13,6 +13,7 @@ import {
   importFromBGG,
 } from "../../../api/client";
 import { CATEGORY_LABELS } from "../../../constants/categories";
+import { parseBggId } from "../../../utils/bgg";
 
 const PLAYER_COUNT_LABELS = {
   "1": "1 player", "2": "2 players", "3": "3 players", "4": "4 players",
@@ -169,9 +170,10 @@ export function BuyListTab() {
       return;
     }
 
-    const bggIdNum = parseInt(addBggId);
-    if (isNaN(bggIdNum) || bggIdNum <= 0) {
-      setError("BGG ID must be a positive number");
+    // Accept a pasted BGG URL as well as a bare ID
+    const bggIdNum = parseBggId(addBggId);
+    if (!bggIdNum) {
+      setError("Please enter a valid BGG ID or BoardGameGeek URL");
       return;
     }
 
@@ -495,18 +497,18 @@ export function BuyListTab() {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    BGG ID <span className="text-red-500">*</span>
+                    BGG ID or URL <span className="text-red-500">*</span>
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={addBggId}
                     onChange={(e) => setAddBggId(e.target.value)}
-                    placeholder="e.g., 174430 (Gloomhaven)"
+                    placeholder="e.g., 174430 or a boardgamegeek.com/boardgame/... URL"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    min="1"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Find BGG ID at <a href="https://boardgamegeek.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">boardgamegeek.com</a>
+                    Find BGG ID at <a href="https://boardgamegeek.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">boardgamegeek.com</a> — paste the ID or the full game URL
                   </p>
                 </div>
 

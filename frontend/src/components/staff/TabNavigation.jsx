@@ -22,7 +22,10 @@ export function TabNavigation({ activeTab, onTabChange, tabs }) {
   };
 
   return (
-    <div className="border-b border-gray-200 bg-white sticky top-16 z-30">
+    <div
+      className="border-b border-gray-200 bg-white sticky z-30"
+      style={{ top: "var(--staff-header-h, 4rem)" }}
+    >
       <nav className="max-w-7xl mx-auto px-2 sm:px-4" aria-label="Admin sections">
         <div
           role="tablist"
