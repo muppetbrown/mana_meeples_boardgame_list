@@ -416,5 +416,333 @@ describe('BuyListTab', () => {
         expect(screen.getByText(/Bulk import completed: 5 added, 2 updated, 1 skipped/)).toBeInTheDocument();
       });
     });
+
+    test('surfaces errors and error_details count from a partial import', async () => {
+      const user = userEvent.setup();
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      apiClient.bulkImportBuyListCSV.mockResolvedValue({
+        added: 1, updated: 0, skipped: 0, errors: 2,
+        error_details: ['row 2: bad bgg_id', 'row 3: BGG fetch failed'],
+      });
+
+      const { container } = render(<BuyListTab />);
+
+      await user.click(screen.getByText('📥 Bulk Import CSV'));
+      const file = new File(['bgg_id\nbad'], 'test.csv', { type: 'text/csv' });
+      await user.upload(container.querySelector('input[type="file"]'), file);
+
+      await waitFor(() => {
+        expect(screen.getByText(/2 errors \(see console for details\)/)).toBeInTheDocument();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('handles CSV import failure', async () => {
+      const user = userEvent.setup();
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      apiClient.bulkImportBuyListCSV.mockRejectedValue({
+        response: { data: { detail: 'Invalid CSV format' } },
+      });
+
+      const { container } = render(<BuyListTab />);
+
+      await user.click(screen.getByText('📥 Bulk Import CSV'));
+      const file = new File(['bad data'], 'test.csv', { type: 'text/csv' });
+      await user.upload(container.querySelector('input[type="file"]'), file);
+
+      await waitFor(() => {
+        expect(screen.getByText('Invalid CSV format')).toBeInTheDocument();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('closes the bulk import modal', async () => {
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+
+      await user.click(screen.getByText('📥 Bulk Import CSV'));
+      await waitFor(() => {
+        expect(screen.getByText('Bulk Import Games to Add from CSV')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Close'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Bulk Import Games to Add from CSV')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Add Game Modal - cancel and errors', () => {
+    test('closes the add modal via Cancel and clears the form', async () => {
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+
+      await user.click(screen.getByText('+ Add Game'));
+      await user.type(screen.getByPlaceholderText('e.g., 174430 (Gloomhaven)'), '174430');
+      await user.click(screen.getByText('Cancel'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Add a Candidate Game by BGG ID')).not.toBeInTheDocument();
+      });
+
+      // Re-opening should show the cleared form, not the stale value
+      await user.click(screen.getByText('+ Add Game'));
+      expect(screen.getByPlaceholderText('e.g., 174430 (Gloomhaven)')).toHaveValue(null);
+    });
+
+    test('handles add game error from the server', async () => {
+      const user = userEvent.setup();
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      apiClient.addToBuyList.mockRejectedValue({
+        response: { data: { detail: 'Game not found' } },
+      });
+
+      render(<BuyListTab />);
+
+      await user.click(screen.getByText('+ Add Game'));
+      await user.type(screen.getByPlaceholderText('e.g., 174430 (Gloomhaven)'), '999999');
+      await user.click(screen.getByText('Add to List'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Game not found')).toBeInTheDocument();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Error loading gaps', () => {
+    test('logs but does not crash when gap analysis fails to load', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      apiClient.getLibraryGaps.mockRejectedValue(new Error('Network error'));
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Game')).toBeInTheDocument();
+      });
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to load library gaps:', expect.any(Error));
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+
+  describe('Banner dismissal', () => {
+    test('dismisses the error banner', async () => {
+      const user = userEvent.setup();
+      apiClient.getBuyListGames.mockRejectedValue(new Error('Network error'));
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to load games to add')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByLabelText('Dismiss error'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Failed to load games to add')).not.toBeInTheDocument();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('dismisses the success banner', async () => {
+      const user = userEvent.setup();
+      apiClient.removeFromBuyList.mockResolvedValue({});
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Game')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Remove'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Removed from the list')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByLabelText('Dismiss message'));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Removed from the list')).not.toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Error handling for edit/remove/move-to-owned', () => {
+    test('does not remove when the confirmation is cancelled', async () => {
+      const user = userEvent.setup();
+      window.confirm = vi.fn(() => false);
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Game')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Remove'));
+
+      expect(apiClient.removeFromBuyList).not.toHaveBeenCalled();
+    });
+
+    test('handles remove failure', async () => {
+      const user = userEvent.setup();
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      apiClient.removeFromBuyList.mockRejectedValue(new Error('Remove failed'));
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Game')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Remove'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to remove')).toBeInTheDocument();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('handles save-edit failure', async () => {
+      const user = userEvent.setup();
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      apiClient.updateBuyListGame.mockRejectedValue(new Error('Save failed'));
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Game')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Edit'));
+      await user.click(screen.getByText('Save'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to update')).toBeInTheDocument();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('edits the notes field', async () => {
+      const user = userEvent.setup();
+      apiClient.updateBuyListGame.mockResolvedValue({});
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Game')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('Edit'));
+      const notesInput = screen.getByDisplayValue('Worth considering');
+      await user.clear(notesInput);
+      await user.type(notesInput, 'Updated note');
+      await user.click(screen.getByText('Save'));
+
+      await waitFor(() => {
+        expect(apiClient.updateBuyListGame).toHaveBeenCalledWith(
+          1, expect.objectContaining({ notes: 'Updated note' })
+        );
+      });
+    });
+
+    test('does not move to owned when confirmation is cancelled', async () => {
+      const user = userEvent.setup();
+      window.confirm = vi.fn(() => false);
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Game')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('→ Owned'));
+
+      expect(apiClient.updateGame).not.toHaveBeenCalled();
+    });
+
+    test('handles move-to-owned failure', async () => {
+      const user = userEvent.setup();
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      apiClient.updateGame.mockRejectedValue(new Error('Move failed'));
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Game')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('→ Owned'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Failed to move game to owned collection')).toBeInTheDocument();
+      });
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    test('reports success but flags a failed BGG refresh after move-to-owned', async () => {
+      const user = userEvent.setup();
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      apiClient.updateGame.mockResolvedValue({});
+      apiClient.updateBuyListGame.mockResolvedValue({});
+      apiClient.importFromBGG.mockRejectedValueOnce(new Error('BGG unreachable'));
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Game')).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText('→ Owned'));
+
+      await waitFor(() => {
+        expect(screen.getByText(/BGG data refresh failed/)).toBeInTheDocument();
+      });
+
+      consoleWarnSpy.mockRestore();
+    });
+  });
+
+  describe('Gap-match badges', () => {
+    test('renders nothing when the candidate has no gap_match', async () => {
+      apiClient.getBuyListGames.mockResolvedValue({
+        items: [{ ...mockBuyListItem, gap_match: null }],
+      });
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Game')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('Fills category gap')).not.toBeInTheDocument();
+    });
+
+    test('renders nothing when gap_match has no matches', async () => {
+      apiClient.getBuyListGames.mockResolvedValue({
+        items: [{
+          ...mockBuyListItem,
+          gap_match: { category_is_gap: false, matching_player_count_gaps: [] },
+        }],
+      });
+
+      render(<BuyListTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Test Game')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('Fills category gap')).not.toBeInTheDocument();
+    });
   });
 });
