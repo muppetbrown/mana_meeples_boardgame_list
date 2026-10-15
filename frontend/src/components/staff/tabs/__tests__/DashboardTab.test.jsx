@@ -249,4 +249,42 @@ describe('DashboardTab', () => {
     // zero-count cards stay quiet
     expect(screen.queryByText('Re-import from BGG to pull designers.')).not.toBeInTheDocument();
   });
+
+  describe('recent background operations', () => {
+    test('is hidden when there are no tracked operations', async () => {
+      render(<DashboardTab onTabChange={onTabChange} />);
+      await screen.findByText('All Systems Operational');
+      expect(screen.queryByText('Recent background operations')).not.toBeInTheDocument();
+    });
+
+    test('shows a running operation, then likely-done once its ETA has passed', async () => {
+      const dismissRecentOperation = vi.fn();
+      const loadLibrary = vi.fn();
+      useStaff.mockReturnValue(
+        ctx({
+          recentOperations: [
+            { id: 'op-1', label: 'Bulk import (3 games)', startedAt: Date.now(), etaMs: 60000 },
+            { id: 'op-2', label: 'Sleeve data fetch (5 games)', startedAt: Date.now() - 120000, etaMs: 60000 },
+          ],
+          dismissRecentOperation,
+          loadLibrary,
+        })
+      );
+      const user = userEvent.setup();
+      render(<DashboardTab onTabChange={onTabChange} />);
+      await screen.findByText('All Systems Operational');
+
+      expect(screen.getByText('Recent background operations')).toBeInTheDocument();
+      expect(screen.getByText('Bulk import (3 games)')).toBeInTheDocument();
+      expect(screen.getByText('Bulk import (3 games)').closest('li')).toHaveTextContent('Running…');
+      expect(screen.getByText('Sleeve data fetch (5 games)')).toBeInTheDocument();
+      expect(screen.getByText('Sleeve data fetch (5 games)').closest('li')).toHaveTextContent('Likely done');
+
+      await user.click(screen.getByLabelText('Dismiss Bulk import (3 games)'));
+      expect(dismissRecentOperation).toHaveBeenCalledWith('op-1');
+
+      await user.click(screen.getByText('↻ Refresh library'));
+      expect(loadLibrary).toHaveBeenCalled();
+    });
+  });
 });

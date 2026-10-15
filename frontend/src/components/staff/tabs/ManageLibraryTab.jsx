@@ -28,6 +28,7 @@ export function ManageLibraryTab() {
     confirm,
     attentionFilter,
     setAttentionFilter,
+    addRecentOperation,
   } = useStaff();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -220,10 +221,15 @@ export function ManageLibraryTab() {
     if (!ok) return;
 
     try {
+      const count = selectedGames.size;
       await triggerSleeveFetch(Array.from(selectedGames));
-      showToast(`Sleeve fetch workflow triggered for ${selectedGames.size} game(s)`, 'success');
+      showToast(`Sleeve fetch workflow triggered for ${count} game(s)`, 'success');
       // Bump the poll token so SleeveFetchStatus starts actively polling for progress.
       setSleeveFetchPollToken((t) => t + 1);
+      addRecentOperation?.({
+        label: `Sleeve data fetch (${count} game${count === 1 ? '' : 's'})`,
+        etaMs: 180000,
+      });
       // Clear selection after triggering
       setSelectedGames(new Set());
     } catch (err) {
@@ -247,8 +253,13 @@ export function ManageLibraryTab() {
     if (!ok) return;
 
     try {
+      const count = selectedGames.size;
       const result = await reimportSelectedGames(Array.from(selectedGames));
       showToast(result.message, 'success');
+      addRecentOperation?.({
+        label: `Re-import from BGG (${count} game${count === 1 ? '' : 's'})`,
+        etaMs: Math.max(30000, count * 5000),
+      });
       setSelectedGames(new Set());
     } catch (err) {
       console.error('Failed to re-import selected games:', err);
@@ -365,10 +376,13 @@ export function ManageLibraryTab() {
 
       {/* Selection Actions Bar */}
       {searchFilteredLibrary.length > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sticky top-32 z-20 shadow-sm">
+        <div
+          className="bg-blue-50 border border-blue-200 rounded-lg p-4 sticky z-20 shadow-sm"
+          style={{ top: "var(--staff-topbar-h, 8rem)" }}
+        >
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className="flex items-center gap-2 min-h-11 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={selectedGames.size === searchFilteredLibrary.length && searchFilteredLibrary.length > 0}
@@ -479,15 +493,17 @@ export function ManageLibraryTab() {
               <tbody className="divide-y divide-gray-200">
                 {pageItems.map((game) => (
                   <tr key={game.id} className="hover:bg-gray-50 transition-colors">
-                    {/* Select Checkbox */}
+                    {/* Select Checkbox - wrapped for a 44px touch target even though the box itself is small */}
                     <td className="px-4 py-3 whitespace-nowrap text-center">
-                      <input
-                        type="checkbox"
-                        aria-label={`Select ${game.title}`}
-                        checked={selectedGames.has(game.id)}
-                        onChange={() => toggleGameSelection(game.id)}
-                        className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
-                      />
+                      <label className="inline-flex items-center justify-center min-w-11 min-h-11 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${game.title}`}
+                          checked={selectedGames.has(game.id)}
+                          onChange={() => toggleGameSelection(game.id)}
+                          className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
+                        />
+                      </label>
                     </td>
 
                     {/* Thumbnail */}
@@ -578,7 +594,7 @@ export function ManageLibraryTab() {
                         value={game.mana_meeple_category || ""}
                         disabled={categorySaving.has(game.id)}
                         onChange={(e) => handleCategoryChange(game, e.target.value)}
-                        className={`text-xs font-medium rounded-full border px-2 py-1 outline-none focus:ring-2 focus:ring-purple-300 disabled:opacity-50 ${
+                        className={`text-xs font-medium rounded-full border px-2 py-1 min-h-11 outline-none focus:ring-2 focus:ring-purple-300 disabled:opacity-50 ${
                           game.mana_meeple_category
                             ? "bg-purple-50 text-purple-800 border-purple-200"
                             : "bg-gray-100 text-gray-600 border-gray-300"
@@ -598,7 +614,7 @@ export function ManageLibraryTab() {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => handleEditGame(game)}
-                          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
+                          className="px-3 min-h-11 text-xs font-medium rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
                           title="Edit game details"
                           aria-label={`Edit Game: ${game.title}`}
                         >
@@ -607,7 +623,7 @@ export function ManageLibraryTab() {
                         <button
                           onClick={() => handleDelete(game)}
                           aria-label={`Delete ${game.title}`}
-                          className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                          className="px-3 min-h-11 text-xs font-medium rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
                         >
                           Delete
                         </button>
@@ -628,7 +644,7 @@ export function ManageLibraryTab() {
               <button
                 onClick={() => setPage(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-3 min-h-11 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 ← Previous
               </button>
@@ -638,7 +654,7 @@ export function ManageLibraryTab() {
               <button
                 onClick={() => setPage(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-3 min-h-11 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Next →
               </button>

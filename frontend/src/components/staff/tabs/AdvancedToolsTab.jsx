@@ -7,7 +7,7 @@ import { AdminToolsPanel } from "../AdminToolsPanel";
  * Advanced Tools tab - System maintenance, debugging, and data export
  */
 export function AdvancedToolsTab() {
-  const { showToast, loadLibrary } = useStaff();
+  const { showToast, loadLibrary, addRecentOperation } = useStaff();
 
   return (
     <div className="space-y-6">
@@ -29,7 +29,7 @@ export function AdvancedToolsTab() {
       </div>
 
       {/* Admin Tools Panel */}
-      <AdminToolsPanel onToast={showToast} onLibraryReload={loadLibrary} />
+      <AdminToolsPanel onToast={showToast} onLibraryReload={loadLibrary} onBackgroundOperation={addRecentOperation} />
 
       {/* Help & Documentation */}
       <div className="bg-linear-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border border-gray-200">
