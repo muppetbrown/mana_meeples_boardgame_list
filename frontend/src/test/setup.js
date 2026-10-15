@@ -42,9 +42,13 @@ global.IntersectionObserver = class IntersectionObserver {
   }
 };
 
-// Mock ResizeObserver
+// Mock ResizeObserver - constructor signature matches the real DOM API
+// (a single ResizeObserverCallback) so static analysis of real call sites
+// doesn't flag them against this shadowed global declaration.
 global.ResizeObserver = class ResizeObserver {
-  constructor() {}
+  constructor(callback) {
+    this.callback = callback;
+  }
   disconnect() {}
   observe() {}
   unobserve() {}
