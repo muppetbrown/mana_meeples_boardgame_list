@@ -19,8 +19,10 @@ services:
       # Proxies in front of the app that append to X-Forwarded-For. The deploy log prints the
       # real entry count on the first request ("X-Forwarded-For arrived with N entries"); raise this if
       # the chain is longer than expected, or users will share one rate-limit bucket.
+      # Confirmed via Render logs (2026-10-14/15): requests through the public URL consistently
+      # arrive with 2 entries, so Render fronts the app with 2 proxy hops.
       - key: TRUSTED_PROXY_COUNT
-        value: "1"
+        value: "2"
       # Secrets - set in the Render dashboard (never committed)
       - key: DATABASE_URL
         sync: false
