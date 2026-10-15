@@ -112,11 +112,14 @@ describe('BuyListTab', () => {
     test('shows gap analysis panel', async () => {
       render(<BuyListTab />);
 
+      // 'Where the collection is thin' is a static heading rendered even
+      // during loading; wait on the gap data itself instead, since it
+      // resolves asynchronously and races with other panels' own loads.
       await waitFor(() => {
-        expect(screen.getByText('Where the collection is thin')).toBeInTheDocument();
+        expect(screen.getByText(/Party & Icebreakers/)).toBeInTheDocument();
       });
 
-      expect(screen.getByText(/Party & Icebreakers/)).toBeInTheDocument();
+      expect(screen.getByText('Where the collection is thin')).toBeInTheDocument();
       expect(screen.getAllByText(/9\+ players/).length).toBeGreaterThan(0);
       expect(screen.getByText(/Light \(under 2\.0\)/)).toBeInTheDocument();
       expect(screen.getByText(/Quick \(under 30 min\)/)).toBeInTheDocument();
