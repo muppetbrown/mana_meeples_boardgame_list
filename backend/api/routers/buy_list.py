@@ -22,6 +22,7 @@ from bgg_service import get_hot_games
 from database import get_db
 from models import BuyListGame, Game
 from schemas import BuyListGameCreate, BuyListGameUpdate, BuyListReorderRequest, SuggestGamesRequest
+from services.award_winners import get_award_winners
 from services.game_suggestion_service import SuggestionServiceError, generate_suggestions
 from services.gap_analysis import annotate_candidate, compute_library_gaps
 
@@ -143,6 +144,27 @@ async def get_trending_games(
         results.append({**hot, "status": status})
 
     return {"trending": results}
+
+
+@router.get("/award-winners", dependencies=[Depends(require_admin_auth)])
+async def list_award_winners(
+    years: int = Query(6, ge=1, le=20, description="How many most-recent award years to include, per award"),
+    db: Session = Depends(get_db),
+):
+    """
+    Spiel des Jahres / Kennerspiel des Jahres / Kinderspiel des Jahres
+    winners from recent years, annotated with whether each is already owned
+    or already on the games-to-add list. Hand-curated (see
+    services/award_winners.py) rather than scraped from BGG, since there's
+    no API for "every winner of award X".
+    """
+    try:
+        winners = await get_award_winners(db, years=years)
+    except Exception as e:
+        logger.error(f"Error computing award winners: {e}")
+        raise HTTPException(status_code=500, detail="Failed to retrieve award winners")
+
+    return {"award_winners": winners}
 
 
 @router.post("/suggest", dependencies=[Depends(require_admin_auth)])

@@ -2,7 +2,7 @@
  * BuyListTab tests - gap-aware "games to add" list (no price tracking)
  */
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BuyListTab } from '../BuyListTab';
 import * as apiClient from '../../../../api/client';
@@ -20,6 +20,7 @@ vi.mock('../../../../api/client', () => ({
   reorderBuyList: vi.fn(),
   suggestBuyListGames: vi.fn(),
   getTrendingGames: vi.fn(),
+  getAwardWinners: vi.fn(),
 }));
 
 describe('BuyListTab', () => {
@@ -72,6 +73,7 @@ describe('BuyListTab', () => {
     apiClient.getBuyListGames.mockResolvedValue(mockBuyListData);
     apiClient.getLibraryGaps.mockResolvedValue(mockGaps);
     apiClient.getTrendingGames.mockResolvedValue({ trending: [] });
+    apiClient.getAwardWinners.mockResolvedValue({ award_winners: [] });
   });
 
   describe('Rendering', () => {
@@ -110,11 +112,14 @@ describe('BuyListTab', () => {
     test('shows gap analysis panel', async () => {
       render(<BuyListTab />);
 
+      // 'Where the collection is thin' is a static heading rendered even
+      // during loading; wait on the gap data itself instead, since it
+      // resolves asynchronously and races with other panels' own loads.
       await waitFor(() => {
-        expect(screen.getByText('Where the collection is thin')).toBeInTheDocument();
+        expect(screen.getByText(/Party & Icebreakers/)).toBeInTheDocument();
       });
 
-      expect(screen.getByText(/Party & Icebreakers/)).toBeInTheDocument();
+      expect(screen.getByText('Where the collection is thin')).toBeInTheDocument();
       expect(screen.getAllByText(/9\+ players/).length).toBeGreaterThan(0);
       expect(screen.getByText(/Light \(under 2\.0\)/)).toBeInTheDocument();
       expect(screen.getByText(/Quick \(under 30 min\)/)).toBeInTheDocument();
@@ -1036,9 +1041,104 @@ describe('BuyListTab', () => {
       await screen.findByText('Gloomhaven');
       apiClient.getTrendingGames.mockClear();
 
-      await user.click(screen.getByText('↻ Refresh'));
+      const trendingSection = screen.getByText('🔥 Trending on BoardGameGeek').closest('.shadow');
+      await user.click(within(trendingSection).getByText('↻ Refresh'));
 
       await waitFor(() => expect(apiClient.getTrendingGames).toHaveBeenCalledTimes(1));
+    });
+  });
+
+  describe('Award Winners', () => {
+    const winnerNew = {
+      year: 2024, award: 'spiel_des_jahres', award_label: 'Spiel des Jahres',
+      title: 'Sky Team', bgg_id: 373106, thumbnail_url: 'https://example.com/skyteam.jpg',
+      status: 'new', bgg_search_url: 'https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=Sky+Team',
+    };
+    const winnerOwned = {
+      year: 2019, award: 'kennerspiel_des_jahres', award_label: 'Kennerspiel des Jahres',
+      title: 'Wingspan', bgg_id: 266192, thumbnail_url: null,
+      status: 'owned', bgg_search_url: 'https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=Wingspan',
+    };
+    const winnerQueued = {
+      year: 1995, award: 'spiel_des_jahres', award_label: 'Spiel des Jahres',
+      title: 'Catan', bgg_id: 13, thumbnail_url: null,
+      status: 'on_buy_list', bgg_search_url: 'https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=Catan',
+    };
+    const winnerUnresolved = {
+      year: 2017, award: 'kennerspiel_des_jahres', award_label: 'Kennerspiel des Jahres',
+      title: 'Exit: The Game – The Abandoned Cabin', bgg_id: null, thumbnail_url: null,
+      status: 'new', bgg_search_url: 'https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=Exit',
+    };
+
+    test('loads and renders award winners on mount', async () => {
+      apiClient.getAwardWinners.mockResolvedValue({ award_winners: [winnerNew, winnerOwned] });
+      render(<BuyListTab />);
+
+      expect(await screen.findByText('Sky Team')).toBeInTheDocument();
+      expect(screen.getByText('Wingspan')).toBeInTheDocument();
+      expect(screen.getByText('Owned')).toBeInTheDocument();
+      expect(apiClient.getAwardWinners).toHaveBeenCalledWith(6);
+    });
+
+    test('shows status badges and only offers Add for new games with a resolved bgg_id', async () => {
+      apiClient.getAwardWinners.mockResolvedValue({
+        award_winners: [winnerNew, winnerOwned, winnerQueued, winnerUnresolved],
+      });
+      render(<BuyListTab />);
+
+      await screen.findByText('Sky Team');
+      expect(screen.getByText('Owned')).toBeInTheDocument();
+      expect(screen.getByText('On list')).toBeInTheDocument();
+      expect(screen.getByText('+ Add')).toBeInTheDocument(); // only winnerNew
+      expect(screen.getByText('Search BGG')).toBeInTheDocument(); // winnerUnresolved has no bgg_id
+    });
+
+    test('shows an error banner when the award winners fetch fails', async () => {
+      apiClient.getAwardWinners.mockRejectedValue(new Error('network error'));
+      render(<BuyListTab />);
+
+      expect(await screen.findByText(/Failed to load award winners/)).toBeInTheDocument();
+    });
+
+    test('shows empty state when there is no award winner data', async () => {
+      apiClient.getAwardWinners.mockResolvedValue({ award_winners: [] });
+      render(<BuyListTab />);
+
+      expect(await screen.findByText(/No award winner data available/)).toBeInTheDocument();
+    });
+
+    test('adds an award winner and flips its status to on list', async () => {
+      apiClient.getAwardWinners.mockResolvedValue({ award_winners: [winnerNew] });
+      apiClient.addToBuyList.mockResolvedValue({});
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+
+      await screen.findByText('Sky Team');
+      await user.click(screen.getByText('+ Add'));
+
+      await waitFor(() => {
+        expect(apiClient.addToBuyList).toHaveBeenCalledWith({
+          bgg_id: 373106,
+          notes: 'Spiel des Jahres 2024',
+        });
+      });
+      expect(await screen.findByText('Added "Sky Team" to the list')).toBeInTheDocument();
+      expect(await screen.findByText('On list')).toBeInTheDocument();
+      expect(screen.queryByText('+ Add')).not.toBeInTheDocument();
+    });
+
+    test('refresh button re-fetches award winners', async () => {
+      apiClient.getAwardWinners.mockResolvedValue({ award_winners: [winnerNew] });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+
+      await screen.findByText('Sky Team');
+      apiClient.getAwardWinners.mockClear();
+
+      const awardSection = screen.getByText('🏆 Award Winners').closest('.shadow');
+      await user.click(within(awardSection).getByText('↻ Refresh'));
+
+      await waitFor(() => expect(apiClient.getAwardWinners).toHaveBeenCalledTimes(1));
     });
   });
 });
