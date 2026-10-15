@@ -201,6 +201,18 @@ class TestAddToBuyList:
 
         assert response.status_code == 400
 
+    def test_unexpected_error_returns_500_and_rolls_back(self, client, db_session, admin_headers):
+        game = Game(title="Test Game", bgg_id=55555, status="BUY_LIST")
+        db_session.add(game)
+        db_session.commit()
+
+        with patch("api.routers.buy_list.compute_library_gaps", side_effect=Exception("boom")):
+            response = client.post(
+                "/api/admin/buy-list/games", headers=admin_headers, json={"bgg_id": 55555},
+            )
+
+        assert response.status_code == 500
+
 
 class TestUpdateBuyListGame:
     """Test PUT /api/admin/buy-list/games/{buy_list_id}"""
@@ -336,3 +348,185 @@ class TestGetLibraryGaps:
     def test_gaps_requires_auth(self, client):
         response = client.get("/api/admin/buy-list/gaps")
         assert response.status_code in (401, 403)
+
+    def test_gaps_computation_error_returns_500(self, client, admin_headers):
+        with patch("api.routers.buy_list.compute_library_gaps", side_effect=Exception("boom")):
+            response = client.get("/api/admin/buy-list/gaps", headers=admin_headers)
+        assert response.status_code == 500
+
+
+class TestListBuyListGamesExtra:
+    """Additional coverage for GET /api/admin/buy-list/games"""
+
+    def test_filter_on_buy_list_false(self, client, db_session, admin_headers):
+        game = Game(title="Removed but present", bgg_id=1)
+        db_session.add(game)
+        db_session.flush()
+        db_session.add(BuyListGame(game_id=game.id, on_buy_list=False))
+        db_session.commit()
+
+        response = client.get(
+            "/api/admin/buy-list/games", params={"on_buy_list": False}, headers=admin_headers
+        )
+        assert response.status_code == 200
+        assert response.json()["total"] == 1
+
+    def test_sort_by_updated_at(self, client, db_session, admin_headers):
+        game_a = Game(title="Game A", bgg_id=1)
+        game_b = Game(title="Game B", bgg_id=2)
+        db_session.add_all([game_a, game_b])
+        db_session.flush()
+        db_session.add_all([
+            BuyListGame(game_id=game_a.id, on_buy_list=True),
+            BuyListGame(game_id=game_b.id, on_buy_list=True),
+        ])
+        db_session.commit()
+
+        response = client.get(
+            "/api/admin/buy-list/games", params={"sort_by": "updated_at"}, headers=admin_headers
+        )
+        assert response.status_code == 200
+        assert response.json()["total"] == 2
+
+    def test_list_error_returns_500(self, client, admin_headers):
+        with patch("api.routers.buy_list.compute_library_gaps", side_effect=Exception("boom")):
+            response = client.get("/api/admin/buy-list/games", headers=admin_headers)
+        assert response.status_code == 500
+
+    def test_unrecognized_sort_by_falls_back_to_rank(self, client, db_session, admin_headers):
+        game = Game(title="Test Game", bgg_id=1)
+        db_session.add(game)
+        db_session.flush()
+        db_session.add(BuyListGame(game_id=game.id, rank=1, on_buy_list=True))
+        db_session.commit()
+
+        response = client.get(
+            "/api/admin/buy-list/games", params={"sort_by": "not_a_real_field"}, headers=admin_headers
+        )
+        assert response.status_code == 200
+        assert response.json()["total"] == 1
+
+
+class TestUpdateAndRemoveErrorHandling:
+    """Exception paths for update/remove that a simple happy-path test can't reach"""
+
+    def test_update_error_returns_500(self, client, db_session, admin_headers):
+        game = Game(title="Test Game", bgg_id=1)
+        db_session.add(game)
+        db_session.flush()
+        entry = BuyListGame(game_id=game.id, on_buy_list=True)
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+
+        with patch("api.routers.buy_list.compute_library_gaps", side_effect=Exception("boom")):
+            response = client.put(
+                f"/api/admin/buy-list/games/{entry.id}", headers=admin_headers, json={"rank": 1},
+            )
+        assert response.status_code == 500
+
+    def test_remove_error_returns_500(self, client, db_session, admin_headers):
+        game = Game(title="Test Game", bgg_id=1)
+        db_session.add(game)
+        db_session.flush()
+        entry = BuyListGame(game_id=game.id, on_buy_list=True)
+        db_session.add(entry)
+        db_session.commit()
+        db_session.refresh(entry)
+
+        with patch("sqlalchemy.orm.Session.delete", side_effect=Exception("boom")):
+            response = client.delete(f"/api/admin/buy-list/games/{entry.id}", headers=admin_headers)
+        assert response.status_code == 500
+
+
+class TestAddToBuyListStatusTransition:
+    """Covers the elif branch: a non-OWNED, non-BUY_LIST game gets promoted"""
+
+    def test_wishlist_game_promoted_to_buy_list(self, client, db_session, admin_headers):
+        game = Game(title="Wishlist Game", bgg_id=321, status="WISHLIST")
+        db_session.add(game)
+        db_session.commit()
+
+        response = client.post(
+            "/api/admin/buy-list/games", headers=admin_headers, json={"bgg_id": 321},
+        )
+
+        assert response.status_code == 200
+        db_session.refresh(game)
+        assert game.status == "BUY_LIST"
+
+
+class TestBulkImportCSVBehavior:
+    """Exercises the background CSV-processing task through the HTTP endpoint
+    (Starlette's TestClient runs BackgroundTasks synchronously, so the task
+    has completed by the time the request returns)."""
+
+    @patch("bgg_service.fetch_bgg_thing")
+    def test_imports_new_game_from_bgg(self, mock_fetch, client, db_session, admin_headers):
+        mock_fetch.return_value = {"title": "CSV Game", "categories": []}
+
+        csv_content = "bgg_id,rank,notes\n555,2,from csv\n"
+        response = client.post(
+            "/api/admin/buy-list/bulk-import-csv",
+            headers=admin_headers,
+            files={"file": ("buy_list.csv", io.BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 200
+
+        game = db_session.query(Game).filter_by(bgg_id=555).one_or_none()
+        assert game is not None
+        assert game.status == "BUY_LIST"
+        entry = db_session.query(BuyListGame).filter_by(game_id=game.id).one_or_none()
+        assert entry is not None
+        assert entry.rank == 2
+        assert entry.notes == "from csv"
+
+    def test_updates_existing_entry(self, client, db_session, admin_headers):
+        game = Game(title="Existing", bgg_id=222)
+        db_session.add(game)
+        db_session.flush()
+        db_session.add(BuyListGame(game_id=game.id, rank=9, on_buy_list=True))
+        db_session.commit()
+
+        csv_content = "bgg_id,rank,notes\n222,1,updated via csv\n"
+        response = client.post(
+            "/api/admin/buy-list/bulk-import-csv",
+            headers=admin_headers,
+            files={"file": ("buy_list.csv", io.BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 200
+
+        entry = db_session.query(BuyListGame).filter_by(game_id=game.id).one()
+        assert entry.rank == 1
+        assert entry.notes == "updated via csv"
+
+    def test_invalid_rank_is_logged_and_row_still_processed(self, client, db_session, admin_headers):
+        game = Game(title="Existing", bgg_id=333)
+        db_session.add(game)
+        db_session.commit()
+
+        csv_content = "bgg_id,rank,notes\n333,not-a-number,still added\n"
+        response = client.post(
+            "/api/admin/buy-list/bulk-import-csv",
+            headers=admin_headers,
+            files={"file": ("buy_list.csv", io.BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 200
+
+        entry = db_session.query(BuyListGame).filter_by(game_id=game.id).one()
+        assert entry.rank is None
+        assert entry.notes == "still added"
+
+    @patch("bgg_service.fetch_bgg_thing")
+    def test_bgg_fetch_failure_counted_as_error_row(self, mock_fetch, client, db_session, admin_headers):
+        mock_fetch.side_effect = Exception("BGG unreachable")
+
+        csv_content = "bgg_id\n444\n"
+        response = client.post(
+            "/api/admin/buy-list/bulk-import-csv",
+            headers=admin_headers,
+            files={"file": ("buy_list.csv", io.BytesIO(csv_content.encode()), "text/csv")},
+        )
+        assert response.status_code == 200
+
+        assert db_session.query(Game).filter_by(bgg_id=444).one_or_none() is None

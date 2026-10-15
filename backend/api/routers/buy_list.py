@@ -102,14 +102,10 @@ async def list_buy_list_games(
     try:
         gaps = compute_library_gaps(db)
 
-        stmt = (
-            select(BuyListGame)
-            .options(joinedload(BuyListGame.game))
-            .where(BuyListGame.on_buy_list == True)
-        )
+        stmt = select(BuyListGame).options(joinedload(BuyListGame.game))
 
-        if on_buy_list is not None:
-            stmt = stmt.where(BuyListGame.on_buy_list == on_buy_list)
+        # Default to active entries only; an explicit on_buy_list param overrides that.
+        stmt = stmt.where(BuyListGame.on_buy_list == (True if on_buy_list is None else on_buy_list))
 
         if sort_by == "rank":
             stmt = stmt.order_by(
