@@ -7,7 +7,7 @@ Tests cover:
 - Schema serialization and deserialization
 - Model configuration (from_attributes, extra)
 - Edge cases and boundary conditions
-- All schema types: Range, GameOut, PagedGames, etc.
+- All schema types: Range, GameOut, etc.
 """
 import pytest
 from pydantic import ValidationError as PydanticValidationError
@@ -15,10 +15,6 @@ from pydantic import ValidationError as PydanticValidationError
 from schemas import (
     Range,
     GameOut,
-    PagedGames,
-    CategoryCounts,
-    BGGGameImport,
-    CSVImport,
     AdminLogin,
     FixSequenceRequest,
     BuyListGameCreate,
@@ -121,137 +117,6 @@ class TestGameOutSchema:
         assert game.id == 1
         assert game.title == "Test"
         assert game.categories == ["Strategy"]
-
-
-class TestPagedGamesSchema:
-    """Test PagedGames schema for paginated responses"""
-
-    def test_paged_games_structure(self):
-        """Test PagedGames structure"""
-        games = [
-            GameOut(id=1, title="Game 1", categories=[]),
-            GameOut(id=2, title="Game 2", categories=[]),
-        ]
-
-        paged = PagedGames(
-            total=10,
-            page=1,
-            page_size=2,
-            items=games
-        )
-
-        assert paged.total == 10
-        assert paged.page == 1
-        assert paged.page_size == 2
-        assert len(paged.items) == 2
-        assert paged.items[0].title == "Game 1"
-
-    def test_paged_games_empty(self):
-        """Test PagedGames with empty items"""
-        paged = PagedGames(
-            total=0,
-            page=1,
-            page_size=10,
-            items=[]
-        )
-
-        assert paged.total == 0
-        assert len(paged.items) == 0
-
-
-class TestCategoryCountsSchema:
-    """Test CategoryCounts schema"""
-
-    def test_category_counts_basic(self):
-        """Test CategoryCounts with basic data"""
-        counts = CategoryCounts(root={
-            "GATEWAY_STRATEGY": 50,
-            "CORE_STRATEGY": 30,
-            "PARTY_ICEBREAKERS": 25
-        })
-
-        assert counts.root["GATEWAY_STRATEGY"] == 50
-        assert counts.root["CORE_STRATEGY"] == 30
-        assert counts.root["PARTY_ICEBREAKERS"] == 25
-
-    def test_category_counts_empty(self):
-        """Test CategoryCounts with empty dict"""
-        counts = CategoryCounts(root={})
-        assert counts.root == {}
-
-
-class TestBGGGameImportSchema:
-    """Test BGGGameImport schema validation"""
-
-    def test_bgg_import_valid(self):
-        """Test BGGGameImport with valid BGG ID"""
-        import_data = BGGGameImport(bgg_id=174430)
-        assert import_data.bgg_id == 174430
-
-    def test_bgg_import_invalid_zero(self):
-        """Test BGGGameImport rejects zero"""
-        with pytest.raises(PydanticValidationError) as exc_info:
-            BGGGameImport(bgg_id=0)
-
-        errors = exc_info.value.errors()
-        assert any("must be between 1 and 999999" in str(e.get("msg", "")).lower() for e in errors)
-
-    def test_bgg_import_invalid_negative(self):
-        """Test BGGGameImport rejects negative values"""
-        with pytest.raises(PydanticValidationError) as exc_info:
-            BGGGameImport(bgg_id=-1)
-
-        errors = exc_info.value.errors()
-        assert any("must be between 1 and 999999" in str(e.get("msg", "")).lower() for e in errors)
-
-    def test_bgg_import_invalid_too_large(self):
-        """Test BGGGameImport rejects values over 999999"""
-        with pytest.raises(PydanticValidationError) as exc_info:
-            BGGGameImport(bgg_id=1000000)
-
-        errors = exc_info.value.errors()
-        assert any("must be between 1 and 999999" in str(e.get("msg", "")).lower() for e in errors)
-
-    def test_bgg_import_boundary_values(self):
-        """Test BGGGameImport boundary values"""
-        # Minimum valid value
-        import_min = BGGGameImport(bgg_id=1)
-        assert import_min.bgg_id == 1
-
-        # Maximum valid value
-        import_max = BGGGameImport(bgg_id=999999)
-        assert import_max.bgg_id == 999999
-
-
-class TestCSVImportSchema:
-    """Test CSVImport schema validation"""
-
-    def test_csv_import_valid(self):
-        """Test CSVImport with valid CSV data"""
-        csv_data = CSVImport(csv_data="bgg_id,title\n174430,Gloomhaven")
-        assert csv_data.csv_data == "bgg_id,title\n174430,Gloomhaven"
-
-    def test_csv_import_empty_rejected(self):
-        """Test CSVImport rejects empty CSV data"""
-        with pytest.raises(PydanticValidationError) as exc_info:
-            CSVImport(csv_data="")
-
-        errors = exc_info.value.errors()
-        assert any("cannot be empty" in str(e.get("msg", "")).lower() for e in errors)
-
-    def test_csv_import_whitespace_rejected(self):
-        """Test CSVImport rejects whitespace-only CSV data"""
-        with pytest.raises(PydanticValidationError) as exc_info:
-            CSVImport(csv_data="   \n   ")
-
-        errors = exc_info.value.errors()
-        assert any("cannot be empty" in str(e.get("msg", "")).lower() for e in errors)
-
-    def test_csv_import_multiline(self):
-        """Test CSVImport with multiline CSV data"""
-        csv_data = CSVImport(csv_data="id,name\n1,Game1\n2,Game2\n3,Game3")
-        assert "Game1" in csv_data.csv_data
-        assert "Game2" in csv_data.csv_data
 
 
 class TestAdminLoginSchema:

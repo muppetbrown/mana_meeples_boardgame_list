@@ -186,7 +186,7 @@ ADMIN_TOKEN=<secure-token-set-in-render-dashboard>
 SESSION_SECRET=<secure-secret-for-jwt-signing>
 JWT_EXPIRATION_DAYS=7
 CORS_ORIGINS=https://manaandmeeples.co.nz,https://www.manaandmeeples.co.nz,https://library.manaandmeeples.co.nz,https://mana-meeples-library-web.onrender.com
-DATABASE_URL=postgresql://tcg_admin:<password>@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles
+DATABASE_URL=postgresql://<db-user>:<password>@dpg-d3i3387diees738trbg0-a.singapore-postgres.render.com/tcg_singles
 PUBLIC_BASE_URL=https://mana-meeples-boardgame-list-opgf.onrender.com
 PYTHON_VERSION=3.11.9
 ```

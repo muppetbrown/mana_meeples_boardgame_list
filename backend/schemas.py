@@ -1,4 +1,4 @@
-from pydantic import BaseModel, field_validator, ConfigDict, RootModel, Field, model_validator
+from pydantic import BaseModel, field_validator, ConfigDict, Field, model_validator
 from typing import Dict, List, Optional, Any
 from datetime import datetime
 import json
@@ -22,39 +22,6 @@ class GameOut(BaseModel):
     playtime_max: Optional[int] = None
     thumbnail_url: Optional[str] = None
     game_type: Optional[str] = None
-
-
-class PagedGames(BaseModel):
-    total: int
-    page: int
-    page_size: int
-    items: List[GameOut]
-
-
-class CategoryCounts(RootModel[Dict[str, int]]):
-    root: Dict[str, int]
-
-
-class BGGGameImport(BaseModel):
-    bgg_id: int
-
-    @field_validator("bgg_id")
-    @classmethod
-    def validate_bgg_id(cls, v):
-        if v <= 0 or v > 999999:
-            raise ValueError("BGG ID must be between 1 and 999999")
-        return v
-
-
-class CSVImport(BaseModel):
-    csv_data: str
-
-    @field_validator("csv_data")
-    @classmethod
-    def validate_csv_data(cls, v):
-        if not v.strip():
-            raise ValueError("CSV data cannot be empty")
-        return v
 
 
 class AdminLogin(BaseModel):
