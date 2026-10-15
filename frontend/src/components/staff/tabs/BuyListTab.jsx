@@ -13,6 +13,7 @@ import {
   importFromBGG,
   reorderBuyList,
   suggestBuyListGames,
+  getTrendingGames,
 } from "../../../api/client";
 import { CATEGORY_LABELS } from "../../../constants/categories";
 import { parseBggId } from "../../../utils/bgg";
@@ -59,6 +60,10 @@ export function BuyListTab() {
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestError, setSuggestError] = useState(null);
   const [addingSuggestionId, setAddingSuggestionId] = useState(null);
+  const [trending, setTrending] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [trendingError, setTrendingError] = useState(null);
+  const [addingTrendingId, setAddingTrendingId] = useState(null);
   const fileInputRef = useRef(null);
   const confirm = useConfirm();
 
@@ -79,6 +84,9 @@ export function BuyListTab() {
   }, [sortBy, sortDesc]);
   useEffect(() => {
     loadGaps();
+  }, []);
+  useEffect(() => {
+    loadTrending();
   }, []);
 
   const loadBuyList = async () => {
@@ -101,6 +109,38 @@ export function BuyListTab() {
       setGaps(data);
     } catch (err) {
       console.error("Failed to load library gaps:", err);
+    }
+  };
+
+  const loadTrending = async () => {
+    setTrendingLoading(true);
+    setTrendingError(null);
+    try {
+      const data = await getTrendingGames(20);
+      setTrending(data.trending || []);
+    } catch (err) {
+      console.error("Failed to load trending games:", err);
+      setTrendingError("Failed to load trending games from BoardGameGeek");
+    } finally {
+      setTrendingLoading(false);
+    }
+  };
+
+  const handleAddTrending = async (game) => {
+    setAddingTrendingId(game.bgg_id);
+    try {
+      setError(null);
+      await addToBuyList({ bgg_id: game.bgg_id, notes: `Trending on BoardGameGeek (#${game.rank})` });
+      setSuccess(`Added "${game.title}" to the list`);
+      setTrending((prev) =>
+        prev.map((g) => (g.bgg_id === game.bgg_id ? { ...g, status: "on_buy_list" } : g))
+      );
+      await loadBuyList();
+    } catch (err) {
+      console.error("Failed to add trending game:", err);
+      setError(err.response?.data?.detail || "Failed to add trending game");
+    } finally {
+      setAddingTrendingId(null);
     }
   };
 
@@ -553,6 +593,86 @@ export function BuyListTab() {
                 </div>
               );
             })}
+          </div>
+        )}
+      </div>
+
+      {/* Trending on BoardGameGeek */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <div>
+            <h3 className="text-lg font-semibold">🔥 Trending on BoardGameGeek</h3>
+            <p className="text-sm text-gray-600 mt-1">
+              BGG's current Hotness list — recent community activity, not a recommendation specific to this library
+            </p>
+          </div>
+          <button
+            onClick={loadTrending}
+            disabled={trendingLoading}
+            className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {trendingLoading ? "Loading…" : "↻ Refresh"}
+          </button>
+        </div>
+
+        {trendingError && (
+          <div role="alert" className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            {trendingError}
+          </div>
+        )}
+
+        {trendingLoading && trending.length === 0 ? (
+          <p className="text-sm text-gray-500">Loading trending games…</p>
+        ) : trending.length === 0 && !trendingError ? (
+          <p className="text-sm text-gray-500">No trending data available right now.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="flex gap-3 pb-1" style={{ width: "max-content" }}>
+              {trending.map((game) => {
+                const adding = addingTrendingId === game.bgg_id;
+                return (
+                  <div key={game.bgg_id} className="w-40 shrink-0 border rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-1 mb-1">
+                      <span className="text-xs font-semibold text-gray-400">#{game.rank}</span>
+                      {game.status === "owned" && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-green-100 text-green-700">
+                          Owned
+                        </span>
+                      )}
+                      {game.status === "on_buy_list" && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-blue-100 text-blue-700">
+                          On list
+                        </span>
+                      )}
+                    </div>
+                    <Thumbnail src={game.thumbnail_url} alt={game.title} />
+                    <div className="text-sm font-medium mt-2 line-clamp-2" title={game.title}>
+                      {game.title}
+                    </div>
+                    {game.year && <div className="text-xs text-gray-500">{game.year}</div>}
+                    <div className="mt-2 flex gap-1">
+                      <a
+                        href={`https://boardgamegeek.com/boardgame/${game.bgg_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 px-2 py-1 text-xs text-center rounded border border-gray-300 hover:bg-gray-50"
+                      >
+                        View
+                      </a>
+                      {game.status === "new" && (
+                        <button
+                          onClick={() => handleAddTrending(game)}
+                          disabled={adding}
+                          className="flex-1 px-2 py-1 text-xs rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {adding ? "…" : "+ Add"}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
       </div>

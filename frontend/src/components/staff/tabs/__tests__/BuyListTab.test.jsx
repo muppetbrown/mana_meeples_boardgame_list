@@ -19,6 +19,7 @@ vi.mock('../../../../api/client', () => ({
   importFromBGG: vi.fn().mockResolvedValue({}),
   reorderBuyList: vi.fn(),
   suggestBuyListGames: vi.fn(),
+  getTrendingGames: vi.fn(),
 }));
 
 describe('BuyListTab', () => {
@@ -70,6 +71,7 @@ describe('BuyListTab', () => {
 
     apiClient.getBuyListGames.mockResolvedValue(mockBuyListData);
     apiClient.getLibraryGaps.mockResolvedValue(mockGaps);
+    apiClient.getTrendingGames.mockResolvedValue({ trending: [] });
   });
 
   describe('Rendering', () => {
@@ -953,6 +955,90 @@ describe('BuyListTab', () => {
       await user.click(screen.getByLabelText('Dismiss suggestion: Wingspan'));
 
       expect(screen.queryByText('Wingspan (2019)')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Trending on BoardGameGeek', () => {
+    const trendingNew = {
+      bgg_id: 174430, rank: 1, title: 'Gloomhaven', year: 2017,
+      thumbnail_url: 'https://example.com/thumb.jpg', status: 'new',
+    };
+    const trendingOwned = {
+      bgg_id: 266192, rank: 2, title: 'Wingspan', year: 2019,
+      thumbnail_url: null, status: 'owned',
+    };
+    const trendingQueued = {
+      bgg_id: 1, rank: 3, title: 'Catan', year: 1995,
+      thumbnail_url: null, status: 'on_buy_list',
+    };
+
+    test('loads and renders trending games on mount', async () => {
+      apiClient.getTrendingGames.mockResolvedValue({ trending: [trendingNew, trendingOwned] });
+      render(<BuyListTab />);
+
+      expect(await screen.findByText('Gloomhaven')).toBeInTheDocument();
+      expect(screen.getByText('Wingspan')).toBeInTheDocument();
+      expect(screen.getByText('Owned')).toBeInTheDocument();
+      expect(apiClient.getTrendingGames).toHaveBeenCalledWith(20);
+    });
+
+    test('shows status badges and only offers Add for new games', async () => {
+      apiClient.getTrendingGames.mockResolvedValue({
+        trending: [trendingNew, trendingOwned, trendingQueued],
+      });
+      render(<BuyListTab />);
+
+      await screen.findByText('Gloomhaven');
+      expect(screen.getByText('Owned')).toBeInTheDocument();
+      expect(screen.getByText('On list')).toBeInTheDocument();
+      expect(screen.getByText('+ Add')).toBeInTheDocument(); // only the "new" one
+    });
+
+    test('shows an error banner when the trending fetch fails', async () => {
+      apiClient.getTrendingGames.mockRejectedValue(new Error('network error'));
+      render(<BuyListTab />);
+
+      expect(await screen.findByText(/Failed to load trending games/)).toBeInTheDocument();
+    });
+
+    test('shows empty state when there is no trending data', async () => {
+      apiClient.getTrendingGames.mockResolvedValue({ trending: [] });
+      render(<BuyListTab />);
+
+      expect(await screen.findByText(/No trending data available/)).toBeInTheDocument();
+    });
+
+    test('adds a trending game and flips its status to on list', async () => {
+      apiClient.getTrendingGames.mockResolvedValue({ trending: [trendingNew] });
+      apiClient.addToBuyList.mockResolvedValue({});
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+
+      await screen.findByText('Gloomhaven');
+      await user.click(screen.getByText('+ Add'));
+
+      await waitFor(() => {
+        expect(apiClient.addToBuyList).toHaveBeenCalledWith({
+          bgg_id: 174430,
+          notes: 'Trending on BoardGameGeek (#1)',
+        });
+      });
+      expect(await screen.findByText('Added "Gloomhaven" to the list')).toBeInTheDocument();
+      expect(await screen.findByText('On list')).toBeInTheDocument();
+      expect(screen.queryByText('+ Add')).not.toBeInTheDocument();
+    });
+
+    test('refresh button re-fetches trending games', async () => {
+      apiClient.getTrendingGames.mockResolvedValue({ trending: [trendingNew] });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+
+      await screen.findByText('Gloomhaven');
+      apiClient.getTrendingGames.mockClear();
+
+      await user.click(screen.getByText('↻ Refresh'));
+
+      await waitFor(() => expect(apiClient.getTrendingGames).toHaveBeenCalledTimes(1));
     });
   });
 });

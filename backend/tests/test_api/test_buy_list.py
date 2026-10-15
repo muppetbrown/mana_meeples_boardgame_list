@@ -753,3 +753,63 @@ class TestSuggestGames:
     def test_suggest_count_out_of_range_rejected(self, client, admin_headers):
         response = client.post("/api/admin/buy-list/suggest", headers=admin_headers, json={"count": 50})
         assert response.status_code == 422
+
+
+class TestGetTrendingGames:
+    """Test GET /api/admin/buy-list/trending"""
+
+    def test_returns_trending_with_status_annotations(self, client, db_session, admin_headers):
+        owned_game = Game(title="Owned Trending Game", bgg_id=174430, status="OWNED")
+        queued_game = Game(title="Queued Trending Game", bgg_id=266192, status="BUY_LIST")
+        db_session.add_all([owned_game, queued_game])
+        db_session.flush()
+        db_session.add(BuyListGame(game_id=queued_game.id, on_buy_list=True))
+        db_session.commit()
+
+        hot_list = [
+            {"bgg_id": 174430, "rank": 1, "title": "Owned Trending Game", "year": 2017, "thumbnail_url": None},
+            {"bgg_id": 266192, "rank": 2, "title": "Queued Trending Game", "year": 2019, "thumbnail_url": None},
+            {"bgg_id": 999999, "rank": 3, "title": "New Trending Game", "year": 2024, "thumbnail_url": None},
+        ]
+
+        with patch(
+            "api.routers.buy_list.get_hot_games", new_callable=AsyncMock, return_value=hot_list
+        ):
+            response = client.get("/api/admin/buy-list/trending", headers=admin_headers)
+
+        assert response.status_code == 200
+        by_bgg_id = {item["bgg_id"]: item for item in response.json()["trending"]}
+        assert by_bgg_id[174430]["status"] == "owned"
+        assert by_bgg_id[266192]["status"] == "on_buy_list"
+        assert by_bgg_id[999999]["status"] == "new"
+
+    def test_empty_hot_list(self, client, admin_headers):
+        with patch(
+            "api.routers.buy_list.get_hot_games", new_callable=AsyncMock, return_value=[]
+        ):
+            response = client.get("/api/admin/buy-list/trending", headers=admin_headers)
+
+        assert response.status_code == 200
+        assert response.json() == {"trending": []}
+
+    def test_fetch_failure_returns_502(self, client, admin_headers):
+        with patch(
+            "api.routers.buy_list.get_hot_games",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("BGG unreachable"),
+        ):
+            response = client.get("/api/admin/buy-list/trending", headers=admin_headers)
+
+        assert response.status_code == 502
+
+    def test_respects_limit_query_param(self, client, admin_headers):
+        with patch(
+            "api.routers.buy_list.get_hot_games", new_callable=AsyncMock, return_value=[]
+        ) as mock_hot:
+            client.get("/api/admin/buy-list/trending", params={"limit": 10}, headers=admin_headers)
+
+        mock_hot.assert_awaited_once_with(limit=10)
+
+    def test_requires_auth(self, client):
+        response = client.get("/api/admin/buy-list/trending")
+        assert response.status_code in (401, 403)

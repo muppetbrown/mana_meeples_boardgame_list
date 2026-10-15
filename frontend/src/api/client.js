@@ -536,6 +536,17 @@ export async function suggestBuyListGames(count = 6) {
   return r.data;
 }
 
+/**
+ * BoardGameGeek's current "Hotness" list, annotated with whether each game
+ * is already owned or already on the games-to-add list.
+ * @param {number} limit - How many trending games to return (1-50)
+ * @returns {Promise<Object>} { trending: [{ bgg_id, rank, title, year, thumbnail_url, status }] }
+ */
+export async function getTrendingGames(limit = 20) {
+  const r = await api.get("/admin/buy-list/trending", { params: { limit } });
+  return r.data;
+}
+
 // ============================================================================
 // SLEEVE MANAGEMENT API METHODS
 // ============================================================================

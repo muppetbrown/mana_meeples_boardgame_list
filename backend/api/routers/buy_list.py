@@ -18,6 +18,7 @@ from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, joinedload
 
 from api.dependencies import require_admin_auth
+from bgg_service import get_hot_games
 from database import get_db
 from models import BuyListGame, Game
 from schemas import BuyListGameCreate, BuyListGameUpdate, BuyListReorderRequest, SuggestGamesRequest
@@ -92,6 +93,56 @@ async def get_library_gaps(db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Error computing library gaps: {e}")
         raise HTTPException(status_code=500, detail="Failed to compute library gaps")
+
+
+@router.get("/trending", dependencies=[Depends(require_admin_auth)])
+async def get_trending_games(
+    limit: int = Query(20, ge=1, le=50, description="How many trending games to return"),
+    db: Session = Depends(get_db),
+):
+    """
+    BoardGameGeek's current "Hotness" list, annotated with whether each game
+    is already owned or already on the games-to-add list.
+    """
+    try:
+        hot_games = await get_hot_games(limit=limit)
+    except Exception as e:
+        logger.error(f"Error fetching BGG trending list: {e}")
+        raise HTTPException(status_code=502, detail="Failed to fetch trending games from BoardGameGeek")
+
+    bgg_ids = [g["bgg_id"] for g in hot_games]
+    if not bgg_ids:
+        return {"trending": []}
+
+    games_by_bgg_id = {
+        game.bgg_id: game
+        for game in db.execute(select(Game).where(Game.bgg_id.in_(bgg_ids))).scalars().all()
+    }
+    game_ids = [game.id for game in games_by_bgg_id.values()]
+    queued_game_ids = set()
+    if game_ids:
+        queued_game_ids = {
+            game_id
+            for (game_id,) in db.execute(
+                select(BuyListGame.game_id).where(
+                    BuyListGame.on_buy_list == True,  # noqa: E712
+                    BuyListGame.game_id.in_(game_ids),
+                )
+            ).all()
+        }
+
+    results = []
+    for hot in hot_games:
+        game = games_by_bgg_id.get(hot["bgg_id"])
+        if game and game.status == "OWNED":
+            status = "owned"
+        elif game and game.id in queued_game_ids:
+            status = "on_buy_list"
+        else:
+            status = "new"
+        results.append({**hot, "status": status})
+
+    return {"trending": results}
 
 
 @router.post("/suggest", dependencies=[Depends(require_admin_auth)])
