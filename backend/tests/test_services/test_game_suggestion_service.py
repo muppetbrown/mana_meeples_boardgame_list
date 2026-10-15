@@ -65,6 +65,23 @@ class TestBuildPrompt:
         _system, user = _build_prompt(db_session, count=5)
         assert "none currently flagged" in user
 
+    def test_includes_complexity_and_playtime_gaps(self, db_session):
+        # 10 heavy, epic-length games -> light/medium complexity and
+        # quick/standard/long playtime bands are all flagged as gaps
+        for i in range(10):
+            _owned_game(
+                db_session, title=f"Game {i}", bgg_id=i,
+                complexity=4.0, playtime_min=180, playtime_max=180,
+            )
+        db_session.commit()
+
+        _system, user = _build_prompt(db_session, count=5)
+
+        assert "Thin complexity coverage" in user
+        assert "Light (under 2.0)" in user
+        assert "Thin playtime coverage" in user
+        assert "Quick (under 30 min)" in user
+
 
 class TestGenerateSuggestions:
     @pytest.mark.asyncio

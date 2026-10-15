@@ -71,6 +71,8 @@ def _gaps_filled_count(result: Dict[str, Any]) -> int:
     gap_match = result.get("gap_match") or {}
     count = 1 if gap_match.get("category_is_gap") else 0
     count += len(gap_match.get("matching_player_count_gaps") or [])
+    count += 1 if gap_match.get("complexity_is_gap") else 0
+    count += 1 if gap_match.get("playtime_is_gap") else 0
     return count
 
 

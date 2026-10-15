@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from bgg_service import search_bgg
 from config import ANTHROPIC_API_KEY
 from models import BuyListGame, Game
-from services.gap_analysis import compute_library_gaps
+from services.gap_analysis import COMPLEXITY_LABELS, PLAYTIME_LABELS, compute_library_gaps
 from utils.helpers import CATEGORY_KEYS
 
 logger = logging.getLogger(__name__)
@@ -84,6 +84,16 @@ def _build_prompt(db: Session, count: int) -> tuple[str, str]:
         for g in gaps["player_count_gaps"]
         if g["is_gap"]
     ]
+    gap_complexity_bands = [
+        f"{COMPLEXITY_LABELS[g['complexity_band']]} ({g['pct_of_collection']}% of collection)"
+        for g in gaps["complexity_gaps"]
+        if g["is_gap"]
+    ]
+    gap_playtime_bands = [
+        f"{PLAYTIME_LABELS[g['playtime_band']]} ({g['pct_of_collection']}% of collection)"
+        for g in gaps["playtime_gaps"]
+        if g["is_gap"]
+    ]
 
     owned_lines = [
         f"- {title}" + (f" ({category})" if category else "") + (f" [{year}]" if year else "")
@@ -110,7 +120,9 @@ def _build_prompt(db: Session, count: int) -> tuple[str, str]:
         f"Suggest {count} board games worth adding to this library.\n\n"
         f"Collection size: {gaps['total_games']} owned games.\n\n"
         f"Under-represented categories (gaps): {', '.join(gap_categories) or 'none currently flagged'}\n"
-        f"Thin player-count coverage (gaps): {', '.join(gap_player_counts) or 'none currently flagged'}\n\n"
+        f"Thin player-count coverage (gaps): {', '.join(gap_player_counts) or 'none currently flagged'}\n"
+        f"Thin complexity coverage (gaps): {', '.join(gap_complexity_bands) or 'none currently flagged'}\n"
+        f"Thin playtime coverage (gaps): {', '.join(gap_playtime_bands) or 'none currently flagged'}\n\n"
         f"Already owned ({len(owned_rows)} games):\n"
         + "\n".join(owned_lines)
         + truncated_note

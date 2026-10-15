@@ -37,6 +37,8 @@ describe('BuyListTab', () => {
     gap_match: {
       category_is_gap: true,
       matching_player_count_gaps: ['9+'],
+      complexity_is_gap: true,
+      playtime_is_gap: true,
     },
   };
 
@@ -51,6 +53,14 @@ describe('BuyListTab', () => {
     player_count_gaps: [
       { player_count: '9+', games_supporting: 0, pct_of_collection: 0.0, is_gap: true },
       { player_count: '2', games_supporting: 10, pct_of_collection: 100.0, is_gap: false },
+    ],
+    complexity_gaps: [
+      { complexity_band: 'light', count: 0, pct_of_collection: 0.0, is_gap: true },
+      { complexity_band: 'heavy', count: 10, pct_of_collection: 100.0, is_gap: false },
+    ],
+    playtime_gaps: [
+      { playtime_band: 'quick', count: 0, pct_of_collection: 0.0, is_gap: true },
+      { playtime_band: 'epic', count: 10, pct_of_collection: 100.0, is_gap: false },
     ],
   };
 
@@ -104,6 +114,8 @@ describe('BuyListTab', () => {
 
       expect(screen.getByText(/Party & Icebreakers/)).toBeInTheDocument();
       expect(screen.getAllByText(/9\+ players/).length).toBeGreaterThan(0);
+      expect(screen.getByText(/Light \(under 2\.0\)/)).toBeInTheDocument();
+      expect(screen.getByText(/Quick \(under 30 min\)/)).toBeInTheDocument();
     });
 
     test('shows all-clear message when no gaps', async () => {
@@ -151,6 +163,8 @@ describe('BuyListTab', () => {
       expect(screen.getByText('Worth considering')).toBeInTheDocument();
       expect(screen.getByText('Fills category gap')).toBeInTheDocument();
       expect(screen.getByText(/Fills 9\+ players gap/)).toBeInTheDocument();
+      expect(screen.getByText('Fills complexity gap')).toBeInTheDocument();
+      expect(screen.getByText('Fills playtime gap')).toBeInTheDocument();
     });
 
     test('shows empty state when no items', async () => {

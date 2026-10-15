@@ -59,12 +59,16 @@ class TestBuildBuyListResponse:
             "player_count_gaps": [
                 {"player_count": "9+", "games_supporting": 0, "pct_of_collection": 0.0, "is_gap": True},
             ],
+            "complexity_gaps": [],
+            "playtime_gaps": [],
         }
 
         result = build_buy_list_response(buy_list, gaps)
 
         assert result["gap_match"]["category_is_gap"] is True
         assert result["gap_match"]["matching_player_count_gaps"] == ["9+"]
+        assert result["gap_match"]["complexity_is_gap"] is False
+        assert result["gap_match"]["playtime_is_gap"] is False
 
 
 class TestListBuyListGames:
@@ -585,6 +589,43 @@ class TestListBuyListGamesGapsFilledSort:
         titles_asc = [item["title"] for item in response_asc.json()["items"]]
         assert titles_asc[0] == "No Gap Game"
         assert titles_asc[-1] == "Double Gap Game"
+
+    def test_complexity_and_playtime_gaps_count_too(self, client, db_session, admin_headers):
+        # 10 owned games, all heavy and epic-length -> light complexity and
+        # quick playtime are both flagged as gaps.
+        for i in range(10):
+            db_session.add(
+                Game(
+                    title=f"Owned {i}", bgg_id=3000 + i, status="OWNED",
+                    complexity=4.0, playtime_min=180, playtime_max=180,
+                )
+            )
+        db_session.flush()
+
+        matches_both = Game(title="Light Quick Game", bgg_id=1, complexity=1.0, playtime_min=15, playtime_max=15)
+        matches_neither = Game(title="Heavy Epic Game", bgg_id=2, complexity=4.5, playtime_min=200, playtime_max=200)
+        db_session.add_all([matches_both, matches_neither])
+        db_session.flush()
+        db_session.add_all([
+            BuyListGame(game_id=matches_both.id, on_buy_list=True),
+            BuyListGame(game_id=matches_neither.id, on_buy_list=True),
+        ])
+        db_session.commit()
+
+        response = client.get(
+            "/api/admin/buy-list/games",
+            params={"sort_by": "gaps_filled", "sort_desc": "true"},
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+        items = {item["title"]: item for item in response.json()["items"]}
+        assert items["Light Quick Game"]["gap_match"]["complexity_is_gap"] is True
+        assert items["Light Quick Game"]["gap_match"]["playtime_is_gap"] is True
+        assert items["Heavy Epic Game"]["gap_match"]["complexity_is_gap"] is False
+        assert items["Heavy Epic Game"]["gap_match"]["playtime_is_gap"] is False
+
+        titles = [item["title"] for item in response.json()["items"]]
+        assert titles[0] == "Light Quick Game"
 
 
 class TestReorderBuyList:

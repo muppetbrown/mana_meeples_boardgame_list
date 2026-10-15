@@ -23,6 +23,19 @@ const PLAYER_COUNT_LABELS = {
   "9+": "9+ players",
 };
 
+const COMPLEXITY_LABELS = {
+  light: "Light (under 2.0)",
+  medium: "Medium (2.0-3.0)",
+  heavy: "Heavy (3.0+)",
+};
+
+const PLAYTIME_LABELS = {
+  quick: "Quick (under 30 min)",
+  standard: "Standard (30-60 min)",
+  long: "Long (60-120 min)",
+  epic: "Epic (120+ min)",
+};
+
 /**
  * Games to Add tab - a gap-aware list of candidate games worth buying,
  * curated by rank and notes rather than tracked online prices.
@@ -318,6 +331,10 @@ export function BuyListTab() {
 
   const gapCategories = (gaps?.category_gaps || []).filter((g) => g.is_gap);
   const gapPlayerCounts = (gaps?.player_count_gaps || []).filter((g) => g.is_gap);
+  const gapComplexityBands = (gaps?.complexity_gaps || []).filter((g) => g.is_gap);
+  const gapPlaytimeBands = (gaps?.playtime_gaps || []).filter((g) => g.is_gap);
+  const hasAnyGaps =
+    gapCategories.length > 0 || gapPlayerCounts.length > 0 || gapComplexityBands.length > 0 || gapPlaytimeBands.length > 0;
 
   const renderGapMatchBadges = (gapMatch) => {
     if (!gapMatch) return null;
@@ -333,6 +350,20 @@ export function BuyListTab() {
       badges.push(
         <span key={`players-${count}`} className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
           Fills {PLAYER_COUNT_LABELS[count] || `${count} players`} gap
+        </span>
+      );
+    }
+    if (gapMatch.complexity_is_gap) {
+      badges.push(
+        <span key="complexity" className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-700">
+          Fills complexity gap
+        </span>
+      );
+    }
+    if (gapMatch.playtime_is_gap) {
+      badges.push(
+        <span key="playtime" className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
+          Fills playtime gap
         </span>
       );
     }
@@ -375,7 +406,7 @@ export function BuyListTab() {
           <p className="text-sm text-gray-500">Loading gap analysis…</p>
         ) : gaps.total_games === 0 ? (
           <p className="text-sm text-gray-500">Add games to the owned collection to see gap analysis.</p>
-        ) : gapCategories.length === 0 && gapPlayerCounts.length === 0 ? (
+        ) : !hasAnyGaps ? (
           <p className="text-sm text-green-700">No significant gaps detected. 👍</p>
         ) : (
           <div className="grid md:grid-cols-2 gap-4">
@@ -398,6 +429,30 @@ export function BuyListTab() {
                   {gapPlayerCounts.map((g) => (
                     <span key={g.player_count} className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
                       {PLAYER_COUNT_LABELS[g.player_count] || g.player_count} ({g.games_supporting} games)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {gapComplexityBands.length > 0 && (
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-2">Thin complexity coverage</div>
+                <div className="flex flex-wrap gap-2">
+                  {gapComplexityBands.map((g) => (
+                    <span key={g.complexity_band} className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                      {COMPLEXITY_LABELS[g.complexity_band] || g.complexity_band} ({g.pct_of_collection}%)
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {gapPlaytimeBands.length > 0 && (
+              <div>
+                <div className="text-sm font-medium text-gray-700 mb-2">Thin playtime coverage</div>
+                <div className="flex flex-wrap gap-2">
+                  {gapPlaytimeBands.map((g) => (
+                    <span key={g.playtime_band} className="px-3 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">
+                      {PLAYTIME_LABELS[g.playtime_band] || g.playtime_band} ({g.pct_of_collection}%)
                     </span>
                   ))}
                 </div>
