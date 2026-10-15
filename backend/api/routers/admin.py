@@ -41,7 +41,7 @@ from utils.jwt_utils import generate_jwt_token
 from database import get_db
 from exceptions import GameNotFoundError, ValidationError
 import schemas
-from models import Game, BuyListGame, PriceSnapshot, PriceOffer, Sleeve
+from models import Game, BuyListGame, Sleeve
 from services import GameService
 from shared.rate_limiting import cleanup_expired_attempts, record_failed_attempt
 from utils.helpers import game_to_dict
@@ -428,8 +428,6 @@ async def fix_sequence(
         VALID_SEQUENCES = {
             "boardgames": "boardgames_id_seq",
             "buy_list_games": "buy_list_games_id_seq",
-            "price_snapshots": "price_snapshots_id_seq",
-            "price_offers": "price_offers_id_seq",
             "sleeves": "sleeves_id_seq",
         }
 
@@ -460,8 +458,6 @@ async def fix_sequence(
         table_models = {
             "boardgames": Game,
             "buy_list_games": BuyListGame,
-            "price_snapshots": PriceSnapshot,
-            "price_offers": PriceOffer,
             "sleeves": Sleeve,
         }
 

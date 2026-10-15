@@ -441,12 +441,13 @@ export async function importFromBGG(bggId, force = false) {
 }
 
 // ============================================================================
-// BUY LIST API METHODS
+// GAMES TO ADD API METHODS
 // ============================================================================
 
 /**
- * Get all games on the buy list with pricing data
- * @param {Object} params - Query parameters (on_buy_list, lpg_status, buy_filter, sort_by, sort_desc)
+ * Get all candidate games on the 'games to add' list, annotated with
+ * which library gaps (if any) each one would help fill.
+ * @param {Object} params - Query parameters (on_buy_list, sort_by, sort_desc)
  * @returns {Promise<Object>} Response with total and items array
  */
 export async function getBuyListGames(params = {}) {
@@ -455,8 +456,8 @@ export async function getBuyListGames(params = {}) {
 }
 
 /**
- * Add a game to the buy list
- * @param {Object} data - Buy list game data (game_id, rank, bgo_link, lpg_rrp, lpg_status)
+ * Add a candidate game to the 'games to add' list
+ * @param {Object} data - Buy list game data (bgg_id, rank, notes)
  * @returns {Promise<Object>} Created buy list entry
  */
 export async function addToBuyList(data) {
@@ -465,9 +466,9 @@ export async function addToBuyList(data) {
 }
 
 /**
- * Update buy list game details
+ * Update a 'games to add' entry
  * @param {number} buyListId - Buy list entry ID
- * @param {Object} data - Updated fields (rank, bgo_link, lpg_rrp, lpg_status, on_buy_list)
+ * @param {Object} data - Updated fields (rank, notes, on_buy_list)
  * @returns {Promise<Object>} Updated buy list entry
  */
 export async function updateBuyListGame(buyListId, data) {
@@ -476,7 +477,7 @@ export async function updateBuyListGame(buyListId, data) {
 }
 
 /**
- * Remove a game from the buy list
+ * Remove a game from the 'games to add' list
  * @param {number} buyListId - Buy list entry ID
  * @returns {Promise<Object>} Success message
  */
@@ -486,29 +487,18 @@ export async function removeFromBuyList(buyListId) {
 }
 
 /**
- * Import price data from JSON file
- * @param {string} sourceFile - Filename of JSON price data
- * @returns {Promise<Object>} Import result with counts
+ * Get where the owned collection is thin: category balance and
+ * player-count coverage, for the 'games to add' dashboard.
+ * @returns {Promise<Object>} { total_games, category_gaps, player_count_gaps }
  */
-export async function importPrices(sourceFile) {
-  const r = await api.post("/admin/buy-list/import-prices", null, {
-    params: { source_file: sourceFile }
-  });
+export async function getLibraryGaps() {
+  const r = await api.get("/admin/buy-list/gaps");
   return r.data;
 }
 
 /**
- * Get last price update timestamp
- * @returns {Promise<Object>} Last update info (last_updated, source_file)
- */
-export async function getLastPriceUpdate() {
-  const r = await api.get("/admin/buy-list/last-updated");
-  return r.data;
-}
-
-/**
- * Bulk import buy list games from CSV file
- * @param {File} file - CSV file with columns: bgg_id (required), rank, bgo_link, lpg_rrp, lpg_status
+ * Bulk import candidate games to the 'games to add' list from CSV file
+ * @param {File} file - CSV file with columns: bgg_id (required), rank, notes
  * @returns {Promise<Object>} Import result with added, updated, skipped, errors counts
  */
 export async function bulkImportBuyListCSV(file) {

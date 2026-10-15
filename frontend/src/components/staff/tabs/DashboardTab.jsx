@@ -112,7 +112,7 @@ export function DashboardTab({ onTabChange }) {
           <div className="text-3xl font-bold text-blue-700">{stats.avgRating}</div>
         </div>
         <div className="bg-white rounded-lg p-5 shadow">
-          <div className="text-sm text-gray-600 mb-1">On the buy list</div>
+          <div className="text-sm text-gray-600 mb-1">Games to add</div>
           <button
             onClick={() => onTabChange("buy-list")}
             className="text-3xl font-bold text-emerald-700 hover:underline"

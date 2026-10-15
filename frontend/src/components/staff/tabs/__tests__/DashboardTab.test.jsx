@@ -75,7 +75,7 @@ describe('DashboardTab', () => {
     render(<DashboardTab onTabChange={onTabChange} />);
     expect(screen.getByText('Games in library')).toBeInTheDocument();
     expect(screen.getByText('7.8')).toBeInTheDocument();
-    expect(screen.getByText('On the buy list').nextSibling).toHaveTextContent('1');
+    expect(screen.getByText('Games to add').nextSibling).toHaveTextContent('1');
     await screen.findByText('All Systems Operational');
   });
 
@@ -222,7 +222,7 @@ describe('DashboardTab', () => {
     const user = userEvent.setup();
     render(<DashboardTab onTabChange={onTabChange} />);
     await screen.findByText('All Systems Operational');
-    await user.click(screen.getByText('On the buy list').nextSibling);
+    await user.click(screen.getByText('Games to add').nextSibling);
     expect(onTabChange).toHaveBeenCalledWith('buy-list');
   });
 

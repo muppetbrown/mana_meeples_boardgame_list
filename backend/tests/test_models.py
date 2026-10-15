@@ -22,8 +22,6 @@ from models import (
     Base,
     Game,
     BuyListGame,
-    PriceSnapshot,
-    PriceOffer,
     Sleeve,
     BackgroundTaskFailure,
 )
@@ -178,9 +176,7 @@ class TestBuyListGameModel:
         buy_list_entry = BuyListGame(
             game_id=game.id,
             rank=1,
-            bgo_link="https://boardgameoracle.com/game/123",
-            lpg_rrp=Decimal("150.00"),
-            lpg_status="AVAILABLE",
+            notes="Fills a gap in Party & Icebreakers",
             on_buy_list=True,
         )
         session.add(buy_list_entry)
@@ -189,7 +185,7 @@ class TestBuyListGameModel:
         assert buy_list_entry.id is not None
         assert buy_list_entry.game_id == game.id
         assert buy_list_entry.rank == 1
-        assert buy_list_entry.lpg_rrp == Decimal("150.00")
+        assert buy_list_entry.notes == "Fills a gap in Party & Icebreakers"
         assert buy_list_entry.on_buy_list is True
 
     def test_buy_list_game_relationship(self, session):
@@ -235,6 +231,18 @@ class TestBuyListGameModel:
         assert buy_list_entry.created_at is not None
         assert buy_list_entry.updated_at is not None
 
+    def test_buy_list_game_notes(self, session):
+        """Test BuyListGame notes field stores freeform curation text"""
+        game = Game(title="Test")
+        session.add(game)
+        session.commit()
+
+        buy_list_entry = BuyListGame(game_id=game.id, rank=1, notes="Fills the Party & Icebreakers gap")
+        session.add(buy_list_entry)
+        session.commit()
+
+        assert buy_list_entry.notes == "Fills the Party & Icebreakers gap"
+
     def test_buy_list_cascade_delete(self, session):
         """Test cascade deletion from Game to BuyListGame"""
         game = Game(title="Test Game")
@@ -251,136 +259,6 @@ class TestBuyListGameModel:
 
         # BuyListGame should be deleted too
         assert session.query(BuyListGame).filter_by(id=buy_list_entry.id).first() is None
-
-
-class TestPriceSnapshotModel:
-    """Test PriceSnapshot model"""
-
-    def test_price_snapshot_creation(self, session):
-        """Test creating a price snapshot"""
-        game = Game(title="Test Game")
-        session.add(game)
-        session.commit()
-
-        snapshot = PriceSnapshot(
-            game_id=game.id,
-            checked_at=datetime.now(timezone.utc),
-            low_price=Decimal("89.99"),
-            mean_price=Decimal("95.00"),
-            best_price=Decimal("85.00"),
-            best_store="Game Store",
-            discount_pct=Decimal("10.53"),
-            delta=Decimal("2.5"),
-        )
-        session.add(snapshot)
-        session.commit()
-
-        assert snapshot.id is not None
-        assert snapshot.game_id == game.id
-        assert snapshot.low_price == Decimal("89.99")
-        assert snapshot.best_store == "Game Store"
-
-    def test_price_snapshot_relationship(self, session):
-        """Test relationship between Game and PriceSnapshot"""
-        game = Game(title="Test Game")
-        session.add(game)
-        session.commit()
-
-        snapshot1 = PriceSnapshot(game_id=game.id, checked_at=datetime.now(timezone.utc))
-        snapshot2 = PriceSnapshot(game_id=game.id, checked_at=datetime.now(timezone.utc))
-        session.add_all([snapshot1, snapshot2])
-        session.commit()
-
-        # Test one-to-many relationship
-        assert len(game.price_snapshots) == 2
-        assert snapshot1 in game.price_snapshots
-        assert snapshot2 in game.price_snapshots
-
-    def test_price_snapshot_cascade_delete(self, session):
-        """Test cascade deletion from Game to PriceSnapshot"""
-        game = Game(title="Test Game")
-        session.add(game)
-        session.commit()
-
-        snapshot = PriceSnapshot(game_id=game.id, checked_at=datetime.now(timezone.utc))
-        session.add(snapshot)
-        session.commit()
-
-        snapshot_id = snapshot.id
-
-        # Delete the game
-        session.delete(game)
-        session.commit()
-
-        # Snapshot should be deleted too
-        assert session.query(PriceSnapshot).filter_by(id=snapshot_id).first() is None
-
-
-class TestPriceOfferModel:
-    """Test PriceOffer model"""
-
-    def test_price_offer_creation(self, session):
-        """Test creating a price offer"""
-        game = Game(title="Test Game")
-        session.add(game)
-        session.commit()
-
-        offer = PriceOffer(
-            game_id=game.id,
-            checked_at=datetime.now(timezone.utc),
-            store="Game Store",
-            price_nzd=Decimal("99.99"),
-            availability="In Stock",
-            store_link="https://store.com/game",
-            in_stock=True,
-        )
-        session.add(offer)
-        session.commit()
-
-        assert offer.id is not None
-        assert offer.game_id == game.id
-        assert offer.store == "Game Store"
-        assert offer.price_nzd == Decimal("99.99")
-        assert offer.in_stock is True
-
-    def test_price_offer_relationship(self, session):
-        """Test relationship between Game and PriceOffer"""
-        game = Game(title="Test Game")
-        session.add(game)
-        session.commit()
-
-        offer1 = PriceOffer(
-            game_id=game.id, checked_at=datetime.now(timezone.utc), store="Store A"
-        )
-        offer2 = PriceOffer(
-            game_id=game.id, checked_at=datetime.now(timezone.utc), store="Store B"
-        )
-        session.add_all([offer1, offer2])
-        session.commit()
-
-        # Test one-to-many relationship
-        assert len(game.price_offers) == 2
-        assert offer1 in game.price_offers
-        assert offer2 in game.price_offers
-
-    def test_price_offer_cascade_delete(self, session):
-        """Test cascade deletion from Game to PriceOffer"""
-        game = Game(title="Test Game")
-        session.add(game)
-        session.commit()
-
-        offer = PriceOffer(game_id=game.id, checked_at=datetime.now(timezone.utc))
-        session.add(offer)
-        session.commit()
-
-        offer_id = offer.id
-
-        # Delete the game
-        session.delete(game)
-        session.commit()
-
-        # Offer should be deleted too
-        assert session.query(PriceOffer).filter_by(id=offer_id).first() is None
 
 
 class TestSleeveModel:
@@ -586,14 +464,6 @@ class TestModelConstraints:
         with pytest.raises(IntegrityError):
             session.commit()
 
-    def test_price_snapshot_game_id_not_null(self, session):
-        """Test game_id is required for PriceSnapshot"""
-        snapshot = PriceSnapshot(checked_at=datetime.now(timezone.utc))  # Missing game_id
-        session.add(snapshot)
-
-        with pytest.raises(IntegrityError):
-            session.commit()
-
     def test_sleeve_required_fields(self, session):
         """Test required fields for Sleeve model"""
         game = Game(title="Test")
@@ -625,14 +495,6 @@ class TestModelIndexes:
         indexes = {idx.name for idx in BuyListGame.__table__.indexes}
 
         assert "idx_buy_list_rank" in indexes
-        assert "idx_buy_list_status" in indexes
-
-    def test_price_snapshot_indexes_exist(self):
-        """Test PriceSnapshot model has expected indexes"""
-        indexes = {idx.name for idx in PriceSnapshot.__table__.indexes}
-
-        assert "idx_price_snapshot_game_date" in indexes
-        assert "idx_price_snapshot_best" in indexes
 
     def test_sleeve_indexes_exist(self):
         """Test Sleeve model has expected indexes"""
@@ -649,7 +511,5 @@ class TestModelTableNames:
         """Test all models have correct table names"""
         assert Game.__tablename__ == "boardgames"
         assert BuyListGame.__tablename__ == "buy_list_games"
-        assert PriceSnapshot.__tablename__ == "price_snapshots"
-        assert PriceOffer.__tablename__ == "price_offers"
         assert Sleeve.__tablename__ == "sleeves"
         assert BackgroundTaskFailure.__tablename__ == "background_task_failures"
