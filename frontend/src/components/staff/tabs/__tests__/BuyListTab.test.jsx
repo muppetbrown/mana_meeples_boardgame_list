@@ -19,6 +19,9 @@ vi.mock('../../../../api/client', () => ({
   importFromBGG: vi.fn().mockResolvedValue({}),
   reorderBuyList: vi.fn(),
   suggestBuyListGames: vi.fn(),
+  getHLStockSignals: vi.fn(),
+  linkHLStockSignal: vi.fn(),
+  dismissHLStockSignal: vi.fn(),
 }));
 
 describe('BuyListTab', () => {
@@ -944,6 +947,144 @@ describe('BuyListTab', () => {
       await user.click(screen.getByLabelText('Dismiss suggestion: Wingspan'));
 
       expect(screen.queryByText('Wingspan (2019)')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('HL Stock Signals', () => {
+    const unmatchedSignal = {
+      hl_internal_id: 501,
+      hl_product_name: 'Completely New Game',
+      units_sold: 7,
+      current_stock: 3,
+      last_sale_date: '2026-10-01',
+      match_status: 'unmatched',
+      match_confidence: null,
+      linked_game: null,
+    };
+    const linkedSignal = {
+      hl_internal_id: 502,
+      hl_product_name: 'Wingspan Euro Expansion',
+      units_sold: 4,
+      current_stock: 2,
+      last_sale_date: '2026-10-05',
+      match_status: 'linked',
+      match_confidence: 91,
+      linked_game: { id: 77, title: 'Wingspan: European Expansion', status: 'WISHLIST', bgg_id: 266192 },
+    };
+
+    test('checking HL stock renders matched and unmatched candidates', async () => {
+      apiClient.getHLStockSignals.mockResolvedValue({ items: [unmatchedSignal, linkedSignal] });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('🔄 Check HL Stock'));
+
+      expect(await screen.findByText('Completely New Game')).toBeInTheDocument();
+      expect(screen.getByText(/No match found in this library/)).toBeInTheDocument();
+      expect(screen.getByText('Wingspan Euro Expansion')).toBeInTheDocument();
+      expect(screen.getByText(/Matches: Wingspan: European Expansion/)).toBeInTheDocument();
+      expect(screen.getByText('🔄 Refresh')).toBeInTheDocument();
+    });
+
+    test('shows the API error message on failure', async () => {
+      apiClient.getHLStockSignals.mockRejectedValue({
+        response: { data: { detail: 'HL_STOCK_DATABASE_URL not configured' } },
+      });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('🔄 Check HL Stock'));
+
+      expect(await screen.findByText('HL_STOCK_DATABASE_URL not configured')).toBeInTheDocument();
+    });
+
+    test('adding a matched signal adds it to the list directly', async () => {
+      apiClient.getHLStockSignals.mockResolvedValue({ items: [linkedSignal] });
+      apiClient.addToBuyList.mockResolvedValue({});
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('🔄 Check HL Stock'));
+      await screen.findByText('Wingspan Euro Expansion');
+
+      await user.click(screen.getByText('+ Add to List'));
+
+      await waitFor(() => {
+        expect(apiClient.addToBuyList).toHaveBeenCalledWith({
+          bgg_id: 266192,
+          notes: 'Selling well at HL Timaru (4 sold, 2 in stock)',
+        });
+      });
+      expect(await screen.findByText(/Added "Wingspan: European Expansion" to the list/)).toBeInTheDocument();
+      expect(screen.queryByText('Wingspan Euro Expansion')).not.toBeInTheDocument();
+    });
+
+    test('adding an unmatched signal opens the manual Add Game modal with notes prefilled', async () => {
+      apiClient.getHLStockSignals.mockResolvedValue({ items: [unmatchedSignal] });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('🔄 Check HL Stock'));
+      await screen.findByText('Completely New Game');
+
+      await user.click(screen.getByText('+ Add to List'));
+
+      expect(await screen.findByText('Add a Candidate Game by BGG ID')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Selling well at HL Timaru (7 sold, 3 in stock)')).toBeInTheDocument();
+    });
+
+    test('dismissing a signal removes its card', async () => {
+      apiClient.getHLStockSignals.mockResolvedValue({ items: [unmatchedSignal] });
+      apiClient.dismissHLStockSignal.mockResolvedValue({ dismissed: true });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('🔄 Check HL Stock'));
+      await screen.findByText('Completely New Game');
+
+      await user.click(screen.getByLabelText('Dismiss: Completely New Game'));
+
+      await waitFor(() => expect(apiClient.dismissHLStockSignal).toHaveBeenCalledWith(501));
+      expect(screen.queryByText('Completely New Game')).not.toBeInTheDocument();
+    });
+
+    test('confirming a fuzzy match marks it as confirmed', async () => {
+      apiClient.getHLStockSignals.mockResolvedValue({ items: [linkedSignal] });
+      apiClient.linkHLStockSignal.mockResolvedValue({ hl_internal_id: 502, linked_game_id: 77 });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('🔄 Check HL Stock'));
+      await screen.findByText('Wingspan Euro Expansion');
+      expect(screen.getByText(/91% match - unconfirmed/)).toBeInTheDocument();
+
+      await user.click(screen.getByText('✓ Confirm match'));
+
+      await waitFor(() => expect(apiClient.linkHLStockSignal).toHaveBeenCalledWith(502, 77));
+      expect(await screen.findByText(/Matches: Wingspan: European Expansion \(confirmed\)/)).toBeInTheDocument();
+    });
+
+    test('manually linking an unmatched signal by game ID removes its card', async () => {
+      apiClient.getHLStockSignals.mockResolvedValue({ items: [unmatchedSignal] });
+      apiClient.linkHLStockSignal.mockResolvedValue({ hl_internal_id: 501, linked_game_id: 101 });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('🔄 Check HL Stock'));
+      await screen.findByText('Completely New Game');
+
+      await user.type(screen.getByPlaceholderText(/Library game ID/), '101');
+      await user.click(screen.getByText('Link'));
+
+      await waitFor(() => expect(apiClient.linkHLStockSignal).toHaveBeenCalledWith(501, 101));
+      expect(screen.queryByText('Completely New Game')).not.toBeInTheDocument();
     });
   });
 });
