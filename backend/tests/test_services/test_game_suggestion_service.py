@@ -47,7 +47,7 @@ class TestBuildPrompt:
         assert "Gateway Strategy" in user
 
     def test_excludes_list_names_already_queued_games(self, db_session):
-        game = _owned_game(db_session, title="Owned Game", bgg_id=1)
+        _owned_game(db_session, title="Owned Game", bgg_id=1)
         candidate = Game(title="Candidate Game", bgg_id=2, status="BUY_LIST")
         db_session.add(candidate)
         db_session.flush()
@@ -56,6 +56,7 @@ class TestBuildPrompt:
 
         _system, user = _build_prompt(db_session, count=5)
 
+        assert "Owned Game" in user
         assert "Candidate Game" in user
         assert "do not re-suggest" in user.lower()
 
