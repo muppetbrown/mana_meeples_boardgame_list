@@ -5,13 +5,11 @@ import SleevesListTable from './SleevesListTable';
 import Modal from '../common/Modal';
 
 /**
- * Unified modal for editing all game properties:
- * - Category assignment
- * - Expansion details
- * - Sleeve status
+ * Unified modal showing a game's info (incl. its library ID and BGG link)
+ * alongside all its editable properties - category, expansion details, and
+ * sleeve status - as one scrollable form rather than separate tabs.
  */
 export default function GameEditModal({ game, library, onSave, onClose, onSleeveUpdate }) {
-  const [activeTab, setActiveTab] = useState('category');
   const [validationErrors, setValidationErrors] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -108,13 +106,6 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
     Promise.resolve(onSave(saveData)).finally(() => setIsSaving(false));
   };
 
-  const tabs = [
-    { id: 'category', label: '📑 Category', icon: '📑' },
-    { id: 'expansion', label: '🎯 Expansion', icon: '🎯' },
-    { id: 'sleeves', label: '🃏 Sleeves', icon: '🃏' },
-    { id: 'integration', label: '🎲 AfterGame', icon: '🎲' },
-  ];
-
   return (
     <Modal onClose={onClose} labelledBy="edit-game-title">
         {/* Header */}
@@ -123,32 +114,61 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
           <p className="text-purple-100 mt-1 text-sm">{game.title}</p>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="border-b border-gray-200 bg-gray-50">
-          <div className="flex" role="tablist" aria-label="Game edit sections">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-6 py-4 text-sm font-semibold transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-white text-purple-600 border-b-2 border-purple-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6">
-          {/* Category Tab */}
-          {activeTab === 'category' && (
+        <form onSubmit={handleSubmit} className="p-6 space-y-8">
+          {/* Info */}
+          <section>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">ℹ️ Info</h3>
+            <dl className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm bg-gray-50 rounded-lg p-4">
+              <div>
+                <dt className="text-xs text-gray-500">Library ID</dt>
+                <dd className="font-mono">{game.id}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500">BGG ID</dt>
+                <dd>
+                  {game.bgg_id ? (
+                    <a
+                      href={`https://boardgamegeek.com/boardgame/${game.bgg_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-purple-600 hover:text-purple-800 underline"
+                    >
+                      {game.bgg_id}
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">—</span>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500">Year</dt>
+                <dd>{game.year || "—"}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500">Players</dt>
+                <dd>
+                  {game.players_min || game.players_max
+                    ? `${game.players_min ?? "?"}–${game.players_max ?? "?"}`
+                    : "—"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-gray-500">Status</dt>
+                <dd>{game.status || "OWNED"}</dd>
+              </div>
+              <div className="col-span-2 sm:col-span-1">
+                <dt className="text-xs text-gray-500">Designers</dt>
+                <dd className="truncate" title={(game.designers || []).join(", ")}>
+                  {game.designers?.length ? game.designers.join(", ") : "—"}
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          {/* Category */}
+          <section className="border-t pt-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">📑 Category</h3>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
@@ -199,10 +219,11 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
                 </div>
               </div>
             </div>
-          )}
+          </section>
 
-          {/* Expansion Tab */}
-          {activeTab === 'expansion' && (
+          {/* Expansion */}
+          <section className="border-t pt-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">🎯 Expansion</h3>
             <div className="space-y-6">
               {/* Is Expansion Toggle */}
               <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
@@ -303,10 +324,11 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
                 </div>
               )}
             </div>
-          )}
+          </section>
 
-          {/* Sleeves Tab */}
-          {activeTab === 'sleeves' && (
+          {/* Sleeves */}
+          <section className="border-t pt-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">🃏 Sleeves</h3>
             <div className="space-y-4">
               <SleevesListTable
                 gameId={game.id}
@@ -321,10 +343,11 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
                 </p>
               </div>
             </div>
-          )}
+          </section>
 
-          {/* AfterGame Integration Tab */}
-          {activeTab === 'integration' && (
+          {/* AfterGame Integration */}
+          <section className="border-t pt-6">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">🎲 AfterGame</h3>
             <div className="space-y-4">
               <div className="p-4 bg-linear-to-r from-emerald-50 to-teal-50 rounded-lg border border-emerald-200">
                 <p className="text-sm text-gray-700 mb-2">
@@ -369,7 +392,7 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
                 </div>
               )}
             </div>
-          )}
+          </section>
 
           {/* Validation Errors */}
           {validationErrors.length > 0 && (

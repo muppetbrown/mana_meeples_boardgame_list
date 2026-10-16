@@ -476,14 +476,20 @@ def _build_hl_signal_response(link: HLStockLink, game: Optional[Game]) -> Dict[s
 
 
 @router.get("/hl-signals", dependencies=[Depends(require_admin_auth)])
-async def list_hl_stock_signals(db: Session = Depends(get_db)):
+async def list_hl_stock_signals(
+    db: Session = Depends(get_db),
+    limit: int = Query(10, ge=1, le=50, description="Max candidates to return, best-selling first"),
+):
     """
     Board games selling well / sitting in stock at HL Timaru that aren't yet
     in this library - a demand signal for what to add. Reads live from HL's
     retail database, upserts hl_stock_links (fuzzy-matching any newly-seen
-    product against this library's titles), and returns everything that
-    isn't dismissed and isn't already owned or already on this buy list -
-    those are already tracked, so resurfacing them here would be noise.
+    product against this library's titles), and returns the top `limit`
+    (by units sold) that aren't dismissed and aren't already owned or already
+    on this buy list - those are already tracked, so resurfacing them here
+    would be noise. Every fetched product still gets synced/matched
+    regardless of the display limit, so hl_stock_links stays current even
+    for candidates outside the top N.
     """
     try:
         hl_items = fetch_hl_board_game_signals()
@@ -552,6 +558,7 @@ async def list_hl_stock_signals(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Failed to sync HL stock signals")
 
     results.sort(key=lambda r: r["units_sold"] or 0, reverse=True)
+    results = results[:limit]
     return {"total": len(results), "items": results}
 
 

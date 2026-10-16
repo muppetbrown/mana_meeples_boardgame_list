@@ -6,6 +6,16 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BuyListTab } from '../BuyListTab';
 import * as apiClient from '../../../../api/client';
+import { useStaff } from '../../../../context/StaffContext';
+
+// BuyListTab only needs useConfirm (kept working via the real fallback to
+// window.confirm, same as before this mock existed) and the already-loaded
+// library list (for the HL-signals manual-link title search).
+vi.mock('../../../../context/StaffContext', () => ({
+  useConfirm: () => async (options = {}) =>
+    window.confirm([options?.title, options?.message].filter(Boolean).join('\n\n')),
+  useStaff: vi.fn(),
+}));
 
 vi.mock('../../../../api/client', () => ({
   getBuyListGames: vi.fn(),
@@ -69,9 +79,15 @@ describe('BuyListTab', () => {
     ],
   };
 
+  const mockLibrary = [
+    { id: 201, title: 'Catan', year: 1995 },
+    { id: 202, title: 'Catan: Seafarers', year: 1997 },
+  ];
+
   beforeEach(() => {
     vi.clearAllMocks();
     global.window.confirm = vi.fn(() => true);
+    useStaff.mockReturnValue({ library: mockLibrary });
 
     apiClient.getBuyListGames.mockResolvedValue(mockBuyListData);
     apiClient.getLibraryGaps.mockResolvedValue(mockGaps);
@@ -1063,7 +1079,7 @@ describe('BuyListTab', () => {
       await user.click(screen.getByText('🔄 Check HL Stock'));
       await screen.findByText('Completely New Game');
 
-      await user.click(screen.getByLabelText('Dismiss: Completely New Game'));
+      await user.click(screen.getByText('Not suitable for library'));
 
       await waitFor(() => expect(apiClient.dismissHLStockSignal).toHaveBeenCalledWith(501));
       expect(screen.queryByText('Completely New Game')).not.toBeInTheDocument();
@@ -1086,9 +1102,9 @@ describe('BuyListTab', () => {
       expect(await screen.findByText(/Matches: Wingspan: European Expansion \(confirmed\)/)).toBeInTheDocument();
     });
 
-    test('manually linking an unmatched signal by game ID removes its card', async () => {
+    test('manually linking an unmatched signal via title search removes its card', async () => {
       apiClient.getHLStockSignals.mockResolvedValue({ items: [unmatchedSignal] });
-      apiClient.linkHLStockSignal.mockResolvedValue({ hl_internal_id: 501, linked_game_id: 101 });
+      apiClient.linkHLStockSignal.mockResolvedValue({ hl_internal_id: 501, linked_game_id: 201 });
       const user = userEvent.setup();
       render(<BuyListTab />);
       await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
@@ -1096,10 +1112,10 @@ describe('BuyListTab', () => {
       await user.click(screen.getByText('🔄 Check HL Stock'));
       await screen.findByText('Completely New Game');
 
-      await user.type(screen.getByPlaceholderText(/Library game ID/), '101');
-      await user.click(screen.getByText('Link'));
+      await user.type(screen.getByPlaceholderText(/Search library by title/), 'Catan');
+      await user.click(screen.getByText('Catan (1995)'));
 
-      await waitFor(() => expect(apiClient.linkHLStockSignal).toHaveBeenCalledWith(501, 101));
+      await waitFor(() => expect(apiClient.linkHLStockSignal).toHaveBeenCalledWith(501, 201));
       expect(screen.queryByText('Completely New Game')).not.toBeInTheDocument();
     });
   });

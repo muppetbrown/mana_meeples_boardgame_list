@@ -783,6 +783,27 @@ class TestListHLStockSignals:
         response = client.get("/api/admin/buy-list/hl-signals")
         assert response.status_code in (401, 403)
 
+    def test_defaults_to_top_10_by_units_sold(self, client, admin_headers):
+        fake_items = [
+            _fake_hl_item(600 + i, f"Game {i}", units_sold=100 - i)
+            for i in range(15)
+        ]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            response = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["total"] == 10
+        assert [item["units_sold"] for item in data["items"]] == list(range(100, 90, -1))
+
+    def test_limit_query_param_is_respected(self, client, admin_headers):
+        fake_items = [_fake_hl_item(700 + i, f"Game {i}", units_sold=i) for i in range(5)]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            response = client.get(
+                "/api/admin/buy-list/hl-signals", headers=admin_headers, params={"limit": 3}
+            )
+        assert response.status_code == 200
+        assert response.json()["total"] == 3
+
     def test_unavailable_returns_503(self, client, admin_headers):
         with patch(
             "api.routers.buy_list.fetch_hl_board_game_signals",

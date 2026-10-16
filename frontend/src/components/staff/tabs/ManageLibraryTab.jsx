@@ -480,9 +480,6 @@ export function ManageLibraryTab() {
                     Type
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    BGG ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                     Category
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -571,22 +568,6 @@ export function ManageLibraryTab() {
                       )}
                     </td>
 
-                    {/* BGG ID */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {game.bgg_id ? (
-                        <a
-                          href={`https://boardgamegeek.com/boardgame/${game.bgg_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-purple-600 hover:text-purple-800 underline"
-                        >
-                          {game.bgg_id}
-                        </a>
-                      ) : (
-                        <span className="text-sm text-gray-400">—</span>
-                      )}
-                    </td>
-
                     {/* Category (inline editable) */}
                     <td className="px-4 py-3">
                       <select
@@ -615,10 +596,10 @@ export function ManageLibraryTab() {
                         <button
                           onClick={() => handleEditGame(game)}
                           className="px-3 min-h-11 text-xs font-medium rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
-                          title="Edit game details"
-                          aria-label={`Edit Game: ${game.title}`}
+                          title="View game info and edit details"
+                          aria-label={`Info and edit: ${game.title}`}
                         >
-                          Edit Game
+                          ℹ️ Info / Edit
                         </button>
                         <button
                           onClick={() => handleDelete(game)}
