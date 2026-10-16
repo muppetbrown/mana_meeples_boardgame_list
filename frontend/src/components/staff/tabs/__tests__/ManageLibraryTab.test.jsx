@@ -193,7 +193,6 @@ describe('ManageLibraryTab', () => {
       expect(screen.getByText('Thumbnail')).toBeInTheDocument();
       expect(screen.getByText('Name')).toBeInTheDocument();
       expect(screen.getByText('Type')).toBeInTheDocument();
-      expect(screen.getByText('BGG ID')).toBeInTheDocument();
       expect(screen.getByText('Category')).toBeInTheDocument();
       expect(screen.getByText('Actions')).toBeInTheDocument();
     });
@@ -538,13 +537,9 @@ describe('ManageLibraryTab', () => {
       expect(screen.getByTitle('All sleeve requirements marked as sleeved')).toBeInTheDocument();
     });
 
-    test('displays BGG ID links', () => {
+    test('does not show a BGG ID column (moved to the Info/Edit modal)', () => {
       render(<ManageLibraryTab />);
-
-      const bggLink = screen.getByText('174430').closest('a');
-      expect(bggLink).toHaveAttribute('href', 'https://boardgamegeek.com/boardgame/174430');
-      expect(bggLink).toHaveAttribute('target', '_blank');
-      expect(bggLink).toHaveAttribute('rel', 'noopener noreferrer');
+      expect(screen.queryByText('174430')).not.toBeInTheDocument();
     });
 
     test('displays category badges', () => {
@@ -573,7 +568,7 @@ describe('ManageLibraryTab', () => {
       }));
       useStaff.mockReturnValue({ ...defaultStaffContext, filteredLibrary: many, library: many });
       render(<ManageLibraryTab />);
-      expect(screen.getAllByText('Edit Game')).toHaveLength(50);
+      expect(screen.getAllByText('ℹ️ Info / Edit')).toHaveLength(50);
       expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
       await user.click(screen.getByText('Next →'));
       expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
@@ -607,7 +602,7 @@ describe('ManageLibraryTab', () => {
     test('renders Edit Game and Delete buttons', () => {
       render(<ManageLibraryTab />);
 
-      const editButtons = screen.getAllByText('Edit Game');
+      const editButtons = screen.getAllByText('ℹ️ Info / Edit');
       const deleteButtons = screen.getAllByText('Delete');
 
       expect(editButtons.length).toBe(4); // One for each game
@@ -618,7 +613,7 @@ describe('ManageLibraryTab', () => {
       const user = userEvent.setup();
       render(<ManageLibraryTab />);
 
-      const editButtons = screen.getAllByText('Edit Game');
+      const editButtons = screen.getAllByText('ℹ️ Info / Edit');
       await user.click(editButtons[0]);
 
       expect(screen.getByTestId('game-edit-modal')).toBeInTheDocument();
@@ -629,7 +624,7 @@ describe('ManageLibraryTab', () => {
       const user = userEvent.setup();
       render(<ManageLibraryTab />);
 
-      const editButtons = screen.getAllByText('Edit Game');
+      const editButtons = screen.getAllByText('ℹ️ Info / Edit');
       await user.click(editButtons[0]);
 
       const closeButton = screen.getByText('Close');
@@ -644,7 +639,7 @@ describe('ManageLibraryTab', () => {
 
       render(<ManageLibraryTab />);
 
-      const editButtons = screen.getAllByText('Edit Game');
+      const editButtons = screen.getAllByText('ℹ️ Info / Edit');
       await user.click(editButtons[0]);
 
       const saveButton = screen.getByText('Save');
@@ -662,7 +657,7 @@ describe('ManageLibraryTab', () => {
 
       render(<ManageLibraryTab />);
 
-      const editButtons = screen.getAllByText('Edit Game');
+      const editButtons = screen.getAllByText('ℹ️ Info / Edit');
       await user.click(editButtons[0]);
 
       const saveButton = screen.getByText('Save');
@@ -769,7 +764,7 @@ describe('ManageLibraryTab', () => {
     test('edit and delete buttons have accessible labels', () => {
       render(<ManageLibraryTab />);
 
-      const editButtons = screen.getAllByRole('button', { name: /Edit Game/ });
+      const editButtons = screen.getAllByRole('button', { name: /Info and edit:/ });
       const deleteButtons = screen.getAllByRole('button', { name: /Delete/ });
 
       expect(editButtons.length).toBeGreaterThan(0);

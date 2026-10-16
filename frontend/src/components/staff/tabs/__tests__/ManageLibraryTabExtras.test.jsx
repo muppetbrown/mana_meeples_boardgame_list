@@ -88,7 +88,7 @@ describe('ManageLibraryTab extras', () => {
     useStaff.mockReturnValue(ctx({ filteredLibrary: untitled, library: untitled }));
     render(<ManageLibraryTab />);
     await user.selectOptions(screen.getByLabelText('Sort library'), 'category');
-    expect(screen.getAllByText('Edit Game')).toHaveLength(4);
+    expect(screen.getAllByText('ℹ️ Info / Edit')).toHaveLength(4);
     expect(screen.getByText('Named')).toBeInTheDocument();
   });
 

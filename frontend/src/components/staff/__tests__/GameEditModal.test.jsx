@@ -1,5 +1,6 @@
 /**
- * Tests for GameEditModal component - unified modal for editing game properties
+ * Tests for GameEditModal component - unified modal showing a game's info
+ * and all its editable properties as one scrollable form (no tabs)
  */
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
@@ -31,6 +32,12 @@ describe('GameEditModal', () => {
     modifies_players_min: null,
     modifies_players_max: null,
     aftergame_game_id: null,
+    year: 2008,
+    bgg_id: 30549,
+    players_min: 2,
+    players_max: 4,
+    status: 'OWNED',
+    designers: ['Matt Leacock'],
   };
 
   const mockLibrary = [
@@ -63,13 +70,12 @@ describe('GameEditModal', () => {
       expect(container.firstChild).toBeNull();
     });
 
-    test('renders all four tab buttons', () => {
+    test('renders every section without needing to click between tabs', () => {
       render(<GameEditModal {...defaultProps} />);
-      // Tab buttons contain emoji prefixes
-      expect(screen.getByRole('tab', { name: /📑 Category/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /🎯 Expansion/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /🃏 Sleeves/i })).toBeInTheDocument();
-      expect(screen.getByRole('tab', { name: /🎲 AfterGame/i })).toBeInTheDocument();
+      expect(screen.getByText('Assign Category')).toBeInTheDocument();
+      expect(screen.getByText('This is an expansion')).toBeInTheDocument();
+      expect(screen.getByTestId('sleeves-list-table')).toBeInTheDocument();
+      expect(screen.getByText(/AfterGame Integration/)).toBeInTheDocument();
     });
 
     test('renders Cancel and Save buttons', () => {
@@ -79,38 +85,34 @@ describe('GameEditModal', () => {
     });
   });
 
-  describe('Tab Navigation', () => {
-    test('Category tab is active by default', () => {
+  describe('Info section', () => {
+    test('shows the library ID', () => {
       render(<GameEditModal {...defaultProps} />);
-      expect(screen.getByText('Assign Category')).toBeInTheDocument();
+      expect(screen.getByText('Library ID')).toBeInTheDocument();
+      expect(screen.getByText('1')).toBeInTheDocument();
     });
 
-    test('clicking Expansion tab shows expansion content', () => {
+    test('shows the BGG ID as a link to BoardGameGeek', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/Expansion/));
-      expect(screen.getByText('This is an expansion')).toBeInTheDocument();
+      const link = screen.getByRole('link', { name: '30549' });
+      expect(link).toHaveAttribute('href', 'https://boardgamegeek.com/boardgame/30549');
     });
 
-    test('clicking Sleeves tab shows sleeves content', () => {
-      render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/Sleeves/));
-      expect(screen.getByTestId('sleeves-list-table')).toBeInTheDocument();
+    test('shows a dash when there is no BGG ID', () => {
+      render(<GameEditModal {...defaultProps} game={{ ...mockGame, bgg_id: null }} />);
+      expect(screen.queryByRole('link', { name: /\d+/ })).not.toBeInTheDocument();
     });
 
-    test('clicking AfterGame tab shows integration content', () => {
+    test('shows year, players, status and designers', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/AfterGame/));
-      expect(screen.getByText(/AfterGame Integration/)).toBeInTheDocument();
-    });
-
-    test('active tab has visual distinction', () => {
-      render(<GameEditModal {...defaultProps} />);
-      const categoryTab = screen.getByRole('tab', { name: /📑 Category/i });
-      expect(categoryTab).toHaveClass('text-purple-600');
+      expect(screen.getByText('2008')).toBeInTheDocument();
+      expect(screen.getByText('2–4')).toBeInTheDocument();
+      expect(screen.getByText('OWNED')).toBeInTheDocument();
+      expect(screen.getByText('Matt Leacock')).toBeInTheDocument();
     });
   });
 
-  describe('Category Tab', () => {
+  describe('Category section', () => {
     test('renders all 5 category options plus uncategorized', () => {
       render(<GameEditModal {...defaultProps} />);
       expect(screen.getByText('Co-op & Adventure')).toBeInTheDocument();
@@ -142,17 +144,15 @@ describe('GameEditModal', () => {
     });
   });
 
-  describe('Expansion Tab', () => {
+  describe('Expansion section', () => {
     test('expansion checkbox is unchecked by default for non-expansion', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/Expansion/));
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       expect(checkbox).not.toBeChecked();
     });
 
     test('checking expansion reveals additional fields', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/Expansion/));
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       fireEvent.click(checkbox);
 
@@ -163,7 +163,6 @@ describe('GameEditModal', () => {
 
     test('expansion type dropdown has three options', () => {
       const { container } = render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByRole('tab', { name: /🎯 Expansion/i }));
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       fireEvent.click(checkbox);
 
@@ -178,7 +177,6 @@ describe('GameEditModal', () => {
 
     test('base game dropdown shows only non-expansions (excluding current game)', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/Expansion/));
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       fireEvent.click(checkbox);
 
@@ -190,7 +188,6 @@ describe('GameEditModal', () => {
 
     test('can enter player count modifications', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/Expansion/));
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       fireEvent.click(checkbox);
 
@@ -206,7 +203,6 @@ describe('GameEditModal', () => {
 
     test('shows visibility hint based on expansion type', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/Expansion/));
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       fireEvent.click(checkbox);
 
@@ -215,42 +211,36 @@ describe('GameEditModal', () => {
     });
   });
 
-  describe('Sleeves Tab', () => {
+  describe('Sleeves section', () => {
     test('renders SleevesListTable component', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/Sleeves/));
       expect(screen.getByTestId('sleeves-list-table')).toBeInTheDocument();
     });
 
     test('passes game ID to SleevesListTable', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/Sleeves/));
       expect(screen.getByText(/SleevesListTable for game 1/)).toBeInTheDocument();
     });
 
     test('shows shopping list note', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/Sleeves/));
       expect(screen.getByText(/shopping list will only include unmarked sleeve types/)).toBeInTheDocument();
     });
   });
 
-  describe('AfterGame Integration Tab', () => {
+  describe('AfterGame Integration section', () => {
     test('renders AfterGame integration info', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/AfterGame/));
       expect(screen.getByText(/AfterGame Integration/)).toBeInTheDocument();
     });
 
     test('renders AfterGame ID input', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/AfterGame/));
       expect(screen.getByPlaceholderText(/ac3a5f77-3e19-47af-a61a-d648d04b02e2/)).toBeInTheDocument();
     });
 
     test('shows amber warning when no AfterGame ID', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/AfterGame/));
       expect(screen.getByText(/Without an AfterGame ID/)).toBeInTheDocument();
     });
 
@@ -260,13 +250,11 @@ describe('GameEditModal', () => {
         aftergame_game_id: 'ac3a5f77-3e19-47af-a61a-d648d04b02e2',
       };
       render(<GameEditModal {...defaultProps} game={gameWithAftergame} />);
-      fireEvent.click(screen.getByText(/AfterGame/));
       expect(screen.getByText(/When set, the "Plan a Game" button/)).toBeInTheDocument();
     });
 
     test('can enter AfterGame ID', () => {
       render(<GameEditModal {...defaultProps} />);
-      fireEvent.click(screen.getByText(/AfterGame/));
       const input = screen.getByPlaceholderText(/ac3a5f77-3e19-47af-a61a-d648d04b02e2/);
       fireEvent.change(input, { target: { value: 'test-uuid-value' } });
       expect(input).toHaveValue('test-uuid-value');
@@ -300,9 +288,6 @@ describe('GameEditModal', () => {
 
     test('calls onSave with expansion data when expansion is set', async () => {
       render(<GameEditModal {...defaultProps} />);
-
-      // Switch to expansion tab
-      fireEvent.click(screen.getByText(/Expansion/));
 
       // Check expansion checkbox
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
@@ -343,7 +328,6 @@ describe('GameEditModal', () => {
     test('parses player count inputs as integers', async () => {
       render(<GameEditModal {...defaultProps} />);
 
-      fireEvent.click(screen.getByText(/Expansion/));
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       fireEvent.click(checkbox);
 
@@ -410,8 +394,6 @@ describe('GameEditModal', () => {
       };
       render(<GameEditModal {...defaultProps} game={expansionGame} />);
 
-      fireEvent.click(screen.getByText(/Expansion/));
-
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       expect(checkbox).toBeChecked();
     });
@@ -422,8 +404,6 @@ describe('GameEditModal', () => {
         aftergame_game_id: 'test-uuid-123',
       };
       render(<GameEditModal {...defaultProps} game={gameWithAftergame} />);
-
-      fireEvent.click(screen.getByText(/AfterGame/));
 
       const input = screen.getByPlaceholderText(/ac3a5f77-3e19-47af-a61a-d648d04b02e2/);
       expect(input).toHaveValue('test-uuid-123');
@@ -441,7 +421,6 @@ describe('GameEditModal', () => {
 
     test('handles empty library gracefully', () => {
       render(<GameEditModal {...defaultProps} library={[]} />);
-      fireEvent.click(screen.getByText(/Expansion/));
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       fireEvent.click(checkbox);
 
@@ -455,7 +434,6 @@ describe('GameEditModal', () => {
       ];
       render(<GameEditModal {...defaultProps} library={libraryWithoutYear} />);
 
-      fireEvent.click(screen.getByText(/Expansion/));
       const checkbox = screen.getByRole('checkbox', { name: /This is an expansion/i });
       fireEvent.click(checkbox);
 

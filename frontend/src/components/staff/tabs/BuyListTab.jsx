@@ -1,6 +1,6 @@
 // src/components/staff/tabs/BuyListTab.jsx
 import React, { useState, useEffect, useRef } from "react";
-import { useConfirm } from "../../../context/StaffContext";
+import { useConfirm, useStaff } from "../../../context/StaffContext";
 import Thumbnail from "../../common/Thumbnail";
 import {
   getBuyListGames,
@@ -79,6 +79,7 @@ export function BuyListTab() {
   const [addingAwardWinnerKey, setAddingAwardWinnerKey] = useState(null);
   const fileInputRef = useRef(null);
   const confirm = useConfirm();
+  const { library } = useStaff();
 
   // Banners auto-dismiss (errors linger longer so they can be read)
   useEffect(() => {
@@ -445,26 +446,30 @@ export function BuyListTab() {
     }
   };
 
-  const handleManualLinkHLSignal = async (item) => {
-    const gameId = parseInt(hlLinkInputs[item.hl_internal_id], 10);
-    if (!gameId) {
-      setHlError("Enter a valid library game ID to link");
-      return;
-    }
+  // Client-side title search over the already-loaded library (any status -
+  // the fuzzy matcher itself isn't limited to owned games either), same
+  // pattern GameEditModal uses for its base-game picker.
+  const getLibraryMatchesForQuery = (query) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return library.filter((g) => g.title?.toLowerCase().includes(q)).slice(0, 6);
+  };
+
+  const handleManualLinkHLSignal = async (item, game) => {
     setHlActionId(item.hl_internal_id);
     try {
       setHlError(null);
-      await linkHLStockSignal(item.hl_internal_id, gameId);
+      await linkHLStockSignal(item.hl_internal_id, game.id);
       setHlSignals((prev) => prev.filter((s) => s.hl_internal_id !== item.hl_internal_id));
       setHlLinkInputs((prev) => {
         const next = { ...prev };
         delete next[item.hl_internal_id];
         return next;
       });
-      setSuccess(`Linked "${item.hl_product_name}" to game #${gameId}`);
+      setSuccess(`Linked "${item.hl_product_name}" to "${game.title}"`);
     } catch (err) {
       console.error("Failed to link HL stock signal:", err);
-      setHlError(err.response?.data?.detail || "Game not found, or link failed");
+      setHlError(err.response?.data?.detail || "Failed to link");
     } finally {
       setHlActionId(null);
     }
@@ -785,17 +790,10 @@ export function BuyListTab() {
               const acting = hlActionId === item.hl_internal_id;
               const matched = item.match_status === "linked" && item.linked_game;
               const bggSearchUrl = `https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q=${encodeURIComponent(item.hl_product_name)}`;
+              const libraryMatches = getLibraryMatchesForQuery(hlLinkInputs[item.hl_internal_id] || "");
               return (
-                <div key={item.hl_internal_id} className="border rounded-lg p-4 relative">
-                  <button
-                    onClick={() => handleDismissHLSignal(item)}
-                    disabled={acting}
-                    aria-label={`Dismiss: ${item.hl_product_name}`}
-                    className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 text-sm disabled:opacity-50"
-                  >
-                    ✕
-                  </button>
-                  <div className="pr-5">
+                <div key={item.hl_internal_id} className="border rounded-lg p-4">
+                  <div>
                     <div className="font-semibold">{item.hl_product_name}</div>
                     <p className="text-sm text-gray-600 mt-1">
                       {item.units_sold ?? 0} sold · {item.current_stock ?? 0} in stock
@@ -839,25 +837,45 @@ export function BuyListTab() {
                         🔍 Search on BGG
                       </a>
                     )}
+                    <button
+                      onClick={() => handleDismissHLSignal(item)}
+                      disabled={acting}
+                      className="px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Not suitable for library
+                    </button>
                   </div>
                   {!matched && (
-                    <div className="flex gap-2 mt-2">
+                    <div className="mt-2">
                       <input
-                        type="number"
+                        type="text"
                         value={hlLinkInputs[item.hl_internal_id] || ""}
                         onChange={(e) =>
                           setHlLinkInputs((prev) => ({ ...prev, [item.hl_internal_id]: e.target.value }))
                         }
-                        placeholder="Library game ID (if the matcher missed it)"
-                        className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded"
+                        placeholder="Search library by title (if the matcher missed it)"
+                        className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
                       />
-                      <button
-                        onClick={() => handleManualLinkHLSignal(item)}
-                        disabled={acting || !hlLinkInputs[item.hl_internal_id]}
-                        className="px-3 py-1 text-xs font-medium rounded-lg border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        Link
-                      </button>
+                      {(hlLinkInputs[item.hl_internal_id] || "").trim() && (
+                        <div className="mt-1 border border-gray-200 rounded-lg bg-white shadow-sm max-h-40 overflow-y-auto">
+                          {libraryMatches.length === 0 ? (
+                            <p className="px-2 py-1.5 text-xs text-gray-500">No matching games</p>
+                          ) : (
+                            libraryMatches.map((g) => (
+                              <button
+                                key={g.id}
+                                type="button"
+                                onClick={() => handleManualLinkHLSignal(item, g)}
+                                disabled={acting}
+                                className="block w-full text-left px-2 py-1.5 text-xs hover:bg-gray-50 disabled:opacity-50 border-b last:border-b-0 border-gray-100"
+                              >
+                                {g.title}
+                                {g.year ? ` (${g.year})` : ""}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
