@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
 import { Toast } from '../Toast';
 
 describe('Toast', () => {
@@ -204,6 +204,20 @@ describe('Toast', () => {
       const unicodeMessage = '🎮 Game saved successfully! 🎉';
       render(<Toast message={unicodeMessage} />);
       expect(screen.getByText(unicodeMessage)).toBeInTheDocument();
+    });
+  });
+
+  describe('dismiss', () => {
+    it('shows no close button without onDismiss', () => {
+      render(<Toast message="Hi" />);
+      expect(screen.queryByRole('button', { name: 'Dismiss notification' })).not.toBeInTheDocument();
+    });
+
+    it('calls onDismiss when the close button is clicked', () => {
+      const onDismiss = vi.fn();
+      render(<Toast message="Hi" onDismiss={onDismiss} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Dismiss notification' }));
+      expect(onDismiss).toHaveBeenCalledTimes(1);
     });
   });
 });

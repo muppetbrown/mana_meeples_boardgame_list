@@ -1,5 +1,5 @@
 // src/pages/StaffView.jsx
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
 // ---- Context ----
@@ -12,6 +12,9 @@ import { adminLogout } from "../api/client";
 import CategorySelectModal from "../components/CategorySelectModal";
 import { FullPageLoader } from "../components/common/LoadingSpinner";
 import Toast from "../components/common/Toast";
+import Icon from "../components/common/Icon";
+import { BackgroundTasksMenu } from "../components/staff/BackgroundTasksMenu";
+import { buttonClass } from "../components/common/Button";
 
 // ---- Staff components ----
 import { TabNavigation } from "../components/staff/TabNavigation";
@@ -24,15 +27,17 @@ import { AdvancedToolsTab } from "../components/staff/tabs/AdvancedToolsTab";
 import { BuyListTab } from "../components/staff/tabs/BuyListTab";
 import { SleeveInventoryTab } from "../components/staff/tabs/SleeveInventoryTab";
 
+// Tabs are grouped (a divider is drawn when `group` changes): overview, library
+// curation, sourcing, sleeves, system.
 const TABS = [
-  { id: "dashboard", label: "Dashboard", icon: "📊" },
-  { id: "add-games", label: "Add Games", icon: "📥" },
-  { id: "manage-library", label: "Manage Library", icon: "📚" },
-  { id: "categories", label: "Categories", icon: "🏷️" },
-  { id: "quick-picks", label: "Quick Picks", icon: "🎯" },
-  { id: "buy-list", label: "Buy List", icon: "🛒" },
-  { id: "sleeve-inventory", label: "Sleeve Inventory", icon: "🃏" },
-  { id: "advanced", label: "Advanced Tools", icon: "⚙️" },
+  { id: "dashboard", label: "Dashboard", icon: "dashboard", group: "overview" },
+  { id: "add-games", label: "Add Games", icon: "download", group: "library" },
+  { id: "manage-library", label: "Manage Library", icon: "library", group: "library" },
+  { id: "categories", label: "Categories", icon: "tag", group: "library" },
+  { id: "quick-picks", label: "Quick Picks", icon: "target", group: "library" },
+  { id: "buy-list", label: "Buy List", icon: "cart", group: "sourcing" },
+  { id: "sleeve-inventory", label: "Sleeve Inventory", icon: "layers", group: "sleeves" },
+  { id: "advanced", label: "Advanced Tools", icon: "settings", group: "system" },
 ];
 const TAB_IDS = TABS.map((t) => t.id);
 
@@ -51,6 +56,10 @@ function StaffViewContent() {
     modalOpen,
     pendingGame,
     stats,
+    ownedLibrary,
+    recentOperations,
+    dismissRecentOperation,
+    dismissToast,
     confirm,
     handleModalSelect,
     handleModalClose,
@@ -83,6 +92,16 @@ function StaffViewContent() {
     observer.observe(topBarEl);
     return () => observer.disconnect();
   }, []);
+
+  // Count badges on tabs that have outstanding work
+  const uncategorizedCount = useMemo(
+    () => (ownedLibrary || []).filter((g) => !g.mana_meeple_category).length,
+    [ownedLibrary]
+  );
+  const tabs = useMemo(
+    () => TABS.map((t) => (t.id === "categories" ? { ...t, badge: uncategorizedCount } : t)),
+    [uncategorizedCount]
+  );
 
   const handleTabChange = useCallback(
     (tabId) => {
@@ -148,21 +167,31 @@ function StaffViewContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800">
+    <div className="staff-root min-h-screen text-gray-800">
       {/* Header and Tab Navigation are each independently sticky; this wrapper only
           measures their combined height (see effect above) for content further down. */}
       <div ref={topBarRef}>
-        <header ref={headerRef} className="bg-white shadow-sm sticky top-0 z-40">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-            <h1 className="text-2xl font-bold">Mana & Meeples — Admin Panel</h1>
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-600 hidden md:block">
-                <span className="font-semibold">{stats.total}</span> games ·{" "}
-                <span className="font-semibold">{stats.avgRating}</span> avg BGG rating
+        <header ref={headerRef} className="bg-white border-b border-gray-200 sticky top-0 z-40">
+          <div className="max-w-screen-2xl mx-auto px-3 lg:px-6 h-12 flex items-center justify-between">
+            <h1 className="text-base font-bold tracking-tight">Mana & Meeples — Admin Panel</h1>
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-gray-500 hidden md:block tabular">
+                <span className="font-semibold text-gray-700">{stats.total}</span> games ·{" "}
+                <span className="font-semibold text-gray-700">{stats.avgRating}</span> avg BGG rating
               </div>
+              <BackgroundTasksMenu operations={recentOperations} onDismiss={dismissRecentOperation} />
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className={buttonClass({ variant: "secondary", size: "sm" })}
+              >
+                View public site
+                <Icon name="external" size={13} />
+              </a>
               <button
                 onClick={handleLogout}
-                className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                className={buttonClass({ variant: "secondary", size: "sm" })}
                 title="Logout"
               >
                 Logout
@@ -171,11 +200,11 @@ function StaffViewContent() {
           </div>
         </header>
 
-        <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} tabs={TABS} />
+        <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} tabs={tabs} />
       </div>
 
       {/* Tab Content */}
-      <main id="main-content" className="max-w-7xl mx-auto px-4 py-6">
+      <main id="main-content" className="max-w-screen-2xl mx-auto px-3 lg:px-6 py-5">
         {TABS.filter((t) => visitedTabs.has(t.id)).map((t) => (
           <div
             key={t.id}
@@ -198,7 +227,7 @@ function StaffViewContent() {
       />
 
       {/* Global Toast Notifications */}
-      <Toast message={toast.message} type={toast.type} />
+      <Toast message={toast.message} type={toast.type} onDismiss={dismissToast} />
     </div>
   );
 }

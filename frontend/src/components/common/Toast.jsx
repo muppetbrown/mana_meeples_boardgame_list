@@ -12,11 +12,11 @@ import React from 'react';
  * @param {string} props.message - Message to display
  * @param {'info'|'success'|'warning'|'error'} props.type - Type of notification
  */
-export function Toast({ message, type = 'info' }) {
+export function Toast({ message, type = 'info', onDismiss }) {
   if (!message) return null;
 
   const baseStyles =
-    'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-lg shadow-lg text-white font-medium';
+    'fixed bottom-4 left-1/2 -translate-x-1/2 z-50 pl-4 pr-3 py-2 rounded-lg shadow-lg max-w-xl text-white font-medium';
 
   const typeStyles = {
     info: 'bg-gray-800',
@@ -79,6 +79,16 @@ export function Toast({ message, type = 'info' }) {
     >
       {icons[type]}
       <span>{message}</span>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          aria-label="Dismiss notification"
+          className="ml-2 -mr-1 p-1 rounded hover:bg-white/20 leading-none"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      )}
     </div>
   );
 }
