@@ -168,10 +168,11 @@ function StaffViewContent() {
 
   return (
     <div className="staff-root min-h-screen text-gray-800">
-      {/* Header and Tab Navigation are each independently sticky; this wrapper only
-          measures their combined height (see effect above) for content further down. */}
-      <div ref={topBarRef}>
-        <header ref={headerRef} className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      {/* The wrapper is the sticky element (a sticky child can't escape a wrapper that is only
+          as tall as itself), so header + tabs stay pinned together. Its measured height feeds
+          --staff-topbar-h for the sticky toolbars further down. */}
+      <div ref={topBarRef} className="sticky top-0 z-40">
+        <header ref={headerRef} className="bg-white border-b border-gray-200 relative">
           <div className="max-w-screen-2xl mx-auto px-3 lg:px-6 h-12 flex items-center justify-between">
             <h1 className="text-base font-bold tracking-tight">Mana & Meeples — Admin Panel</h1>
             <div className="flex items-center gap-3">

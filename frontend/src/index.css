@@ -351,9 +351,10 @@ a:not([role="button"]):not(.btn) {
 /* ------------------------------------------------------------------
    Staff / admin area (desktop-first)
    The global rules above are tuned for the touch-first public site.
-   Inside .staff-root we relax them on precise pointers (mouse/trackpad)
-   so tables and toolbars can be dense, while touch devices keep 44px
-   targets. Elements that are programmatically focused containers
+   Inside .staff-root we relax them at desktop widths
+   so tables and toolbars can be dense (keyed on viewport width rather than
+   pointer type, since touch-capable laptops report a coarse pointer), while
+   narrow/touch layouts keep 44px targets. Elements that are programmatically focused containers
    (tabindex="-1", e.g. dialog panels) never show a focus ring.
    ------------------------------------------------------------------ */
 [tabindex="-1"]:focus,
@@ -366,7 +367,7 @@ a:not([role="button"]):not(.btn) {
   background: #f4f5f8;
 }
 
-@media (pointer: fine) {
+@media (min-width: 1024px) {
   .staff-root button,
   .staff-root input[type="checkbox"],
   .staff-root input[type="radio"],

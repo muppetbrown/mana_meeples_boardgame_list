@@ -191,8 +191,12 @@ def compute_to_sleeve_games(db: Session) -> list[dict]:
 
 def compute_to_order_list(db: Session) -> list[dict]:
     """
-    Returns sleeve sizes where stock is insufficient, grouped by matched product.
-    Shows recommended product, price, distributor, quantity needed, and packs to buy.
+    Returns what to order, grouped by matched product.
+
+    Several card sizes can resolve to the same product; those are merged into a
+    single row so the product's stock/on-order quantities are counted once and
+    packs are rounded up once. Sizes with no matching product are listed
+    individually (there is no product to group them under).
     """
     # Get all unsleeved sleeve records
     sleeves = db.execute(
@@ -208,21 +212,27 @@ def compute_to_order_list(db: Session) -> list[dict]:
     for sleeve in sleeves:
         size_groups[(to_decimal(sleeve.width_mm), to_decimal(sleeve.height_mm))].append(sleeve)
 
+    # Bucket sizes by the product they'd be ordered from. Unmatched sizes get
+    # their own bucket keyed by size.
+    buckets: dict = {}
+    for (width, height), group_sleeves in sorted(size_groups.items()):
+        product = best_match_for_order(width, height, db)
+        key = ("product", product.id) if product else ("size", width, height)
+        bucket = buckets.setdefault(key, {"product": product, "sizes": [], "sleeves": []})
+        bucket["sizes"].append((float(width), float(height)))
+        bucket["sleeves"].extend(group_sleeves)
+
     order_list = []
 
-    for (width, height), group_sleeves in sorted(size_groups.items()):
+    for bucket in buckets.values():
+        product = bucket["product"]
+        group_sleeves = bucket["sleeves"]
         total_needed = sum(s.quantity for s in group_sleeves)
-
-        # Find best product for ordering (cheapest per sleeve)
-        product = best_match_for_order(width, height, db)
-
-        current_stock = 0
         product_info = None
 
         if product:
-            current_stock = product.in_stock
             ordered_sleeves = product.ordered * product.sleeves_per_pack
-            deficit = max(0, total_needed - current_stock - ordered_sleeves)
+            deficit = max(0, total_needed - product.in_stock - ordered_sleeves)
 
             if deficit <= 0:
                 continue  # Already have enough stock + ordered
@@ -239,7 +249,7 @@ def compute_to_order_list(db: Session) -> list[dict]:
                 "price_per_sleeve": round(float(product.price) / product.sleeves_per_pack, 3),
                 "packs_to_buy": packs_to_buy,
                 "total_cost": round(float(product.price) * packs_to_buy, 2),
-                "current_stock": current_stock,
+                "current_stock": product.in_stock,
                 "ordered_packs": product.ordered,
                 "ordered_sleeves": ordered_sleeves,
             }
@@ -249,13 +259,16 @@ def compute_to_order_list(db: Session) -> list[dict]:
         game_ids = set(s.game_id for s in group_sleeves)
         games = db.execute(select(Game.title).where(Game.id.in_(game_ids))).scalars().all()
 
+        sizes = bucket["sizes"]
         order_list.append({
-            "width_mm": float(width),
-            "height_mm": float(height),
+            # First (smallest) size kept for backwards compatibility / size-group classification
+            "width_mm": sizes[0][0],
+            "height_mm": sizes[0][1],
+            "sizes": [{"width_mm": w, "height_mm": h} for w, h in sizes],
             "total_needed": total_needed,
             "deficit": deficit,
             "games_count": len(game_ids),
-            "game_names": list(games),
+            "game_names": sorted(games),
             "product": product_info,
         })
 
