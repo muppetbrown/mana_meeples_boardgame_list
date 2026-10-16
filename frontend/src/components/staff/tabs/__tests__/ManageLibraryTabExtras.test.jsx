@@ -88,7 +88,7 @@ describe('ManageLibraryTab extras', () => {
     useStaff.mockReturnValue(ctx({ filteredLibrary: untitled, library: untitled }));
     render(<ManageLibraryTab />);
     await user.selectOptions(screen.getByLabelText('Sort library'), 'category');
-    expect(screen.getAllByText('ℹ️ Info / Edit')).toHaveLength(4);
+    expect(screen.getAllByRole('button', { name: /Info and edit:/ })).toHaveLength(4);
     expect(screen.getByText('Named')).toBeInTheDocument();
   });
 
@@ -196,10 +196,10 @@ describe('ManageLibraryTab extras', () => {
     expect(screen.queryByTestId('shopping-modal')).not.toBeInTheDocument();
   });
 
-  test('bulk actions with nothing selected are disabled', () => {
+  test('bulk actions are not offered with nothing selected', () => {
     render(<ManageLibraryTab />);
-    expect(screen.getByText(/Print Labels/).closest('button')).toBeDisabled();
-    expect(screen.getByText(/Fetch Sleeve Data/).closest('button')).toBeDisabled();
+    expect(screen.queryByText(/Print Labels/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Fetch Sleeve Data/)).not.toBeInTheDocument();
   });
 
   test('a failed inline category change does not throw', async () => {

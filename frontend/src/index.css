@@ -348,3 +348,35 @@ a:not([role="button"]):not(.btn) {
     border: 1px solid #ccc !important;
   }
 }
+/* ------------------------------------------------------------------
+   Staff / admin area (desktop-first)
+   The global rules above are tuned for the touch-first public site.
+   Inside .staff-root we relax them on precise pointers (mouse/trackpad)
+   so tables and toolbars can be dense, while touch devices keep 44px
+   targets. Elements that are programmatically focused containers
+   (tabindex="-1", e.g. dialog panels) never show a focus ring.
+   ------------------------------------------------------------------ */
+[tabindex="-1"]:focus,
+[tabindex="-1"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.staff-root {
+  background: #f4f5f8;
+}
+
+@media (pointer: fine) {
+  .staff-root button,
+  .staff-root input[type="checkbox"],
+  .staff-root input[type="radio"],
+  .staff-root summary {
+    min-height: 0;
+    min-width: 0;
+  }
+}
+
+/* Tabular figures keep numeric columns aligned */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}

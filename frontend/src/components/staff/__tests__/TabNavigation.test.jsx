@@ -75,4 +75,29 @@ describe('TabNavigation', () => {
     await user.keyboard('{Home}');
     expect(onTabChange).toHaveBeenLastCalledWith('dashboard');
   });
+
+  describe('icons, groups and badges', () => {
+    const grouped = [
+      { id: 'a', label: 'Alpha', icon: 'dashboard', group: 'one' },
+      { id: 'b', label: 'Beta', icon: 'tag', group: 'two', badge: 7 },
+      { id: 'c', label: 'Gamma', icon: '📚', group: 'two' },
+    ];
+
+    test('renders svg icons for known names and text for anything else', () => {
+      const { container } = render(<TabNavigation activeTab="a" onTabChange={() => {}} tabs={grouped} />);
+      expect(container.querySelectorAll('button svg')).toHaveLength(2);
+      expect(screen.getByText('📚')).toHaveAttribute('aria-hidden', 'true');
+    });
+
+    test('shows a count badge only when badge > 0', () => {
+      render(<TabNavigation activeTab="a" onTabChange={() => {}} tabs={grouped} />);
+      expect(screen.getByLabelText('7 need attention')).toHaveTextContent('7');
+      expect(screen.getAllByLabelText(/need attention/)).toHaveLength(1);
+    });
+
+    test('draws a divider when the group changes', () => {
+      const { container } = render(<TabNavigation activeTab="a" onTabChange={() => {}} tabs={grouped} />);
+      expect(container.querySelectorAll('[role="presentation"]')).toHaveLength(1);
+    });
+  });
 });

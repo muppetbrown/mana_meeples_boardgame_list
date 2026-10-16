@@ -101,6 +101,11 @@ export function StaffProvider({ children }) {
     toastTimer.current = setTimeout(() => setToast({ message: '', type: 'info' }), duration);
   }, []);
 
+  const dismissToast = useCallback(() => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ message: '', type: 'info' });
+  }, []);
+
   useEffect(() => () => toastTimer.current && clearTimeout(toastTimer.current), []);
 
   /**
@@ -477,6 +482,7 @@ export function StaffProvider({ children }) {
     updateGameData,
     deleteGameData,
     showToast,
+    dismissToast,
   };
 
   return (

@@ -1,7 +1,7 @@
 import React from "react";
 import { CATEGORY_KEYS, CATEGORY_LABELS } from "../constants/categories";
 
-export default function CategoryFilter({ selected, counts, onChange }) {
+export default function CategoryFilter({ selected, counts, onChange, dense = false }) {
   // All category values in order
   const allCategories = ['all', ...CATEGORY_KEYS, 'uncategorized'];
 
@@ -27,14 +27,17 @@ export default function CategoryFilter({ selected, counts, onChange }) {
       aria-pressed={selected === value}
       tabIndex={selected === value ? 0 : -1}
       className={
-        "px-3 py-1 rounded-full text-sm border transition min-h-11 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 " +
+        (dense
+          ? "px-2.5 py-0.5 rounded-full text-xs border transition min-h-8 "
+          : "px-3 py-1 rounded-full text-sm border transition min-h-11 ") +
+        "focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 " +
         (selected === value
           ? "bg-purple-600 text-white border-purple-600"
           : "bg-white text-gray-700 border-gray-300 hover:border-purple-400")
       }
     >
       {label}
-      <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-gray-100 text-gray-700" aria-label={`${counts?.[value] ?? 0} games`}>
+      <span className={`${dense ? "ml-1.5 px-1.5 text-[11px] tabular" : "ml-2 px-2"} inline-block py-0.5 rounded-full bg-gray-100 text-gray-700`} aria-label={`${counts?.[value] ?? 0} games`}>
         {counts?.[value] ?? 0}
       </span>
     </button>

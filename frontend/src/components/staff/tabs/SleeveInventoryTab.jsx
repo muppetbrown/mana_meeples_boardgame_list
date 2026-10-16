@@ -257,12 +257,12 @@ export function SleeveInventoryTab() {
     <div className="space-y-6">
       {/* Messages */}
       {error && (
-        <div role="alert" className="p-3 bg-red-50 border border-red-300 text-red-800 rounded-lg text-sm sticky top-32 z-20">
+        <div role="alert" className="p-3 bg-red-50 border border-red-300 text-red-800 rounded-lg text-sm sticky z-20" style={{ top: "calc(var(--staff-topbar-h, 6rem) + 0.5rem)" }}>
           {error}
         </div>
       )}
       {success && (
-        <div role="status" className="p-3 bg-green-50 border border-green-300 text-green-800 rounded-lg text-sm sticky top-32 z-20">
+        <div role="status" className="p-3 bg-green-50 border border-green-300 text-green-800 rounded-lg text-sm sticky z-20" style={{ top: "calc(var(--staff-topbar-h, 6rem) + 0.5rem)" }}>
           {success}
         </div>
       )}

@@ -1,9 +1,9 @@
 // src/components/staff/tabs/ManageLibraryTab.jsx
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useStaff } from "../../../context/StaffContext";
 import CategoryFilter from "../../CategoryFilter";
-import { CATEGORY_KEYS, CATEGORY_LABELS } from "../../../constants/categories";
-import Thumbnail from "../../common/Thumbnail";
+import Icon from "../../common/Icon";
+import { LibraryTableRow } from "../LibraryTableRow";
 import { generateSleeveShoppingList, triggerSleeveFetch, generateGameLabels, reimportSelectedGames } from "../../../api/client";
 import GameEditModal from "../GameEditModal";
 import SleeveShoppingListModal from "../SleeveShoppingListModal";
@@ -29,10 +29,23 @@ export function ManageLibraryTab() {
     attentionFilter,
     setAttentionFilter,
     addRecentOperation,
+    isLoading,
   } = useStaff();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("date_added"); // default: date added
+  const [sortReverse, setSortReverse] = useState(false); // flips the natural direction of sortBy
+  const [compact, setCompact] = useState(() => {
+    try {
+      return localStorage.getItem("staff.library.density") !== "comfortable";
+    } catch {
+      return true;
+    }
+  });
+  const [pageSize, setPageSize] = useState(50);
+  const searchRef = useRef(null);
+  const lastToggledIndex = useRef(null);
+  const pageItemsRef = useRef([]);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingGame, setEditingGame] = useState(null);
 
@@ -84,13 +97,13 @@ export function ManageLibraryTab() {
       return 0;
     });
 
-    return sorted;
-  }, [filteredLibrary, searchQuery, sortBy, attentionFilter]);
+    return sortReverse ? sorted.reverse() : sorted;
+  }, [filteredLibrary, searchQuery, sortBy, sortReverse, attentionFilter]);
 
   // Reset to page 1 and drop selections that are no longer in the filtered view
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, sortBy, selectedCategory, attentionFilter]);
+  }, [searchQuery, sortBy, sortReverse, selectedCategory, attentionFilter, pageSize]);
 
   useEffect(() => {
     setSelectedGames((prev) => {
@@ -101,56 +114,63 @@ export function ManageLibraryTab() {
     });
   }, [searchFilteredLibrary]);
 
-  const PAGE_SIZE = 50;
+  const PAGE_SIZE = pageSize;
   const totalPages = Math.max(1, Math.ceil(searchFilteredLibrary.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const pageItems = useMemo(
     () => searchFilteredLibrary.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [searchFilteredLibrary, currentPage]
+    [searchFilteredLibrary, currentPage, PAGE_SIZE]
+  );
+  pageItemsRef.current = pageItems;
+
+  const handleDelete = useCallback(
+    async (game) => {
+      const ok = await confirm({
+        title: `Delete "${game.title}"?`,
+        message:
+          "This permanently removes the game and its sleeve data. It cannot be undone.\n(If it's just not on the shelf any more, consider moving it to the Buy List instead.)",
+        confirmLabel: "Delete game",
+        tone: "danger",
+      });
+      if (!ok) return;
+      try {
+        await deleteGameData(game.id);
+        setSelectedGames((prev) => {
+          const next = new Set(prev);
+          next.delete(game.id);
+          return next;
+        });
+      } catch {
+        // deleteGameData already toasts the failure
+      }
+    },
+    [confirm, deleteGameData]
   );
 
-  const handleDelete = async (game) => {
-    const ok = await confirm({
-      title: `Delete "${game.title}"?`,
-      message:
-        "This permanently removes the game and its sleeve data. It cannot be undone.\n(If it's just not on the shelf any more, consider moving it to the Buy List instead.)",
-      confirmLabel: "Delete game",
-      tone: "danger",
-    });
-    if (!ok) return;
-    try {
-      await deleteGameData(game.id);
-      setSelectedGames((prev) => {
-        const next = new Set(prev);
-        next.delete(game.id);
-        return next;
-      });
-    } catch {
-      // deleteGameData already toasts the failure
-    }
-  };
+  const handleCategoryChange = useCallback(
+    async (game, value) => {
+      const next = value || null;
+      if ((game.mana_meeple_category || null) === next) return;
+      setCategorySaving((prev) => new Set(prev).add(game.id));
+      try {
+        await updateGameData(game.id, { mana_meeple_category: next });
+      } catch {
+        // updateGameData already toasts the failure
+      } finally {
+        setCategorySaving((prev) => {
+          const n = new Set(prev);
+          n.delete(game.id);
+          return n;
+        });
+      }
+    },
+    [updateGameData]
+  );
 
-  const handleCategoryChange = async (game, value) => {
-    const next = value || null;
-    if ((game.mana_meeple_category || null) === next) return;
-    setCategorySaving((prev) => new Set(prev).add(game.id));
-    try {
-      await updateGameData(game.id, { mana_meeple_category: next });
-    } catch {
-      // updateGameData already toasts the failure
-    } finally {
-      setCategorySaving((prev) => {
-        const n = new Set(prev);
-        n.delete(game.id);
-        return n;
-      });
-    }
-  };
-
-  const handleEditGame = (game) => {
+  const handleEditGame = useCallback((game) => {
     setEditingGame(game);
     setEditModalOpen(true);
-  };
+  }, []);
 
   const handleSaveGame = async (gameData) => {
     if (!editingGame) return;
@@ -169,24 +189,84 @@ export function ManageLibraryTab() {
     setEditingGame(null);
   };
 
-  // Game selection handlers
-  const toggleGameSelection = (gameId) => {
-    const newSelected = new Set(selectedGames);
-    if (newSelected.has(gameId)) {
-      newSelected.delete(gameId);
-    } else {
-      newSelected.add(gameId);
-    }
-    setSelectedGames(newSelected);
+  // ---- Selection ----
+  // Row toggle; shift-click selects/deselects the range since the last toggled row.
+  const toggleGameSelection = useCallback((gameId, index, shiftKey) => {
+    setSelectedGames((prev) => {
+      const next = new Set(prev);
+      const items = pageItemsRef.current;
+      const turnOn = !prev.has(gameId);
+      if (shiftKey && lastToggledIndex.current != null && lastToggledIndex.current < items.length) {
+        const [from, to] = [lastToggledIndex.current, index].sort((a, b) => a - b);
+        for (let i = from; i <= to; i++) {
+          if (turnOn) next.add(items[i].id);
+          else next.delete(items[i].id);
+        }
+      } else if (turnOn) {
+        next.add(gameId);
+      } else {
+        next.delete(gameId);
+      }
+      return next;
+    });
+    lastToggledIndex.current = index;
+  }, []);
+
+  const pageAllSelected = pageItems.length > 0 && pageItems.every((g) => selectedGames.has(g.id));
+  const pageSomeSelected = pageItems.some((g) => selectedGames.has(g.id));
+  const allMatchingSelected =
+    searchFilteredLibrary.length > 0 && searchFilteredLibrary.every((g) => selectedGames.has(g.id));
+  const hasMultiplePages = searchFilteredLibrary.length > pageItems.length;
+
+  const toggleSelectPage = () => {
+    setSelectedGames((prev) => {
+      const next = new Set(prev);
+      if (pageAllSelected) pageItems.forEach((g) => next.delete(g.id));
+      else pageItems.forEach((g) => next.add(g.id));
+      return next;
+    });
   };
 
-  const toggleSelectAll = () => {
-    if (selectedGames.size === searchFilteredLibrary.length) {
-      setSelectedGames(new Set());
-    } else {
-      setSelectedGames(new Set(searchFilteredLibrary.map(g => g.id)));
+  const selectAllMatching = () => setSelectedGames(new Set(searchFilteredLibrary.map((g) => g.id)));
+
+  // Header-click sorting: first click sorts by that column, second flips direction
+  const handleHeaderSort = (key) => {
+    if (sortBy === key) setSortReverse((r) => !r);
+    else {
+      setSortBy(key);
+      setSortReverse(false);
     }
   };
+
+  const toggleDensity = (value) => {
+    setCompact(value);
+    try {
+      localStorage.setItem("staff.library.density", value ? "compact" : "comfortable");
+    } catch {
+      /* preference just won't persist */
+    }
+  };
+
+  const filtersActive = Boolean(searchQuery.trim() || attentionFilter || selectedCategory !== "all");
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setAttentionFilter("");
+    setSelectedCategory("all");
+  };
+
+  // "/" focuses the search box (unless already typing somewhere)
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      if (!searchRef.current || searchRef.current.offsetParent === null) return; // tab hidden
+      e.preventDefault();
+      searchRef.current.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, []);
 
   const handleGenerateSleeveList = async () => {
     if (selectedGames.size === 0) {
@@ -311,33 +391,106 @@ export function ManageLibraryTab() {
     }
   };
 
+  const thCls = "px-3 py-2 text-left text-[11px] font-semibold text-gray-600 uppercase tracking-wider";
+  const stickyTop = "calc(var(--staff-topbar-h, 6rem) + 3rem)";
+
+  const SortHeader = ({ sortKey, label, align = "left", extra = "" }) => {
+    const active = sortBy === sortKey;
+    const natural = sortKey === "title" || sortKey === "category" ? "ascending" : "descending";
+    const dir = active ? (sortReverse ? (natural === "ascending" ? "descending" : "ascending") : natural) : "none";
+    return (
+      <th
+        scope="col"
+        aria-sort={dir}
+        className={`${thCls} ${align === "right" ? "text-right" : ""} ${extra} bg-gray-50 sticky z-10`}
+        style={{ top: stickyTop }}
+      >
+        <button
+          type="button"
+          onClick={() => handleHeaderSort(sortKey)}
+          className={`inline-flex items-center gap-1 uppercase tracking-wider font-semibold hover:text-purple-700 ${active ? "text-purple-700" : ""}`}
+        >
+          {label}
+          <Icon
+            name={active ? (dir === "ascending" ? "chevronUp" : "chevronDown") : "chevronsUpDown"}
+            size={12}
+            className={active ? "" : "opacity-40"}
+          />
+        </button>
+      </th>
+    );
+  };
+  const StaticHeader = ({ children, extra = "", align = "left" }) => (
+    <th
+      scope="col"
+      className={`${thCls} ${align === "right" ? "text-right" : ""} ${extra} bg-gray-50 sticky z-10`}
+      style={{ top: stickyTop }}
+    >
+      {children}
+    </th>
+  );
+
+  const actionBtn =
+    "inline-flex items-center gap-1.5 h-8 px-3 text-sm font-medium rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed transition-colors";
+  const hasSelection = selectedGames.size > 0;
+
   return (
-    <div className="space-y-6">
-      {/* Header with Stats */}
-      <div className="bg-white rounded-2xl p-6 shadow">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Your Library</h2>
-          <div className="text-sm text-gray-600">
-            Showing <strong>{searchFilteredLibrary.length}</strong> of <strong>{filteredLibrary.length}</strong> games
-            {searchQuery && " (filtered by search)"}
+    <div className="space-y-4">
+      {/* Header, search and filters */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-lg font-semibold">Your Library</h2>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-600 tabular">
+              Showing <strong>{searchFilteredLibrary.length}</strong> of <strong>{filteredLibrary.length}</strong> games
+              {searchQuery && " (filtered by search)"}
+            </div>
+            <div className="inline-flex rounded-md border border-gray-300 overflow-hidden" role="group" aria-label="Row density">
+              {[
+                [true, "Compact"],
+                [false, "Comfortable"],
+              ].map(([value, label]) => (
+                <button
+                  key={label}
+                  type="button"
+                  aria-pressed={compact === value}
+                  onClick={() => toggleDensity(value)}
+                  className={`h-7 px-2.5 text-xs font-medium ${
+                    compact === value ? "bg-purple-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {/* Search Bar and Sort Controls */}
-        <div className="mb-4 flex gap-3">
-          <input
-            type="text"
-            className="flex-1 border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-2 outline-none transition-all"
-            aria-label="Search library"
-            placeholder="Search by title, BGG ID, or designer..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="mb-3 flex gap-2">
+          <div className="relative flex-1">
+            <Icon name="search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <input
+              ref={searchRef}
+              type="text"
+              className="w-full border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-md pl-9 pr-10 h-9 text-sm outline-none transition-all"
+              aria-label="Search library"
+              placeholder="Search by title, BGG ID, or designer…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-gray-400 border border-gray-200 rounded px-1.5 bg-gray-50" aria-hidden="true">
+              /
+            </kbd>
+          </div>
           <select
             aria-label="Sort library"
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-2 outline-none transition-all"
+            onChange={(e) => {
+              setSortBy(e.target.value);
+              setSortReverse(false);
+            }}
+            className="border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-md px-3 h-9 text-sm outline-none transition-all"
           >
             <option value="date_added">Sort: Date Added (Newest)</option>
             <option value="title">Sort: Title (A-Z)</option>
@@ -348,7 +501,7 @@ export function ManageLibraryTab() {
             aria-label="Data quality filter"
             value={attentionFilter}
             onChange={(e) => setAttentionFilter(e.target.value)}
-            className="border-2 border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-lg px-4 py-2 outline-none transition-all"
+            className="border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 rounded-md px-3 h-9 text-sm outline-none transition-all"
           >
             <option value="">Quality: All games</option>
             {ATTENTION_FILTERS.map((f) => (
@@ -360,11 +513,7 @@ export function ManageLibraryTab() {
         </div>
 
         {/* Category Filter */}
-        <CategoryFilter
-          selected={selectedCategory}
-          counts={counts}
-          onChange={setSelectedCategory}
-        />
+        <CategoryFilter selected={selectedCategory} counts={counts} onChange={setSelectedCategory} dense />
 
         {/* Guidance for the active needs-attention filter */}
         <AttentionHelp
@@ -374,84 +523,123 @@ export function ManageLibraryTab() {
         />
       </div>
 
-      {/* Selection Actions Bar */}
+      {/* Selection toolbar (sticky) */}
       {searchFilteredLibrary.length > 0 && (
         <div
-          className="bg-blue-50 border border-blue-200 rounded-lg p-4 sticky z-20 shadow-sm"
-          style={{ top: "var(--staff-topbar-h, 8rem)" }}
+          className={`rounded-lg px-4 min-h-12 py-1.5 sticky z-20 border flex items-center justify-between flex-wrap gap-x-4 gap-y-2 ${
+            hasSelection ? "bg-purple-50 border-purple-200 shadow-sm" : "bg-white border-gray-200"
+          }`}
+          style={{ top: "var(--staff-topbar-h, 6rem)" }}
         >
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 min-h-11 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={selectedGames.size === searchFilteredLibrary.length && searchFilteredLibrary.length > 0}
-                  ref={(el) => {
-                    if (el) el.indeterminate = selectedGames.size > 0 && selectedGames.size < searchFilteredLibrary.length;
-                  }}
-                  onChange={toggleSelectAll}
-                  className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                />
-                <span className="font-medium text-sm">
-                  {selectedGames.size === searchFilteredLibrary.length ? 'Deselect All' : `Select All ${searchFilteredLibrary.length}`}
-                </span>
-              </label>
-              <span className="text-sm text-gray-600" aria-live="polite">
-                {selectedGames.size} game(s) selected
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={pageAllSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = pageSomeSelected && !pageAllSelected;
+                }}
+                onChange={toggleSelectPage}
+                className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+              />
+              <span className="font-medium text-sm">
+                {pageAllSelected
+                  ? "Deselect All"
+                  : hasMultiplePages
+                    ? `Select page (${pageItems.length})`
+                    : `Select All ${pageItems.length}`}
               </span>
-              {selectedGames.size > 0 && (
-                <button
-                  onClick={() => setSelectedGames(new Set())}
-                  className="text-sm text-blue-700 underline hover:text-blue-900"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
+            </label>
+            <span className="text-sm text-gray-600 tabular" aria-live="polite">
+              {selectedGames.size} game(s) selected
+            </span>
+            {hasSelection && (
+              <button
+                onClick={() => setSelectedGames(new Set())}
+                className="text-sm text-purple-700 underline hover:text-purple-900"
+              >
+                Clear
+              </button>
+            )}
+          </div>
 
-            <div className="flex gap-2 flex-wrap">
+          {hasSelection ? (
+            <div className="flex gap-2 flex-wrap items-center">
               <button
                 onClick={handleReimportSelected}
-                disabled={selectedGames.size === 0}
-                className="px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className={actionBtn}
                 title="Re-import selected games from BoardGameGeek"
               >
-                ♻️ Re-import from BGG
+                <Icon name="refresh" size={14} /> Re-import from BGG
               </button>
               <button
                 onClick={handleTriggerSleeveFetch}
-                disabled={selectedGames.size === 0}
-                className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className={actionBtn}
                 title="Trigger GitHub Actions workflow to fetch sleeve data"
               >
-                🔄 Fetch Sleeve Data
+                <Icon name="sleeve" size={14} /> Fetch Sleeve Data
               </button>
               <button
                 onClick={handleGenerateSleeveList}
-                disabled={selectedGames.size === 0 || busyAction === 'sleeve-list'}
-                className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={busyAction === "sleeve-list"}
+                className={actionBtn}
               >
-                {busyAction === 'sleeve-list' ? 'Building list…' : '📋 Generate Sleeve Shopping List'}
+                <Icon name="tasks" size={14} />
+                {busyAction === "sleeve-list" ? "Building list…" : "Generate Sleeve Shopping List"}
               </button>
               <button
                 onClick={handlePrintLabels}
-                disabled={selectedGames.size === 0 || busyAction === 'labels'}
-                className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                disabled={busyAction === "labels"}
+                className={actionBtn}
                 title="Generate PDF labels for printing"
               >
-                {busyAction === 'labels' ? 'Generating…' : '🏷️ Print Labels'}
+                <Icon name="print" size={14} />
+                {busyAction === "labels" ? "Generating…" : "Print Labels"}
               </button>
             </div>
-            <SleeveFetchStatus pollToken={sleeveFetchPollToken} />
-          </div>
+          ) : (
+            <span className="text-xs text-gray-500">
+              Select games to re-import, fetch sleeve data, build a shopping list or print labels.
+            </span>
+          )}
+          <SleeveFetchStatus pollToken={sleeveFetchPollToken} />
+        </div>
+      )}
+
+      {/* Cross-page selection banner */}
+      {hasMultiplePages && pageAllSelected && (
+        <div role="status" className="text-sm text-center bg-purple-50 border border-purple-200 rounded-lg px-4 py-2 text-purple-900">
+          {allMatchingSelected ? (
+            <>
+              All <strong>{searchFilteredLibrary.length}</strong> matching games are selected.{" "}
+              <button onClick={() => setSelectedGames(new Set())} className="underline font-medium">
+                Clear selection
+              </button>
+            </>
+          ) : (
+            <>
+              All {pageItems.length} games on this page are selected.{" "}
+              <button onClick={selectAllMatching} className="underline font-medium">
+                Select all {searchFilteredLibrary.length} matching games
+              </button>
+            </>
+          )}
         </div>
       )}
 
       {/* Library Table */}
-      <div className="bg-white rounded-2xl shadow overflow-hidden">
-        {searchFilteredLibrary.length === 0 ? (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 [overflow-x:clip]">
+        {isLoading && library.length === 0 ? (
+          <div className="p-4 space-y-2" role="status" aria-label="Loading library">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-9 rounded bg-gray-100 animate-pulse" />
+            ))}
+          </div>
+        ) : searchFilteredLibrary.length === 0 ? (
           <div className="text-center py-12 px-6">
-            <div className="text-4xl mb-3">📚</div>
+            <div className="text-gray-300 flex justify-center mb-3">
+              <Icon name="library" size={40} />
+            </div>
             <div className="text-gray-600">
               {searchQuery ? (
                 <>
@@ -461,184 +649,95 @@ export function ManageLibraryTab() {
                 "No games in this category"
               )}
             </div>
+            {filtersActive && (
+              <button
+                onClick={clearAllFilters}
+                className="mt-4 inline-flex items-center h-8 px-3 text-sm font-medium rounded-md border border-gray-300 hover:bg-gray-50"
+              >
+                Clear filters
+              </button>
+            )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Select
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Thumbnail
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Name
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Type
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Category
-                  </th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {pageItems.map((game) => (
-                  <tr key={game.id} className="hover:bg-gray-50 transition-colors">
-                    {/* Select Checkbox - wrapped for a 44px touch target even though the box itself is small */}
-                    <td className="px-4 py-3 whitespace-nowrap text-center">
-                      <label className="inline-flex items-center justify-center min-w-11 min-h-11 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          aria-label={`Select ${game.title}`}
-                          checked={selectedGames.has(game.id)}
-                          onChange={() => toggleGameSelection(game.id)}
-                          className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500 cursor-pointer"
-                        />
-                      </label>
-                    </td>
-
-                    {/* Thumbnail */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <Thumbnail src={game.cloudinary_url || game.image_url} alt={game.title} />
-                    </td>
-
-                    {/* Name */}
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm font-medium text-gray-900">{game.title}</div>
-                        {game.fully_sleeved && (
-                          <span
-                            className="text-lg"
-                            title="All sleeve requirements marked as sleeved"
-                          >
-                            🃏
-                          </span>
-                        )}
-                        {game.has_sleeves === 'none' && (
-                          <span
-                            className="text-sm"
-                            title="No sleeve requirements for this game"
-                          >
-                            🚫🃏
-                          </span>
-                        )}
-                        {(game.has_sleeves === 'not_found' || game.has_sleeves === 'check' || !game.has_sleeves) && (
-                          <span
-                            className="text-sm"
-                            title="Sleeve status needs investigation"
-                          >
-                            ❓🃏
-                          </span>
-                        )}
-                      </div>
-                      {game.year && (
-                        <div className="text-xs text-gray-500">{game.year}</div>
-                      )}
-                    </td>
-
-                    {/* Type - Expansion Badge */}
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {game.is_expansion ? (
-                        <div className="flex flex-col gap-1">
-                          <span className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${
-                            game.expansion_type === 'both' || game.expansion_type === 'standalone'
-                              ? 'bg-indigo-100 text-indigo-800'
-                              : 'bg-purple-100 text-purple-800'
-                          }`}>
-                            {game.expansion_type === 'both' || game.expansion_type === 'standalone'
-                              ? 'STANDALONE'
-                              : 'EXPANSION'}
-                          </span>
-                          {game.modifies_players_max && (
-                            <span className="text-xs text-purple-600">
-                              +{game.modifies_players_min ?? game.players_min}-{game.modifies_players_max}p
-                            </span>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600">
-                          Base Game
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Category (inline editable) */}
-                    <td className="px-4 py-3">
-                      <select
-                        aria-label={`Category for ${game.title}`}
-                        value={game.mana_meeple_category || ""}
-                        disabled={categorySaving.has(game.id)}
-                        onChange={(e) => handleCategoryChange(game, e.target.value)}
-                        className={`text-xs font-medium rounded-full border px-2 py-1 min-h-11 outline-none focus:ring-2 focus:ring-purple-300 disabled:opacity-50 ${
-                          game.mana_meeple_category
-                            ? "bg-purple-50 text-purple-800 border-purple-200"
-                            : "bg-gray-100 text-gray-600 border-gray-300"
-                        }`}
-                      >
-                        <option value="">Uncategorized</option>
-                        {CATEGORY_KEYS.map((key) => (
-                          <option key={key} value={key}>
-                            {CATEGORY_LABELS[key]}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleEditGame(game)}
-                          className="px-3 min-h-11 text-xs font-medium rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
-                          title="View game info and edit details"
-                          aria-label={`Info and edit: ${game.title}`}
-                        >
-                          ℹ️ Info / Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(game)}
-                          aria-label={`Delete ${game.title}`}
-                          className="px-3 min-h-11 text-xs font-medium rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <table className="w-full">
+            <thead className="border-b border-gray-200">
+              <tr>
+                <StaticHeader extra="text-center w-10">
+                  <span className="sr-only">Select</span>
+                </StaticHeader>
+                <StaticHeader>
+                  <span className="sr-only">Thumbnail</span>
+                </StaticHeader>
+                <SortHeader sortKey="title" label="Name" />
+                <StaticHeader>Type</StaticHeader>
+                <StaticHeader extra="hidden xl:table-cell">Players</StaticHeader>
+                <StaticHeader extra="hidden xl:table-cell">Time</StaticHeader>
+                <StaticHeader extra="hidden xl:table-cell" align="right">Weight</StaticHeader>
+                <StaticHeader extra="hidden xl:table-cell" align="right">Rating</StaticHeader>
+                <SortHeader sortKey="category" label="Category" />
+                <StaticHeader align="right">Actions</StaticHeader>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {pageItems.map((game, index) => (
+                <LibraryTableRow
+                  key={game.id}
+                  game={game}
+                  index={index}
+                  compact={compact}
+                  selected={selectedGames.has(game.id)}
+                  saving={categorySaving.has(game.id)}
+                  onToggle={toggleGameSelection}
+                  onCategoryChange={handleCategoryChange}
+                  onEdit={handleEditGame}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </tbody>
+          </table>
         )}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50 text-sm">
-            <span className="text-gray-600">
+        {searchFilteredLibrary.length > 0 && (totalPages > 1 || searchFilteredLibrary.length > 25) && (
+          <div className="flex items-center justify-between px-4 py-2 border-t border-gray-200 bg-gray-50 text-sm">
+            <span className="text-gray-600 tabular">
               Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, searchFilteredLibrary.length)} of {searchFilteredLibrary.length}
             </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPage(currentPage - 1)}
-                disabled={currentPage === 1}
-                className="px-3 min-h-11 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                ← Previous
-              </button>
-              <span className="text-gray-700">
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                onClick={() => setPage(currentPage + 1)}
-                disabled={currentPage === totalPages}
-                className="px-3 min-h-11 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Next →
-              </button>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-gray-600">
+                Rows
+                <select
+                  aria-label="Rows per page"
+                  value={pageSize}
+                  onChange={(e) => setPageSize(Number(e.target.value))}
+                  className="border border-gray-300 rounded-md h-8 px-2 text-sm bg-white"
+                >
+                  {[25, 50, 100, 200].map((n) => (
+                    <option key={n} value={n}>
+                      {n}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {totalPages > 1 && (
+                <>
+                  <button
+                    onClick={() => setPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-3 h-8 rounded-md border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    ← Previous
+                  </button>
+                  <span className="text-gray-700 tabular">
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-3 h-8 rounded-md border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    Next →
+                  </button>
+                </>
+              )}
             </div>
           </div>
         )}

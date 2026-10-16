@@ -344,24 +344,23 @@ describe('ManageLibraryTab', () => {
   });
 
   describe('Bulk Actions', () => {
-    test('renders bulk action buttons', () => {
+    test('renders bulk action buttons once games are selected', async () => {
+      const user = userEvent.setup();
       render(<ManageLibraryTab />);
+      await user.click(screen.getByLabelText('Select Gloomhaven'));
 
       expect(screen.getByText(/Fetch Sleeve Data/)).toBeInTheDocument();
       expect(screen.getByText(/Generate Sleeve Shopping List/)).toBeInTheDocument();
       expect(screen.getByText(/Print Labels/)).toBeInTheDocument();
     });
 
-    test('bulk action buttons are disabled when no games selected', () => {
+    test('bulk action buttons are hidden when no games selected', () => {
       render(<ManageLibraryTab />);
 
-      const fetchSleeveButton = screen.getByText(/Fetch Sleeve Data/).closest('button');
-      const generateListButton = screen.getByText(/Generate Sleeve Shopping List/).closest('button');
-      const printLabelsButton = screen.getByText(/Print Labels/).closest('button');
-
-      expect(fetchSleeveButton).toBeDisabled();
-      expect(generateListButton).toBeDisabled();
-      expect(printLabelsButton).toBeDisabled();
+      expect(screen.queryByText(/Fetch Sleeve Data/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Generate Sleeve Shopping List/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Print Labels/)).not.toBeInTheDocument();
+      expect(screen.getByText(/Select games to re-import/)).toBeInTheDocument();
     });
 
     test('bulk action buttons are enabled when games selected', async () => {
@@ -487,9 +486,8 @@ describe('ManageLibraryTab', () => {
     test('shows error when no games selected for bulk action', async () => {
       render(<ManageLibraryTab />);
 
-      // Directly test the handler logic by checking disabled state
-      const generateListButton = screen.getByText(/Generate Sleeve Shopping List/).closest('button');
-      expect(generateListButton).toBeDisabled();
+      // Nothing selected: the bulk actions aren't offered at all
+      expect(screen.queryByText(/Generate Sleeve Shopping List/)).not.toBeInTheDocument();
     });
   });
 
@@ -568,7 +566,7 @@ describe('ManageLibraryTab', () => {
       }));
       useStaff.mockReturnValue({ ...defaultStaffContext, filteredLibrary: many, library: many });
       render(<ManageLibraryTab />);
-      expect(screen.getAllByText('ℹ️ Info / Edit')).toHaveLength(50);
+      expect(screen.getAllByRole('button', { name: /Info and edit:/ })).toHaveLength(50);
       expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
       await user.click(screen.getByText('Next →'));
       expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
@@ -602,8 +600,8 @@ describe('ManageLibraryTab', () => {
     test('renders Edit Game and Delete buttons', () => {
       render(<ManageLibraryTab />);
 
-      const editButtons = screen.getAllByText('ℹ️ Info / Edit');
-      const deleteButtons = screen.getAllByText('Delete');
+      const editButtons = screen.getAllByRole('button', { name: /Info and edit:/ });
+      const deleteButtons = screen.getAllByRole('button', { name: /^Delete / });
 
       expect(editButtons.length).toBe(4); // One for each game
       expect(deleteButtons.length).toBe(4);
@@ -613,7 +611,7 @@ describe('ManageLibraryTab', () => {
       const user = userEvent.setup();
       render(<ManageLibraryTab />);
 
-      const editButtons = screen.getAllByText('ℹ️ Info / Edit');
+      const editButtons = screen.getAllByRole('button', { name: /Info and edit:/ });
       await user.click(editButtons[0]);
 
       expect(screen.getByTestId('game-edit-modal')).toBeInTheDocument();
@@ -624,7 +622,7 @@ describe('ManageLibraryTab', () => {
       const user = userEvent.setup();
       render(<ManageLibraryTab />);
 
-      const editButtons = screen.getAllByText('ℹ️ Info / Edit');
+      const editButtons = screen.getAllByRole('button', { name: /Info and edit:/ });
       await user.click(editButtons[0]);
 
       const closeButton = screen.getByText('Close');
@@ -639,7 +637,7 @@ describe('ManageLibraryTab', () => {
 
       render(<ManageLibraryTab />);
 
-      const editButtons = screen.getAllByText('ℹ️ Info / Edit');
+      const editButtons = screen.getAllByRole('button', { name: /Info and edit:/ });
       await user.click(editButtons[0]);
 
       const saveButton = screen.getByText('Save');
@@ -657,7 +655,7 @@ describe('ManageLibraryTab', () => {
 
       render(<ManageLibraryTab />);
 
-      const editButtons = screen.getAllByText('ℹ️ Info / Edit');
+      const editButtons = screen.getAllByRole('button', { name: /Info and edit:/ });
       await user.click(editButtons[0]);
 
       const saveButton = screen.getByText('Save');
@@ -674,7 +672,7 @@ describe('ManageLibraryTab', () => {
 
       render(<ManageLibraryTab />);
 
-      const deleteButtons = screen.getAllByText('Delete');
+      const deleteButtons = screen.getAllByRole('button', { name: /^Delete / });
       await user.click(deleteButtons[0]);
 
       await waitFor(() => {
@@ -689,7 +687,7 @@ describe('ManageLibraryTab', () => {
 
       render(<ManageLibraryTab />);
 
-      const deleteButtons = screen.getAllByText('Delete');
+      const deleteButtons = screen.getAllByRole('button', { name: /^Delete / });
       await user.click(deleteButtons[0]);
 
       expect(mockConfirm).toHaveBeenCalled();
@@ -702,7 +700,7 @@ describe('ManageLibraryTab', () => {
 
       render(<ManageLibraryTab />);
 
-      const deleteButtons = screen.getAllByText('Delete');
+      const deleteButtons = screen.getAllByRole('button', { name: /^Delete / });
       await user.click(deleteButtons[0]);
 
       // deleteGameData already shows the failure toast; the component must not throw
