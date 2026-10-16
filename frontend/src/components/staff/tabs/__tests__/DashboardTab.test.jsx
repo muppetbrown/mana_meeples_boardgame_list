@@ -31,6 +31,7 @@ const game = (over) => ({
   image_url: 'x.jpg',
   designers: ['A'],
   complexity: 2.5,
+  aftergame_game_id: 'ac3a5f77-3e19-47af-a61a-d648d04b02e2',
   bgg_id: 1,
   date_added: '2025-01-02T00:00:00Z',
   ...over,
