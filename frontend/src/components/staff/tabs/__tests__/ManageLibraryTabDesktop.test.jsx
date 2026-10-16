@@ -143,4 +143,13 @@ describe('ManageLibraryTab desktop features', () => {
     render(<ManageLibraryTab />);
     expect(screen.getByRole('status', { name: 'Loading library' })).toBeInTheDocument();
   });
+
+  test('quality filter can isolate games missing an AfterGame ID', () => {
+    const list = make(3);
+    list[0].aftergame_game_id = 'ac3a5f77-3e19-47af-a61a-d648d04b02e2';
+    useStaff.mockReturnValue(ctx(list, { attentionFilter: 'no_aftergame' }));
+    render(<ManageLibraryTab />);
+    expect(screen.getByRole('option', { name: 'Needs attention: Missing AfterGame ID' })).toBeInTheDocument();
+    expect(rowTitles()).toEqual(['Game 003', 'Game 002']);
+  });
 });

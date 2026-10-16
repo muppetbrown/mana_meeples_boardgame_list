@@ -3,13 +3,13 @@ import { ATTENTION_FILTERS, attentionCounts, SLEEVE_UNKNOWN, TO_BE_SLEEVED } fro
 
 const good = {
   id: 1, mana_meeple_category: 'CORE_STRATEGY', has_sleeves: 'found', fully_sleeved: true,
-  image_url: 'x', designers: ['A'], complexity: 2, bgg_id: 5,
+  image_url: 'x', designers: ['A'], complexity: 2, bgg_id: 5, aftergame_game_id: 'ac3a5f77-3e19-47af-a61a-d648d04b02e2',
 };
 
 describe('libraryQuality', () => {
   test('a complete game triggers no checks', () => {
     expect(attentionCounts([good])).toEqual({
-      uncategorized: 0, sleeves_unknown: 0, to_sleeve: 0, no_image: 0, no_designers: 0, no_complexity: 0, no_bgg_id: 0,
+      uncategorized: 0, sleeves_unknown: 0, to_sleeve: 0, no_image: 0, no_designers: 0, no_complexity: 0, no_aftergame: 0, no_bgg_id: 0,
     });
   });
 
@@ -24,6 +24,7 @@ describe('libraryQuality', () => {
     ['no_designers', { designers: [] }],
     ['no_designers', { designers: null }],
     ['no_complexity', { complexity: 0 }],
+    ['no_aftergame', { aftergame_game_id: null }],
     ['no_bgg_id', { bgg_id: null }],
   ])('%s flags %j', (key, patch) => {
     const f = ATTENTION_FILTERS.find((x) => x.key === key);

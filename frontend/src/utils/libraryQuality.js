@@ -101,6 +101,19 @@ export const ATTENTION_FILTERS = [
     },
   },
   {
+    key: "no_aftergame",
+    label: "Missing AfterGame ID",
+    test: (g) => !g.aftergame_game_id,
+    hint: "Link each game to AfterGame so \"Plan a Game\" deep-links to it.",
+    fix: {
+      why: "Without an AfterGame ID, the public \"Plan a Game\" button falls back to the generic game-creation page instead of this specific game.",
+      steps: [
+        "Click Edit on the game, scroll to the AfterGame section and paste the game's AfterGame ID (a UUID).",
+        "Find the ID in the game's AfterGame URL. Games that aren't on AfterGame can stay as they are.",
+      ],
+    },
+  },
+  {
     key: "no_bgg_id",
     label: "No BGG link",
     test: (g) => !g.bgg_id,
