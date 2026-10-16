@@ -317,7 +317,7 @@ describe('SleeveInventoryTab', () => {
       render(<SleeveInventoryTab />);
       await user.click(await screen.findByText('To Order'));
       const mini = await screen.findByRole('region', { name: 'Mini American order list' });
-      expect(within(mini).getByText(/2 sizes · deficit 70 · \$3\.00/)).toBeInTheDocument();
+      expect(within(mini).getByText(/2 products · deficit 70 · \$3\.00/)).toBeInTheDocument();
       expect(screen.getByRole('region', { name: 'Standard European order list' })).toBeInTheDocument();
 
       await user.selectOptions(screen.getByLabelText('Size group'), 'standard_european');
@@ -325,6 +325,24 @@ describe('SleeveInventoryTab', () => {
 
       await user.selectOptions(screen.getByLabelText('Size group'), 'tarot');
       expect(screen.getByText(/Nothing to order in this size group/)).toBeInTheDocument();
+    });
+
+    test('to-order shows one row per product with no size column', async () => {
+      const user = userEvent.setup();
+      apiClient.getToOrderList.mockResolvedValue([
+        {
+          width_mm: 63, height_mm: 88,
+          sizes: [{ width_mm: 63, height_mm: 88 }, { width_mm: 64, height_mm: 89 }],
+          total_needed: 250, deficit: 120, games_count: 2,
+          product: { product_name: 'Standard Pack', distributor: 'D', item_id: 'S', packs_to_buy: 2, price_per_pack: 5, total_cost: 10 },
+          game_names: ['A', 'B'],
+        },
+      ]);
+      render(<SleeveInventoryTab />);
+      await user.click(await screen.findByText('To Order'));
+      expect(await screen.findAllByText('Standard Pack')).toHaveLength(1);
+      expect(screen.queryByRole('columnheader', { name: /Size \(mm\)/ })).not.toBeInTheDocument();
+      expect(screen.getByText(/products need ordering/)).toBeInTheDocument();
     });
 
     test('ready-to-sleeve can be filtered by size group and shows a group badge', async () => {

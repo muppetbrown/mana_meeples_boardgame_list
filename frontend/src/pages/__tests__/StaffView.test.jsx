@@ -291,15 +291,18 @@ describe('StaffView Page', () => {
       expect(main).toHaveAttribute('id', 'main-content');
     });
 
-    test('header has sticky positioning for navigation', () => {
+    test('header and tabs are pinned together by a sticky wrapper', () => {
       render(
         <BrowserRouter>
           <StaffView />
         </BrowserRouter>
       );
 
+      // The wrapper (not the header itself) must be sticky, otherwise it can't stay pinned
       const header = screen.getByRole('banner');
-      expect(header).toHaveClass('sticky');
+      const wrapper = header.parentElement;
+      expect(wrapper).toHaveClass('sticky', 'top-0');
+      expect(wrapper).toContainElement(screen.getByRole('tablist'));
     });
 
     test('all tabs are keyboard accessible buttons', () => {

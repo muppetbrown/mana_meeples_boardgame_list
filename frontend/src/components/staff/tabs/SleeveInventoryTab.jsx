@@ -215,11 +215,10 @@ export function SleeveInventoryTab() {
   // ---- CSV Export for to-order ----
 
   const handleExportToOrderCSV = () => {
-    const rows = [["Size group", "Size (mm)", "Total Needed", "Deficit", "Product", "Distributor", "Item ID", "Packs to Buy", "Price/Pack", "Total Cost", "Games"]];
+    const rows = [["Size group", "Total Needed", "Deficit", "Product", "Distributor", "Item ID", "Packs to Buy", "Price/Pack", "Total Cost", "Games"]];
     toOrderList.forEach((item) => {
       rows.push([
         classifySleeve({ name: item.product?.product_name, width_mm: item.width_mm, height_mm: item.height_mm }).label,
-        `${item.width_mm}x${item.height_mm}`,
         item.total_needed,
         item.deficit,
         item.product?.product_name || "No match",
@@ -699,11 +698,10 @@ function ToOrderSection({ list: fullList, loading, onExportCSV, groupFilter = "a
         <table className="w-full text-sm">
           <thead className="bg-gray-100 border-b">
             <tr>
-              <th className="px-3 py-2 text-left font-semibold">Size (mm)</th>
-              <th className="px-3 py-2 text-right font-semibold">Needed</th>
-              <th className="px-3 py-2 text-right font-semibold">Deficit</th>
               <th className="px-3 py-2 text-left font-semibold">Product</th>
               <th className="px-3 py-2 text-left font-semibold">Distributor</th>
+              <th className="px-3 py-2 text-right font-semibold">Needed</th>
+              <th className="px-3 py-2 text-right font-semibold">Deficit</th>
               <th className="px-3 py-2 text-right font-semibold">Packs</th>
               <th className="px-3 py-2 text-right font-semibold">Cost</th>
               <th className="px-3 py-2 text-left font-semibold">Games</th>
@@ -712,19 +710,26 @@ function ToOrderSection({ list: fullList, loading, onExportCSV, groupFilter = "a
           <tbody className="divide-y">
             {items.map((item, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-3 py-2 font-mono">{item.width_mm} x {item.height_mm}</td>
-                <td className="px-3 py-2 text-right">{item.total_needed}</td>
-                <td className="px-3 py-2 text-right font-semibold text-red-600">{item.deficit}</td>
                 {item.product ? (
                   <>
                     <td className="px-3 py-2">{item.product.product_name}</td>
                     <td className="px-3 py-2">{item.product.distributor}</td>
+                    <td className="px-3 py-2 text-right">{item.total_needed}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-red-600">{item.deficit}</td>
                     <td className="px-3 py-2 text-right">{item.product.packs_to_buy}</td>
                     <td className="px-3 py-2 text-right">${item.product.total_cost.toFixed(2)}</td>
                   </>
                 ) : (
                   <>
-                    <td className="px-3 py-2 text-orange-600 italic" colSpan={3}>No matching product</td>
+                    <td className="px-3 py-2 text-orange-600 italic" colSpan={2}>
+                      <span>No matching product</span>{" "}
+                      <span className="not-italic text-gray-500 font-mono text-xs">
+                        ({item.width_mm} x {item.height_mm} mm)
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right">{item.total_needed}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-red-600">{item.deficit}</td>
+                    <td className="px-3 py-2" colSpan={2}></td>
                   </>
                 )}
                 <td className="px-3 py-2 text-xs text-gray-600">{item.game_names.join(", ")}</td>
@@ -748,7 +753,7 @@ function ToOrderSection({ list: fullList, loading, onExportCSV, groupFilter = "a
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-gray-600">
-          Sleeve sizes where stock + orders are insufficient.
+          Products to order where stock + orders are insufficient (sizes that share a product are combined).
         </p>
         <button
           onClick={onExportCSV}
@@ -767,7 +772,7 @@ function ToOrderSection({ list: fullList, loading, onExportCSV, groupFilter = "a
                 {group.width && <span className="ml-2 text-xs font-normal text-gray-500">{groupSizeLabel(group)}</span>}
               </h3>
               <span className="text-xs text-gray-600">
-                {items.length} size{items.length === 1 ? "" : "s"} · deficit {items.reduce((n, it) => n + it.deficit, 0)} · $
+                {items.length} product{items.length === 1 ? "" : "s"} · deficit {items.reduce((n, it) => n + it.deficit, 0)} · $
                 {items.reduce((n, it) => n + (it.product?.total_cost || 0), 0).toFixed(2)}
               </span>
             </div>
@@ -779,7 +784,7 @@ function ToOrderSection({ list: fullList, loading, onExportCSV, groupFilter = "a
       )}
 
       <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
-        <strong>{list.length}</strong> sizes need ordering across <strong>{list.reduce((s, i) => s + i.games_count, 0)}</strong> game requirements
+        <strong>{list.length}</strong> products need ordering across <strong>{list.reduce((s, i) => s + i.games_count, 0)}</strong> game requirements
       </div>
     </div>
   );

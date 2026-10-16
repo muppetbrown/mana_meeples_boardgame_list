@@ -28,10 +28,7 @@ export function TabNavigation({ activeTab, onTabChange, tabs }) {
   };
 
   return (
-    <div
-      className="border-b border-gray-200 bg-white sticky z-30"
-      style={{ top: "var(--staff-header-h, 3rem)" }}
-    >
+    <div className="border-b border-gray-200 bg-white">
       <nav className="max-w-screen-2xl mx-auto px-3 lg:px-6" aria-label="Admin sections">
         <div
           role="tablist"
