@@ -38,12 +38,15 @@ COLOR_TEXT_LIGHT = colors.HexColor('#6b7280')  # Medium gray
 
 # Category-specific colors (from mana_meeple_category)
 CATEGORY_COLORS = {
-    'KIDS_FAMILIES': colors.HexColor('#9C7788'),
-    'PARTY_ICEBREAKERS': colors.HexColor('#9E2E28'),
-    'GATEWAY_STRATEGY': colors.HexColor('#A89A1E'),
-    'COOP_ADVENTURE': colors.HexColor('#8D9B47'),
-    'CORE_STRATEGY': colors.HexColor('#70949F'),
+    'KIDS_FAMILIES': colors.HexColor('#E0338A'),  # Pink
+    'PARTY_ICEBREAKERS': colors.HexColor('#F28C00'),  # Orange
+    'GATEWAY_STRATEGY': colors.HexColor('#F5C800'),  # Yellow
+    'COOP_ADVENTURE': colors.HexColor('#2E8B3E'),  # Green
+    'CORE_STRATEGY': colors.HexColor('#1F6FD1'),  # Blue
 }
+
+# Width of the category colour band along the left edge of each label
+CATEGORY_BAND_WIDTH = 0.12 * inch
 
 # Default color for unknown categories
 DEFAULT_CATEGORY_COLOR = colors.HexColor('#8b5cf6')  # Purple/indigo
@@ -65,8 +68,17 @@ class LabelGenerator:
         self.icon_competitive = self.assets_path / "swords.png"
 
     def _get_contrast_text_color(self, bg_color: colors.Color) -> colors.Color:
-        """Get contrasting text color (white or black) based on background color"""
-        return colors.white
+        """Get contrasting text color (white or dark) based on background luminance"""
+        def linear(channel: float) -> float:
+            return channel / 12.92 if channel <= 0.03928 else ((channel + 0.055) / 1.055) ** 2.4
+
+        luminance = (
+            0.2126 * linear(bg_color.red)
+            + 0.7152 * linear(bg_color.green)
+            + 0.0722 * linear(bg_color.blue)
+        )
+        # White text wins on dark backgrounds, dark text on light ones
+        return colors.white if luminance < 0.4 else COLOR_TEXT
 
     def generate_pdf(self, games: List[dict]) -> BytesIO:
         """
@@ -114,6 +126,11 @@ class LabelGenerator:
 
         # Logo section (left 1/3)
         self._draw_logo_section(c, x, y)
+
+        # Category colour band along the left edge
+        category_color = CATEGORY_COLORS.get(game.get('mana_meeple_category'), DEFAULT_CATEGORY_COLOR)
+        c.setFillColor(category_color)
+        c.rect(x, y, CATEGORY_BAND_WIDTH, LABEL_HEIGHT, fill=1, stroke=0)
 
         # Info section (right 2/3)
         info_x = x + LOGO_WIDTH
