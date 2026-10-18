@@ -141,6 +141,13 @@ class HLStockSignalLinkRequest(BaseModel):
     game_id: int
 
 
+class GameDistroLinkCreate(BaseModel):
+    """Schema for manually linking a game to a distributor product code."""
+
+    distributor: str = Field(min_length=1, max_length=100)
+    distro_code: str = Field(min_length=1, max_length=100)
+
+
 # ------------------------------------------------------------------------------
 # Phase 1 Performance Optimization Schemas
 # ------------------------------------------------------------------------------

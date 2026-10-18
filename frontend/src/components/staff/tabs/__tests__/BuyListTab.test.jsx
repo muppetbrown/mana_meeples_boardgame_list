@@ -34,6 +34,9 @@ vi.mock('../../../../api/client', () => ({
   dismissHLStockSignal: vi.fn(),
   getTrendingGames: vi.fn(),
   getAwardWinners: vi.fn(),
+  searchDistroCodes: vi.fn(),
+  linkGameToDistroCode: vi.fn(),
+  unlinkGameDistroCode: vi.fn(),
 }));
 
 describe('BuyListTab', () => {
@@ -261,6 +264,77 @@ describe('BuyListTab', () => {
       render(<BuyListTab />);
       await screen.findByText('Test Game');
       expect(screen.queryByText(/Not listed by any distributor/, { selector: 'span' })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Manual distributor links', () => {
+    const unlisted = { status: 'not_listed', options: [] };
+    const row = {
+      distributor: 'VR',
+      distro_code: 'V9',
+      distro_product_name: 'OBSC GME EURO',
+      cost_price_ex_gst: 30,
+      qty_available: 4,
+    };
+    const linkedAvailability = {
+      status: 'in_stock',
+      options: [{ ...row, link_id: 7, match_score: null }],
+    };
+
+    test('searches the catalogue, links a code and updates the item', async () => {
+      const user = userEvent.setup();
+      apiClient.getBuyListGames.mockResolvedValue({
+        items: [{ ...mockBuyListItem, distro_availability: unlisted }],
+      });
+      apiClient.searchDistroCodes.mockResolvedValue({ items: [row] });
+      apiClient.linkGameToDistroCode.mockResolvedValue({
+        link_id: 7,
+        distro_availability: linkedAvailability,
+      });
+      render(<BuyListTab />);
+      await user.click(await screen.findByRole('button', { name: /Distro/ }));
+
+      expect(await screen.findByText('OBSC GME EURO')).toBeInTheDocument();
+      expect(apiClient.searchDistroCodes).toHaveBeenCalledWith('Test Game');
+
+      await user.click(screen.getByRole('button', { name: 'Link' }));
+
+      await waitFor(() =>
+        expect(apiClient.linkGameToDistroCode).toHaveBeenCalledWith(101, 'VR', 'V9')
+      );
+      expect(await screen.findByText(/🔗 VR: 4 in stock/)).toBeInTheDocument();
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+
+    test('shows the API error when linking fails', async () => {
+      const user = userEvent.setup();
+      apiClient.getBuyListGames.mockResolvedValue({
+        items: [{ ...mockBuyListItem, distro_availability: unlisted }],
+      });
+      apiClient.searchDistroCodes.mockResolvedValue({ items: [row] });
+      apiClient.linkGameToDistroCode.mockRejectedValue({
+        response: { data: { detail: 'That code is already linked to this game' } },
+      });
+      render(<BuyListTab />);
+      await user.click(await screen.findByRole('button', { name: /Distro/ }));
+      await user.click(await screen.findByRole('button', { name: 'Link' }));
+
+      expect(await screen.findByText('That code is already linked to this game')).toBeInTheDocument();
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    test('unlinks a manual link from its badge', async () => {
+      const user = userEvent.setup();
+      apiClient.getBuyListGames.mockResolvedValue({
+        items: [{ ...mockBuyListItem, distro_availability: linkedAvailability }],
+      });
+      apiClient.unlinkGameDistroCode.mockResolvedValue({ id: 7, distro_availability: unlisted });
+      render(<BuyListTab />);
+
+      await user.click(await screen.findByRole('button', { name: /Unlink VR V9/ }));
+
+      await waitFor(() => expect(apiClient.unlinkGameDistroCode).toHaveBeenCalledWith(7));
+      expect(await screen.findByText('Not listed by any distributor', { selector: 'span' })).toBeInTheDocument();
     });
   });
 

@@ -560,6 +560,50 @@ describe('API Client', () => {
       });
       expect(result).toEqual(mockResponse.data);
     });
+
+    test('suggestBuyListGames sends count and only_available', async () => {
+      mockAxiosInstance.post.mockResolvedValue({ data: { suggestions: [] } });
+
+      await apiClient.suggestBuyListGames(4, false);
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/buy-list/suggest', {
+        count: 4,
+        only_available: false,
+      });
+    });
+
+    test('searchDistroCodes queries the catalogue', async () => {
+      const mockResponse = { data: { items: [] } };
+      mockAxiosInstance.get.mockResolvedValue(mockResponse);
+
+      const result = await apiClient.searchDistroCodes('wingspan');
+
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith('/admin/buy-list/distro-codes/search', {
+        params: { q: 'wingspan' },
+      });
+      expect(result).toEqual(mockResponse.data);
+    });
+
+    test('linkGameToDistroCode posts the distributor key', async () => {
+      mockAxiosInstance.post.mockResolvedValue({ data: { link_id: 3 } });
+
+      const result = await apiClient.linkGameToDistroCode(12, 'VR', 'V9');
+
+      expect(mockAxiosInstance.post).toHaveBeenCalledWith('/admin/buy-list/games/12/distro-links', {
+        distributor: 'VR',
+        distro_code: 'V9',
+      });
+      expect(result).toEqual({ link_id: 3 });
+    });
+
+    test('unlinkGameDistroCode deletes the link', async () => {
+      mockAxiosInstance.delete.mockResolvedValue({ data: { id: 3 } });
+
+      const result = await apiClient.unlinkGameDistroCode(3);
+
+      expect(mockAxiosInstance.delete).toHaveBeenCalledWith('/admin/buy-list/distro-links/3');
+      expect(result).toEqual({ id: 3 });
+    });
   });
 
   describe('Sleeve Management Methods', () => {

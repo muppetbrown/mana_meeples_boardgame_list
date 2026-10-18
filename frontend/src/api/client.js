@@ -562,6 +562,39 @@ export async function linkHLStockSignal(hlInternalId, gameId) {
 }
 
 /**
+ * Search the HL distributor catalogue (distro_codes) by product name or code,
+ * to find a code to manually link to a game.
+ * @param {string} q - Search text (min 2 chars)
+ * @returns {Promise<Object>} { items: [{ distributor, distro_code, distro_product_name, cost_price_ex_gst, qty_available }] }
+ */
+export async function searchDistroCodes(q) {
+  const r = await api.get("/admin/buy-list/distro-codes/search", { params: { q } });
+  return r.data;
+}
+
+/**
+ * Manually link a game to one distributor product code, for when the
+ * automatic title match misses it.
+ * @returns {Promise<Object>} { link_id, distro_availability } - refreshed availability for the game
+ */
+export async function linkGameToDistroCode(gameId, distributor, distroCode) {
+  const r = await api.post(`/admin/buy-list/games/${gameId}/distro-links`, {
+    distributor,
+    distro_code: distroCode,
+  });
+  return r.data;
+}
+
+/**
+ * Remove a manual game <-> distributor code link.
+ * @returns {Promise<Object>} { id, distro_availability } - refreshed availability for the game
+ */
+export async function unlinkGameDistroCode(linkId) {
+  const r = await api.delete(`/admin/buy-list/distro-links/${linkId}`);
+  return r.data;
+}
+
+/**
  * Mark an HL stock product as not a real board-game candidate (e.g.
  * miscategorized at HL), excluding it from future signal lists.
  * @param {number} hlInternalId - HL Timaru product internal_id

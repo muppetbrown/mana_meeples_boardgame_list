@@ -16,7 +16,7 @@ computed server-side by HL for its own reporting.
 """
 import logging
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 
 from config import HL_STOCK_SALES_WINDOW_DAYS
 from database import HLStockSessionLocal
@@ -121,3 +121,60 @@ def fetch_distro_catalogue() -> list[dict]:
         raise HLStockServiceError(f"Failed to read HL distributor catalogue: {e}") from e
     finally:
         db.close()
+
+
+_DISTRO_SELECT = """
+    SELECT
+        dc.distributor,
+        dc.distro_code,
+        dc.distro_product_name AS name,
+        dc.cost_price_ex_gst,
+        dc.qty_available,
+        dc.qty_updated_at
+    FROM distro_codes dc
+"""
+
+_DISTRO_SEARCH_QUERY = text(
+    _DISTRO_SELECT
+    + """
+    WHERE dc.active
+      AND (dc.distro_product_name ILIKE :pattern OR dc.distro_code ILIKE :pattern)
+    ORDER BY dc.distro_product_name, dc.distributor
+    LIMIT :limit
+"""
+)
+
+_DISTRO_BY_KEY_QUERY = text(
+    _DISTRO_SELECT
+    + """
+    WHERE dc.active
+      AND (dc.distributor, dc.distro_code) IN :keys
+"""
+).bindparams(bindparam("keys", expanding=True))
+
+
+def _run_distro_query(query, params: dict) -> list[dict]:
+    if HLStockSessionLocal is None:
+        raise HLStockServiceError("HL_STOCK_DATABASE_URL not configured")
+
+    db = HLStockSessionLocal()
+    try:
+        return [dict(row) for row in db.execute(query, params).mappings().all()]
+    except Exception as e:
+        logger.error(f"HL distro_codes query failed: {e}")
+        raise HLStockServiceError(f"Failed to read HL distributor catalogue: {e}") from e
+    finally:
+        db.close()
+
+
+def search_distro_codes(query: str, limit: int = 20) -> list[dict]:
+    """Active distro_codes rows whose name or code contains `query` (case-insensitive)."""
+    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return _run_distro_query(_DISTRO_SEARCH_QUERY, {"pattern": f"%{escaped}%", "limit": limit})
+
+
+def fetch_distro_codes_by_key(keys: list[tuple[str, str]]) -> list[dict]:
+    """Active distro_codes rows for exact (distributor, distro_code) pairs."""
+    if not keys:
+        return []
+    return _run_distro_query(_DISTRO_BY_KEY_QUERY, {"keys": [tuple(k) for k in keys]})
