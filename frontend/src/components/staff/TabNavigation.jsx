@@ -43,16 +43,24 @@ export function TabNavigation({ activeTab, onTabChange, tabs }) {
                 {startsGroup && (
                   <span role="presentation" className="self-center mx-1.5 h-5 w-px bg-gray-200 shrink-0" />
                 )}
-                <button
+                <a
                   ref={(el) => (refs.current[tab.id] = el)}
                   role="tab"
                   id={`tab-${tab.id}`}
+                  href={`?tab=${tab.id}`}
                   aria-selected={selected}
                   aria-controls={`panel-${tab.id}`}
                   tabIndex={selected ? 0 : -1}
-                  onClick={() => onTabChange(tab.id)}
+                  onClick={(e) => {
+                    // Let the browser handle middle-click, right-click, and
+                    // Ctrl/Cmd/Shift+click natively (open in new tab/window) —
+                    // only intercept a plain left click for in-page SPA switching.
+                    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                    e.preventDefault();
+                    onTabChange(tab.id);
+                  }}
                   onKeyDown={(e) => onKeyDown(e, index)}
-                  className={`px-3 h-11 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-150 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-inset ${
+                  className={`inline-flex items-center px-3 h-11 text-sm font-medium whitespace-nowrap border-b-2 transition-colors duration-150 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-inset ${
                     selected
                       ? "border-purple-600 text-purple-700 bg-purple-50/60"
                       : "border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50"
@@ -77,7 +85,7 @@ export function TabNavigation({ activeTab, onTabChange, tabs }) {
                       </span>
                     )}
                   </span>
-                </button>
+                </a>
               </React.Fragment>
             );
           })}

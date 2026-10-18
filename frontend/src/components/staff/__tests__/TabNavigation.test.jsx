@@ -55,6 +55,23 @@ describe('TabNavigation', () => {
     expect(onTabChange).toHaveBeenCalledWith('manage-library');
   });
 
+  test('exposes a real href per tab so middle/ctrl/cmd-click can open it in a new tab', () => {
+    setup();
+    const tab = screen.getByRole('tab', { name: 'Dashboard' });
+    expect(tab.tagName).toBe('A');
+    expect(tab).toHaveAttribute('href', '?tab=dashboard');
+  });
+
+  test('leaves modified clicks (e.g. ctrl/cmd+click) to the browser instead of switching tabs in place', async () => {
+    const user = userEvent.setup();
+    const onTabChange = setup();
+    const tab = screen.getByRole('tab', { name: 'Manage Library' });
+    await user.keyboard('[ControlLeft>]');
+    await user.click(tab);
+    await user.keyboard('[/ControlLeft]');
+    expect(onTabChange).not.toHaveBeenCalled();
+  });
+
   test('arrow keys move between tabs and wrap around', async () => {
     const user = userEvent.setup();
     const onTabChange = setup('dashboard');
@@ -85,7 +102,7 @@ describe('TabNavigation', () => {
 
     test('renders svg icons for known names and text for anything else', () => {
       const { container } = render(<TabNavigation activeTab="a" onTabChange={() => {}} tabs={grouped} />);
-      expect(container.querySelectorAll('button svg')).toHaveLength(2);
+      expect(container.querySelectorAll('[role="tab"] svg')).toHaveLength(2);
       expect(screen.getByText('📚')).toHaveAttribute('aria-hidden', 'true');
     });
 
