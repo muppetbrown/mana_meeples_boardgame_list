@@ -11,7 +11,7 @@ import logging
 from typing import List, Optional
 
 import anthropic
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -25,6 +25,13 @@ from utils.helpers import CATEGORY_KEYS
 logger = logging.getLogger(__name__)
 
 SUGGESTION_MODEL = "claude-opus-5-5"
+# Opus 5.5 always thinks, and thinking tokens count against max_tokens, so this
+# has to cover the reasoning *and* the structured answer. At 4096 the reasoning
+# could use the whole budget, leaving no text block and an empty suggestion list.
+# Effort defaults to "medium" on this model; picking game titles doesn't need
+# more, and lower effort keeps the (already 40s+) request shorter.
+SUGGESTION_MAX_TOKENS = 16000
+SUGGESTION_EFFORT = "low"
 # Keep the prompt bounded even for a large collection - this is a supporting
 # signal (what's already owned), not something every single row needs to
 # individually inform.
@@ -177,12 +184,17 @@ async def generate_suggestions(db: Session, count: int = 6, only_available: bool
 
     request_count = min(count * AVAILABILITY_OVERFETCH_FACTOR, MAX_CANDIDATES) if only_available else count
     system, user = await _build_prompt(db, request_count)
+    # Everything below is a long (30-60s) wait on Claude and BGG that doesn't touch
+    # the database (read-only so far, nothing to lose); give the connection back first so the pool doesn't hold it
+    # idle until the cloud Postgres closes it ("SSL connection has been closed").
+    db.rollback()
     client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
     try:
         response = await client.messages.parse(
             model=SUGGESTION_MODEL,
-            max_tokens=4096,
+            max_tokens=SUGGESTION_MAX_TOKENS,
+            output_config={"effort": SUGGESTION_EFFORT},
             system=system,
             messages=[{"role": "user", "content": user}],
             output_format=SuggestionResponse,
@@ -190,13 +202,41 @@ async def generate_suggestions(db: Session, count: int = 6, only_available: bool
     except anthropic.APIError as e:
         logger.error(f"Claude suggestion request failed: {e}")
         raise SuggestionServiceError(f"Claude API request failed: {e}") from e
+    except ValidationError as e:
+        # The SDK parses the text as it arrives; truncated or malformed JSON lands here.
+        logger.error(f"Claude suggestion response didn't match the expected schema: {e}")
+        raise SuggestionServiceError(
+            "Claude's response was cut off or malformed - try again in a moment"
+        ) from e
 
     parsed = response.parsed_output
-    suggestions = parsed.suggestions[:request_count] if parsed else []
+    if parsed is None:
+        # No usable text block: out of tokens mid-reasoning, or a refusal. Say so
+        # rather than reporting an empty list as if Claude had nothing to suggest.
+        logger.error(
+            f"Claude returned no parsable suggestions (stop_reason={response.stop_reason!r}, "
+            f"output_tokens={response.usage.output_tokens})"
+        )
+        raise SuggestionServiceError(
+            "Claude didn't produce a usable answer "
+            f"(stop reason: {response.stop_reason}) - try again in a moment"
+        )
+    suggestions = parsed.suggestions[:request_count]
 
     availability = availability_for_titles(s.title for s in suggestions)
+    candidates_returned = len(suggestions)
     if availability is not None and only_available:
         suggestions = [s for s in suggestions if availability[s.title]["status"] != "not_listed"]
+    logger.info(
+        f"Suggestions: requested={request_count} returned={candidates_returned} "
+        f"distributor_filter={'on' if availability is not None and only_available else 'off'} "
+        f"kept={len(suggestions)}"
+    )
+    if candidates_returned and not suggestions:
+        raise SuggestionServiceError(
+            f"None of the {candidates_returned} games Claude suggested are listed by a distributor - "
+            "try again for a different set"
+        )
     suggestions = suggestions[:count]
 
     results = []
