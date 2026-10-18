@@ -20,20 +20,26 @@ from sqlalchemy.orm import Session, joinedload
 from api.dependencies import require_admin_auth
 from bgg_service import get_hot_games
 from database import get_db
-from models import BuyListGame, Game, HLStockLink
+from models import BuyListGame, Game, GameDistroLink, HLStockLink
 from schemas import (
     BuyListGameCreate,
     BuyListGameUpdate,
     BuyListReorderRequest,
+    GameDistroLinkCreate,
     HLStockSignalLinkRequest,
     SuggestGamesRequest,
 )
 from services.award_winners import get_award_winners
-from services.distro_availability import availability_for_titles
+from services.distro_availability import apply_manual_links, availability_for_titles
 from services.game_suggestion_service import SuggestionServiceError, generate_suggestions
 from services.gap_analysis import annotate_candidate, compute_library_gaps
 from services.hl_stock_matching import find_best_title_match
-from services.hl_stock_service import HLStockServiceError, fetch_hl_board_game_signals
+from services.hl_stock_service import (
+    HLStockServiceError,
+    fetch_distro_codes_by_key,
+    fetch_hl_board_game_signals,
+    search_distro_codes,
+)
 
 logger = logging.getLogger(__name__)
 _sl = lambda v: str(v).replace('\n', ' ').replace('\r', ' ')  # sanitize for logs
@@ -75,6 +81,23 @@ def build_buy_list_response(
         result["gap_match"] = annotate_candidate(buy_list_entry.game, gaps)
 
     return result
+
+
+def _availability_with_manual_links(db: Session, results: list) -> Optional[Dict[str, Any]]:
+    """Fuzzy title availability for list results, with manually linked
+    distro codes merged in (see GameDistroLink)."""
+    availability = availability_for_titles(r["title"] for r in results if r["title"])
+    if availability is None:
+        return None
+
+    titles_by_game_id = {r["game_id"]: r["title"] for r in results if r["title"]}
+    links = db.execute(
+        select(GameDistroLink).where(GameDistroLink.game_id.in_(list(titles_by_game_id)))
+    ).scalars().all()
+    links_by_title: Dict[str, list] = {}
+    for link in links:
+        links_by_title.setdefault(titles_by_game_id[link.game_id], []).append(link)
+    return apply_manual_links(availability, links_by_title)
 
 
 def _gaps_filled_count(result: Dict[str, Any]) -> int:
@@ -241,7 +264,7 @@ async def list_buy_list_games(
 
         # None (not "not_listed") when the HL catalogue can't be read, so the
         # UI doesn't present a connectivity problem as "nobody stocks this".
-        availability = availability_for_titles(r["title"] for r in results if r["title"])
+        availability = _availability_with_manual_links(db, results)
         for r in results:
             r["distro_availability"] = availability.get(r["title"]) if availability is not None else None
 
@@ -458,6 +481,111 @@ async def remove_from_buy_list(buy_list_id: int, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=500, detail="Failed to remove game from buy list"
         )
+
+
+# ------------------------------------------------------------------------------
+# Manual distributor links
+#
+# For when the title fuzzy-matcher misses a distributor listing: staff search
+# the HL distro_codes catalogue and pin a specific code to a game.
+# ------------------------------------------------------------------------------
+
+
+def _serialise_distro_row(row: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "distributor": row["distributor"],
+        "distro_code": row["distro_code"],
+        "distro_product_name": row["name"],
+        "cost_price_ex_gst": (
+            float(row["cost_price_ex_gst"]) if row["cost_price_ex_gst"] is not None else None
+        ),
+        "qty_available": row["qty_available"],
+    }
+
+
+@router.get("/distro-codes/search", dependencies=[Depends(require_admin_auth)])
+async def search_distro_catalogue(
+    q: str = Query(..., min_length=2, max_length=100, description="Name or code to search for"),
+    limit: int = Query(20, ge=1, le=50),
+):
+    """Search the HL distributor catalogue (name or code) to find a code to link to a game."""
+    try:
+        rows = search_distro_codes(q.strip(), limit=limit)
+    except HLStockServiceError as e:
+        logger.warning(f"Distro catalogue search unavailable: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+    return {"items": [_serialise_distro_row(r) for r in rows]}
+
+
+@router.post("/games/{game_id}/distro-links", dependencies=[Depends(require_admin_auth)])
+async def link_game_to_distro_code(
+    game_id: int, data: GameDistroLinkCreate, db: Session = Depends(get_db)
+):
+    """Manually link a game to one distributor product code."""
+    game = db.get(Game, game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+
+    try:
+        rows = fetch_distro_codes_by_key([(data.distributor, data.distro_code)])
+    except HLStockServiceError as e:
+        logger.warning(f"Distro link validation unavailable: {e}")
+        raise HTTPException(status_code=503, detail=str(e))
+    if not rows:
+        raise HTTPException(status_code=404, detail="That distributor code isn't in the HL catalogue")
+
+    existing = db.execute(
+        select(GameDistroLink).where(
+            GameDistroLink.game_id == game_id,
+            GameDistroLink.distributor == rows[0]["distributor"],
+            GameDistroLink.distro_code == rows[0]["distro_code"],
+        )
+    ).scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=409, detail="That code is already linked to this game")
+
+    try:
+        link = GameDistroLink(
+            game_id=game_id, distributor=rows[0]["distributor"], distro_code=rows[0]["distro_code"]
+        )
+        db.add(link)
+        db.commit()
+        db.refresh(link)
+    except Exception as e:
+        logger.error(f"Error linking game to distro code: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to link distributor code")
+
+    logger.info(f"Linked game '{_sl(game.title)}' to {_sl(link.distributor)} code {_sl(link.distro_code)}")
+
+    availability = _availability_with_manual_links(db, [{"game_id": game.id, "title": game.title}])
+    return {
+        "link_id": link.id,
+        "distro_availability": availability.get(game.title) if availability is not None else None,
+    }
+
+
+@router.delete("/distro-links/{link_id}", dependencies=[Depends(require_admin_auth)])
+async def unlink_game_distro_code(link_id: int, db: Session = Depends(get_db)):
+    """Remove a manual game <-> distributor code link."""
+    link = db.get(GameDistroLink, link_id)
+    if not link:
+        raise HTTPException(status_code=404, detail="Distributor link not found")
+
+    game = link.game
+    try:
+        db.delete(link)
+        db.commit()
+    except Exception as e:
+        logger.error(f"Error removing distro link: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to remove distributor link")
+
+    availability = _availability_with_manual_links(db, [{"game_id": game.id, "title": game.title}])
+    return {
+        "id": link_id,
+        "distro_availability": availability.get(game.title) if availability is not None else None,
+    }
 
 
 # ------------------------------------------------------------------------------

@@ -18,6 +18,9 @@ import {
   dismissHLStockSignal,
   getTrendingGames,
   getAwardWinners,
+  searchDistroCodes,
+  linkGameToDistroCode,
+  unlinkGameDistroCode,
 } from "../../../api/client";
 import { CATEGORY_LABELS } from "../../../constants/categories";
 import { parseBggId } from "../../../utils/bgg";
@@ -48,6 +51,12 @@ const PLAYTIME_LABELS = {
 export function BuyListTab() {
   const [buyList, setBuyList] = useState([]);
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
+  const [linkTarget, setLinkTarget] = useState(null); // buy-list item being linked to a distro code
+  const [linkQuery, setLinkQuery] = useState("");
+  const [linkResults, setLinkResults] = useState([]);
+  const [linkSearching, setLinkSearching] = useState(false);
+  const [linkError, setLinkError] = useState(null);
+  const [linkSavingKey, setLinkSavingKey] = useState(null);
   const [gaps, setGaps] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState("rank");
@@ -537,6 +546,83 @@ export function BuyListTab() {
   // Distributor availability from the HL Timaru distro_codes catalogue.
   // `avail` is null when the catalogue couldn't be read - show nothing rather
   // than implying nobody stocks it.
+  const applyAvailability = (itemId, distroAvailability) => {
+    setBuyList((prev) =>
+      prev.map((i) => (i.id === itemId ? { ...i, distro_availability: distroAvailability } : i))
+    );
+  };
+
+  const openLinkModal = (item) => {
+    setLinkTarget(item);
+    setLinkQuery(item.title || "");
+    setLinkResults([]);
+    setLinkError(null);
+  };
+
+  const closeLinkModal = () => {
+    setLinkTarget(null);
+    setLinkResults([]);
+    setLinkError(null);
+  };
+
+  // Debounced catalogue search while the link modal is open
+  useEffect(() => {
+    if (!linkTarget) return undefined;
+    const q = linkQuery.trim();
+    if (q.length < 2) {
+      setLinkResults([]);
+      return undefined;
+    }
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setLinkSearching(true);
+      setLinkError(null);
+      try {
+        const data = await searchDistroCodes(q);
+        if (!cancelled) setLinkResults(data.items || []);
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Distributor catalogue search failed:", err);
+          setLinkError(err.response?.data?.detail || "Failed to search the distributor catalogue");
+        }
+      } finally {
+        if (!cancelled) setLinkSearching(false);
+      }
+    }, 300);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [linkTarget, linkQuery]);
+
+  const handleLinkDistroCode = async (row) => {
+    const key = `${row.distributor}-${row.distro_code}`;
+    setLinkSavingKey(key);
+    setLinkError(null);
+    try {
+      const data = await linkGameToDistroCode(linkTarget.game_id, row.distributor, row.distro_code);
+      applyAvailability(linkTarget.id, data.distro_availability);
+      setSuccess(`Linked "${linkTarget.title}" to ${row.distributor} ${row.distro_code}`);
+      closeLinkModal();
+    } catch (err) {
+      console.error("Failed to link distributor code:", err);
+      setLinkError(err.response?.data?.detail || "Failed to link distributor code");
+    } finally {
+      setLinkSavingKey(null);
+    }
+  };
+
+  const handleUnlinkDistroCode = async (item, option) => {
+    try {
+      const data = await unlinkGameDistroCode(option.link_id);
+      applyAvailability(item.id, data.distro_availability);
+      setSuccess(`Unlinked ${option.distributor} ${option.distro_code} from "${item.title}"`);
+    } catch (err) {
+      console.error("Failed to unlink distributor code:", err);
+      setError(err.response?.data?.detail || "Failed to unlink distributor code");
+    }
+  };
+
   const visibleBuyList = buyList.filter((item) => {
     if (availabilityFilter === "all") return true;
     const status = item.distro_availability?.status;
@@ -546,7 +632,7 @@ export function BuyListTab() {
     return status === "out_of_stock";
   });
 
-  const renderDistroAvailability = (avail) => {
+  const renderDistroAvailability = (avail, item = null) => {
     if (!avail) return null;
     if (avail.status === "not_listed") {
       return (
@@ -569,13 +655,27 @@ export function BuyListTab() {
               : "bg-amber-100 text-amber-700";
           const stock = unknown ? "stock ?" : inStock ? `${o.qty_available} in stock` : "out of stock";
           const cost = o.cost_price_ex_gst != null ? ` · $${o.cost_price_ex_gst.toFixed(2)} ex GST` : "";
+          const manual = o.link_id != null;
           return (
             <span
               key={`${o.distributor}-${o.distro_code}`}
-              className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${tone}`}
-              title={`${o.distro_product_name} (${o.distro_code}) · match ${o.match_score}%`}
+              className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${tone}`}
+              title={
+                manual
+                  ? `Manually linked: ${o.distro_product_name} (${o.distro_code})`
+                  : `${o.distro_product_name} (${o.distro_code}) · match ${o.match_score}%`
+              }
             >
-              {o.distributor}: {stock}{cost}
+              {manual ? "🔗 " : ""}{o.distributor}: {stock}{cost}
+              {manual && item && (
+                <button
+                  onClick={() => handleUnlinkDistroCode(item, o)}
+                  aria-label={`Unlink ${o.distributor} ${o.distro_code} from ${item.title}`}
+                  className="ml-0.5 hover:text-red-700"
+                >
+                  ✕
+                </button>
+              )}
             </span>
           );
         })}
@@ -1257,7 +1357,7 @@ export function BuyListTab() {
                         <td className="px-4 py-3">
                           <div className="font-medium">{item.title}</div>
                           {renderGapMatchBadges(item.gap_match)}
-                          {renderDistroAvailability(item.distro_availability)}
+                          {renderDistroAvailability(item.distro_availability, item)}
                         </td>
                         <td className="px-4 py-3 text-gray-600">
                           {item.notes || "-"}
@@ -1270,6 +1370,13 @@ export function BuyListTab() {
                               title="Move to owned collection"
                             >
                               → Owned
+                            </button>
+                            <button
+                              onClick={() => openLinkModal(item)}
+                              className="px-2 py-1 text-purple-600 hover:bg-purple-50 rounded text-xs"
+                              title="Link this game to a distributor product code"
+                            >
+                              🔗 Distro
                             </button>
                             <button
                               onClick={() => handleEdit(item)}
@@ -1294,6 +1401,83 @@ export function BuyListTab() {
           </div>
         )}
       </div>
+
+      {/* Link distributor code modal */}
+      {linkTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="link-distro-title"
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-auto"
+          >
+            <div className="p-6">
+              <h3 id="link-distro-title" className="text-lg font-semibold mb-1">
+                Link "{linkTarget.title}" to a distributor code
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Search the distributor catalogue by product name or code, then pick the listing that is this game.
+              </p>
+              <label htmlFor="link-distro-search" className="block text-sm font-medium text-gray-700 mb-1">
+                Product name or code
+              </label>
+              <input
+                id="link-distro-search"
+                type="text"
+                value={linkQuery}
+                onChange={(e) => setLinkQuery(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                autoFocus
+              />
+
+              {linkError && (
+                <div role="alert" className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {linkError}
+                </div>
+              )}
+
+              <div className="mt-3 space-y-2">
+                {linkSearching && <p className="text-sm text-gray-500">Searching…</p>}
+                {!linkSearching && linkQuery.trim().length >= 2 && linkResults.length === 0 && !linkError && (
+                  <p className="text-sm text-gray-500">No distributor listings found.</p>
+                )}
+                {linkResults.map((row) => {
+                  const key = `${row.distributor}-${row.distro_code}`;
+                  const alreadyLinked = (linkTarget.distro_availability?.options || []).some(
+                    (o) => o.link_id != null && o.distributor === row.distributor && o.distro_code === row.distro_code
+                  );
+                  const stock =
+                    row.qty_available == null ? "stock ?" : row.qty_available > 0 ? `${row.qty_available} in stock` : "out of stock";
+                  return (
+                    <div key={key} className="flex items-center justify-between gap-3 border rounded-lg p-3">
+                      <div className="min-w-0">
+                        <div className="font-medium text-sm truncate">{row.distro_product_name}</div>
+                        <div className="text-xs text-gray-500">
+                          {row.distributor} · {row.distro_code} · {stock}
+                          {row.cost_price_ex_gst != null ? ` · $${row.cost_price_ex_gst.toFixed(2)} ex GST` : ""}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleLinkDistroCode(row)}
+                        disabled={alreadyLinked || linkSavingKey === key}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                      >
+                        {alreadyLinked ? "Linked" : linkSavingKey === key ? "Linking…" : "Link"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex justify-end mt-4">
+                <button onClick={closeLinkModal} className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Game Modal */}
       {showAddModal && (

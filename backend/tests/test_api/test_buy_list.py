@@ -1120,3 +1120,102 @@ class TestGetAwardWinners:
     def test_requires_auth(self, client):
         response = client.get("/api/admin/buy-list/award-winners")
         assert response.status_code in (401, 403)
+
+
+class TestManualDistroLinks:
+    ROW = {
+        "distributor": "VR",
+        "distro_code": "V9",
+        "name": "OBSC GME EURO",
+        "cost_price_ex_gst": 30.0,
+        "qty_available": 4,
+        "qty_updated_at": None,
+    }
+
+    def _game(self, db_session, title="Obscure Game"):
+        game = Game(title=title, bgg_id=999)
+        db_session.add(game)
+        db_session.commit()
+        return game
+
+    def test_search_returns_catalogue_rows(self, client, admin_headers):
+        with patch("api.routers.buy_list.search_distro_codes", return_value=[self.ROW]) as mock:
+            response = client.get(
+                "/api/admin/buy-list/distro-codes/search?q=obsc", headers=admin_headers
+            )
+        assert response.status_code == 200
+        item = response.json()["items"][0]
+        assert item["distro_code"] == "V9" and item["distro_product_name"] == "OBSC GME EURO"
+        mock.assert_called_once_with("obsc", limit=20)
+
+    def test_search_requires_auth_and_min_length(self, client, admin_headers):
+        assert client.get("/api/admin/buy-list/distro-codes/search?q=ob").status_code in (401, 403)
+        assert client.get(
+            "/api/admin/buy-list/distro-codes/search?q=o", headers=admin_headers
+        ).status_code == 422
+
+    def test_search_503_when_hl_unavailable(self, client, admin_headers):
+        with patch("api.routers.buy_list.search_distro_codes", side_effect=HLStockServiceError("nope")):
+            response = client.get(
+                "/api/admin/buy-list/distro-codes/search?q=obsc", headers=admin_headers
+            )
+        assert response.status_code == 503
+
+    def test_link_creates_and_list_shows_manual_option(self, client, db_session, admin_headers):
+        game = self._game(db_session)
+        db_session.add(BuyListGame(game_id=game.id, on_buy_list=True))
+        db_session.commit()
+
+        with patch("api.routers.buy_list.fetch_distro_codes_by_key", return_value=[self.ROW]), patch(
+            "api.routers.buy_list.availability_for_titles",
+            return_value={"Obscure Game": {"status": "not_listed", "options": []}},
+        ), patch("services.distro_availability.fetch_distro_codes_by_key", return_value=[self.ROW]):
+            created = client.post(
+                f"/api/admin/buy-list/games/{game.id}/distro-links",
+                json={"distributor": "VR", "distro_code": "V9"},
+                headers=admin_headers,
+            )
+            assert created.status_code == 200
+            body = created.json()
+            assert body["distro_availability"]["status"] == "in_stock"
+            assert body["distro_availability"]["options"][0]["link_id"] == body["link_id"]
+
+            items = client.get("/api/admin/buy-list/games", headers=admin_headers).json()["items"]
+            assert items[0]["distro_availability"]["options"][0]["distro_code"] == "V9"
+
+    def test_link_rejects_unknown_code_duplicate_and_missing_game(self, client, db_session, admin_headers):
+        game = self._game(db_session)
+        url = f"/api/admin/buy-list/games/{game.id}/distro-links"
+        payload = {"distributor": "VR", "distro_code": "V9"}
+
+        with patch("api.routers.buy_list.fetch_distro_codes_by_key", return_value=[]):
+            assert client.post(url, json=payload, headers=admin_headers).status_code == 404
+
+        with patch("api.routers.buy_list.fetch_distro_codes_by_key", return_value=[self.ROW]), patch(
+            "api.routers.buy_list.availability_for_titles", return_value=None
+        ):
+            assert client.post(url, json=payload, headers=admin_headers).status_code == 200
+            assert client.post(url, json=payload, headers=admin_headers).status_code == 409
+            assert client.post(
+                "/api/admin/buy-list/games/99999/distro-links", json=payload, headers=admin_headers
+            ).status_code == 404
+
+    def test_unlink_removes_link(self, client, db_session, admin_headers):
+        from models import GameDistroLink
+
+        game = self._game(db_session)
+        link = GameDistroLink(game_id=game.id, distributor="VR", distro_code="V9")
+        db_session.add(link)
+        db_session.commit()
+        link_id = link.id
+
+        with patch("api.routers.buy_list.availability_for_titles", return_value=None):
+            response = client.delete(
+                f"/api/admin/buy-list/distro-links/{link_id}", headers=admin_headers
+            )
+            assert response.status_code == 200
+            assert client.delete(
+                f"/api/admin/buy-list/distro-links/{link_id}", headers=admin_headers
+            ).status_code == 404
+        db_session.expire_all()
+        assert db_session.get(GameDistroLink, link_id) is None

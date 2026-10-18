@@ -13,6 +13,7 @@ from sqlalchemy import (
     Numeric,
     ForeignKey,
     CheckConstraint,
+    UniqueConstraint,
     text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -238,6 +239,31 @@ class HLStockLink(Base):
 
     __table_args__ = (
         Index("idx_hl_stock_links_status", "dismissed", "game_id"),
+    )
+
+
+class GameDistroLink(Base):
+    """
+    Manual link from a game in this library to one distributor product code in
+    the HL Timaru distro_codes catalogue, for when the title fuzzy-matcher
+    (services/distro_availability.py) misses a listing. Only the
+    (distributor, distro_code) key is stored - name, cost and stock are read
+    live from distro_codes so a link never goes stale. Keyed on the game, not
+    the buy-list row, so it survives the game leaving/re-entering the list.
+    """
+
+    __tablename__ = "game_distro_links"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    game_id = Column(Integer, ForeignKey("boardgames.id", ondelete="CASCADE"), nullable=False, index=True)
+    distributor = Column(String(100), nullable=False)
+    distro_code = Column(String(100), nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    game = relationship("Game")
+
+    __table_args__ = (
+        UniqueConstraint("game_id", "distributor", "distro_code", name="uq_game_distro_links_game_dist_code"),
     )
 
 
