@@ -80,3 +80,44 @@ def fetch_hl_board_game_signals() -> list[dict]:
         raise HLStockServiceError(f"Failed to read HL stock data: {e}") from e
     finally:
         db.close()
+
+
+# Board-game rows from the distributor catalogue (distro_codes, loaded by the
+# hl-timaru-stock repo's scripts/import_distro_codes.py). Rows already linked to
+# a product are limited to Board Games so TCG / miniatures / RPG codes don't
+# bloat the match pool; unlinked rows (internal_id IS NULL) are kept because
+# a game we've never stocked is exactly what a suggestion usually is.
+_DISTRO_CATALOGUE_QUERY = text("""
+    SELECT
+        dc.distributor,
+        dc.distro_code,
+        dc.distro_product_name AS name,
+        dc.cost_price_ex_gst,
+        dc.qty_available,
+        dc.qty_updated_at
+    FROM distro_codes dc
+    LEFT JOIN products p ON p.internal_id = dc.internal_id
+    WHERE dc.active
+      AND dc.distro_product_name IS NOT NULL
+      AND (dc.internal_id IS NULL OR p.category = 'Board Games')
+""")
+
+
+def fetch_distro_catalogue() -> list[dict]:
+    """Active distributor catalogue rows (name, cost ex GST, stock) from HL Timaru.
+
+    Raises HLStockServiceError if HL_STOCK_DATABASE_URL isn't configured or the
+    query fails, same as fetch_hl_board_game_signals.
+    """
+    if HLStockSessionLocal is None:
+        raise HLStockServiceError("HL_STOCK_DATABASE_URL not configured")
+
+    db = HLStockSessionLocal()
+    try:
+        rows = db.execute(_DISTRO_CATALOGUE_QUERY).mappings().all()
+        return [dict(row) for row in rows]
+    except Exception as e:
+        logger.error(f"HL distro catalogue query failed: {e}")
+        raise HLStockServiceError(f"Failed to read HL distributor catalogue: {e}") from e
+    finally:
+        db.close()

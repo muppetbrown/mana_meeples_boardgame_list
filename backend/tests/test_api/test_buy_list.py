@@ -116,6 +116,22 @@ class TestListBuyListGames:
         titles = [item["title"] for item in response.json()["items"]]
         assert titles == ["Alpha Game", "Zeta Game"]
 
+    def test_list_includes_distro_availability(self, client, db_session, admin_headers):
+        game = Game(id=1, title="Azul", bgg_id=1)
+        db_session.add(game)
+        db_session.flush()
+        db_session.add(BuyListGame(game_id=game.id, on_buy_list=True))
+        db_session.commit()
+
+        availability = {"Azul": {"status": "in_stock", "options": [{"distributor": "VR"}]}}
+        with patch("api.routers.buy_list.availability_for_titles", return_value=availability):
+            items = client.get("/api/admin/buy-list/games", headers=admin_headers).json()["items"]
+        assert items[0]["distro_availability"]["status"] == "in_stock"
+
+        with patch("api.routers.buy_list.availability_for_titles", return_value=None):
+            items = client.get("/api/admin/buy-list/games", headers=admin_headers).json()["items"]
+        assert items[0]["distro_availability"] is None
+
     def test_excludes_entries_not_on_buy_list(self, client, db_session, admin_headers):
         game = Game(title="Removed Game", bgg_id=9)
         db_session.add(game)

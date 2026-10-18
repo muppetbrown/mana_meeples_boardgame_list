@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from bgg_service import get_hot_games, search_bgg
 from config import ANTHROPIC_API_KEY
+from services.distro_availability import availability_for_titles
 from models import BuyListGame, Game
 from services.gap_analysis import COMPLEXITY_LABELS, PLAYTIME_LABELS, compute_library_gaps
 from utils.helpers import CATEGORY_KEYS
@@ -59,6 +60,12 @@ class SuggestionServiceError(Exception):
 # How many BGG Hot List entries to mention in the prompt - context, not a
 # target list of its own, so this stays small relative to the owned list.
 MAX_TRENDING_IN_PROMPT = 15
+
+# When filtering to distributor-available games, ask Claude for more than
+# `count` since many suggestions won't be stocked; capped to keep the
+# structured response within max_tokens.
+AVAILABILITY_OVERFETCH_FACTOR = 3
+MAX_CANDIDATES = 24
 
 
 async def _build_prompt(db: Session, count: int) -> tuple[str, str]:
@@ -128,7 +135,9 @@ async def _build_prompt(db: Session, count: int) -> tuple[str, str]:
         "a game that is already owned or already on the games-to-add list below. Prefer games that "
         "are well-regarded (generally BGG-rated 7.0+) and currently in print or easy to find, and "
         "favor games that would plausibly fill one of the collection's noted gaps, without ignoring "
-        "strong games outside those gaps. The current BoardGameGeek trending list is extra context, "
+        "strong games outside those gaps. Every suggestion is checked against the NZ distributor "
+        "catalogues the cafe buys from, so strongly prefer games that are currently in print and "
+        "stocked by NZ distributors. The current BoardGameGeek trending list is extra context, "
         "not a mandate - weigh it alongside fit for this library, don't just restate it."
     )
 
@@ -151,17 +160,23 @@ async def _build_prompt(db: Session, count: int) -> tuple[str, str]:
     return system, user
 
 
-async def generate_suggestions(db: Session, count: int = 6) -> List[dict]:
+async def generate_suggestions(db: Session, count: int = 6, only_available: bool = True) -> List[dict]:
     """
     Ask Claude for `count` candidate games grounded in this library's actual
     collection and gap analysis, then best-effort resolve each to a BGG ID.
+
+    Each result carries distro_availability (see services/distro_availability).
+    With only_available, over-fetches candidates and drops any no distributor
+    lists; if the distributor catalogue can't be read, nothing is dropped and
+    distro_availability is None rather than guessing.
     """
     if not ANTHROPIC_API_KEY:
         raise SuggestionServiceError(
             "ANTHROPIC_API_KEY is not configured - set it in the backend environment to enable suggestions"
         )
 
-    system, user = await _build_prompt(db, count)
+    request_count = min(count * AVAILABILITY_OVERFETCH_FACTOR, MAX_CANDIDATES) if only_available else count
+    system, user = await _build_prompt(db, request_count)
     client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
 
     try:
@@ -177,7 +192,12 @@ async def generate_suggestions(db: Session, count: int = 6) -> List[dict]:
         raise SuggestionServiceError(f"Claude API request failed: {e}") from e
 
     parsed = response.parsed_output
-    suggestions = parsed.suggestions[:count] if parsed else []
+    suggestions = parsed.suggestions[:request_count] if parsed else []
+
+    availability = availability_for_titles(s.title for s in suggestions)
+    if availability is not None and only_available:
+        suggestions = [s for s in suggestions if availability[s.title]["status"] != "not_listed"]
+    suggestions = suggestions[:count]
 
     results = []
     for suggestion in suggestions:
@@ -212,6 +232,7 @@ async def generate_suggestions(db: Session, count: int = 6) -> List[dict]:
                 "suggested_bgg_title": match["title"] if match else None,
                 "suggested_bgg_year": match["year"] if match else None,
                 "bgg_search_url": bgg_search_url,
+                "distro_availability": availability[suggestion.title] if availability is not None else None,
             }
         )
 
