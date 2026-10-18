@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from bgg_service import get_hot_games, search_bgg
 from config import ANTHROPIC_API_KEY
-from services.distro_availability import availability_for_titles
+from services.distro_availability import availability_for_titles, normalize_title
 from models import BuyListGame, Game
 from services.gap_analysis import COMPLEXITY_LABELS, PLAYTIME_LABELS, compute_library_gaps
 from utils.helpers import CATEGORY_KEYS
@@ -167,6 +167,21 @@ async def _build_prompt(db: Session, count: int) -> tuple[str, str]:
     return system, user
 
 
+def _library_exclusions(db: Session) -> tuple[set[str], set[int]]:
+    """Normalised titles and BGG IDs of games Claude must not suggest: everything
+    owned plus everything currently on the games-to-add list. The prompt already
+    asks Claude to skip these, but that is a request, not a guarantee - this is
+    what actually enforces it."""
+    rows = db.execute(
+        select(Game.title, Game.bgg_id)
+        .outerjoin(BuyListGame, BuyListGame.game_id == Game.id)
+        .where((Game.status == "OWNED") | (BuyListGame.on_buy_list == True))  # noqa: E712
+    ).all()
+    titles = {normalize_title(title) for title, _ in rows if title}
+    bgg_ids = {bgg_id for _, bgg_id in rows if bgg_id}
+    return titles, bgg_ids
+
+
 async def generate_suggestions(db: Session, count: int = 6, only_available: bool = True) -> List[dict]:
     """
     Ask Claude for `count` candidate games grounded in this library's actual
@@ -184,6 +199,7 @@ async def generate_suggestions(db: Session, count: int = 6, only_available: bool
 
     request_count = min(count * AVAILABILITY_OVERFETCH_FACTOR, MAX_CANDIDATES) if only_available else count
     system, user = await _build_prompt(db, request_count)
+    excluded_titles, excluded_bgg_ids = _library_exclusions(db)
     # Everything below is a long (30-60s) wait on Claude and BGG that doesn't touch
     # the database (read-only so far, nothing to lose); give the connection back first so the pool doesn't hold it
     # idle until the cloud Postgres closes it ("SSL connection has been closed").
@@ -223,24 +239,30 @@ async def generate_suggestions(db: Session, count: int = 6, only_available: bool
         )
     suggestions = parsed.suggestions[:request_count]
 
-    availability = availability_for_titles(s.title for s in suggestions)
     candidates_returned = len(suggestions)
-    if availability is not None and only_available:
+    suggestions = [s for s in suggestions if normalize_title(s.title) not in excluded_titles]
+    already_in_library = candidates_returned - len(suggestions)
+
+    availability = availability_for_titles(s.title for s in suggestions)
+    filter_active = availability is not None and only_available
+    if filter_active:
         suggestions = [s for s in suggestions if availability[s.title]["status"] != "not_listed"]
     logger.info(
         f"Suggestions: requested={request_count} returned={candidates_returned} "
-        f"distributor_filter={'on' if availability is not None and only_available else 'off'} "
+        f"in_library={already_in_library} distributor_filter={'on' if filter_active else 'off'} "
         f"kept={len(suggestions)}"
     )
     if candidates_returned and not suggestions:
         raise SuggestionServiceError(
-            f"None of the {candidates_returned} games Claude suggested are listed by a distributor - "
+            f"None of the {candidates_returned} games Claude suggested were usable "
+            f"({already_in_library} already in your library, the rest not listed by a distributor) - "
             "try again for a different set"
         )
-    suggestions = suggestions[:count]
 
     results = []
     for suggestion in suggestions:
+        if len(results) >= count:
+            break
         bgg_search_url = (
             "https://boardgamegeek.com/geeksearch.php?action=search&objecttype=boardgame&q="
             + suggestion.title.replace(" ", "+")
@@ -261,6 +283,10 @@ async def generate_suggestions(db: Session, count: int = 6, only_available: bool
             if suggestion.year:
                 pool = sorted(pool, key=lambda c: abs((c["year"] or 0) - suggestion.year))
             match = pool[0]
+
+        # A differently-worded title can still resolve to a game already in the library.
+        if match and match["bgg_id"] in excluded_bgg_ids:
+            continue
 
         results.append(
             {

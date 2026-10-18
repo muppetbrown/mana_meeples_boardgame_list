@@ -346,3 +346,95 @@ class TestUnusableResponses:
         kwargs = parse.call_args.kwargs
         assert kwargs["max_tokens"] >= 16000
         assert kwargs["output_config"] == {"effort": "low"}
+
+
+class TestLibraryExclusion:
+    """Claude is asked not to re-suggest library games; the code enforces it."""
+
+    async def _run(self, db_session, titles, search_results=None, **kwargs):
+        response = AsyncMock()
+        response.parsed_output = SuggestionResponse(
+            suggestions=[SuggestedGame(title=t, year=2019, category_key=None, reason="x") for t in titles]
+        )
+        search_results = search_results or {}
+
+        async def fake_search(query, limit=5):
+            return search_results.get(query, [])
+
+        with patch("services.game_suggestion_service.ANTHROPIC_API_KEY", "test-key"):
+            with patch("services.game_suggestion_service.anthropic.AsyncAnthropic") as mock_client_cls:
+                mock_client_cls.return_value.messages.parse = AsyncMock(return_value=response)
+                with patch("services.game_suggestion_service.search_bgg", side_effect=fake_search):
+                    with patch("services.game_suggestion_service.availability_for_titles", return_value=None):
+                        return await generate_suggestions(db_session, **kwargs)
+
+    @pytest.mark.asyncio
+    async def test_owned_game_is_dropped_even_if_claude_suggests_it(self, db_session):
+        _owned_game(db_session, title="Wavelength", bgg_id=262543)
+        db_session.commit()
+
+        results = await self._run(db_session, ["Wavelength", "Cascadia"], count=5)
+
+        assert [r["title"] for r in results] == ["Cascadia"]
+
+    @pytest.mark.asyncio
+    async def test_title_match_ignores_case_punctuation_and_noise_words(self, db_session):
+        _owned_game(db_session, title="The Quest for El Dorado", bgg_id=1)
+        db_session.commit()
+
+        results = await self._run(db_session, ["quest for el dorado", "Heat"], count=5)
+
+        assert [r["title"] for r in results] == ["Heat"]
+
+    @pytest.mark.asyncio
+    async def test_game_on_buy_list_is_dropped(self, db_session):
+        queued = Game(title="Sky Team", bgg_id=373106, status="BUY_LIST")
+        db_session.add(queued)
+        db_session.flush()
+        db_session.add(BuyListGame(game_id=queued.id, on_buy_list=True))
+        db_session.commit()
+
+        results = await self._run(db_session, ["Sky Team", "Heat"], count=5)
+
+        assert [r["title"] for r in results] == ["Heat"]
+
+    @pytest.mark.asyncio
+    async def test_removed_from_buy_list_is_still_suggestible(self, db_session):
+        removed = Game(title="Sky Team", bgg_id=373106, status="BUY_LIST")
+        db_session.add(removed)
+        db_session.flush()
+        db_session.add(BuyListGame(game_id=removed.id, on_buy_list=False))
+        db_session.commit()
+
+        results = await self._run(db_session, ["Sky Team"], count=5)
+
+        assert [r["title"] for r in results] == ["Sky Team"]
+
+    @pytest.mark.asyncio
+    async def test_differently_worded_title_caught_by_bgg_id(self, db_session):
+        _owned_game(db_session, title="Wavelength", bgg_id=262543)
+        db_session.commit()
+        search = {"Wavelength: The Party Game": [{"bgg_id": 262543, "title": "Wavelength", "year": 2019}]}
+
+        results = await self._run(
+            db_session, ["Wavelength: The Party Game", "Cascadia"], search_results=search, count=5
+        )
+
+        assert [r["title"] for r in results] == ["Cascadia"]
+
+    @pytest.mark.asyncio
+    async def test_count_is_still_filled_after_dropping_library_games(self, db_session):
+        _owned_game(db_session, title="Wavelength", bgg_id=262543)
+        db_session.commit()
+
+        results = await self._run(db_session, ["Wavelength", "Cascadia", "Heat", "Sky Team"], count=2)
+
+        assert [r["title"] for r in results] == ["Cascadia", "Heat"]
+
+    @pytest.mark.asyncio
+    async def test_all_already_owned_raises_with_reason(self, db_session):
+        _owned_game(db_session, title="Wavelength", bgg_id=262543)
+        db_session.commit()
+
+        with pytest.raises(SuggestionServiceError, match="1 already in your library"):
+            await self._run(db_session, ["Wavelength"], count=5)
