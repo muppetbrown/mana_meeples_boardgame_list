@@ -318,13 +318,11 @@ class TestUnusableResponses:
     async def test_truncated_json_raises_friendly_error(self, db_session):
         from pydantic import ValidationError
 
-        try:
+        with pytest.raises(ValidationError) as truncated:
             SuggestionResponse.model_validate_json('{"suggestions": [{"title": "Wing')
-        except ValidationError as e:
-            error = e
 
         with pytest.raises(SuggestionServiceError, match="cut off or malformed"):
-            await self._run(db_session, parse_error=error, count=3)
+            await self._run(db_session, parse_error=truncated.value, count=3)
 
     @pytest.mark.asyncio
     async def test_everything_filtered_out_raises_instead_of_returning_empty(self, db_session):
