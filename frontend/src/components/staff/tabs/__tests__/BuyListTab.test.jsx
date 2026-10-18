@@ -217,6 +217,53 @@ describe('BuyListTab', () => {
     });
   });
 
+  describe('Distributor availability', () => {
+    const inStock = {
+      status: 'in_stock',
+      options: [
+        {
+          distributor: 'VR', distro_code: 'V1', distro_product_name: 'Test Game',
+          cost_price_ex_gst: 42.5, qty_available: 5, match_score: 100,
+        },
+      ],
+    };
+    const unlisted = { status: 'not_listed', options: [] };
+
+    test('shows per-distributor stock and cost', async () => {
+      apiClient.getBuyListGames.mockResolvedValue({
+        items: [{ ...mockBuyListItem, distro_availability: inStock }],
+      });
+      render(<BuyListTab />);
+      expect(await screen.findByText('VR: 5 in stock · $42.50 ex GST')).toBeInTheDocument();
+    });
+
+    test('flags games no distributor lists, and can filter to them', async () => {
+      const user = userEvent.setup();
+      apiClient.getBuyListGames.mockResolvedValue({
+        items: [
+          { ...mockBuyListItem, distro_availability: inStock },
+          { ...mockBuyListItem, id: 2, title: 'Gone Game', distro_availability: unlisted },
+        ],
+      });
+      render(<BuyListTab />);
+      expect(await screen.findByText('Not listed by any distributor', { selector: 'span' })).toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText('Distributor'), 'unavailable');
+
+      expect(screen.getByText('Gone Game')).toBeInTheDocument();
+      expect(screen.queryByText('Test Game')).not.toBeInTheDocument();
+    });
+
+    test('shows nothing when availability is unknown', async () => {
+      apiClient.getBuyListGames.mockResolvedValue({
+        items: [{ ...mockBuyListItem, distro_availability: null }],
+      });
+      render(<BuyListTab />);
+      await screen.findByText('Test Game');
+      expect(screen.queryByText(/Not listed by any distributor/, { selector: 'span' })).not.toBeInTheDocument();
+    });
+  });
+
   describe('Sorting', () => {
     test('changes sort field', async () => {
       const user = userEvent.setup();
@@ -226,7 +273,7 @@ describe('BuyListTab', () => {
         expect(screen.getByText('Test Game')).toBeInTheDocument();
       });
 
-      const sortBySelect = screen.getByRole('combobox');
+      const sortBySelect = screen.getByLabelText('Sort By');
       await user.selectOptions(sortBySelect, 'title');
 
       await waitFor(() => {

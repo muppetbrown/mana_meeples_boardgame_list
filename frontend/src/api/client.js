@@ -529,10 +529,12 @@ export async function reorderBuyList(orderedIds) {
  * BGG ID so it can be added with one click; otherwise a BGG search link is
  * provided instead.
  * @param {number} count - How many suggestions to request (1-12)
+ * @param {boolean} onlyAvailable - Drop suggestions no NZ distributor lists
+ *   (each result carries distro_availability: per-distributor stock/cost)
  * @returns {Promise<Object>} { suggestions: [...] }
  */
-export async function suggestBuyListGames(count = 6) {
-  const r = await api.post("/admin/buy-list/suggest", { count });
+export async function suggestBuyListGames(count = 6, onlyAvailable = true) {
+  const r = await api.post("/admin/buy-list/suggest", { count, only_available: onlyAvailable });
   return r.data;
 }
 

@@ -47,6 +47,7 @@ const PLAYTIME_LABELS = {
  */
 export function BuyListTab() {
   const [buyList, setBuyList] = useState([]);
+  const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [gaps, setGaps] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState("rank");
@@ -533,6 +534,55 @@ export function BuyListTab() {
   const hasAnyGaps =
     gapCategories.length > 0 || gapPlayerCounts.length > 0 || gapComplexityBands.length > 0 || gapPlaytimeBands.length > 0;
 
+  // Distributor availability from the HL Timaru distro_codes catalogue.
+  // `avail` is null when the catalogue couldn't be read - show nothing rather
+  // than implying nobody stocks it.
+  const visibleBuyList = buyList.filter((item) => {
+    if (availabilityFilter === "all") return true;
+    const status = item.distro_availability?.status;
+    if (!status) return false; // availability unknown - can't match a specific filter
+    if (availabilityFilter === "unavailable") return status === "not_listed";
+    if (availabilityFilter === "in_stock") return status === "in_stock";
+    return status === "out_of_stock";
+  });
+
+  const renderDistroAvailability = (avail) => {
+    if (!avail) return null;
+    if (avail.status === "not_listed") {
+      return (
+        <div className="mt-1">
+          <span className="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-red-100 text-red-700">
+            Not listed by any distributor
+          </span>
+        </div>
+      );
+    }
+    return (
+      <div className="mt-1 flex flex-wrap gap-1">
+        {avail.options.map((o) => {
+          const inStock = o.qty_available > 0;
+          const unknown = o.qty_available === null || o.qty_available === undefined;
+          const tone = unknown
+            ? "bg-gray-100 text-gray-700"
+            : inStock
+              ? "bg-green-100 text-green-700"
+              : "bg-amber-100 text-amber-700";
+          const stock = unknown ? "stock ?" : inStock ? `${o.qty_available} in stock` : "out of stock";
+          const cost = o.cost_price_ex_gst != null ? ` · $${o.cost_price_ex_gst.toFixed(2)} ex GST` : "";
+          return (
+            <span
+              key={`${o.distributor}-${o.distro_code}`}
+              className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full ${tone}`}
+              title={`${o.distro_product_name} (${o.distro_code}) · match ${o.match_score}%`}
+            >
+              {o.distributor}: {stock}{cost}
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderGapMatchBadges = (gapMatch) => {
     if (!gapMatch) return null;
     const badges = [];
@@ -711,6 +761,7 @@ export function BuyListTab() {
                       </span>
                     )}
                     <p className="text-sm text-gray-600 mt-2">{s.reason}</p>
+                    {renderDistroAvailability(s.distro_availability)}
                     <p className="text-xs mt-2">
                       {resolved ? (
                         <span className="text-green-700">
@@ -1053,12 +1104,13 @@ export function BuyListTab() {
 
       {/* Sort controls */}
       <div className="bg-white rounded-lg p-4 shadow">
-        <div className="grid md:grid-cols-4 gap-4">
+        <div className="grid md:grid-cols-5 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="buy-list-sort-by" className="block text-sm font-medium text-gray-700 mb-1">
               Sort By
             </label>
             <select
+              id="buy-list-sort-by"
               value={sortBy}
               onChange={(e) => {
                 const next = e.target.value;
@@ -1072,6 +1124,22 @@ export function BuyListTab() {
               <option value="title">Title</option>
               <option value="updated_at">Last Updated</option>
               <option value="gaps_filled">Gaps Filled</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="buy-list-distributor-filter" className="block text-sm font-medium text-gray-700 mb-1">
+              Distributor
+            </label>
+            <select
+              id="buy-list-distributor-filter"
+              value={availabilityFilter}
+              onChange={(e) => setAvailabilityFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="all">All games</option>
+              <option value="unavailable">Not listed by any distributor</option>
+              <option value="no_stock">Listed, but none in stock</option>
+              <option value="in_stock">In stock somewhere</option>
             </select>
           </div>
           <div className="flex items-end">
@@ -1130,7 +1198,7 @@ export function BuyListTab() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {buyList.map((item) => (
+                {visibleBuyList.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     {editingId === item.id ? (
                       <>
@@ -1189,6 +1257,7 @@ export function BuyListTab() {
                         <td className="px-4 py-3">
                           <div className="font-medium">{item.title}</div>
                           {renderGapMatchBadges(item.gap_match)}
+                          {renderDistroAvailability(item.distro_availability)}
                         </td>
                         <td className="px-4 py-3 text-gray-600">
                           {item.notes || "-"}

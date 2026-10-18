@@ -237,3 +237,54 @@ class TestGenerateSuggestions:
         # Exact title match "Catan", and among the two exact matches the one
         # whose year is closest to the suggested year (1995) wins.
         assert results[0]["suggested_bgg_id"] == 13
+
+
+class TestAvailabilityFiltering:
+    def _parsed(self):
+        return SuggestionResponse(
+            suggestions=[
+                SuggestedGame(title="Wingspan", year=2019, category_key=None, reason="a"),
+                SuggestedGame(title="Out Of Print Game", year=2001, category_key=None, reason="b"),
+            ]
+        )
+
+    async def _run(self, db_session, availability, **kwargs):
+        mock_response = AsyncMock()
+        mock_response.parsed_output = self._parsed()
+        with patch("services.game_suggestion_service.ANTHROPIC_API_KEY", "test-key"):
+            with patch("services.game_suggestion_service.anthropic.AsyncAnthropic") as mock_client_cls:
+                parse = AsyncMock(return_value=mock_response)
+                mock_client_cls.return_value.messages.parse = parse
+                with patch("services.game_suggestion_service.search_bgg", new_callable=AsyncMock, return_value=[]):
+                    with patch(
+                        "services.game_suggestion_service.availability_for_titles", return_value=availability
+                    ):
+                        results = await generate_suggestions(db_session, **kwargs)
+        return results, parse
+
+    @pytest.mark.asyncio
+    async def test_drops_unavailable_and_overfetches(self, db_session):
+        availability = {
+            "Wingspan": {"status": "in_stock", "options": []},
+            "Out Of Print Game": {"status": "not_listed", "options": []},
+        }
+        results, parse = await self._run(db_session, availability, count=2)
+
+        assert [r["title"] for r in results] == ["Wingspan"]
+        assert results[0]["distro_availability"]["status"] == "in_stock"
+        assert "Suggest 6 board games" in parse.call_args.kwargs["messages"][0]["content"]
+
+    @pytest.mark.asyncio
+    async def test_only_available_false_keeps_everything(self, db_session):
+        availability = {
+            "Wingspan": {"status": "in_stock", "options": []},
+            "Out Of Print Game": {"status": "not_listed", "options": []},
+        }
+        results, _ = await self._run(db_session, availability, count=2, only_available=False)
+        assert len(results) == 2
+
+    @pytest.mark.asyncio
+    async def test_no_filtering_when_catalogue_unavailable(self, db_session):
+        results, _ = await self._run(db_session, None, count=2)
+        assert len(results) == 2
+        assert all(r["distro_availability"] is None for r in results)

@@ -29,6 +29,7 @@ from schemas import (
     SuggestGamesRequest,
 )
 from services.award_winners import get_award_winners
+from services.distro_availability import availability_for_titles
 from services.game_suggestion_service import SuggestionServiceError, generate_suggestions
 from services.gap_analysis import annotate_candidate, compute_library_gaps
 from services.hl_stock_matching import find_best_title_match
@@ -184,7 +185,7 @@ async def suggest_games(data: SuggestGamesRequest, db: Session = Depends(get_db)
     suggestion with no confident match still gets a BGG search link.
     """
     try:
-        suggestions = await generate_suggestions(db, count=data.count)
+        suggestions = await generate_suggestions(db, count=data.count, only_available=data.only_available)
         return {"suggestions": suggestions}
     except SuggestionServiceError as e:
         logger.warning(f"Suggestion request unavailable: {e}")
@@ -237,6 +238,12 @@ async def list_buy_list_games(
 
         buy_list_entries = db.execute(stmt).scalars().all()
         results = [build_buy_list_response(entry, gaps) for entry in buy_list_entries]
+
+        # None (not "not_listed") when the HL catalogue can't be read, so the
+        # UI doesn't present a connectivity problem as "nobody stocks this".
+        availability = availability_for_titles(r["title"] for r in results if r["title"])
+        for r in results:
+            r["distro_availability"] = availability.get(r["title"]) if availability is not None else None
 
         if sort_by == "gaps_filled":
             results.sort(key=_gaps_filled_count, reverse=sort_desc)

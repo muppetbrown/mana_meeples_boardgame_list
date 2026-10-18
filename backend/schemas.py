@@ -111,6 +111,10 @@ class SuggestGamesRequest(BaseModel):
     """Schema for requesting AI-generated 'games to add' suggestions."""
 
     count: int = Field(default=6, ge=1, le=12)
+    only_available: bool = Field(
+        default=True,
+        description="Drop suggestions that no NZ distributor in the HL catalogue lists",
+    )
 
 
 class BuyListReorderRequest(BaseModel):
