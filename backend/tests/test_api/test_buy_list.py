@@ -1149,10 +1149,10 @@ class TestManualDistroLinks:
         mock.assert_called_once_with("obsc", limit=20)
 
     def test_search_requires_auth_and_min_length(self, client, admin_headers):
-        assert client.get("/api/admin/buy-list/distro-codes/search?q=ob").status_code in (401, 403)
-        assert client.get(
-            "/api/admin/buy-list/distro-codes/search?q=o", headers=admin_headers
-        ).status_code == 422
+        unauthenticated = client.get("/api/admin/buy-list/distro-codes/search?q=ob")
+        too_short = client.get("/api/admin/buy-list/distro-codes/search?q=o", headers=admin_headers)
+        assert unauthenticated.status_code in (401, 403)
+        assert too_short.status_code == 422
 
     def test_search_503_when_hl_unavailable(self, client, admin_headers):
         with patch("api.routers.buy_list.search_distro_codes", side_effect=HLStockServiceError("nope")):
@@ -1189,16 +1189,20 @@ class TestManualDistroLinks:
         payload = {"distributor": "VR", "distro_code": "V9"}
 
         with patch("api.routers.buy_list.fetch_distro_codes_by_key", return_value=[]):
-            assert client.post(url, json=payload, headers=admin_headers).status_code == 404
+            unknown_code = client.post(url, json=payload, headers=admin_headers)
+        assert unknown_code.status_code == 404
 
         with patch("api.routers.buy_list.fetch_distro_codes_by_key", return_value=[self.ROW]), patch(
             "api.routers.buy_list.availability_for_titles", return_value=None
         ):
-            assert client.post(url, json=payload, headers=admin_headers).status_code == 200
-            assert client.post(url, json=payload, headers=admin_headers).status_code == 409
-            assert client.post(
+            first = client.post(url, json=payload, headers=admin_headers)
+            duplicate = client.post(url, json=payload, headers=admin_headers)
+            missing_game = client.post(
                 "/api/admin/buy-list/games/99999/distro-links", json=payload, headers=admin_headers
-            ).status_code == 404
+            )
+        assert first.status_code == 200
+        assert duplicate.status_code == 409
+        assert missing_game.status_code == 404
 
     def test_unlink_removes_link(self, client, db_session, admin_headers):
         from models import GameDistroLink
@@ -1213,9 +1217,11 @@ class TestManualDistroLinks:
             response = client.delete(
                 f"/api/admin/buy-list/distro-links/{link_id}", headers=admin_headers
             )
-            assert response.status_code == 200
-            assert client.delete(
+            repeat = client.delete(
                 f"/api/admin/buy-list/distro-links/{link_id}", headers=admin_headers
-            ).status_code == 404
+            )
+        assert response.status_code == 200
+        assert repeat.status_code == 404
         db_session.expire_all()
-        assert db_session.get(GameDistroLink, link_id) is None
+        remaining = db_session.get(GameDistroLink, link_id)
+        assert remaining is None
