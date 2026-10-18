@@ -11,6 +11,8 @@ import io
 from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from sqlalchemy import select
 
 from api.routers.buy_list import build_buy_list_response
@@ -792,6 +794,15 @@ def _fake_hl_item(internal_id, name, **overrides):
     return item
 
 
+@pytest.fixture(autouse=True)
+def no_bgg_enrichment():
+    """GET /hl-signals schedules a BGG lookup background task for unscored
+    products; never let a test reach the network. Tests that care patch
+    enrich_links_task themselves and assert on the mock."""
+    with patch("api.routers.buy_list.enrich_links_task", new_callable=AsyncMock) as mock:
+        yield mock
+
+
 class TestListHLStockSignals:
     """Test GET /api/admin/buy-list/hl-signals"""
 
@@ -1225,3 +1236,100 @@ class TestManualDistroLinks:
         db_session.expire_all()
         remaining = db_session.get(GameDistroLink, link_id)
         assert remaining is None
+
+
+class TestHLSignalGapRanking:
+    """GET /hl-signals orders the best sellers by library gaps filled, then sales."""
+
+    def _owned_party_games(self, db_session):
+        # 10 owned CORE_STRATEGY games make every other category a gap.
+        for i in range(10):
+            db_session.add(Game(
+                title=f"Owned {i}", bgg_id=9000 + i, status="OWNED",
+                mana_meeple_category="CORE_STRATEGY", players_min=2, players_max=4,
+                complexity=3.5, playtime_min=90, playtime_max=120,
+            ))
+        db_session.commit()
+
+    def _enriched_link(self, db_session, hl_id, name, units, **bgg):
+        db_session.add(HLStockLink(
+            hl_internal_id=hl_id, hl_product_name=name, hl_units_sold=units,
+            hl_current_stock=1, last_synced_at=datetime.now(),
+            bgg_id=hl_id, bgg_title=name, bgg_match_score=95.0,
+            bgg_enriched_at=datetime.now(), **bgg,
+        ))
+        db_session.commit()
+
+    def test_higher_gap_fit_beats_higher_sales(self, client, db_session, admin_headers):
+        self._owned_party_games(db_session)
+        # Slow seller that fills several gaps vs. bestseller that fills none.
+        self._enriched_link(
+            db_session, 1, "Party Hit", units=2, bgg_category="PARTY_ICEBREAKERS",
+            bgg_players_min=6, bgg_players_max=12, bgg_complexity=1.2,
+            bgg_playtime_min=15, bgg_playtime_max=30,
+        )
+        self._enriched_link(
+            db_session, 2, "Another Heavy", units=50, bgg_category="CORE_STRATEGY",
+            bgg_players_min=2, bgg_players_max=4, bgg_complexity=3.8,
+            bgg_playtime_min=90, bgg_playtime_max=150,
+        )
+        fake_items = [_fake_hl_item(1, "Party Hit", units_sold=2), _fake_hl_item(2, "Another Heavy", units_sold=50)]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            data = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers).json()
+
+        assert [i["hl_product_name"] for i in data["items"]] == ["Party Hit", "Another Heavy"]
+        top, bottom = data["items"][0]["fit"], data["items"][1]["fit"]
+        assert top["source"] == "bgg" and top["gaps_filled"] > bottom["gaps_filled"]
+        assert top["bgg"]["title"] == "Party Hit"
+
+    def test_equal_fit_falls_back_to_sales(self, client, db_session, admin_headers):
+        self._owned_party_games(db_session)
+        for hl_id, units in ((1, 5), (2, 30)):
+            self._enriched_link(
+                db_session, hl_id, f"Game {hl_id}", units=units, bgg_category="CORE_STRATEGY",
+                bgg_players_min=2, bgg_players_max=4, bgg_complexity=3.8,
+                bgg_playtime_min=90, bgg_playtime_max=150,
+            )
+        fake_items = [_fake_hl_item(1, "Game 1", units_sold=5), _fake_hl_item(2, "Game 2", units_sold=30)]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            data = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers).json()
+        assert [i["hl_internal_id"] for i in data["items"]] == [2, 1]
+
+    def test_unscored_rank_after_scored_and_enrichment_scheduled(
+        self, client, db_session, admin_headers, no_bgg_enrichment
+    ):
+        self._owned_party_games(db_session)
+        self._enriched_link(
+            db_session, 1, "Scored", units=1, bgg_category="PARTY_ICEBREAKERS",
+            bgg_players_min=6, bgg_players_max=12, bgg_complexity=1.2,
+            bgg_playtime_min=15, bgg_playtime_max=30,
+        )
+        fake_items = [
+            _fake_hl_item(1, "Scored", units_sold=1),
+            _fake_hl_item(2, "Unscored Bestseller", units_sold=99),
+        ]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            data = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers).json()
+
+        assert [i["hl_internal_id"] for i in data["items"]] == [1, 2]
+        assert data["items"][1]["fit"] == {
+            "scored": False, "source": None, "gaps_filled": None, "gap_match": None, "bgg": None,
+        }
+        assert data["scoring_pending"] == 1
+        no_bgg_enrichment.assert_called_once_with([2])
+
+    def test_library_linked_game_scored_from_the_game(self, client, db_session, admin_headers):
+        self._owned_party_games(db_session)
+        wishlist = Game(
+            title="Wishlist Party", bgg_id=5, status="WISHLIST", mana_meeple_category="PARTY_ICEBREAKERS",
+            players_min=6, players_max=12, complexity=1.2, playtime_min=15, playtime_max=30,
+        )
+        db_session.add(wishlist)
+        db_session.commit()
+        fake_items = [_fake_hl_item(1, "Wishlist Party", units_sold=3)]
+        with patch("api.routers.buy_list.fetch_hl_board_game_signals", return_value=fake_items):
+            data = client.get("/api/admin/buy-list/hl-signals", headers=admin_headers).json()
+
+        fit = data["items"][0]["fit"]
+        assert fit["source"] == "library" and fit["gaps_filled"] >= 1
+        assert data["scoring_pending"] == 0

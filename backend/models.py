@@ -231,6 +231,20 @@ class HLStockLink(Base):
     hl_last_sale_date = Column(Date, nullable=True)
     hl_approx_revenue = Column(Numeric(10, 2), nullable=True)
     match_confidence = Column(Float, nullable=True)  # fuzzy score at last auto-match; null once manually linked/dismissed
+    # BGG lookup cache for products with no library game, so they can be scored
+    # against the library's gaps (services/hl_signal_fit.py). bgg_enriched_at set
+    # with bgg_id null means "looked up, no confident match" (retried after a while).
+    bgg_id = Column(Integer, nullable=True)
+    bgg_title = Column(String(255), nullable=True)
+    bgg_year = Column(Integer, nullable=True)
+    bgg_match_score = Column(Float, nullable=True)
+    bgg_players_min = Column(Integer, nullable=True)
+    bgg_players_max = Column(Integer, nullable=True)
+    bgg_playtime_min = Column(Integer, nullable=True)
+    bgg_playtime_max = Column(Integer, nullable=True)
+    bgg_complexity = Column(Float, nullable=True)
+    bgg_category = Column(String(50), nullable=True)
+    bgg_enriched_at = Column(DateTime, nullable=True)
     last_synced_at = Column(DateTime, default=utc_now, nullable=False)
     created_at = Column(DateTime, default=utc_now, nullable=False)
     updated_at = Column(DateTime, default=utc_now, onupdate=utc_now, nullable=False)
