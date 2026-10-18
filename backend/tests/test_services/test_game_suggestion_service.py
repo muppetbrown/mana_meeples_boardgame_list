@@ -288,3 +288,63 @@ class TestAvailabilityFiltering:
         results, _ = await self._run(db_session, None, count=2)
         assert len(results) == 2
         assert all(r["distro_availability"] is None for r in results)
+
+
+class TestUnusableResponses:
+    """An unusable Claude response must surface as an error, not as 'no suggestions'."""
+
+    async def _run(self, db_session, *, parse_result=None, parse_error=None, availability=None, **kwargs):
+        with patch("services.game_suggestion_service.ANTHROPIC_API_KEY", "test-key"):
+            with patch("services.game_suggestion_service.anthropic.AsyncAnthropic") as mock_client_cls:
+                parse = AsyncMock(return_value=parse_result, side_effect=parse_error)
+                mock_client_cls.return_value.messages.parse = parse
+                with patch("services.game_suggestion_service.search_bgg", new_callable=AsyncMock, return_value=[]):
+                    with patch(
+                        "services.game_suggestion_service.availability_for_titles", return_value=availability
+                    ):
+                        return await generate_suggestions(db_session, **kwargs), parse
+
+    @pytest.mark.asyncio
+    async def test_no_parsed_output_raises_with_stop_reason(self, db_session):
+        response = AsyncMock()
+        response.parsed_output = None
+        response.stop_reason = "max_tokens"
+        response.usage.output_tokens = 4096
+
+        with pytest.raises(SuggestionServiceError, match="max_tokens"):
+            await self._run(db_session, parse_result=response, count=3)
+
+    @pytest.mark.asyncio
+    async def test_truncated_json_raises_friendly_error(self, db_session):
+        from pydantic import ValidationError
+
+        try:
+            SuggestionResponse.model_validate_json('{"suggestions": [{"title": "Wing')
+        except ValidationError as e:
+            error = e
+
+        with pytest.raises(SuggestionServiceError, match="cut off or malformed"):
+            await self._run(db_session, parse_error=error, count=3)
+
+    @pytest.mark.asyncio
+    async def test_everything_filtered_out_raises_instead_of_returning_empty(self, db_session):
+        response = AsyncMock()
+        response.parsed_output = SuggestionResponse(
+            suggestions=[SuggestedGame(title="Out Of Print Game", year=2001, category_key=None, reason="x")]
+        )
+        availability = {"Out Of Print Game": {"status": "not_listed", "options": []}}
+
+        with pytest.raises(SuggestionServiceError, match="None of the 1 games"):
+            await self._run(db_session, parse_result=response, availability=availability, count=3)
+
+    @pytest.mark.asyncio
+    async def test_request_leaves_room_for_thinking(self, db_session):
+        response = AsyncMock()
+        response.parsed_output = SuggestionResponse(
+            suggestions=[SuggestedGame(title="Wingspan", year=2019, category_key=None, reason="x")]
+        )
+        _, parse = await self._run(db_session, parse_result=response, count=1)
+
+        kwargs = parse.call_args.kwargs
+        assert kwargs["max_tokens"] >= 16000
+        assert kwargs["output_config"] == {"effort": "low"}
