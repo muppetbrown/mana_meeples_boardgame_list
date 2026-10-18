@@ -1125,6 +1125,59 @@ describe('BuyListTab', () => {
       linked_game: { id: 77, title: 'Wingspan: European Expansion', status: 'WISHLIST', bgg_id: 266192 },
     };
 
+    test('shows gap fit and the BGG match used to score it', async () => {
+      const scored = {
+        ...unmatchedSignal,
+        fit: {
+          scored: true,
+          source: 'bgg',
+          gaps_filled: 2,
+          gap_match: {
+            category_is_gap: true,
+            matching_player_count_gaps: [],
+            complexity_is_gap: true,
+            playtime_is_gap: false,
+          },
+          bgg: { bgg_id: 321, title: 'Completely New Game', year: 2024, match_score: 88.4 },
+        },
+      };
+      apiClient.getHLStockSignals.mockResolvedValue({ items: [scored], scoring_pending: 0 });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('🔄 Check HL Stock'));
+
+      expect(await screen.findByText('Fills 2 gaps')).toBeInTheDocument();
+      const card = screen.getByText('Completely New Game', { selector: 'div' }).closest('.border');
+      expect(within(card).getByText('Fills category gap')).toBeInTheDocument();
+      expect(within(card).getByText('Fills complexity gap')).toBeInTheDocument();
+      const bggLink = within(card).getByRole('link', { name: 'Completely New Game (2024)' });
+      expect(bggLink).toHaveAttribute('href', 'https://boardgamegeek.com/boardgame/321');
+      expect(within(card).getByText(/88% name match/)).toBeInTheDocument();
+    });
+
+    test('unscored items and pending lookups are flagged', async () => {
+      const unscored = {
+        ...unmatchedSignal,
+        fit: { scored: false, source: null, gaps_filled: null, gap_match: null, bgg: null },
+      };
+      const noFit = {
+        ...linkedSignal,
+        fit: { scored: true, source: 'library', gaps_filled: 0, gap_match: null, bgg: null },
+      };
+      apiClient.getHLStockSignals.mockResolvedValue({ items: [unscored, noFit], scoring_pending: 3 });
+      const user = userEvent.setup();
+      render(<BuyListTab />);
+      await waitFor(() => expect(screen.getByText('Test Game')).toBeInTheDocument());
+
+      await user.click(screen.getByText('🔄 Check HL Stock'));
+
+      expect(await screen.findByText(/Looking up 3 more games on BoardGameGeek/)).toBeInTheDocument();
+      expect(screen.getByText('Not scored yet')).toBeInTheDocument();
+      expect(screen.getByText("Doesn't fill any current gaps")).toBeInTheDocument();
+    });
+
     test('checking HL stock renders matched and unmatched candidates', async () => {
       apiClient.getHLStockSignals.mockResolvedValue({ items: [unmatchedSignal, linkedSignal] });
       const user = userEvent.setup();

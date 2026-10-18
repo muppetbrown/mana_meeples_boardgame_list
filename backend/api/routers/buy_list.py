@@ -33,6 +33,7 @@ from services.award_winners import get_award_winners
 from services.distro_availability import apply_manual_links, availability_for_titles
 from services.game_suggestion_service import SuggestionServiceError, generate_suggestions
 from services.gap_analysis import annotate_candidate, compute_library_gaps
+from services.hl_signal_fit import SCORING_POOL_SIZE, enrich_links_task, fit_for_link, needs_bgg_lookup
 from services.hl_stock_matching import find_best_title_match
 from services.hl_stock_service import (
     HLStockServiceError,
@@ -593,8 +594,11 @@ async def unlink_game_distro_code(link_id: int, db: Session = Depends(get_db)):
 # ------------------------------------------------------------------------------
 
 
-def _build_hl_signal_response(link: HLStockLink, game: Optional[Game]) -> Dict[str, Any]:
+def _build_hl_signal_response(
+    link: HLStockLink, game: Optional[Game], fit: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
     return {
+        "fit": fit,
         "hl_internal_id": link.hl_internal_id,
         "hl_product_name": link.hl_product_name,
         "current_stock": link.hl_current_stock,
@@ -612,19 +616,25 @@ def _build_hl_signal_response(link: HLStockLink, game: Optional[Game]) -> Dict[s
 
 @router.get("/hl-signals", dependencies=[Depends(require_admin_auth)])
 async def list_hl_stock_signals(
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    limit: int = Query(10, ge=1, le=50, description="Max candidates to return, best-selling first"),
+    limit: int = Query(10, ge=1, le=50, description="Max candidates to return, best fit first"),
 ):
     """
     Board games selling well / sitting in stock at HL Timaru that aren't yet
     in this library - a demand signal for what to add. Reads live from HL's
     retail database, upserts hl_stock_links (fuzzy-matching any newly-seen
     product against this library's titles), and returns the top `limit`
-    (by units sold) that aren't dismissed and aren't already owned or already
-    on this buy list - those are already tracked, so resurfacing them here
-    would be noise. Every fetched product still gets synced/matched
-    regardless of the display limit, so hl_stock_links stays current even
-    for candidates outside the top N.
+    that aren't dismissed and aren't already owned or already on this buy
+    list - those are already tracked, so resurfacing them here would be noise.
+    Every fetched product still gets synced/matched regardless of the display
+    limit, so hl_stock_links stays current even for candidates outside the top N.
+
+    Ranking: among the best sellers (SCORING_POOL_SIZE), most library gaps
+    filled first, then units sold. Products with no library game are scored
+    from a cached BGG lookup (services/hl_signal_fit.py), which runs in the
+    background - until it lands they're unscored and rank after scored ones;
+    `scoring_pending` says how many are still waiting, so refresh again shortly.
     """
     try:
         hl_items = fetch_hl_board_game_signals()
@@ -633,7 +643,8 @@ async def list_hl_stock_signals(
         raise HTTPException(status_code=503, detail=str(e))
 
     now = datetime.now(timezone.utc)
-    results = []
+    candidates: list = []
+    to_enrich: list = []
 
     try:
         for item in hl_items:
@@ -684,17 +695,28 @@ async def list_hl_stock_signals(
                 if already_queued:
                     continue
 
-            results.append(_build_hl_signal_response(link, game))
+            candidates.append((link, game))
 
         db.commit()
+
+        candidates.sort(key=lambda c: c[0].hl_units_sold or 0, reverse=True)
+        pool = candidates[: max(SCORING_POOL_SIZE, limit)]
+
+        gaps = compute_library_gaps(db)
+        results = [_build_hl_signal_response(link, game, fit_for_link(link, game, gaps)) for link, game in pool]
+        # Python's sort is stable, so sales order (set above) breaks gap ties.
+        results.sort(key=lambda r: r["fit"]["gaps_filled"] if r["fit"]["scored"] else -1, reverse=True)
+
+        to_enrich = [link.hl_internal_id for link, _ in pool if needs_bgg_lookup(link)]
+        if to_enrich:
+            background_tasks.add_task(enrich_links_task, to_enrich)
     except Exception as e:
         logger.error(f"Error syncing HL stock signals: {e}")
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to sync HL stock signals")
 
-    results.sort(key=lambda r: r["units_sold"] or 0, reverse=True)
     results = results[:limit]
-    return {"total": len(results), "items": results}
+    return {"total": len(results), "scoring_pending": len(to_enrich), "items": results}
 
 
 @router.post("/hl-signals/{hl_internal_id}/link", dependencies=[Depends(require_admin_auth)])

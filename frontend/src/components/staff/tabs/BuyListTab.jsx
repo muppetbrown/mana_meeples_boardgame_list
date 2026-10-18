@@ -75,6 +75,7 @@ export function BuyListTab() {
   const [suggestError, setSuggestError] = useState(null);
   const [addingSuggestionId, setAddingSuggestionId] = useState(null);
   const [hlSignals, setHlSignals] = useState([]);
+  const [hlScoringPending, setHlScoringPending] = useState(0);
   const [hlLoading, setHlLoading] = useState(false);
   const [hlError, setHlError] = useState(null);
   const [hlActionId, setHlActionId] = useState(null);
@@ -401,6 +402,7 @@ export function BuyListTab() {
     try {
       const data = await getHLStockSignals();
       setHlSignals(data.items || []);
+      setHlScoringPending(data.scoring_pending || 0);
     } catch (err) {
       console.error("Failed to load HL stock signals:", err);
       setHlError(err.response?.data?.detail || "Failed to check HL Timaru stock");
@@ -911,7 +913,8 @@ export function BuyListTab() {
           <div>
             <h3 className="text-lg font-semibold">Selling Well at HL Timaru</h3>
             <p className="text-sm text-gray-600 mt-1">
-              Board games selling or in stock at the HL Timaru store that aren't yet owned or on this list.
+              Board games selling or in stock at the HL Timaru store that aren't yet owned or on this list,
+              ranked by how many of your collection's gaps they would fill, then by units sold.
             </p>
           </div>
           <button
@@ -935,6 +938,13 @@ export function BuyListTab() {
           </p>
         )}
 
+        {hlScoringPending > 0 && (
+          <p role="status" className="mb-3 text-sm text-cyan-800 bg-cyan-50 border border-cyan-200 rounded-lg p-3">
+            Looking up {hlScoringPending} more game{hlScoringPending === 1 ? "" : "s"} on BoardGameGeek to score
+            them against your gaps. Refresh in a minute or two to re-rank.
+          </p>
+        )}
+
         {hlSignals.length > 0 && (
           <div className="grid md:grid-cols-2 gap-3">
             {hlSignals.map((item) => {
@@ -950,6 +960,37 @@ export function BuyListTab() {
                       {item.units_sold ?? 0} sold · {item.current_stock ?? 0} in stock
                       {item.last_sale_date ? ` · last sale ${item.last_sale_date}` : ""}
                     </p>
+                    {item.fit?.scored ? (
+                      <div className="mt-1">
+                        {item.fit.gaps_filled > 0 ? (
+                          <>
+                            <span className="inline-block mr-1 px-2 py-0.5 text-xs font-semibold rounded-full bg-cyan-100 text-cyan-800">
+                              Fills {item.fit.gaps_filled} gap{item.fit.gaps_filled === 1 ? "" : "s"}
+                            </span>
+                            {renderGapMatchBadges(item.fit.gap_match)}
+                          </>
+                        ) : (
+                          <span className="text-xs text-gray-500">Doesn't fill any current gaps</span>
+                        )}
+                        {item.fit.source === "bgg" && item.fit.bgg && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Scored from BGG:{" "}
+                            <a
+                              href={`https://boardgamegeek.com/boardgame/${item.fit.bgg.bgg_id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline"
+                            >
+                              {item.fit.bgg.title}
+                              {item.fit.bgg.year ? ` (${item.fit.bgg.year})` : ""}
+                            </a>{" "}
+                            · {Math.round(item.fit.bgg.match_score)}% name match — check it's the right game
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-gray-500 mt-1">Not scored yet</p>
+                    )}
                     <p className="text-xs mt-2">
                       {matched ? (
                         <span className="text-green-700">
