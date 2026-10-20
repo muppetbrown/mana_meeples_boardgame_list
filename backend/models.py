@@ -295,6 +295,10 @@ class SleeveProduct(Base):
     name = Column(String(300), nullable=False)  # Product name
     width_mm = Column(Numeric(6, 2), nullable=False)  # Sleeve inner width
     height_mm = Column(Numeric(6, 2), nullable=False)  # Sleeve inner height
+    # Some sleeves are sold by the card size they fit (e.g. a 59x91 sleeve "fits cards up to 57x89").
+    # When set, these are used for matching instead of width_mm/height_mm.
+    card_width_mm = Column(Numeric(6, 2), nullable=True)
+    card_height_mm = Column(Numeric(6, 2), nullable=True)
     sleeves_per_pack = Column(Integer, nullable=False)  # Sleeves in one pack
     price = Column(Numeric(10, 2), nullable=False)  # Price per pack
     in_stock = Column(Integer, nullable=False, default=0)  # Individual sleeves in stock

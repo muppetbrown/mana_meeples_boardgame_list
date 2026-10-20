@@ -88,3 +88,17 @@ def test_exact_size_match_59x91(db_session):
     assert [m.id for m in find_matching_products(59, 91, db_session)] == [exact.id]
     from services.sleeve_matching import pick_best_product
     assert pick_best_product([exact], 59, 91).id == exact.id
+
+
+def test_fits_card_size_used_for_matching(db_session):
+    # Sleeve is 59x91 but rated for cards up to 57x89
+    p = _product(db_session, "Fits 57x89", 59, 91)
+    p.card_width_mm = 57
+    p.card_height_mm = 89
+    db_session.commit()
+    assert [m.id for m in find_matching_products(57, 89, db_session)] == [p.id]
+    # The sleeve's own size no longer counts as the card size it fits
+    assert find_matching_products(59, 91, db_session) == []
+    from services.sleeve_matching import pick_best_product
+    assert pick_best_product([p], 57, 89).id == p.id
+    assert pick_best_product([p], 59, 91) is None

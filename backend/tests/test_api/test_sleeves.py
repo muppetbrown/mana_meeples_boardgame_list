@@ -718,3 +718,41 @@ class TestSleeveEditAndRematch:
                    json={"width_mm": 59, "height_mm": 91})
         got = client.get(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers).json()
         assert got[0]["matched_product_id"] == product["id"]
+
+
+class TestProductFitsCardSize:
+    def test_fits_card_size_round_trips_and_drives_matching(self, client, db_session, admin_headers):
+        game = Game(title="Moon Colony Bloodbath", bgg_id=2)
+        db_session.add(game)
+        db_session.commit()
+        r = client.post("/api/admin/sleeves/products", headers=admin_headers, json={
+            "distributor": "D", "name": "Euro 59x91", "width_mm": 59, "height_mm": 91,
+            "card_width_mm": 57, "card_height_mm": 89, "sleeves_per_pack": 100, "price": 5, "in_stock": 100,
+        })
+        assert r.status_code == 200
+        product = r.json()
+        assert product["card_width_mm"] == 57 and product["card_height_mm"] == 89
+
+        fits = client.post(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers,
+                           json={"width_mm": 57, "height_mm": 89, "quantity": 10}).json()
+        assert fits["matched_product_id"] == product["id"]
+        too_big = client.post(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers,
+                              json={"width_mm": 59, "height_mm": 91, "quantity": 10}).json()
+        assert too_big["matched_product_id"] is None
+
+    def test_clearing_fits_card_size_falls_back_to_sleeve_size(self, client, db_session, admin_headers):
+        game = Game(title="G", bgg_id=3)
+        db_session.add(game)
+        db_session.commit()
+        product = client.post("/api/admin/sleeves/products", headers=admin_headers, json={
+            "distributor": "D", "name": "P", "width_mm": 59, "height_mm": 91,
+            "card_width_mm": 57, "card_height_mm": 89, "sleeves_per_pack": 100, "price": 5,
+        }).json()
+        sleeve = client.post(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers,
+                             json={"width_mm": 59, "height_mm": 91, "quantity": 5}).json()
+        assert sleeve["matched_product_id"] is None
+        r = client.put(f"/api/admin/sleeves/products/{product['id']}", headers=admin_headers,
+                       json={"card_width_mm": None, "card_height_mm": None})
+        assert r.json()["card_width_mm"] is None
+        got = client.get(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers).json()
+        assert got[0]["matched_product_id"] == product["id"]

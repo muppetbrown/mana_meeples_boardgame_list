@@ -148,6 +148,27 @@ describe('SleeveInventoryTab', () => {
     );
   });
 
+  test('add form sends optional fits-card size', async () => {
+    const user = userEvent.setup();
+    apiClient.createSleeveProduct.mockResolvedValue({});
+    render(<SleeveInventoryTab />);
+    await user.click(await screen.findByText('+ Add Product'));
+    await user.type(screen.getByLabelText('Distributor *'), 'Dist');
+    await user.type(screen.getByLabelText('Product name *'), 'Euro');
+    await user.type(screen.getByLabelText('Sleeve width (mm) *'), '59');
+    await user.type(screen.getByLabelText('Sleeve height (mm) *'), '91');
+    await user.type(screen.getByLabelText('Fits card width (mm)'), '57');
+    await user.type(screen.getByLabelText('Fits card height (mm)'), '89');
+    await user.type(screen.getByLabelText('Sleeves per pack *'), '50');
+    await user.type(screen.getByLabelText('Price per pack ($) *'), '4');
+    await user.click(screen.getByRole('button', { name: 'Add Product' }));
+    await waitFor(() =>
+      expect(apiClient.createSleeveProduct).toHaveBeenCalledWith(
+        expect.objectContaining({ width_mm: 59, height_mm: 91, card_width_mm: 57, card_height_mm: 89 })
+      )
+    );
+  });
+
   test('edit can correct a product size and name', async () => {
     const user = userEvent.setup();
     apiClient.updateSleeveProduct.mockResolvedValue({});
