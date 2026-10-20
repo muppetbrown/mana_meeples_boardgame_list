@@ -81,3 +81,10 @@ def test_to_order_keeps_unmatched_sizes_separate(db_session):
     assert len(rows) == 2
     assert all(r["product"] is None for r in rows)
     assert sorted(r["deficit"] for r in rows) == [5, 7]
+
+
+def test_exact_size_match_59x91(db_session):
+    exact = _product(db_session, "Exact", 59, 91)
+    assert [m.id for m in find_matching_products(59, 91, db_session)] == [exact.id]
+    from services.sleeve_matching import pick_best_product
+    assert pick_best_product([exact], 59, 91).id == exact.id

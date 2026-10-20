@@ -13,6 +13,30 @@ import {
   updateSleeveStatus,
 } from "../../../api/client";
 
+function ProductFields({ form, setForm, idPrefix }) {
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const input = "w-full border rounded px-3 py-2 text-sm";
+  const field = (key, label, props = {}, wrap = "") => (
+    <div className={wrap}>
+      <label htmlFor={`${idPrefix}-${key}`} className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+      <input id={`${idPrefix}-${key}`} value={form[key]} onChange={set(key)} className={input} {...props} />
+    </div>
+  );
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {field("distributor", "Distributor *", { required: true, placeholder: "e.g. Asmodee" })}
+      {field("item_id", "SKU / Item ID", { placeholder: "Optional" })}
+      {field("name", "Product name *", { required: true, placeholder: "e.g. Standard Card Game 59x91" }, "col-span-2")}
+      {field("width_mm", "Sleeve width (mm) *", { required: true, type: "number", min: "1", step: "any", placeholder: "e.g. 59" })}
+      {field("height_mm", "Sleeve height (mm) *", { required: true, type: "number", min: "1", step: "any", placeholder: "e.g. 91" })}
+      {field("sleeves_per_pack", "Sleeves per pack *", { required: true, type: "number", min: "1", placeholder: "e.g. 50" })}
+      {field("price", "Price per pack ($) *", { required: true, type: "number", min: "0", step: "0.01", placeholder: "e.g. 4.50" })}
+      {field("in_stock", "In stock (individual sleeves)", { type: "number", min: "0" })}
+      {field("ordered", "On order (packs)", { type: "number", min: "0" })}
+    </div>
+  );
+}
+
 /**
  * Sleeve Inventory tab - Manage sleeve products, view to-order and ready-to-sleeve lists
  */
@@ -119,7 +143,7 @@ export function SleeveInventoryTab() {
         in_stock: parseInt(addForm.in_stock) || 0,
         ordered: parseInt(addForm.ordered) || 0,
       });
-      showMessage("Product added");
+      showMessage("Product added and sleeves re-matched");
       setShowAddForm(false);
       setAddForm({ distributor: "", item_id: "", name: "", width_mm: "", height_mm: "", sleeves_per_pack: "", price: "", in_stock: "0", ordered: "0" });
       loadProducts();
@@ -131,21 +155,33 @@ export function SleeveInventoryTab() {
   const startEdit = (product) => {
     setEditingId(product.id);
     setEditForm({
+      distributor: product.distributor || "",
+      item_id: product.item_id || "",
+      name: product.name || "",
+      width_mm: String(product.width_mm),
+      height_mm: String(product.height_mm),
+      sleeves_per_pack: String(product.sleeves_per_pack),
+      price: String(product.price),
       in_stock: String(product.in_stock),
       ordered: String(product.ordered),
-      price: String(product.price),
     });
   };
 
   const handleSaveEdit = async (productId) => {
     try {
-      const update = {};
-      if (editForm.in_stock !== undefined) update.in_stock = parseInt(editForm.in_stock);
-      if (editForm.ordered !== undefined) update.ordered = parseInt(editForm.ordered);
-      if (editForm.price !== undefined) update.price = parseFloat(editForm.price);
-      await updateSleeveProduct(productId, update);
+      await updateSleeveProduct(productId, {
+        distributor: editForm.distributor,
+        item_id: editForm.item_id || null,
+        name: editForm.name,
+        width_mm: parseFloat(editForm.width_mm),
+        height_mm: parseFloat(editForm.height_mm),
+        sleeves_per_pack: parseInt(editForm.sleeves_per_pack, 10),
+        price: parseFloat(editForm.price),
+        in_stock: parseInt(editForm.in_stock, 10) || 0,
+        ordered: parseInt(editForm.ordered, 10) || 0,
+      });
       setEditingId(null);
-      showMessage("Product updated");
+      showMessage("Product updated and sleeves re-matched");
       loadProducts();
     } catch (err) {
       showMessage("Failed to update product", "error");
@@ -444,52 +480,46 @@ function ProductInventorySection({
               </tr>
             </thead>
             <tbody className="divide-y">
-              {items.map((p) => (
+              {items.map((p) => editingId === p.id ? (
+                <tr key={p.id} className="bg-blue-50">
+                  <td colSpan={9} className="px-3 py-3">
+                    <div className="space-y-3">
+                      <ProductFields form={editForm} setForm={setEditForm} idPrefix={`edit-product-${p.id}`} />
+                      <div className="text-xs text-gray-500">
+                        On order = {parseInt(editForm.ordered || 0, 10) * (parseInt(editForm.sleeves_per_pack, 10) || p.sleeves_per_pack)} sleeves.
+                        Changing size re-runs matching for all unsleeved cards.
+                      </div>
+                      <div className="space-x-2">
+                        <button onClick={() => handleSaveEdit(p.id)} className="px-3 py-1.5 bg-green-600 text-white rounded text-sm hover:bg-green-700">Save changes</button>
+                        <button onClick={() => setEditingId(null)} className="px-3 py-1.5 bg-gray-300 rounded text-sm hover:bg-gray-400">Cancel</button>
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-3 py-2">{p.distributor}</td>
                   <td className="px-3 py-2 font-mono text-xs">{p.item_id || "—"}</td>
                   <td className="px-3 py-2 font-medium">{p.name}</td>
                   <td className="px-3 py-2 text-center font-mono">{p.width_mm} x {p.height_mm}</td>
                   <td className="px-3 py-2 text-right">{p.sleeves_per_pack}</td>
-
-                  {editingId === p.id ? (
-                    <>
-                      <td className="px-3 py-2 text-right">
-                        <input type="number" step="0.01" value={editForm.price} onChange={(e) => setEditForm({ ...editForm, price: e.target.value })} className="w-20 border rounded px-1 py-0.5 text-right text-sm" />
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <input type="number" value={editForm.in_stock} onChange={(e) => setEditForm({ ...editForm, in_stock: e.target.value })} className="w-20 border rounded px-1 py-0.5 text-right text-sm" />
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        <input type="number" value={editForm.ordered} onChange={(e) => setEditForm({ ...editForm, ordered: e.target.value })} className="w-20 border rounded px-1 py-0.5 text-right text-sm" />
-                        <div className="text-xs text-gray-400">= {parseInt(editForm.ordered || 0) * p.sleeves_per_pack} sleeves</div>
-                      </td>
-                      <td className="px-3 py-2 text-center space-x-1 whitespace-nowrap">
-                        <button onClick={() => handleSaveEdit(p.id)} className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700">Save</button>
-                        <button onClick={() => setEditingId(null)} className="px-2 py-1 bg-gray-300 rounded text-xs hover:bg-gray-400">Cancel</button>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td className="px-3 py-2 text-right">${p.price.toFixed(2)}</td>
-                      <td className="px-3 py-2 text-right">
-                        <span className={p.in_stock > 0 ? "text-green-700 font-semibold" : "text-gray-400"}>
-                          {p.in_stock}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-right">
-                        {p.ordered > 0 ? (
-                          <span className="text-blue-600">{p.ordered} pks ({p.ordered_sleeves})</span>
-                        ) : (
-                          <span className="text-gray-400">—</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-center space-x-1 whitespace-nowrap">
-                        <button onClick={() => startEdit(p)} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">Edit</button>
-                        <button onClick={() => handleDeleteProduct(p.id, p.name)} className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200">Del</button>
-                      </td>
-                    </>
-                  )}
+                  <td className="px-3 py-2 text-right">${p.price.toFixed(2)}</td>
+                  <td className="px-3 py-2 text-right">
+                    <span className={p.in_stock > 0 ? "text-green-700 font-semibold" : "text-gray-400"}>
+                      {p.in_stock}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    {p.ordered > 0 ? (
+                      <span className="text-blue-600">{p.ordered} pks ({p.ordered_sleeves})</span>
+                    ) : (
+                      <span className="text-gray-400">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-center space-x-1 whitespace-nowrap">
+                    <button onClick={() => startEdit(p)} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">Edit</button>
+                    <button onClick={() => handleDeleteProduct(p.id, p.name)} className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200">Del</button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -513,17 +543,7 @@ function ProductInventorySection({
       {showAddForm && (
         <form onSubmit={handleAddProduct} className="p-4 bg-gray-50 rounded-lg border space-y-3">
           <h3 className="font-semibold text-sm uppercase text-gray-600">New Sleeve Product</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <input placeholder="Distributor *" required value={addForm.distributor} onChange={(e) => setAddForm({ ...addForm, distributor: e.target.value })} className="border rounded px-3 py-2 text-sm" />
-            <input placeholder="Item ID / SKU" value={addForm.item_id} onChange={(e) => setAddForm({ ...addForm, item_id: e.target.value })} className="border rounded px-3 py-2 text-sm" />
-            <input placeholder="Product Name *" required value={addForm.name} onChange={(e) => setAddForm({ ...addForm, name: e.target.value })} className="border rounded px-3 py-2 text-sm col-span-2" />
-            <input placeholder="Width (mm) *" required type="number" min="1" step="any" value={addForm.width_mm} onChange={(e) => setAddForm({ ...addForm, width_mm: e.target.value })} className="border rounded px-3 py-2 text-sm" />
-            <input placeholder="Height (mm) *" required type="number" min="1" step="any" value={addForm.height_mm} onChange={(e) => setAddForm({ ...addForm, height_mm: e.target.value })} className="border rounded px-3 py-2 text-sm" />
-            <input placeholder="Sleeves/Pack *" required type="number" min="1" value={addForm.sleeves_per_pack} onChange={(e) => setAddForm({ ...addForm, sleeves_per_pack: e.target.value })} className="border rounded px-3 py-2 text-sm" />
-            <input placeholder="Price/Pack *" required type="number" step="0.01" min="0" value={addForm.price} onChange={(e) => setAddForm({ ...addForm, price: e.target.value })} className="border rounded px-3 py-2 text-sm" />
-            <input placeholder="In Stock (sleeves)" type="number" min="0" value={addForm.in_stock} onChange={(e) => setAddForm({ ...addForm, in_stock: e.target.value })} className="border rounded px-3 py-2 text-sm" />
-            <input placeholder="Ordered (packs)" type="number" min="0" value={addForm.ordered} onChange={(e) => setAddForm({ ...addForm, ordered: e.target.value })} className="border rounded px-3 py-2 text-sm" />
-          </div>
+          <ProductFields form={addForm} setForm={setAddForm} idPrefix="add-product" />
           <button type="submit" className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium">
             Add Product
           </button>

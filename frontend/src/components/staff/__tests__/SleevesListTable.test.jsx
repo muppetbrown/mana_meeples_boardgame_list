@@ -12,6 +12,7 @@ vi.mock('../../../api/client', () => ({
   getGameSleeves: vi.fn(),
   updateSleeveStatus: vi.fn(),
   createGameSleeve: vi.fn(),
+  updateGameSleeve: vi.fn(),
   deleteGameSleeve: vi.fn(),
   updateGameSleeveStatus: vi.fn(),
 }));
@@ -459,8 +460,8 @@ describe('SleevesListTable', () => {
 
       await user.click(await screen.findByText('+ Add Sleeve Requirement'));
 
-      const width = screen.getByPlaceholderText('Width (mm)');
-      const height = screen.getByPlaceholderText('Height (mm)');
+      const width = screen.getByLabelText('Card width (mm)');
+      const height = screen.getByLabelText('Card height (mm)');
 
       // Decimal sizes must be accepted by the inputs (step="any")
       expect(width).toHaveAttribute('step', 'any');
@@ -468,7 +469,7 @@ describe('SleevesListTable', () => {
 
       await user.type(width, '63.5');
       await user.type(height, '88.9');
-      await user.type(screen.getByPlaceholderText('Quantity'), '60');
+      await user.type(screen.getByLabelText('Number of cards'), '60');
       await user.click(screen.getByRole('button', { name: 'Save' }));
 
       await waitFor(() => {
@@ -485,13 +486,65 @@ describe('SleevesListTable', () => {
       render(<SleevesListTable gameId={1} onSleeveUpdate={mockOnSleeveUpdate} />);
 
       await user.click(await screen.findByText('+ Add Sleeve Requirement'));
-      await user.type(screen.getByPlaceholderText('Width (mm)'), '0');
-      await user.type(screen.getByPlaceholderText('Height (mm)'), '88');
-      await user.type(screen.getByPlaceholderText('Quantity'), '10');
+      await user.type(screen.getByLabelText('Card width (mm)'), '0');
+      await user.type(screen.getByLabelText('Card height (mm)'), '88');
+      await user.type(screen.getByLabelText('Number of cards'), '10');
       await user.click(screen.getByRole('button', { name: 'Save' }));
 
       expect(await screen.findByText('Width and height must be greater than zero.')).toBeInTheDocument();
       expect(apiClient.createGameSleeve).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Editing a sleeve requirement', () => {
+    test('saves corrected values via updateGameSleeve and refreshes', async () => {
+      const user = userEvent.setup();
+      apiClient.updateGameSleeve.mockResolvedValue({ id: 1 });
+
+      render(<SleevesListTable gameId={1} onSleeveUpdate={mockOnSleeveUpdate} />);
+
+      await user.click((await screen.findAllByText('Edit'))[0]);
+      const w = screen.getByLabelText('Card width (mm)');
+      expect(w).toHaveValue(63.5);
+      await user.clear(w);
+      await user.type(w, '59');
+      const h = screen.getByLabelText('Card height (mm)');
+      await user.clear(h);
+      await user.type(h, '91');
+      await user.click(screen.getByRole('button', { name: 'Save changes' }));
+
+      await waitFor(() => {
+        expect(apiClient.updateGameSleeve).toHaveBeenCalledWith(
+          1,
+          expect.objectContaining({ width_mm: 59, height_mm: 91, quantity: 100, notes: 'Main deck' })
+        );
+      });
+      expect(mockOnSleeveUpdate).toHaveBeenCalled();
+    });
+
+    test('rejects invalid values and shows API errors', async () => {
+      const user = userEvent.setup();
+      apiClient.updateGameSleeve.mockRejectedValue(new Error('x'));
+
+      render(<SleevesListTable gameId={1} onSleeveUpdate={mockOnSleeveUpdate} />);
+
+      await user.click((await screen.findAllByText('Edit'))[0]);
+      const q = screen.getByLabelText('Number of cards');
+      await user.clear(q);
+      await user.click(screen.getByRole('button', { name: 'Save changes' }));
+      expect(await screen.findByText('Width, height, and quantity must be numbers.')).toBeInTheDocument();
+
+      await user.type(q, '0');
+      await user.click(screen.getByRole('button', { name: 'Save changes' }));
+      expect(await screen.findByText('Width, height, and quantity must be greater than zero.')).toBeInTheDocument();
+
+      await user.clear(q);
+      await user.type(q, '5');
+      await user.click(screen.getByRole('button', { name: 'Save changes' }));
+      expect(await screen.findByText('Failed to save changes. Please try again.')).toBeInTheDocument();
+
+      await user.click(screen.getByRole('button', { name: 'Cancel' }));
+      expect(screen.queryByLabelText('Card width (mm)')).not.toBeInTheDocument();
     });
   });
 });

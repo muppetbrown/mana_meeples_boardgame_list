@@ -673,6 +673,17 @@ export async function createGameSleeve(gameId, data) {
 }
 
 /**
+ * Edit a sleeve requirement (name, size, quantity, notes); backend re-matches it
+ * @param {number} sleeveId - Sleeve record ID
+ * @param {Object} data - { card_name, width_mm, height_mm, quantity, notes }
+ * @returns {Promise<Object>} Updated sleeve record
+ */
+export async function updateGameSleeve(sleeveId, data) {
+  const r = await api.put(`/admin/sleeves/sleeve/${sleeveId}`, data);
+  return r.data;
+}
+
+/**
  * Delete a sleeve requirement record
  * @param {number} sleeveId - Sleeve record ID
  * @returns {Promise<Object>} Deletion confirmation

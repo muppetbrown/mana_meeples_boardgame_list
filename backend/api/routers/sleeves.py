@@ -15,8 +15,7 @@ from services.sleeve_matching import (
     run_matching_for_all_games,
     compute_to_sleeve_games,
     compute_to_order_list,
-    find_matching_products,
-    size_waste,
+    pick_best_product,
     to_decimal,
 )
 
@@ -58,11 +57,18 @@ class SleeveResponse(BaseModel):
 class SleeveUpdateRequest(BaseModel):
     is_sleeved: bool
 
+class SleeveEditRequest(BaseModel):
+    card_name: str | None = None
+    width_mm: float = Field(gt=0, le=9999.99)
+    height_mm: float = Field(gt=0, le=9999.99)
+    quantity: int = Field(gt=0)
+    notes: str | None = None
+
 class SleeveCreateRequest(BaseModel):
     card_name: str | None = None
     width_mm: float = Field(gt=0, le=9999.99)
     height_mm: float = Field(gt=0, le=9999.99)
-    quantity: int
+    quantity: int = Field(gt=0)
     notes: str | None = None
 
 class GameSleeveStatusUpdate(BaseModel):
@@ -74,21 +80,21 @@ class SleeveProductCreate(BaseModel):
     name: str
     width_mm: float = Field(gt=0, le=9999.99)
     height_mm: float = Field(gt=0, le=9999.99)
-    sleeves_per_pack: int
-    price: float
-    in_stock: int = 0
-    ordered: int = 0
+    sleeves_per_pack: int = Field(gt=0)
+    price: float = Field(gt=0)
+    in_stock: int = Field(default=0, ge=0)
+    ordered: int = Field(default=0, ge=0)
 
 class SleeveProductUpdate(BaseModel):
     distributor: str | None = None
     item_id: str | None = None
     name: str | None = None
-    width_mm: float | None = None
-    height_mm: float | None = None
-    sleeves_per_pack: int | None = None
-    price: float | None = None
-    in_stock: int | None = None
-    ordered: int | None = None
+    width_mm: float | None = Field(default=None, gt=0, le=9999.99)
+    height_mm: float | None = Field(default=None, gt=0, le=9999.99)
+    sleeves_per_pack: int | None = Field(default=None, gt=0)
+    price: float | None = Field(default=None, gt=0)
+    in_stock: int | None = Field(default=None, ge=0)
+    ordered: int | None = Field(default=None, ge=0)
 
 class SleeveProductResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -219,38 +225,37 @@ def update_sleeve_status(
     }
 
 
+def _sleeve_response(s: Sleeve, db: Session) -> SleeveResponse:
+    product = db.get(SleeveProduct, s.matched_product_id) if s.matched_product_id else None
+    return SleeveResponse(
+        id=s.id,
+        game_id=s.game_id,
+        card_name=s.card_name,
+        width_mm=s.width_mm,
+        height_mm=s.height_mm,
+        quantity=s.quantity,
+        notes=s.notes,
+        is_sleeved=s.is_sleeved or False,
+        matched_product_id=s.matched_product_id,
+        matched_product_name=product.name if product else None,
+        matched_product_stock=product.in_stock if product else None,
+    )
+
+
+def _auto_match_sleeve(sleeve: Sleeve, db: Session) -> None:
+    """Match one unsleeved sleeve requirement to the best product (same rules as batch matching)."""
+    products = db.execute(select(SleeveProduct)).scalars().all()
+    best = pick_best_product(products, sleeve.width_mm, sleeve.height_mm)
+    sleeve.matched_product_id = best.id if best else None
+
+
 @router.get("/game/{game_id}", dependencies=[Depends(require_admin_auth)])
 def get_game_sleeves(game_id: int, db: Session = Depends(get_db)) -> List[SleeveResponse]:
     """Get all sleeve requirements for a specific game with sleeved status and matched product info."""
     sleeves = db.execute(
-        select(Sleeve).where(Sleeve.game_id == game_id)
+        select(Sleeve).where(Sleeve.game_id == game_id).order_by(Sleeve.id)
     ).scalars().all()
-
-    result = []
-    for s in sleeves:
-        product_name = None
-        product_stock = None
-        if s.matched_product_id:
-            product = db.get(SleeveProduct, s.matched_product_id)
-            if product:
-                product_name = product.name
-                product_stock = product.in_stock
-
-        result.append(SleeveResponse(
-            id=s.id,
-            game_id=s.game_id,
-            card_name=s.card_name,
-            width_mm=s.width_mm,
-            height_mm=s.height_mm,
-            quantity=s.quantity,
-            notes=s.notes,
-            is_sleeved=s.is_sleeved or False,
-            matched_product_id=s.matched_product_id,
-            matched_product_name=product_name,
-            matched_product_stock=product_stock,
-        ))
-
-    return result
+    return [_sleeve_response(s, db) for s in sleeves]
 
 
 @router.post("/game/{game_id}", dependencies=[Depends(require_admin_auth)])
@@ -277,43 +282,36 @@ def create_game_sleeve(
         notes=data.notes,
         is_sleeved=False,
     )
-
-    # Auto-match to a product using the same tolerance/tie-break rules as
-    # run_matching_for_all_games, so manually added sleeves behave consistently.
-    candidates = find_matching_products(data.width_mm, data.height_mm, db)
-    if candidates:
-        best = min(candidates, key=lambda p: (
-            size_waste(p, data.width_mm, data.height_mm),
-            0 if p.in_stock > 0 else 1,
-            float(p.price) / p.sleeves_per_pack,
-        ))
-        sleeve.matched_product_id = best.id
+    _auto_match_sleeve(sleeve, db)
 
     db.add(sleeve)
     db.commit()
     db.refresh(sleeve)
+    return _sleeve_response(sleeve, db)
 
-    product_name = None
-    product_stock = None
-    if sleeve.matched_product_id:
-        product = db.get(SleeveProduct, sleeve.matched_product_id)
-        if product:
-            product_name = product.name
-            product_stock = product.in_stock
 
-    return SleeveResponse(
-        id=sleeve.id,
-        game_id=sleeve.game_id,
-        card_name=sleeve.card_name,
-        width_mm=sleeve.width_mm,
-        height_mm=sleeve.height_mm,
-        quantity=sleeve.quantity,
-        notes=sleeve.notes,
-        is_sleeved=sleeve.is_sleeved or False,
-        matched_product_id=sleeve.matched_product_id,
-        matched_product_name=product_name,
-        matched_product_stock=product_stock,
-    )
+@router.put("/sleeve/{sleeve_id}", dependencies=[Depends(require_admin_auth)])
+def edit_game_sleeve(
+    sleeve_id: int,
+    data: SleeveEditRequest,
+    db: Session = Depends(get_db),
+) -> SleeveResponse:
+    """Correct a sleeve requirement (name, size, quantity, notes) and re-match it to a product."""
+    sleeve = db.get(Sleeve, sleeve_id)
+    if not sleeve:
+        raise HTTPException(status_code=404, detail="Sleeve not found")
+
+    sleeve.card_name = data.card_name
+    sleeve.width_mm = to_decimal(data.width_mm)
+    sleeve.height_mm = to_decimal(data.height_mm)
+    sleeve.quantity = data.quantity
+    sleeve.notes = data.notes
+    if not sleeve.is_sleeved:
+        _auto_match_sleeve(sleeve, db)
+
+    db.commit()
+    db.refresh(sleeve)
+    return _sleeve_response(sleeve, db)
 
 
 @router.delete("/sleeve/{sleeve_id}", dependencies=[Depends(require_admin_auth)])
@@ -415,6 +413,8 @@ def create_sleeve_product(
         ordered=data.ordered,
     )
     db.add(product)
+    db.flush()
+    run_matching_for_all_games(db, commit=False)
     db.commit()
     db.refresh(product)
 
@@ -454,6 +454,9 @@ def update_sleeve_product(
     for field, value in update_data.items():
         setattr(product, field, value)
 
+    db.flush()
+    # Size or stock changes can alter which product best fits each sleeve
+    run_matching_for_all_games(db, commit=False)
     db.commit()
     db.refresh(product)
 
@@ -490,6 +493,9 @@ def delete_sleeve_product(
         s.matched_product_id = None
 
     db.delete(product)
+    db.flush()
+    # Sleeves that lost their product may fit another one
+    run_matching_for_all_games(db, commit=False)
     db.commit()
 
     return {"success": True, "cleared_sleeve_links": len(linked_sleeves)}
