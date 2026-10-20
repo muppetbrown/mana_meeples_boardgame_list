@@ -111,17 +111,17 @@ describe('SleeveInventoryTab', () => {
     apiClient.createSleeveProduct.mockResolvedValue({});
     render(<SleeveInventoryTab />);
     await user.click(await screen.findByText('+ Add Product'));
-    await user.type(screen.getByPlaceholderText('Distributor *'), 'Dist');
-    await user.type(screen.getByPlaceholderText('Product Name *'), 'New');
-    await user.type(screen.getByPlaceholderText('Width (mm) *'), '60');
-    await user.type(screen.getByPlaceholderText('Height (mm) *'), '90');
-    await user.type(screen.getByPlaceholderText('Sleeves/Pack *'), '50');
-    await user.type(screen.getByPlaceholderText('Price/Pack *'), '3.5');
-    await user.type(screen.getByPlaceholderText('Item ID / SKU'), 'SKU-9');
-    await user.clear(screen.getByPlaceholderText('In Stock (sleeves)'));
-    await user.type(screen.getByPlaceholderText('In Stock (sleeves)'), '120');
-    await user.clear(screen.getByPlaceholderText('Ordered (packs)'));
-    await user.type(screen.getByPlaceholderText('Ordered (packs)'), '3');
+    await user.type(screen.getByLabelText('Distributor *'), 'Dist');
+    await user.type(screen.getByLabelText('Product name *'), 'New');
+    await user.type(screen.getByLabelText('Sleeve width (mm) *'), '60');
+    await user.type(screen.getByLabelText('Sleeve height (mm) *'), '90');
+    await user.type(screen.getByLabelText('Sleeves per pack *'), '50');
+    await user.type(screen.getByLabelText('Price per pack ($) *'), '3.5');
+    await user.type(screen.getByLabelText('SKU / Item ID'), 'SKU-9');
+    await user.clear(screen.getByLabelText('In stock (individual sleeves)'));
+    await user.type(screen.getByLabelText('In stock (individual sleeves)'), '120');
+    await user.clear(screen.getByLabelText('On order (packs)'));
+    await user.type(screen.getByLabelText('On order (packs)'), '3');
     await user.click(screen.getByRole('button', { name: 'Add Product' }));
     await waitFor(() =>
       expect(apiClient.createSleeveProduct).toHaveBeenCalledWith(
@@ -131,7 +131,7 @@ describe('SleeveInventoryTab', () => {
         })
       )
     );
-    expect(await screen.findByText('Product added')).toBeInTheDocument();
+    expect(await screen.findByText('Product added and sleeves re-matched')).toBeInTheDocument();
   });
 
   test('edits stock inline', async () => {
@@ -139,12 +139,31 @@ describe('SleeveInventoryTab', () => {
     apiClient.updateSleeveProduct.mockResolvedValue({});
     render(<SleeveInventoryTab />);
     await user.click(await screen.findByText('Edit'));
-    const stock = screen.getAllByRole('spinbutton')[1];
+    const stock = screen.getByLabelText('In stock (individual sleeves)');
     await user.clear(stock);
     await user.type(stock, '250');
-    await user.click(screen.getByText('Save'));
+    await user.click(screen.getByText('Save changes'));
     await waitFor(() =>
       expect(apiClient.updateSleeveProduct).toHaveBeenCalledWith(1, expect.objectContaining({ in_stock: 250 }))
+    );
+  });
+
+  test('edit can correct a product size and name', async () => {
+    const user = userEvent.setup();
+    apiClient.updateSleeveProduct.mockResolvedValue({});
+    render(<SleeveInventoryTab />);
+    await user.click(await screen.findByText('Edit'));
+    const w = screen.getByLabelText('Sleeve width (mm) *');
+    await user.clear(w);
+    await user.type(w, '59');
+    const n = screen.getByLabelText('Product name *');
+    await user.clear(n);
+    await user.type(n, 'Fixed name');
+    await user.click(screen.getByText('Save changes'));
+    await waitFor(() =>
+      expect(apiClient.updateSleeveProduct).toHaveBeenCalledWith(
+        1, expect.objectContaining({ width_mm: 59, name: 'Fixed name' })
+      )
     );
   });
 

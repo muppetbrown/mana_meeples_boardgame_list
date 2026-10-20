@@ -71,7 +71,30 @@ def best_match_in_stock(width_mm: float, height_mm: float, db: Session) -> Sleev
     ))
 
 
-def run_matching_for_all_games(db: Session) -> dict:
+def pick_best_product(products: list[SleeveProduct], width_mm, height_mm) -> SleeveProduct | None:
+    """Pick the best product for a card size from a pre-loaded product list.
+
+    Uses the same tolerances as find_matching_products: an exact size match
+    (e.g. 59 x 91 card, 59 x 91 sleeve) always qualifies. Best size fit first,
+    then prefer in-stock, then cheapest per sleeve.
+    """
+    sw = to_decimal(width_mm)
+    sh = to_decimal(height_mm)
+    candidates = [
+        p for p in products
+        if sw <= to_decimal(p.width_mm) <= sw + WIDTH_TOLERANCE_MM
+        and sh <= to_decimal(p.height_mm) <= sh + HEIGHT_TOLERANCE_MM
+    ]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda p: (
+        size_waste(p, sw, sh),
+        0 if p.in_stock > 0 else 1,
+        float(p.price) / p.sleeves_per_pack,
+    ))
+
+
+def run_matching_for_all_games(db: Session, commit: bool = True) -> dict:
     """
     Batch match: set matched_product_id on every unsleeved Sleeve record.
     Returns summary of matches made.
@@ -89,31 +112,18 @@ def run_matching_for_all_games(db: Session) -> dict:
     unmatched = 0
 
     for sleeve in sleeves:
-        # Find matching products from pre-loaded list
-        sw = to_decimal(sleeve.width_mm)
-        sh = to_decimal(sleeve.height_mm)
-        candidates = [
-            p for p in all_products
-            if to_decimal(p.width_mm) >= sw
-            and to_decimal(p.width_mm) <= sw + WIDTH_TOLERANCE_MM
-            and to_decimal(p.height_mm) >= sh
-            and to_decimal(p.height_mm) <= sh + HEIGHT_TOLERANCE_MM
-        ]
-
-        if candidates:
-            # Best size fit, then prefer in-stock, then cheapest per sleeve
-            best = min(candidates, key=lambda p: (
-                size_waste(p, sleeve.width_mm, sleeve.height_mm),
-                0 if p.in_stock > 0 else 1,
-                float(p.price) / p.sleeves_per_pack,
-            ))
+        best = pick_best_product(all_products, sleeve.width_mm, sleeve.height_mm)
+        if best:
             sleeve.matched_product_id = best.id
             matched += 1
         else:
             sleeve.matched_product_id = None
             unmatched += 1
 
-    db.commit()
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return {"matched": matched, "unmatched": unmatched, "total": matched + unmatched}
 
 

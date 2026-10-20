@@ -459,8 +459,8 @@ describe('SleevesListTable', () => {
 
       await user.click(await screen.findByText('+ Add Sleeve Requirement'));
 
-      const width = screen.getByPlaceholderText('Width (mm)');
-      const height = screen.getByPlaceholderText('Height (mm)');
+      const width = screen.getByLabelText('Card width (mm)');
+      const height = screen.getByLabelText('Card height (mm)');
 
       // Decimal sizes must be accepted by the inputs (step="any")
       expect(width).toHaveAttribute('step', 'any');
@@ -468,7 +468,7 @@ describe('SleevesListTable', () => {
 
       await user.type(width, '63.5');
       await user.type(height, '88.9');
-      await user.type(screen.getByPlaceholderText('Quantity'), '60');
+      await user.type(screen.getByLabelText('Number of cards'), '60');
       await user.click(screen.getByRole('button', { name: 'Save' }));
 
       await waitFor(() => {
@@ -485,9 +485,9 @@ describe('SleevesListTable', () => {
       render(<SleevesListTable gameId={1} onSleeveUpdate={mockOnSleeveUpdate} />);
 
       await user.click(await screen.findByText('+ Add Sleeve Requirement'));
-      await user.type(screen.getByPlaceholderText('Width (mm)'), '0');
-      await user.type(screen.getByPlaceholderText('Height (mm)'), '88');
-      await user.type(screen.getByPlaceholderText('Quantity'), '10');
+      await user.type(screen.getByLabelText('Card width (mm)'), '0');
+      await user.type(screen.getByLabelText('Card height (mm)'), '88');
+      await user.type(screen.getByLabelText('Number of cards'), '10');
       await user.click(screen.getByRole('button', { name: 'Save' }));
 
       expect(await screen.findByText('Width and height must be greater than zero.')).toBeInTheDocument();

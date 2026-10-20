@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useConfirm } from '../../context/StaffContext';
-import { getGameSleeves, updateSleeveStatus, createGameSleeve, deleteGameSleeve, updateGameSleeveStatus } from '../../api/client';
+import { getGameSleeves, updateSleeveStatus, createGameSleeve, updateGameSleeve, deleteGameSleeve, updateGameSleeveStatus } from '../../api/client';
 
 const EMPTY_FORM = { card_name: '', width_mm: '', height_mm: '', quantity: '', notes: '' };
 
@@ -13,6 +13,36 @@ const STATUS_INFO = {
   check: { icon: '❓🃏', label: 'Needs investigation' },
 };
 
+function SleeveFields({ form, setForm, idPrefix }) {
+  const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
+  const input = 'w-full px-2 py-1.5 border rounded text-sm';
+  const label = 'block text-xs font-medium text-gray-600 mb-1';
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="col-span-2">
+        <label htmlFor={`${idPrefix}-name`} className={label}>Card type (e.g. Age Cards)</label>
+        <input id={`${idPrefix}-name`} type="text" placeholder="Optional" value={form.card_name} onChange={set('card_name')} className={input} />
+      </div>
+      <div>
+        <label htmlFor={`${idPrefix}-w`} className={label}>Card width (mm)</label>
+        <input id={`${idPrefix}-w`} type="number" step="any" min="0" placeholder="e.g. 59" value={form.width_mm} onChange={set('width_mm')} className={input} />
+      </div>
+      <div>
+        <label htmlFor={`${idPrefix}-h`} className={label}>Card height (mm)</label>
+        <input id={`${idPrefix}-h`} type="number" step="any" min="0" placeholder="e.g. 91" value={form.height_mm} onChange={set('height_mm')} className={input} />
+      </div>
+      <div>
+        <label htmlFor={`${idPrefix}-q`} className={label}>Number of cards</label>
+        <input id={`${idPrefix}-q`} type="number" min="1" placeholder="e.g. 110" value={form.quantity} onChange={set('quantity')} className={input} />
+      </div>
+      <div className="col-span-3">
+        <label htmlFor={`${idPrefix}-notes`} className={label}>Notes</label>
+        <input id={`${idPrefix}-notes`} type="text" placeholder="Optional" value={form.notes} onChange={set('notes')} className={input} />
+      </div>
+    </div>
+  );
+}
+
 export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate }) {
   const confirm = useConfirm();
   const [sleeves, setSleeves] = useState([]);
@@ -23,6 +53,9 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
   const [addForm, setAddForm] = useState(EMPTY_FORM);
   const [addError, setAddError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [editError, setEditError] = useState(null);
   const [gameSleeveStatus, setGameSleeveStatus] = useState(hasSleeves || null);
   const [statusUpdating, setStatusUpdating] = useState(false);
 
@@ -100,6 +133,52 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
       }
     } catch (error) {
       console.error('Failed to delete sleeve:', error);
+    }
+  };
+
+  const startEdit = (sleeve) => {
+    setEditingId(sleeve.id);
+    setEditError(null);
+    setEditForm({
+      card_name: sleeve.card_name || '',
+      width_mm: String(sleeve.width_mm),
+      height_mm: String(sleeve.height_mm),
+      quantity: String(sleeve.quantity),
+      notes: sleeve.notes || '',
+    });
+  };
+
+  const handleSaveEdit = async () => {
+    const width_mm = parseFloat(editForm.width_mm);
+    const height_mm = parseFloat(editForm.height_mm);
+    const quantity = parseInt(editForm.quantity, 10);
+    if (!Number.isFinite(width_mm) || !Number.isFinite(height_mm) || !Number.isFinite(quantity)) {
+      setEditError('Width, height, and quantity must be numbers.');
+      return;
+    }
+    if (width_mm <= 0 || height_mm <= 0 || quantity <= 0) {
+      setEditError('Width, height, and quantity must be greater than zero.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateGameSleeve(editingId, {
+        card_name: editForm.card_name.trim() || null,
+        width_mm,
+        height_mm,
+        quantity,
+        notes: editForm.notes.trim() || null,
+      });
+      setEditingId(null);
+      await loadSleeves();
+      if (onSleeveUpdate) {
+        onSleeveUpdate();
+      }
+    } catch (error) {
+      console.error('Failed to update sleeve:', error);
+      setEditError('Failed to save changes. Please try again.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -210,47 +289,7 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
         // discards whatever was typed. All buttons below use type="button"
         // and call handlers directly instead of relying on form submission.
         <div className="space-y-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <input
-              type="text"
-              placeholder="Card type (optional)"
-              value={addForm.card_name}
-              onChange={(e) => setAddForm({ ...addForm, card_name: e.target.value })}
-              className="col-span-2 px-2 py-1.5 border rounded text-sm"
-            />
-            <input
-              type="number"
-              step="any"
-              min="0"
-              placeholder="Width (mm)"
-              value={addForm.width_mm}
-              onChange={(e) => setAddForm({ ...addForm, width_mm: e.target.value })}
-              className="px-2 py-1.5 border rounded text-sm"
-            />
-            <input
-              type="number"
-              step="any"
-              min="0"
-              placeholder="Height (mm)"
-              value={addForm.height_mm}
-              onChange={(e) => setAddForm({ ...addForm, height_mm: e.target.value })}
-              className="px-2 py-1.5 border rounded text-sm"
-            />
-            <input
-              type="number"
-              placeholder="Quantity"
-              value={addForm.quantity}
-              onChange={(e) => setAddForm({ ...addForm, quantity: e.target.value })}
-              className="px-2 py-1.5 border rounded text-sm"
-            />
-            <input
-              type="text"
-              placeholder="Notes (optional)"
-              value={addForm.notes}
-              onChange={(e) => setAddForm({ ...addForm, notes: e.target.value })}
-              className="col-span-3 px-2 py-1.5 border rounded text-sm"
-            />
-          </div>
+          <SleeveFields form={addForm} setForm={setAddForm} idPrefix="add-sleeve" />
           {addError && <p className="text-sm text-red-600">{addError}</p>}
           <div className="flex gap-2">
             <button
@@ -357,7 +396,26 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
-            {sleeves.map((sleeve) => (
+            {sleeves.map((sleeve) => editingId === sleeve.id ? (
+              <tr key={sleeve.id} className="bg-blue-50">
+                <td colSpan={7} className="px-4 py-3">
+                  <div className="space-y-3">
+                    <SleeveFields form={editForm} setForm={setEditForm} idPrefix={`edit-sleeve-${sleeve.id}`} />
+                    {editError && <p className="text-sm text-red-600">{editError}</p>}
+                    <div className="flex gap-2">
+                      <button type="button" onClick={handleSaveEdit} disabled={saving}
+                        className="px-3 py-1.5 text-sm rounded-lg bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400">
+                        {saving ? 'Saving...' : 'Save changes'}
+                      </button>
+                      <button type="button" onClick={() => setEditingId(null)}
+                        className="px-3 py-1.5 text-sm rounded-lg bg-gray-200 hover:bg-gray-300">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ) : (
               <tr
                 key={sleeve.id}
                 className={`hover:bg-gray-50 transition-colors ${
@@ -398,7 +456,9 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
                       </span>
                     </div>
                   ) : (
-                    <span className="text-xs text-gray-400 italic">No match</span>
+                    <span className="text-xs text-gray-400 italic">
+                      No match (needs a sleeve {sleeve.width_mm}–{Number(sleeve.width_mm) + 1} × {sleeve.height_mm}–{Number(sleeve.height_mm) + 5} mm)
+                    </span>
                   )}
                 </td>
                 <td className="px-4 py-3">
@@ -406,7 +466,15 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
                     {sleeve.notes || '—'}
                   </div>
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td className="px-4 py-3 text-right whitespace-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(sleeve)}
+                    title="Edit this sleeve requirement"
+                    className="text-xs text-blue-600 hover:text-blue-800 mr-3"
+                  >
+                    Edit
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleDeleteSleeve(sleeve.id)}

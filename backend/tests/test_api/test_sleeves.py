@@ -658,3 +658,63 @@ class TestSleeveResponseFormat:
         data = response.json()
         # Should default to False in response
         assert data[0]["is_sleeved"] == False
+
+
+class TestSleeveEditAndRematch:
+    """Editing sleeves/products keeps matches in sync without a manual auto-match run."""
+
+    def _product(self, client, admin_headers, **over):
+        body = {"distributor": "D", "name": "P", "width_mm": 59, "height_mm": 91,
+                "sleeves_per_pack": 50, "price": 4.5, "in_stock": 100}
+        body.update(over)
+        r = client.post("/api/admin/sleeves/products", headers=admin_headers, json=body)
+        assert r.status_code == 200
+        return r.json()
+
+    def test_exact_size_sleeve_matches_product(self, client, db_session, admin_headers):
+        game = Game(title="G", bgg_id=1)
+        db_session.add(game)
+        db_session.commit()
+        product = self._product(client, admin_headers)
+        r = client.post(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers,
+                        json={"width_mm": 59, "height_mm": 91, "quantity": 10})
+        assert r.json()["matched_product_id"] == product["id"]
+
+    def test_edit_sleeve_corrects_size_and_rematches(self, client, db_session, admin_headers):
+        game = Game(title="G", bgg_id=1)
+        db_session.add(game)
+        db_session.commit()
+        product = self._product(client, admin_headers)
+        created = client.post(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers,
+                              json={"width_mm": 70, "height_mm": 120, "quantity": 10}).json()
+        assert created["matched_product_id"] is None
+        r = client.put(f"/api/admin/sleeves/sleeve/{created['id']}", headers=admin_headers,
+                       json={"card_name": "Fixed", "width_mm": 59, "height_mm": 91, "quantity": 12})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["card_name"] == "Fixed" and body["quantity"] == 12
+        assert body["matched_product_id"] == product["id"]
+
+    def test_adding_product_matches_existing_sleeves(self, client, db_session, admin_headers):
+        game = Game(title="G", bgg_id=1)
+        db_session.add(game)
+        db_session.commit()
+        sleeve = client.post(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers,
+                             json={"width_mm": 59, "height_mm": 91, "quantity": 10}).json()
+        assert sleeve["matched_product_id"] is None
+        product = self._product(client, admin_headers)
+        got = client.get(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers).json()
+        assert got[0]["matched_product_id"] == product["id"]
+
+    def test_editing_product_size_rematches(self, client, db_session, admin_headers):
+        game = Game(title="G", bgg_id=1)
+        db_session.add(game)
+        db_session.commit()
+        product = self._product(client, admin_headers, width_mm=65, height_mm=100)
+        sleeve = client.post(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers,
+                             json={"width_mm": 59, "height_mm": 91, "quantity": 10}).json()
+        assert sleeve["matched_product_id"] is None
+        client.put(f"/api/admin/sleeves/products/{product['id']}", headers=admin_headers,
+                   json={"width_mm": 59, "height_mm": 91})
+        got = client.get(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers).json()
+        assert got[0]["matched_product_id"] == product["id"]
