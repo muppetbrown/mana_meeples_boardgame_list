@@ -29,10 +29,11 @@ function ProductFields({ form, setForm, idPrefix }) {
       {field("name", "Product name *", { required: true, placeholder: "e.g. Standard Card Game 59x91" }, "col-span-2")}
       {field("width_mm", "Sleeve width (mm) *", { required: true, type: "number", min: "1", step: "any", placeholder: "e.g. 59" })}
       {field("height_mm", "Sleeve height (mm) *", { required: true, type: "number", min: "1", step: "any", placeholder: "e.g. 91" })}
+      {field("card_width_mm", "Fits card width (mm)", { type: "number", min: "1", step: "any", placeholder: "If stated, e.g. 57" })}
+      {field("card_height_mm", "Fits card height (mm)", { type: "number", min: "1", step: "any", placeholder: "If stated, e.g. 89" })}
       {field("sleeves_per_pack", "Sleeves per pack *", { required: true, type: "number", min: "1", placeholder: "e.g. 50" })}
       {field("price", "Price per pack ($) *", { required: true, type: "number", min: "0", step: "0.01", placeholder: "e.g. 4.50" })}
       {field("in_stock", "In stock (individual sleeves)", { type: "number", min: "0" })}
-      {field("ordered", "On order (packs)", { type: "number", min: "0" })}
     </div>
   );
 }
@@ -64,10 +65,11 @@ export function SleeveInventoryTab() {
     name: "",
     width_mm: "",
     height_mm: "",
+    card_width_mm: "",
+    card_height_mm: "",
     sleeves_per_pack: "",
     price: "",
     in_stock: "0",
-    ordered: "0",
   });
 
   // Inline editing
@@ -138,14 +140,15 @@ export function SleeveInventoryTab() {
         name: addForm.name,
         width_mm: parseFloat(addForm.width_mm),
         height_mm: parseFloat(addForm.height_mm),
+        card_width_mm: addForm.card_width_mm ? parseFloat(addForm.card_width_mm) : null,
+        card_height_mm: addForm.card_height_mm ? parseFloat(addForm.card_height_mm) : null,
         sleeves_per_pack: parseInt(addForm.sleeves_per_pack),
         price: parseFloat(addForm.price),
         in_stock: parseInt(addForm.in_stock) || 0,
-        ordered: parseInt(addForm.ordered) || 0,
       });
       showMessage("Product added and sleeves re-matched");
       setShowAddForm(false);
-      setAddForm({ distributor: "", item_id: "", name: "", width_mm: "", height_mm: "", sleeves_per_pack: "", price: "", in_stock: "0", ordered: "0" });
+      setAddForm({ distributor: "", item_id: "", name: "", width_mm: "", height_mm: "", card_width_mm: "", card_height_mm: "", sleeves_per_pack: "", price: "", in_stock: "0" });
       loadProducts();
     } catch (err) {
       showMessage("Failed to add product", "error");
@@ -160,10 +163,11 @@ export function SleeveInventoryTab() {
       name: product.name || "",
       width_mm: String(product.width_mm),
       height_mm: String(product.height_mm),
+      card_width_mm: product.card_width_mm != null ? String(product.card_width_mm) : "",
+      card_height_mm: product.card_height_mm != null ? String(product.card_height_mm) : "",
       sleeves_per_pack: String(product.sleeves_per_pack),
       price: String(product.price),
       in_stock: String(product.in_stock),
-      ordered: String(product.ordered),
     });
   };
 
@@ -175,10 +179,11 @@ export function SleeveInventoryTab() {
         name: editForm.name,
         width_mm: parseFloat(editForm.width_mm),
         height_mm: parseFloat(editForm.height_mm),
+        card_width_mm: editForm.card_width_mm ? parseFloat(editForm.card_width_mm) : null,
+        card_height_mm: editForm.card_height_mm ? parseFloat(editForm.card_height_mm) : null,
         sleeves_per_pack: parseInt(editForm.sleeves_per_pack, 10),
         price: parseFloat(editForm.price),
         in_stock: parseInt(editForm.in_stock, 10) || 0,
-        ordered: parseInt(editForm.ordered, 10) || 0,
       });
       setEditingId(null);
       showMessage("Product updated and sleeves re-matched");
@@ -345,7 +350,6 @@ export function SleeveInventoryTab() {
               <option value="all">All products</option>
               <option value="in_stock">In stock</option>
               <option value="out_of_stock">Out of stock</option>
-              <option value="on_order">On order</option>
             </select>
           </div>
         )}
@@ -446,23 +450,28 @@ function ProductInventorySection({
 }) {
   if (loading) return <div className="text-center py-8 text-gray-500">Loading products...</div>;
 
-  const productGroup = (p) => classifySleeve({ name: p.name, width_mm: p.width_mm, height_mm: p.height_mm });
+  // Classify by the card size a sleeve fits when it states one, else its own size
+  const productSize = (p) => ({
+    name: p.name,
+    width_mm: p.card_width_mm ?? p.width_mm,
+    height_mm: p.card_height_mm ?? p.height_mm,
+  });
+  const productGroup = (p) => classifySleeve(productSize(p));
   const visibleProducts = products.filter((p) => {
     if (stockFilter === "in_stock" && !(p.in_stock > 0)) return false;
     if (stockFilter === "out_of_stock" && p.in_stock > 0) return false;
-    if (stockFilter === "on_order" && !(p.ordered > 0)) return false;
     if (groupFilter !== "all" && productGroup(p).key !== groupFilter) return false;
     return true;
   });
   const filtersActive = stockFilter !== "all" || groupFilter !== "all";
-  const productGroup_input = (p) => ({ name: p.name, width_mm: p.width_mm, height_mm: p.height_mm });
+  const productGroup_input = productSize;
 
   const renderTable = (items) => (
         <div className="overflow-x-auto border rounded-lg">
           <table className="w-full text-sm table-fixed">
             {/* Fixed widths keep columns aligned across the separate group tables */}
             <colgroup>
-              {[12, 8, 21, 11, 8, 8, 9, 10, 13].map((w, idx) => (
+              {[13, 9, 24, 13, 9, 9, 11, 12].map((w, idx) => (
                 <col key={idx} style={{ width: `${w}%` }} />
               ))}
             </colgroup>
@@ -471,22 +480,20 @@ function ProductInventorySection({
                 <th className="px-3 py-2 text-left font-semibold">Distributor</th>
                 <th className="px-3 py-2 text-left font-semibold">SKU</th>
                 <th className="px-3 py-2 text-left font-semibold">Name</th>
-                <th className="px-3 py-2 text-center font-semibold">Size (mm)</th>
+                <th className="px-3 py-2 text-center font-semibold">Size (mm) / fits cards</th>
                 <th className="px-3 py-2 text-right font-semibold">Per Pack</th>
                 <th className="px-3 py-2 text-right font-semibold">Price</th>
                 <th className="px-3 py-2 text-right font-semibold">In Stock</th>
-                <th className="px-3 py-2 text-right font-semibold">Ordered</th>
                 <th className="px-3 py-2 text-center font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {items.map((p) => editingId === p.id ? (
                 <tr key={p.id} className="bg-blue-50">
-                  <td colSpan={9} className="px-3 py-3">
+                  <td colSpan={8} className="px-3 py-3">
                     <div className="space-y-3">
                       <ProductFields form={editForm} setForm={setEditForm} idPrefix={`edit-product-${p.id}`} />
                       <div className="text-xs text-gray-500">
-                        On order = {parseInt(editForm.ordered || 0, 10) * (parseInt(editForm.sleeves_per_pack, 10) || p.sleeves_per_pack)} sleeves.
                         Changing size re-runs matching for all unsleeved cards.
                       </div>
                       <div className="space-x-2">
@@ -501,20 +508,18 @@ function ProductInventorySection({
                   <td className="px-3 py-2">{p.distributor}</td>
                   <td className="px-3 py-2 font-mono text-xs">{p.item_id || "—"}</td>
                   <td className="px-3 py-2 font-medium">{p.name}</td>
-                  <td className="px-3 py-2 text-center font-mono">{p.width_mm} x {p.height_mm}</td>
+                  <td className="px-3 py-2 text-center font-mono">
+                    {p.width_mm} x {p.height_mm}
+                    {p.card_width_mm != null && p.card_height_mm != null && (
+                      <div className="text-[11px] text-gray-500 font-sans">fits cards {p.card_width_mm} x {p.card_height_mm}</div>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-right">{p.sleeves_per_pack}</td>
                   <td className="px-3 py-2 text-right">${p.price.toFixed(2)}</td>
                   <td className="px-3 py-2 text-right">
                     <span className={p.in_stock > 0 ? "text-green-700 font-semibold" : "text-gray-400"}>
                       {p.in_stock}
                     </span>
-                  </td>
-                  <td className="px-3 py-2 text-right">
-                    {p.ordered > 0 ? (
-                      <span className="text-blue-600">{p.ordered} pks ({p.ordered_sleeves})</span>
-                    ) : (
-                      <span className="text-gray-400">—</span>
-                    )}
                   </td>
                   <td className="px-3 py-2 text-center space-x-1 whitespace-nowrap">
                     <button onClick={() => startEdit(p)} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200">Edit</button>

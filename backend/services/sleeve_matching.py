@@ -6,15 +6,15 @@ Provides ordering recommendations and stock-based sleeving readiness checks.
 """
 from collections import defaultdict
 from decimal import Decimal
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from sqlalchemy.orm import Session, joinedload
 
 from models import Sleeve, SleeveProduct, Game
 
 
-# Matching tolerances
-WIDTH_TOLERANCE_MM = Decimal("1")   # Sleeve width must be >= card width and <= card width + 1mm
-HEIGHT_TOLERANCE_MM = Decimal("5")  # Sleeve height must be >= card height and <= card height + 5mm
+# Matching tolerances. Applied to the sleeve's fits-card size when it has one, else its own size.
+WIDTH_TOLERANCE_MM = Decimal("1")   # Width must be >= card width and <= card width + 1mm
+HEIGHT_TOLERANCE_MM = Decimal("5")  # Height must be >= card height and <= card height + 5mm
 
 
 def to_decimal(value) -> Decimal:
@@ -22,24 +22,33 @@ def to_decimal(value) -> Decimal:
     return Decimal(str(value)).quantize(Decimal("0.01"))
 
 
+def fit_size(product: SleeveProduct) -> tuple[Decimal, Decimal]:
+    """The size used for matching: the card size the sleeve is rated to fit when
+    known, otherwise the sleeve's own size."""
+    w = product.card_width_mm if product.card_width_mm is not None else product.width_mm
+    h = product.card_height_mm if product.card_height_mm is not None else product.height_mm
+    return to_decimal(w), to_decimal(h)
+
+
 def size_waste(product: SleeveProduct, width_mm, height_mm) -> Decimal:
     """Total mm of slack between a product and a card size (lower is a tighter fit)."""
-    return (to_decimal(product.width_mm) - to_decimal(width_mm)) + (
-        to_decimal(product.height_mm) - to_decimal(height_mm)
-    )
+    pw, ph = fit_size(product)
+    return (pw - to_decimal(width_mm)) + (ph - to_decimal(height_mm))
 
 
 def find_matching_products(width_mm: float, height_mm: float, db: Session) -> list[SleeveProduct]:
     """Find all sleeve products that fit a given card size within tolerances."""
     width_mm = to_decimal(width_mm)
     height_mm = to_decimal(height_mm)
+    fit_w = func.coalesce(SleeveProduct.card_width_mm, SleeveProduct.width_mm)
+    fit_h = func.coalesce(SleeveProduct.card_height_mm, SleeveProduct.height_mm)
     return db.execute(
         select(SleeveProduct).where(
             and_(
-                SleeveProduct.width_mm >= width_mm,
-                SleeveProduct.width_mm <= width_mm + WIDTH_TOLERANCE_MM,
-                SleeveProduct.height_mm >= height_mm,
-                SleeveProduct.height_mm <= height_mm + HEIGHT_TOLERANCE_MM,
+                fit_w >= width_mm,
+                fit_w <= width_mm + WIDTH_TOLERANCE_MM,
+                fit_h >= height_mm,
+                fit_h <= height_mm + HEIGHT_TOLERANCE_MM,
             )
         )
     ).scalars().all()
@@ -82,8 +91,8 @@ def pick_best_product(products: list[SleeveProduct], width_mm, height_mm) -> Sle
     sh = to_decimal(height_mm)
     candidates = [
         p for p in products
-        if sw <= to_decimal(p.width_mm) <= sw + WIDTH_TOLERANCE_MM
-        and sh <= to_decimal(p.height_mm) <= sh + HEIGHT_TOLERANCE_MM
+        if sw <= fit_size(p)[0] <= sw + WIDTH_TOLERANCE_MM
+        and sh <= fit_size(p)[1] <= sh + HEIGHT_TOLERANCE_MM
     ]
     if not candidates:
         return None
@@ -241,11 +250,10 @@ def compute_to_order_list(db: Session) -> list[dict]:
         product_info = None
 
         if product:
-            ordered_sleeves = product.ordered * product.sleeves_per_pack
-            deficit = max(0, total_needed - product.in_stock - ordered_sleeves)
+            deficit = max(0, total_needed - product.in_stock)
 
             if deficit <= 0:
-                continue  # Already have enough stock + ordered
+                continue  # Already have enough stock
 
             packs_to_buy = -(-deficit // product.sleeves_per_pack)  # Ceiling division
 
@@ -260,8 +268,6 @@ def compute_to_order_list(db: Session) -> list[dict]:
                 "packs_to_buy": packs_to_buy,
                 "total_cost": round(float(product.price) * packs_to_buy, 2),
                 "current_stock": product.in_stock,
-                "ordered_packs": product.ordered,
-                "ordered_sleeves": ordered_sleeves,
             }
         else:
             deficit = total_needed

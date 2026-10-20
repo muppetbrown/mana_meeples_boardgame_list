@@ -6,7 +6,7 @@ from services.sleeve_matching import find_matching_products, best_match_for_orde
 
 def _product(db, name, w, h):
     p = SleeveProduct(distributor="D", name=name, width_mm=w, height_mm=h,
-                      sleeves_per_pack=100, price=Decimal("5.00"), in_stock=0, ordered=0)
+                      sleeves_per_pack=100, price=Decimal("5.00"), in_stock=0)
     db.add(p)
     db.commit()
     return p
@@ -47,10 +47,9 @@ def _sleeve(db, game, w, h, qty):
 
 def test_to_order_merges_sizes_that_map_to_same_product(db_session):
     from services.sleeve_matching import compute_to_order_list
-    # One product fits both card sizes; 30 in stock, 1 pack (100) on order
+    # One product fits both card sizes; 30 in stock
     p = _product(db_session, "Standard", 64.5, 90.0)
     p.in_stock = 30
-    p.ordered = 1
     db_session.commit()
     a, b = _game(db_session, "A"), _game(db_session, "B")
     _sleeve(db_session, a, 63.8, 88.0, 150)
@@ -63,9 +62,9 @@ def test_to_order_merges_sizes_that_map_to_same_product(db_session):
     assert row["product"]["product_id"] == p.id
     assert len(row["sizes"]) == 2
     assert row["total_needed"] == 250
-    # 250 needed - 30 stock - 100 on order = 120 -> 2 packs (stock counted once)
-    assert row["deficit"] == 120
-    assert row["product"]["packs_to_buy"] == 2
+    # 250 needed - 30 stock = 220 -> 3 packs (stock counted once)
+    assert row["deficit"] == 220
+    assert row["product"]["packs_to_buy"] == 3
     assert row["games_count"] == 2
     assert row["game_names"] == ["A", "B"]
 
@@ -88,3 +87,17 @@ def test_exact_size_match_59x91(db_session):
     assert [m.id for m in find_matching_products(59, 91, db_session)] == [exact.id]
     from services.sleeve_matching import pick_best_product
     assert pick_best_product([exact], 59, 91).id == exact.id
+
+
+def test_fits_card_size_used_for_matching(db_session):
+    # Sleeve is 59x91 but rated for cards up to 57x89
+    p = _product(db_session, "Fits 57x89", 59, 91)
+    p.card_width_mm = 57
+    p.card_height_mm = 89
+    db_session.commit()
+    assert [m.id for m in find_matching_products(57, 89, db_session)] == [p.id]
+    # The sleeve's own size no longer counts as the card size it fits
+    assert find_matching_products(59, 91, db_session) == []
+    from services.sleeve_matching import pick_best_product
+    assert pick_best_product([p], 57, 89).id == p.id
+    assert pick_best_product([p], 59, 91) is None

@@ -20,7 +20,7 @@ vi.mock('../../../../api/client', () => ({
 
 const product = {
   id: 1, distributor: 'Games Dist', item_id: 'SKU1', name: 'Std Card Sleeves',
-  width_mm: 63, height_mm: 88, sleeves_per_pack: 100, price: 4.5, in_stock: 200, ordered: 2, ordered_sleeves: 200,
+  width_mm: 63, height_mm: 88, sleeves_per_pack: 100, price: 4.5, in_stock: 200,
 };
 
 const toSleeve = [
@@ -120,14 +120,12 @@ describe('SleeveInventoryTab', () => {
     await user.type(screen.getByLabelText('SKU / Item ID'), 'SKU-9');
     await user.clear(screen.getByLabelText('In stock (individual sleeves)'));
     await user.type(screen.getByLabelText('In stock (individual sleeves)'), '120');
-    await user.clear(screen.getByLabelText('On order (packs)'));
-    await user.type(screen.getByLabelText('On order (packs)'), '3');
     await user.click(screen.getByRole('button', { name: 'Add Product' }));
     await waitFor(() =>
       expect(apiClient.createSleeveProduct).toHaveBeenCalledWith(
         expect.objectContaining({
           distributor: 'Dist', item_id: 'SKU-9', name: 'New', width_mm: 60, height_mm: 90,
-          sleeves_per_pack: 50, price: 3.5, in_stock: 120, ordered: 3,
+          sleeves_per_pack: 50, price: 3.5, in_stock: 120,
         })
       )
     );
@@ -145,6 +143,27 @@ describe('SleeveInventoryTab', () => {
     await user.click(screen.getByText('Save changes'));
     await waitFor(() =>
       expect(apiClient.updateSleeveProduct).toHaveBeenCalledWith(1, expect.objectContaining({ in_stock: 250 }))
+    );
+  });
+
+  test('add form sends optional fits-card size', async () => {
+    const user = userEvent.setup();
+    apiClient.createSleeveProduct.mockResolvedValue({});
+    render(<SleeveInventoryTab />);
+    await user.click(await screen.findByText('+ Add Product'));
+    await user.type(screen.getByLabelText('Distributor *'), 'Dist');
+    await user.type(screen.getByLabelText('Product name *'), 'Euro');
+    await user.type(screen.getByLabelText('Sleeve width (mm) *'), '59');
+    await user.type(screen.getByLabelText('Sleeve height (mm) *'), '91');
+    await user.type(screen.getByLabelText('Fits card width (mm)'), '57');
+    await user.type(screen.getByLabelText('Fits card height (mm)'), '89');
+    await user.type(screen.getByLabelText('Sleeves per pack *'), '50');
+    await user.type(screen.getByLabelText('Price per pack ($) *'), '4');
+    await user.click(screen.getByRole('button', { name: 'Add Product' }));
+    await waitFor(() =>
+      expect(apiClient.createSleeveProduct).toHaveBeenCalledWith(
+        expect.objectContaining({ width_mm: 59, height_mm: 91, card_width_mm: 57, card_height_mm: 89 })
+      )
     );
   });
 
@@ -221,13 +240,13 @@ describe('SleeveInventoryTab', () => {
   });
 
   describe('stock filter and size groups', () => {
-    const prod = (id, name, w, h, inStock, ordered = 0) => ({
+    const prod = (id, name, w, h, inStock) => ({
       id, distributor: 'D', item_id: `S${id}`, name, width_mm: w, height_mm: h,
-      sleeves_per_pack: 100, price: 4, in_stock: inStock, ordered, ordered_sleeves: ordered * 100,
+      sleeves_per_pack: 100, price: 4, in_stock: inStock,
     });
     const products = [
       prod(1, 'Euro Pack A', 59, 92, 200),
-      prod(2, 'Mini US Pack', 41, 63, 0, 2),
+      prod(2, 'Mini US Pack', 41, 63, 0),
       prod(3, 'American Pack', 57, 88, 50),
       prod(4, 'Weird Size', 100, 100, 10),
     ];
@@ -285,16 +304,13 @@ describe('SleeveInventoryTab', () => {
       expect(screen.getByText(/of 4/)).toBeInTheDocument();
     });
 
-    test('out of stock and on order filters', async () => {
+    test('out of stock filter', async () => {
       const user = userEvent.setup();
       render(<SleeveInventoryTab />);
       await screen.findByText('Euro Pack A');
       await user.selectOptions(screen.getByLabelText('Stock'), 'out_of_stock');
       expect(screen.getByText('Mini US Pack')).toBeInTheDocument();
       expect(screen.queryByText('Euro Pack A')).not.toBeInTheDocument();
-      await user.selectOptions(screen.getByLabelText('Stock'), 'on_order');
-      expect(screen.getByText('Mini US Pack')).toBeInTheDocument();
-      expect(screen.queryByText('American Pack')).not.toBeInTheDocument();
     });
 
     test('size group filter shows one group; name keywords beat size', async () => {

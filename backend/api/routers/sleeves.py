@@ -80,10 +80,11 @@ class SleeveProductCreate(BaseModel):
     name: str
     width_mm: float = Field(gt=0, le=9999.99)
     height_mm: float = Field(gt=0, le=9999.99)
+    card_width_mm: float | None = Field(default=None, gt=0, le=9999.99)
+    card_height_mm: float | None = Field(default=None, gt=0, le=9999.99)
     sleeves_per_pack: int = Field(gt=0)
     price: float = Field(gt=0)
     in_stock: int = Field(default=0, ge=0)
-    ordered: int = Field(default=0, ge=0)
 
 class SleeveProductUpdate(BaseModel):
     distributor: str | None = None
@@ -91,10 +92,11 @@ class SleeveProductUpdate(BaseModel):
     name: str | None = None
     width_mm: float | None = Field(default=None, gt=0, le=9999.99)
     height_mm: float | None = Field(default=None, gt=0, le=9999.99)
+    card_width_mm: float | None = Field(default=None, gt=0, le=9999.99)
+    card_height_mm: float | None = Field(default=None, gt=0, le=9999.99)
     sleeves_per_pack: int | None = Field(default=None, gt=0)
     price: float | None = Field(default=None, gt=0)
     in_stock: int | None = Field(default=None, ge=0)
-    ordered: int | None = Field(default=None, ge=0)
 
 class SleeveProductResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -105,11 +107,11 @@ class SleeveProductResponse(BaseModel):
     name: str
     width_mm: float
     height_mm: float
+    card_width_mm: float | None = None
+    card_height_mm: float | None = None
     sleeves_per_pack: int
     price: float
     in_stock: int
-    ordered: int
-    ordered_sleeves: int = 0  # Computed: ordered * sleeves_per_pack
 
 
 # ============================================================================
@@ -385,11 +387,11 @@ def list_sleeve_products(
             name=p.name,
             width_mm=p.width_mm,
             height_mm=p.height_mm,
+            card_width_mm=p.card_width_mm,
+            card_height_mm=p.card_height_mm,
             sleeves_per_pack=p.sleeves_per_pack,
             price=float(p.price),
             in_stock=p.in_stock,
-            ordered=p.ordered,
-            ordered_sleeves=p.ordered * p.sleeves_per_pack,
         )
         for p in products
     ]
@@ -407,10 +409,11 @@ def create_sleeve_product(
         name=data.name,
         width_mm=to_decimal(data.width_mm),
         height_mm=to_decimal(data.height_mm),
+        card_width_mm=to_decimal(data.card_width_mm) if data.card_width_mm is not None else None,
+        card_height_mm=to_decimal(data.card_height_mm) if data.card_height_mm is not None else None,
         sleeves_per_pack=data.sleeves_per_pack,
         price=Decimal(str(data.price)),
         in_stock=data.in_stock,
-        ordered=data.ordered,
     )
     db.add(product)
     db.flush()
@@ -425,11 +428,11 @@ def create_sleeve_product(
         name=product.name,
         width_mm=product.width_mm,
         height_mm=product.height_mm,
+        card_width_mm=product.card_width_mm,
+        card_height_mm=product.card_height_mm,
         sleeves_per_pack=product.sleeves_per_pack,
         price=float(product.price),
         in_stock=product.in_stock,
-        ordered=product.ordered,
-        ordered_sleeves=product.ordered * product.sleeves_per_pack,
     )
 
 
@@ -447,7 +450,7 @@ def update_sleeve_product(
     update_data = data.model_dump(exclude_unset=True)
     if "price" in update_data:
         update_data["price"] = Decimal(str(update_data["price"]))
-    for dim in ("width_mm", "height_mm"):
+    for dim in ("width_mm", "height_mm", "card_width_mm", "card_height_mm"):
         if update_data.get(dim) is not None:
             update_data[dim] = to_decimal(update_data[dim])
 
@@ -467,11 +470,11 @@ def update_sleeve_product(
         name=product.name,
         width_mm=product.width_mm,
         height_mm=product.height_mm,
+        card_width_mm=product.card_width_mm,
+        card_height_mm=product.card_height_mm,
         sleeves_per_pack=product.sleeves_per_pack,
         price=float(product.price),
         in_stock=product.in_stock,
-        ordered=product.ordered,
-        ordered_sleeves=product.ordered * product.sleeves_per_pack,
     )
 
 
