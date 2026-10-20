@@ -60,6 +60,9 @@ services:
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: ./frontend/build
     envVars:
+      # jsdom 30 (dev dependency) needs Node >= 22.22.2; "22" resolves to the latest 22.x
+      - key: NODE_VERSION
+        value: "22"
       - key: VITE_API_BASE
         value: https://mana-meeples-boardgame-list-opgf.onrender.com
     routes:
