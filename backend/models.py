@@ -302,7 +302,6 @@ class SleeveProduct(Base):
     sleeves_per_pack = Column(Integer, nullable=False)  # Sleeves in one pack
     price = Column(Numeric(10, 2), nullable=False)  # Price per pack
     in_stock = Column(Integer, nullable=False, default=0)  # Individual sleeves in stock
-    ordered = Column(Integer, nullable=False, default=0)  # Packs on order
 
     # Relationships
     matched_sleeves = relationship("Sleeve", back_populates="matched_product")
@@ -311,7 +310,6 @@ class SleeveProduct(Base):
         Index("idx_sleeve_product_size", "width_mm", "height_mm"),
         Index("idx_sleeve_product_distributor", "distributor"),
         CheckConstraint("in_stock >= 0", name="valid_product_stock"),
-        CheckConstraint("ordered >= 0", name="valid_product_ordered"),
         CheckConstraint("sleeves_per_pack > 0", name="valid_pack_size"),
         CheckConstraint("price > 0", name="valid_product_price"),
     )

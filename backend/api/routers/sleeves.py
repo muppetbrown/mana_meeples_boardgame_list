@@ -85,7 +85,6 @@ class SleeveProductCreate(BaseModel):
     sleeves_per_pack: int = Field(gt=0)
     price: float = Field(gt=0)
     in_stock: int = Field(default=0, ge=0)
-    ordered: int = Field(default=0, ge=0)
 
 class SleeveProductUpdate(BaseModel):
     distributor: str | None = None
@@ -98,7 +97,6 @@ class SleeveProductUpdate(BaseModel):
     sleeves_per_pack: int | None = Field(default=None, gt=0)
     price: float | None = Field(default=None, gt=0)
     in_stock: int | None = Field(default=None, ge=0)
-    ordered: int | None = Field(default=None, ge=0)
 
 class SleeveProductResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -114,8 +112,6 @@ class SleeveProductResponse(BaseModel):
     sleeves_per_pack: int
     price: float
     in_stock: int
-    ordered: int
-    ordered_sleeves: int = 0  # Computed: ordered * sleeves_per_pack
 
 
 # ============================================================================
@@ -396,8 +392,6 @@ def list_sleeve_products(
             sleeves_per_pack=p.sleeves_per_pack,
             price=float(p.price),
             in_stock=p.in_stock,
-            ordered=p.ordered,
-            ordered_sleeves=p.ordered * p.sleeves_per_pack,
         )
         for p in products
     ]
@@ -420,7 +414,6 @@ def create_sleeve_product(
         sleeves_per_pack=data.sleeves_per_pack,
         price=Decimal(str(data.price)),
         in_stock=data.in_stock,
-        ordered=data.ordered,
     )
     db.add(product)
     db.flush()
@@ -440,8 +433,6 @@ def create_sleeve_product(
         sleeves_per_pack=product.sleeves_per_pack,
         price=float(product.price),
         in_stock=product.in_stock,
-        ordered=product.ordered,
-        ordered_sleeves=product.ordered * product.sleeves_per_pack,
     )
 
 
@@ -484,8 +475,6 @@ def update_sleeve_product(
         sleeves_per_pack=product.sleeves_per_pack,
         price=float(product.price),
         in_stock=product.in_stock,
-        ordered=product.ordered,
-        ordered_sleeves=product.ordered * product.sleeves_per_pack,
     )
 
 

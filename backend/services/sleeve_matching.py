@@ -250,11 +250,10 @@ def compute_to_order_list(db: Session) -> list[dict]:
         product_info = None
 
         if product:
-            ordered_sleeves = product.ordered * product.sleeves_per_pack
-            deficit = max(0, total_needed - product.in_stock - ordered_sleeves)
+            deficit = max(0, total_needed - product.in_stock)
 
             if deficit <= 0:
-                continue  # Already have enough stock + ordered
+                continue  # Already have enough stock
 
             packs_to_buy = -(-deficit // product.sleeves_per_pack)  # Ceiling division
 
@@ -269,8 +268,6 @@ def compute_to_order_list(db: Session) -> list[dict]:
                 "packs_to_buy": packs_to_buy,
                 "total_cost": round(float(product.price) * packs_to_buy, 2),
                 "current_stock": product.in_stock,
-                "ordered_packs": product.ordered,
-                "ordered_sleeves": ordered_sleeves,
             }
         else:
             deficit = total_needed

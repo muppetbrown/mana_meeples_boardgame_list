@@ -137,8 +137,6 @@ describe('SleeveShoppingListModal', () => {
           sleeves_per_pack: 100,
           price: 5.99,
           in_stock: 200,
-          ordered: 0,
-          ordered_sleeves: 0,
         },
       ]);
 
