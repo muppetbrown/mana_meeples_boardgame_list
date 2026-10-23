@@ -17,7 +17,7 @@ cloudinary==1.46.3
 tenacity==9.2.1
 pybreaker==1.4.1
 redis==8.1.0
-Pillow==12.3.0
+Pillow==13.0.0
 reportlab==5.0.1
 svglib==2.3.0
 rapidfuzz==3.14.6
