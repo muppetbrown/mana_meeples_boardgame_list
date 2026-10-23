@@ -121,6 +121,7 @@ describe('ManageLibraryTab', () => {
       PARTY_ICEBREAKERS: 1,
     },
     filteredLibrary: mockGames,
+    ownedLibrary: mockGames,
     library: mockGames,
     openEditCategory: mockOpenEditCategory,
     deleteGameData: mockDeleteGameData,
@@ -572,12 +573,45 @@ describe('ManageLibraryTab', () => {
       expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
     });
 
-    test('selection drops games that are filtered out', async () => {
+    test('selection persists when searching for another game', async () => {
+      const user = userEvent.setup();
+      render(<ManageLibraryTab />);
+      const search = screen.getByPlaceholderText(/Search by title/);
+
+      await user.type(search, 'Gloomhaven');
+      await user.click(screen.getByLabelText('Select Gloomhaven'));
+      expect(screen.getByText(/^1 game\(s\) selected/)).toBeInTheDocument();
+
+      await user.clear(search);
+      await user.type(search, 'Wingspan');
+      // First pick is kept (and shown as hidden), not dropped
+      expect(screen.getByText(/1 game\(s\) selected \(1 not shown/)).toBeInTheDocument();
+      expect(screen.getByLabelText('Deselect Gloomhaven')).toBeInTheDocument();
+
+      await user.click(screen.getByLabelText('Select Wingspan'));
+      expect(screen.getByText(/^2 game\(s\) selected/)).toBeInTheDocument();
+
+      // Clearing the search shows both ticked
+      await user.clear(search);
+      expect(screen.getByLabelText('Select Gloomhaven')).toBeChecked();
+      expect(screen.getByLabelText('Select Wingspan')).toBeChecked();
+    });
+
+    test('selection and its toolbar survive a search with no results', async () => {
       const user = userEvent.setup();
       render(<ManageLibraryTab />);
       await user.click(screen.getByLabelText('Select Gloomhaven'));
-      expect(screen.getByText('1 game(s) selected')).toBeInTheDocument();
+      await user.type(screen.getByPlaceholderText(/Search by title/), 'zzzz');
+      expect(screen.getByText(/1 game\(s\) selected/)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Print Labels/ })).toBeInTheDocument();
+    });
+
+    test('a hidden selected game can be deselected from the chip list', async () => {
+      const user = userEvent.setup();
+      render(<ManageLibraryTab />);
+      await user.click(screen.getByLabelText('Select Gloomhaven'));
       await user.type(screen.getByPlaceholderText(/Search by title/), 'Wingspan');
+      await user.click(screen.getByLabelText('Deselect Gloomhaven'));
       expect(screen.getByText('0 game(s) selected')).toBeInTheDocument();
     });
 

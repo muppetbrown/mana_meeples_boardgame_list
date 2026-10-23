@@ -20,6 +20,7 @@ export function ManageLibraryTab() {
     setSelectedCategory,
     counts,
     filteredLibrary,
+    ownedLibrary,
     library,
     deleteGameData,
     updateGameData,
@@ -100,19 +101,22 @@ export function ManageLibraryTab() {
     return sortReverse ? sorted.reverse() : sorted;
   }, [filteredLibrary, searchQuery, sortBy, sortReverse, attentionFilter]);
 
-  // Reset to page 1 and drop selections that are no longer in the filtered view
+  // Reset to page 1 when the view changes
   useEffect(() => {
     setPage(1);
   }, [searchQuery, sortBy, sortReverse, selectedCategory, attentionFilter, pageSize]);
 
+  // Selections persist across searches and filters (so games can be picked one
+  // search at a time); only drop games that are no longer in the library at all.
+  const ownedById = useMemo(() => new Map((ownedLibrary || []).map((g) => [g.id, g])), [ownedLibrary]);
   useEffect(() => {
+    if (!ownedLibrary) return;
     setSelectedGames((prev) => {
       if (prev.size === 0) return prev;
-      const visible = new Set(searchFilteredLibrary.map((g) => g.id));
-      const next = new Set([...prev].filter((id) => visible.has(id)));
+      const next = new Set([...prev].filter((id) => ownedById.has(id)));
       return next.size === prev.size ? prev : next;
     });
-  }, [searchFilteredLibrary]);
+  }, [ownedById, ownedLibrary]);
 
   const PAGE_SIZE = pageSize;
   const totalPages = Math.max(1, Math.ceil(searchFilteredLibrary.length / PAGE_SIZE));
@@ -217,6 +221,18 @@ export function ManageLibraryTab() {
   const allMatchingSelected =
     searchFilteredLibrary.length > 0 && searchFilteredLibrary.every((g) => selectedGames.has(g.id));
   const hasMultiplePages = searchFilteredLibrary.length > pageItems.length;
+
+  // Selected games that the current search/filters are hiding
+  const hiddenSelected = useMemo(() => {
+    const visible = new Set(searchFilteredLibrary.map((g) => g.id));
+    return [...selectedGames].filter((id) => !visible.has(id)).map((id) => ownedById.get(id)).filter(Boolean);
+  }, [selectedGames, searchFilteredLibrary, ownedById]);
+  const deselectGame = (id) =>
+    setSelectedGames((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
 
   const toggleSelectPage = () => {
     setSelectedGames((prev) => {
@@ -524,7 +540,7 @@ export function ManageLibraryTab() {
       </div>
 
       {/* Selection toolbar (sticky) */}
-      {searchFilteredLibrary.length > 0 && (
+      {(searchFilteredLibrary.length > 0 || hasSelection) && (
         <div
           className={`rounded-lg px-4 min-h-12 py-1.5 sticky z-20 border flex items-center justify-between flex-wrap gap-x-4 gap-y-2 ${
             hasSelection ? "bg-purple-50 border-purple-200 shadow-sm" : "bg-white border-gray-200"
@@ -532,6 +548,7 @@ export function ManageLibraryTab() {
           style={{ top: "var(--staff-topbar-h, 6rem)" }}
         >
           <div className="flex items-center gap-4">
+            {pageItems.length > 0 && (
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -550,8 +567,10 @@ export function ManageLibraryTab() {
                     : `Select All ${pageItems.length}`}
               </span>
             </label>
+            )}
             <span className="text-sm text-gray-600 tabular" aria-live="polite">
               {selectedGames.size} game(s) selected
+              {hiddenSelected.length > 0 && ` (${hiddenSelected.length} not shown by current search/filters)`}
             </span>
             {hasSelection && (
               <button
@@ -603,6 +622,27 @@ export function ManageLibraryTab() {
             </span>
           )}
           <SleeveFetchStatus pollToken={sleeveFetchPollToken} />
+        </div>
+      )}
+
+      {/* Selected games hidden by the current search/filters, so they can still be seen and removed */}
+      {hiddenSelected.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-sm bg-purple-50 border border-purple-200 rounded-lg px-4 py-2">
+          <span className="text-purple-900 font-medium">Also selected:</span>
+          {hiddenSelected.slice(0, 12).map((g) => (
+            <span key={g.id} className="inline-flex items-center gap-1 bg-white border border-purple-200 rounded-full pl-3 pr-1 py-0.5">
+              {g.title}
+              <button
+                type="button"
+                onClick={() => deselectGame(g.id)}
+                aria-label={`Deselect ${g.title}`}
+                className="w-5 h-5 rounded-full text-purple-700 hover:bg-purple-100 leading-none"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          {hiddenSelected.length > 12 && <span className="text-purple-900">+{hiddenSelected.length - 12} more</span>}
         </div>
       )}
 
