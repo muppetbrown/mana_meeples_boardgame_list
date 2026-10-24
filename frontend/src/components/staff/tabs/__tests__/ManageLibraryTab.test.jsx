@@ -364,6 +364,19 @@ describe('ManageLibraryTab', () => {
       expect(screen.getByText(/Select games to re-import/)).toBeInTheDocument();
     });
 
+    test('copies a local sleeve fetch command for the selected games', async () => {
+      const user = userEvent.setup();
+      render(<ManageLibraryTab />);
+      await user.click(screen.getByLabelText('Select Gloomhaven'));
+
+      await user.click(screen.getByText(/Copy local fetch command/).closest('button'));
+
+      const copied = await navigator.clipboard.readText();
+      expect(copied).toContain('SLEEVE_HEADED="1"');
+      expect(copied).toMatch(/python scripts\/fetch_all_sleeves\.py --game-ids \d+/);
+      expect(mockShowToast).toHaveBeenCalledWith(expect.stringMatching(/copied/i), 'success');
+    });
+
     test('bulk action buttons are enabled when games selected', async () => {
       const user = userEvent.setup();
       render(<ManageLibraryTab />);

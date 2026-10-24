@@ -572,6 +572,7 @@ class GameService:
             "min_age",
             "nz_designer",
             "excluded_quick_picks",
+            "aftergame_game_id",
             # Ownership fields
             "status",
             "date_added",

@@ -14,6 +14,12 @@ def create_game_slug(title: str) -> str:
     """Convert game title to BGG URL slug"""
     return title.lower().replace(' ', '-').replace(':', '').replace("'", '').replace('.', '')
 
+def _is_bot_challenge(page_title: str, body_text: str) -> bool:
+    """True when Cloudflare served its bot-verification interstitial instead of the page."""
+    haystack = f"{page_title} {body_text}".lower()
+    return "just a moment" in haystack or "performing security verification" in haystack
+
+
 def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Dict]:
     """
     Scrape sleeve data from BGG's sleeve page
@@ -26,7 +32,7 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
     Returns:
         Dict with sleeve data or None if not found
         {
-            'status': 'found' | 'not_found' | 'error',
+            'status': 'found' | 'not_found' | 'blocked' | 'error',
             'card_types': [...],
             'notes': '...'
         }
@@ -83,6 +89,13 @@ def scrape_sleeve_data(bgg_id: int, game_title: str, driver=None) -> Optional[Di
             except Exception:
                 page_title = "<unavailable>"
                 body_snippet = "<unavailable>"
+            if _is_bot_challenge(page_title, body_snippet):
+                logger.error(f"Blocked by Cloudflare bot check on {url}")
+                return {
+                    'status': 'blocked',
+                    'card_types': [],
+                    'notes': 'Blocked by BGG/Cloudflare bot verification',
+                }
             logger.warning(
                 f"Timeout waiting for sleeve data on {url} | title={page_title!r} | "
                 f"body_snippet={body_snippet!r}"

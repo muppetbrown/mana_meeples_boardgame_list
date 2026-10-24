@@ -72,7 +72,7 @@ describe('GameEditModal', () => {
 
     test('renders every section without needing to click between tabs', () => {
       render(<GameEditModal {...defaultProps} />);
-      expect(screen.getByText('Assign Category')).toBeInTheDocument();
+      expect(screen.getByRole('radiogroup', { name: 'Category' })).toBeInTheDocument();
       expect(screen.getByText('This is an expansion')).toBeInTheDocument();
       expect(screen.getByTestId('sleeves-list-table')).toBeInTheDocument();
       expect(screen.getByText(/AfterGame Integration/)).toBeInTheDocument();
@@ -85,11 +85,10 @@ describe('GameEditModal', () => {
     });
   });
 
-  describe('Info section', () => {
+  describe('Header and details', () => {
     test('shows the library ID', () => {
       render(<GameEditModal {...defaultProps} />);
-      expect(screen.getByText('Library ID')).toBeInTheDocument();
-      expect(screen.getByText('1')).toBeInTheDocument();
+      expect(screen.getByText(/ID 1/)).toBeInTheDocument();
     });
 
     test('shows the BGG ID as a link to BoardGameGeek', () => {
@@ -98,17 +97,27 @@ describe('GameEditModal', () => {
       expect(link).toHaveAttribute('href', 'https://boardgamegeek.com/boardgame/30549');
     });
 
-    test('shows a dash when there is no BGG ID', () => {
+    test('omits the BGG link when there is no BGG ID', () => {
       render(<GameEditModal {...defaultProps} game={{ ...mockGame, bgg_id: null }} />);
       expect(screen.queryByRole('link', { name: /\d+/ })).not.toBeInTheDocument();
     });
 
-    test('shows year, players, status and designers', () => {
+    test('shows designers and pre-fills editable detail fields', () => {
       render(<GameEditModal {...defaultProps} />);
-      expect(screen.getByText('2008')).toBeInTheDocument();
-      expect(screen.getByText('2–4')).toBeInTheDocument();
-      expect(screen.getByText('OWNED')).toBeInTheDocument();
-      expect(screen.getByText('Matt Leacock')).toBeInTheDocument();
+      expect(screen.getByText(/Matt Leacock/)).toBeInTheDocument();
+      expect(screen.getByLabelText('Title')).toHaveValue('Pandemic');
+      expect(screen.getByLabelText('Year')).toHaveValue(2008);
+      expect(screen.getByLabelText('Players min')).toHaveValue(2);
+      expect(screen.getByLabelText('Players max')).toHaveValue(4);
+      expect(screen.getByLabelText('Ownership status')).toHaveValue('OWNED');
+    });
+
+    test('NZ designer switch reflects and edits the flag', () => {
+      render(<GameEditModal {...defaultProps} game={{ ...mockGame, nz_designer: true }} />);
+      const nz = screen.getByRole('checkbox', { name: /New Zealand designer/i });
+      expect(nz).toBeChecked();
+      fireEvent.click(nz);
+      expect(nz).not.toBeChecked();
     });
   });
 
@@ -167,8 +176,7 @@ describe('GameEditModal', () => {
       fireEvent.click(checkbox);
 
       // Find the select element by its label text
-      const selects = container.querySelectorAll('select');
-      const expansionTypeSelect = selects[0]; // First select is expansion type
+      const expansionTypeSelect = container.querySelector('#expansion_type');
       expect(expansionTypeSelect).toBeInTheDocument();
       expect(expansionTypeSelect.querySelector('option[value="requires_base"]')).toBeInTheDocument();
       expect(expansionTypeSelect.querySelector('option[value="standalone"]')).toBeInTheDocument();
@@ -275,7 +283,16 @@ describe('GameEditModal', () => {
 
       await waitFor(() => {
         expect(mockOnSave).toHaveBeenCalledWith({
+          title: 'Pandemic',
+          year: 2008,
+          players_min: 2,
+          players_max: 4,
+          playtime_min: null,
+          playtime_max: null,
+          min_age: null,
           mana_meeple_category: 'CORE_STRATEGY',
+          nz_designer: false,
+          status: 'OWNED',
           is_expansion: false,
           expansion_type: null,
           base_game_id: null,
@@ -323,6 +340,36 @@ describe('GameEditModal', () => {
           })
         );
       });
+    });
+
+    test('saves edited details, NZ flag and status', async () => {
+      render(<GameEditModal {...defaultProps} />);
+      fireEvent.change(screen.getByLabelText('Title'), { target: { value: ' Pandemic Legacy ' } });
+      fireEvent.change(screen.getByLabelText('Time max (mins)'), { target: { value: '60' } });
+      fireEvent.click(screen.getByRole('checkbox', { name: /New Zealand designer/i }));
+      fireEvent.change(screen.getByLabelText('Ownership status'), { target: { value: 'WISHLIST' } });
+      fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+
+      await waitFor(() => {
+        expect(mockOnSave).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'Pandemic Legacy',
+            playtime_max: 60,
+            nz_designer: true,
+            status: 'WISHLIST',
+          })
+        );
+      });
+    });
+
+    test('blocks save when title is empty or players min exceeds max', () => {
+      render(<GameEditModal {...defaultProps} />);
+      fireEvent.change(screen.getByLabelText('Title'), { target: { value: '  ' } });
+      fireEvent.change(screen.getByLabelText('Players min'), { target: { value: '9' } });
+      fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+      expect(screen.getByText('Title is required')).toBeInTheDocument();
+      expect(screen.getByText('Players min cannot be greater than max')).toBeInTheDocument();
+      expect(mockOnSave).not.toHaveBeenCalled();
     });
 
     test('parses player count inputs as integers', async () => {

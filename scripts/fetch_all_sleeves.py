@@ -56,23 +56,33 @@ def scrape_with_timeout(bgg_id, game_title, driver, timeout_seconds=30):
     return result_container['result']
 
 def create_driver():
-    """Create a new Selenium WebDriver instance"""
+    """Create a new Selenium WebDriver instance.
+
+    SLEEVE_HEADED=1 runs a normal (non-headless) browser, which gets past BGG's
+    Cloudflare check far more often than headless. On CI wrap the script in
+    xvfb-run; locally it just opens a visible Chrome window.
+    """
+    headed = os.environ.get('SLEEVE_HEADED') == '1'
     chrome_options = Options()
-    chrome_options.add_argument('--headless')
+    if not headed:
+        chrome_options.add_argument('--headless')
+        # A headless UA advertises "HeadlessChrome"; only override it when headless.
+        chrome_options.add_argument(
+            'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+        )
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('--disable-gpu')
     # Reduce basic automation fingerprinting that can trigger bot detection
     # on sites fronted by Cloudflare (BGG included) when run from CI IPs.
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-    chrome_options.add_argument(
-        'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-    )
     chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
     chrome_options.add_experimental_option('useAutomationExtension', False)
-    # Point to chromium binary (GitHub Actions installs chromium-browser, not chrome)
-    chrome_options.binary_location = '/usr/bin/chromium-browser'
+    # GitHub Actions installs chromium-browser; elsewhere use the default Chrome.
+    chromium = '/usr/bin/chromium-browser'
+    if os.path.exists(chromium):
+        chrome_options.binary_location = chromium
     return webdriver.Chrome(options=chrome_options)
 
 
@@ -105,8 +115,11 @@ def main():
 
         games = query.all()
         total = len(games)
+        exit_code = 0
 
         print(f"\nFound {total} games with BGG IDs to process\n")
+
+        blocked_count = 0
 
         for i, game in enumerate(games, 1):
             # Periodically restart driver to prevent resource buildup (every 50 games)
@@ -155,6 +168,12 @@ def main():
 
                     game.has_sleeves = 'found'
                     print(f"  ✓ Found {len(result['card_types'])} sleeve type(s)", flush=True)
+                elif result and result.get('status') == 'blocked':
+                    # BGG's Cloudflare check blocked us: this says nothing about the game,
+                    # so undo the delete above and leave existing sleeve data untouched.
+                    db.rollback()
+                    blocked_count += 1
+                    print(f"  ✗ blocked by BGG bot verification (existing data kept)", flush=True)
                 elif result:
                     game.has_sleeves = result.get('status', 'error')
                     status_msg = result.get('status', 'unknown')
@@ -178,6 +197,10 @@ def main():
         print("\n" + "=" * 80)
         print("COMPLETE")
         print("=" * 80)
+        if blocked_count:
+            print(f"\n{blocked_count} of {total} game(s) were blocked by BGG's bot verification "
+                  f"and NOT updated.", flush=True)
+            exit_code = 1
 
     finally:
         try:
@@ -185,6 +208,9 @@ def main():
         except Exception as _e:
             print(f"Driver cleanup error (ignored): {_e}", flush=True)
         db.close()
+
+    if exit_code:
+        sys.exit(exit_code)
 
 if __name__ == "__main__":
     main()

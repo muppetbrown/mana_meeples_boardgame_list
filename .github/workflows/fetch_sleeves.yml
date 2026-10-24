@@ -25,7 +25,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y chromium-browser chromium-chromedriver
+          sudo apt-get install -y chromium-browser chromium-chromedriver xvfb
 
       - name: Install system dependencies (cairo for svglib)
         run: sudo apt-get install -y libcairo2-dev pkg-config
@@ -39,11 +39,14 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           PYTHONPATH: ${{ github.workspace }}/backend
           GAME_IDS: ${{ inputs.game_ids }}
+          # Real (non-headless) browser on a virtual display: BGG's Cloudflare check
+          # blocks headless Chrome from CI addresses.
+          SLEEVE_HEADED: '1'
         run: |
           if [ -n "$GAME_IDS" ]; then
             echo "Fetching sleeves for game IDs: $GAME_IDS"
-            python scripts/fetch_all_sleeves.py --game-ids "$GAME_IDS"
+            xvfb-run -a python scripts/fetch_all_sleeves.py --game-ids "$GAME_IDS"
           else
             echo "Fetching sleeves for all games"
-            python scripts/fetch_all_sleeves.py
+            xvfb-run -a python scripts/fetch_all_sleeves.py
           fi

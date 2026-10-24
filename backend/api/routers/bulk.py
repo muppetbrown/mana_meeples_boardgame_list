@@ -56,6 +56,10 @@ async def _fetch_sleeve_data_task(game_id: int, bgg_id: int, game_title: str):
             logger.warning(f"No sleeve data returned for {game_title}")
             return
 
+        if sleeve_data.get('status') == 'blocked':
+            logger.error(f"Sleeve fetch blocked by BGG bot verification for {game_title}; leaving data unchanged")
+            return
+
         # Update has_sleeves status
         game.has_sleeves = sleeve_data.get('status', 'not_found')
 
