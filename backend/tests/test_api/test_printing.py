@@ -54,6 +54,27 @@ class TestPrintLabelsEndpoint:
                 call_args = mock_instance.generate_pdf.call_args[0][0]
                 assert len(call_args) == 3
 
+    def test_print_labels_passes_nz_designer_flag(self, client, db_session, admin_headers):
+        """NZ designer flag is forwarded to the label generator"""
+        game = Game(title="Kiwi Game", nz_designer=True, mana_meeple_category="GATEWAY_STRATEGY")
+        db_session.add(game)
+        db_session.commit()
+
+        with patch('api.routers.printing.LabelGenerator') as MockGenerator:
+            mock_instance = MagicMock()
+            mock_instance.generate_pdf.return_value = BytesIO(b'%PDF-1.4 test')
+            MockGenerator.return_value = mock_instance
+
+            response = client.post(
+                "/api/admin/print-labels",
+                json={"game_ids": [game.id]},
+                headers=admin_headers
+            )
+
+            assert response.status_code == 200
+            sent = mock_instance.generate_pdf.call_args[0][0]
+            assert sent[0]['nz_designer'] is True
+
     def test_print_labels_single_game(self, client, db_session, admin_headers):
         """Test label generation for a single game"""
         game = Game(

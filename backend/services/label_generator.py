@@ -48,6 +48,9 @@ CATEGORY_COLORS = {
 # Width of the category colour band along the left edge of each label
 CATEGORY_BAND_WIDTH = 0.12 * inch
 
+# NZ designer badge (black + white to read as a distinct "made in NZ" mark)
+COLOR_NZ_BG = colors.HexColor('#111827')
+
 # Default color for unknown categories
 DEFAULT_CATEGORY_COLOR = colors.HexColor('#8b5cf6')  # Purple/indigo
 
@@ -284,6 +287,17 @@ class LabelGenerator:
             text_color = self._get_contrast_text_color(category_color)
             c.setFillColor(text_color)
             c.drawString(current_x + 4, y + 4, game_type)
+            current_x += type_badge_width + 4
+
+        # New Zealand designer badge
+        if game.get('nz_designer'):
+            nz_text = 'NZ'
+            c.setFont('Helvetica-Bold', 8)
+            nz_width = c.stringWidth(nz_text, 'Helvetica-Bold', 8) + 8
+            c.setFillColor(COLOR_NZ_BG)
+            c.roundRect(current_x, y, nz_width, badge_height, 4, fill=1, stroke=0)
+            c.setFillColor(colors.white)
+            c.drawString(current_x + 4, y + 4, nz_text)
 
     def _draw_stats_grid(self, c: canvas.Canvas, game: dict, x: float, y: float, width: float, height: float):
         """Draw stats grid (players, time, age, complexity)"""

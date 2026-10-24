@@ -76,6 +76,7 @@ async def generate_labels(
                 'game_type': game.game_type,
                 'is_cooperative': game.is_cooperative,
                 'mana_meeple_category': game.mana_meeple_category,
+                'nz_designer': bool(game.nz_designer),
             }
             game_dicts.append(game_dict)
 
