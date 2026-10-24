@@ -303,6 +303,26 @@ export function ManageLibraryTab() {
     }
   };
 
+  // BGG's Cloudflare check often blocks the GitHub workflow, so offer a command
+  // to run the same fetch from a normal PC (real Chrome, home connection).
+  const handleCopyLocalFetchCommand = async () => {
+    if (selectedGames.size === 0) {
+      showToast('Please select at least one game', 'error');
+      return;
+    }
+    const ids = Array.from(selectedGames).join(',');
+    const command =
+      `$env:SLEEVE_HEADED="1"; $env:DATABASE_URL="<paste your database url>"; ` +
+      `python scripts/fetch_all_sleeves.py --game-ids ${ids}`;
+    try {
+      await navigator.clipboard.writeText(command);
+      showToast('Command copied. Run it in PowerShell from the project folder (fill in DATABASE_URL first).', 'success');
+    } catch (err) {
+      // Clipboard can be blocked (permissions / insecure context): show it to copy by hand
+      window.prompt('Copy this command:', command);
+    }
+  };
+
   const handleTriggerSleeveFetch = async () => {
     if (selectedGames.size === 0) {
       showToast('Please select at least one game', 'error');
@@ -597,6 +617,13 @@ export function ManageLibraryTab() {
                 title="Trigger GitHub Actions workflow to fetch sleeve data"
               >
                 <Icon name="sleeve" size={14} /> Fetch Sleeve Data
+              </button>
+              <button
+                onClick={handleCopyLocalFetchCommand}
+                className={actionBtn}
+                title="Copy a PowerShell command that fetches sleeve data from your own PC (use if the workflow is blocked by BGG)"
+              >
+                <Icon name="copy" size={14} /> Copy local fetch command
               </button>
               <button
                 onClick={handleGenerateSleeveList}
