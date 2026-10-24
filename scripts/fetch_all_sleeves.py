@@ -105,8 +105,11 @@ def main():
 
         games = query.all()
         total = len(games)
+        exit_code = 0
 
         print(f"\nFound {total} games with BGG IDs to process\n")
+
+        blocked_count = 0
 
         for i, game in enumerate(games, 1):
             # Periodically restart driver to prevent resource buildup (every 50 games)
@@ -155,6 +158,12 @@ def main():
 
                     game.has_sleeves = 'found'
                     print(f"  ✓ Found {len(result['card_types'])} sleeve type(s)", flush=True)
+                elif result and result.get('status') == 'blocked':
+                    # BGG's Cloudflare check blocked us: this says nothing about the game,
+                    # so undo the delete above and leave existing sleeve data untouched.
+                    db.rollback()
+                    blocked_count += 1
+                    print(f"  ✗ blocked by BGG bot verification (existing data kept)", flush=True)
                 elif result:
                     game.has_sleeves = result.get('status', 'error')
                     status_msg = result.get('status', 'unknown')
@@ -178,6 +187,10 @@ def main():
         print("\n" + "=" * 80)
         print("COMPLETE")
         print("=" * 80)
+        if blocked_count:
+            print(f"\n{blocked_count} of {total} game(s) were blocked by BGG's bot verification "
+                  f"and NOT updated.", flush=True)
+            exit_code = 1
 
     finally:
         try:
@@ -185,6 +198,9 @@ def main():
         except Exception as _e:
             print(f"Driver cleanup error (ignored): {_e}", flush=True)
         db.close()
+
+    if exit_code:
+        sys.exit(exit_code)
 
 if __name__ == "__main__":
     main()
