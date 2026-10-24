@@ -56,23 +56,33 @@ def scrape_with_timeout(bgg_id, game_title, driver, timeout_seconds=30):
     return result_container['result']
 
 def create_driver():
-    """Create a new Selenium WebDriver instance"""
+    """Create a new Selenium WebDriver instance.
+
+    SLEEVE_HEADED=1 runs a normal (non-headless) browser, which gets past BGG's
+    Cloudflare check far more often than headless. On CI wrap the script in
+    xvfb-run; locally it just opens a visible Chrome window.
+    """
+    headed = os.environ.get('SLEEVE_HEADED') == '1'
     chrome_options = Options()
-    chrome_options.add_argument('--headless')
+    if not headed:
+        chrome_options.add_argument('--headless')
+        # A headless UA advertises "HeadlessChrome"; only override it when headless.
+        chrome_options.add_argument(
+            'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+        )
     chrome_options.add_argument('--no-sandbox')
     chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument('--disable-gpu')
     # Reduce basic automation fingerprinting that can trigger bot detection
     # on sites fronted by Cloudflare (BGG included) when run from CI IPs.
     chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-    chrome_options.add_argument(
-        'user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-        '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
-    )
     chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
     chrome_options.add_experimental_option('useAutomationExtension', False)
-    # Point to chromium binary (GitHub Actions installs chromium-browser, not chrome)
-    chrome_options.binary_location = '/usr/bin/chromium-browser'
+    # GitHub Actions installs chromium-browser; elsewhere use the default Chrome.
+    chromium = '/usr/bin/chromium-browser'
+    if os.path.exists(chromium):
+        chrome_options.binary_location = chromium
     return webdriver.Chrome(options=chrome_options)
 
 
