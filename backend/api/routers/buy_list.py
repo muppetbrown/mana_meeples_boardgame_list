@@ -32,7 +32,7 @@ from schemas import (
 from services.award_winners import get_award_winners
 from services.distro_availability import apply_manual_links, availability_for_titles
 from services.game_suggestion_service import SuggestionServiceError, generate_suggestions
-from services.gap_analysis import annotate_candidate, compute_library_gaps
+from services.gap_analysis import annotate_candidate, compute_library_gaps, games_needed_values
 from services.hl_signal_fit import SCORING_POOL_SIZE, enrich_links_task, fit_for_link, needs_bgg_lookup
 from services.hl_stock_matching import find_best_title_match
 from services.hl_stock_service import (
@@ -109,6 +109,17 @@ def _gaps_filled_count(result: Dict[str, Any]) -> int:
     count += 1 if gap_match.get("complexity_is_gap") else 0
     count += 1 if gap_match.get("playtime_is_gap") else 0
     return count
+
+
+def _gaps_filled_sort_key(result: Dict[str, Any]) -> tuple:
+    """Sort key for sort_by=gaps_filled: most gaps filled first, and - since
+    several candidates often tie on that count - prefer whichever of them
+    would fully close a gap outright over one that only chips away at a gap
+    that needs several more games yet."""
+    needed = games_needed_values(result.get("gap_match"))
+    closes_a_gap_outright = sum(1 for n in needed if n <= 1)
+    closest_to_closing = -min(needed) if needed else 0
+    return (_gaps_filled_count(result), closes_a_gap_outright, closest_to_closing)
 
 
 # ------------------------------------------------------------------------------
@@ -270,7 +281,15 @@ async def list_buy_list_games(
             r["distro_availability"] = availability.get(r["title"]) if availability is not None else None
 
         if sort_by == "gaps_filled":
-            results.sort(key=_gaps_filled_count, reverse=sort_desc)
+            results.sort(key=_gaps_filled_sort_key, reverse=sort_desc)
+
+        # Dense rank by gaps-filled count alone (not the tie-break order above),
+        # so entries tying on how many gaps they'd fill show the same rank
+        # number regardless of which sort the list is currently viewed in.
+        distinct_counts = sorted({_gaps_filled_count(r) for r in results}, reverse=True)
+        rank_by_count = {count: position + 1 for position, count in enumerate(distinct_counts)}
+        for r in results:
+            r["gaps_filled_rank"] = rank_by_count[_gaps_filled_count(r)]
 
         return {"total": len(results), "items": results}
 

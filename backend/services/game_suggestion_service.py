@@ -145,7 +145,15 @@ async def _build_prompt(db: Session, count: int) -> tuple[str, str]:
         "strong games outside those gaps. Every suggestion is checked against the NZ distributor "
         "catalogues the cafe buys from, so strongly prefer games that are currently in print and "
         "stocked by NZ distributors. The current BoardGameGeek trending list is extra context, "
-        "not a mandate - weigh it alongside fit for this library, don't just restate it."
+        "not a mandate - weigh it alongside fit for this library, don't just restate it.\n\n"
+        "Never suggest a living card game (LCG) or collectible/trading card game (CCG/TCG) - "
+        "e.g. Arkham Horror: The Card Game, Marvel Champions, Legend of the Five Rings, "
+        "Magic: The Gathering, or any Pokemon TCG product. These depend on an ever-growing "
+        "stream of separately-sold expansion/booster packs just to stay playable, which doesn't "
+        "suit a single self-contained library copy. For the same reason, also skip miniatures "
+        "games that need separately bought and painted miniatures to play (e.g. Warhammer), and "
+        "tabletop RPG rulebooks/sourcebooks (e.g. Dungeons & Dragons manuals) - none of these are "
+        "a complete, ready-to-play board game out of one box."
     )
 
     user = (

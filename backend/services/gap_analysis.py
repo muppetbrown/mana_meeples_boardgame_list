@@ -18,6 +18,7 @@ missing the relevant data (no complexity rating, no playtime) don't count
 toward any bucket, the same way an uncategorized game doesn't count toward
 any category - they just don't contribute a vote either way.
 """
+import math
 from typing import Optional, TypedDict
 
 from sqlalchemy import select
@@ -53,6 +54,7 @@ class CategoryGap(TypedDict):
     count: int
     pct_of_collection: float
     is_gap: bool
+    games_needed: int
 
 
 class PlayerCountGap(TypedDict):
@@ -60,6 +62,7 @@ class PlayerCountGap(TypedDict):
     games_supporting: int
     pct_of_collection: float
     is_gap: bool
+    games_needed: int
 
 
 class ComplexityGap(TypedDict):
@@ -67,6 +70,7 @@ class ComplexityGap(TypedDict):
     count: int
     pct_of_collection: float
     is_gap: bool
+    games_needed: int
 
 
 class PlaytimeGap(TypedDict):
@@ -74,6 +78,7 @@ class PlaytimeGap(TypedDict):
     count: int
     pct_of_collection: float
     is_gap: bool
+    games_needed: int
 
 
 def _supports_player_count(players_min: Optional[int], players_max: Optional[int], n: int) -> bool:
@@ -130,17 +135,22 @@ def compute_category_gaps(db: Session) -> list[CategoryGap]:
 
     average_share_pct = 100 / len(CATEGORY_KEYS) if CATEGORY_KEYS else 0
     gap_threshold_pct = average_share_pct * GAP_THRESHOLD_FRACTION
+    # Same threshold, expressed as a game count against the current collection
+    # size, so a gap's "games_needed" doesn't require re-deriving it per-bucket.
+    gap_threshold_count = gap_threshold_pct / 100 * total_games
 
     results: list[CategoryGap] = []
     for key in CATEGORY_KEYS:
         count = counts[key]
         pct = round(count / total_games * 100, 1) if total_games else 0.0
+        is_gap = total_games > 0 and pct < gap_threshold_pct
         results.append(
             CategoryGap(
                 category=key,
                 count=count,
                 pct_of_collection=pct,
-                is_gap=total_games > 0 and pct < gap_threshold_pct,
+                is_gap=is_gap,
+                games_needed=max(0, math.ceil(gap_threshold_count - count)) if is_gap else 0,
             )
         )
     return results
@@ -168,12 +178,14 @@ def compute_player_count_gaps(db: Session) -> list[PlayerCountGap]:
     for bucket in PLAYER_COUNT_BUCKETS:
         count = counts[bucket]
         pct = round(count / total_games * 100, 1) if total_games else 0.0
+        is_gap = total_games > 0 and count < gap_threshold
         results.append(
             PlayerCountGap(
                 player_count=bucket,
                 games_supporting=count,
                 pct_of_collection=pct,
-                is_gap=total_games > 0 and count < gap_threshold,
+                is_gap=is_gap,
+                games_needed=max(0, math.ceil(gap_threshold - count)) if is_gap else 0,
             )
         )
     return results
@@ -194,17 +206,20 @@ def compute_complexity_gaps(db: Session) -> list[ComplexityGap]:
 
     average_share_pct = 100 / len(COMPLEXITY_BUCKETS)
     gap_threshold_pct = average_share_pct * GAP_THRESHOLD_FRACTION
+    gap_threshold_count = gap_threshold_pct / 100 * total_games
 
     results: list[ComplexityGap] = []
     for band in COMPLEXITY_BUCKETS:
         count = counts[band]
         pct = round(count / total_games * 100, 1) if total_games else 0.0
+        is_gap = total_games > 0 and pct < gap_threshold_pct
         results.append(
             ComplexityGap(
                 complexity_band=band,
                 count=count,
                 pct_of_collection=pct,
-                is_gap=total_games > 0 and pct < gap_threshold_pct,
+                is_gap=is_gap,
+                games_needed=max(0, math.ceil(gap_threshold_count - count)) if is_gap else 0,
             )
         )
     return results
@@ -225,17 +240,20 @@ def compute_playtime_gaps(db: Session) -> list[PlaytimeGap]:
 
     average_share_pct = 100 / len(PLAYTIME_BUCKETS)
     gap_threshold_pct = average_share_pct * GAP_THRESHOLD_FRACTION
+    gap_threshold_count = gap_threshold_pct / 100 * total_games
 
     results: list[PlaytimeGap] = []
     for band in PLAYTIME_BUCKETS:
         count = counts[band]
         pct = round(count / total_games * 100, 1) if total_games else 0.0
+        is_gap = total_games > 0 and pct < gap_threshold_pct
         results.append(
             PlaytimeGap(
                 playtime_band=band,
                 count=count,
                 pct_of_collection=pct,
-                is_gap=total_games > 0 and pct < gap_threshold_pct,
+                is_gap=is_gap,
+                games_needed=max(0, math.ceil(gap_threshold_count - count)) if is_gap else 0,
             )
         )
     return results
@@ -245,36 +263,70 @@ def annotate_candidate(game: Game, gaps: dict) -> dict:
     """Which currently-flagged gaps a candidate game (not yet owned) would help fill.
 
     `gaps` is the payload from compute_library_gaps(). Used to surface, next
-    to each 'games to add' entry, why it might be worth buying.
+    to each 'games to add' entry, why it might be worth buying - including,
+    per matched gap, how many more owned games (beyond this one) it would
+    still take to clear that gap entirely (`*_games_needed`), so ties on
+    total gaps filled can be told apart by how close each one gets you.
     """
-    category_is_gap = any(
-        g["category"] == game.mana_meeple_category and g["is_gap"]
-        for g in gaps["category_gaps"]
+    category_gap = next(
+        (g for g in gaps["category_gaps"] if g["category"] == game.mana_meeple_category and g["is_gap"]),
+        None,
     )
-    matching_player_count_gaps = [
-        g["player_count"]
-        for g in gaps["player_count_gaps"]
-        if g["is_gap"]
-        and _supports_player_count(
-            game.players_min, game.players_max, 9 if g["player_count"] == "9+" else int(g["player_count"])
-        )
-    ]
+
+    matching_player_count_gaps = []
+    player_count_games_needed = {}
+    for g in gaps["player_count_gaps"]:
+        if not g["is_gap"]:
+            continue
+        n = 9 if g["player_count"] == "9+" else int(g["player_count"])
+        if _supports_player_count(game.players_min, game.players_max, n):
+            matching_player_count_gaps.append(g["player_count"])
+            player_count_games_needed[g["player_count"]] = g.get("games_needed", 0)
+
     complexity_band = _complexity_bucket(game.complexity)
-    complexity_is_gap = any(
-        g["complexity_band"] == complexity_band and g["is_gap"]
-        for g in gaps["complexity_gaps"]
+    complexity_gap = next(
+        (g for g in gaps["complexity_gaps"] if g["complexity_band"] == complexity_band and g["is_gap"]),
+        None,
     )
+
     playtime_band = _playtime_bucket(game.playtime_min, game.playtime_max)
-    playtime_is_gap = any(
-        g["playtime_band"] == playtime_band and g["is_gap"]
-        for g in gaps["playtime_gaps"]
+    playtime_gap = next(
+        (g for g in gaps["playtime_gaps"] if g["playtime_band"] == playtime_band and g["is_gap"]),
+        None,
     )
+
     return {
-        "category_is_gap": category_is_gap,
+        "category_is_gap": category_gap is not None,
+        "category_games_needed": category_gap.get("games_needed", 0) if category_gap else 0,
         "matching_player_count_gaps": matching_player_count_gaps,
-        "complexity_is_gap": complexity_is_gap,
-        "playtime_is_gap": playtime_is_gap,
+        "player_count_games_needed": player_count_games_needed,
+        "complexity_is_gap": complexity_gap is not None,
+        "complexity_games_needed": complexity_gap.get("games_needed", 0) if complexity_gap else 0,
+        "playtime_is_gap": playtime_gap is not None,
+        "playtime_games_needed": playtime_gap.get("games_needed", 0) if playtime_gap else 0,
     }
+
+
+def games_needed_values(gap_match: Optional[dict]) -> list[int]:
+    """games_needed for each gap a candidate's gap_match actually fills - i.e.
+    how many more owned games it would still take, per matched gap, to clear
+    it. Used to break ties on total gaps filled: a candidate that would fully
+    close a gap on its own (a 0 or 1 here) is worth more than one chipping
+    away at a gap that needs several more games yet.
+    """
+    if not gap_match:
+        return []
+    values = []
+    if gap_match.get("category_is_gap"):
+        values.append(gap_match.get("category_games_needed", 0))
+    player_count_needed = gap_match.get("player_count_games_needed") or {}
+    for count in gap_match.get("matching_player_count_gaps") or []:
+        values.append(player_count_needed.get(count, 0))
+    if gap_match.get("complexity_is_gap"):
+        values.append(gap_match.get("complexity_games_needed", 0))
+    if gap_match.get("playtime_is_gap"):
+        values.append(gap_match.get("playtime_games_needed", 0))
+    return values
 
 
 def compute_library_gaps(db: Session) -> dict:
