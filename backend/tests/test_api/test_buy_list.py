@@ -650,6 +650,44 @@ class TestListBuyListGamesGapsFilledSort:
         titles = [item["title"] for item in response.json()["items"]]
         assert titles[0] == "Light Quick Game"
 
+    def test_ties_on_gaps_filled_break_toward_closing_a_gap_outright(self, client, db_session, admin_headers):
+        # 20 owned games: 18 CORE_STRATEGY, 1 KIDS_FAMILIES, 1 GATEWAY_STRATEGY,
+        # 0 COOP_ADVENTURE/PARTY_ICEBREAKERS -> threshold is 10% of 20 = 2 games.
+        # KIDS_FAMILIES (at 1) only needs 1 more to clear the gap;
+        # PARTY_ICEBREAKERS (at 0) needs 2 more.
+        for i in range(18):
+            db_session.add(Game(title=f"Core {i}", bgg_id=5000 + i, status="OWNED", mana_meeple_category="CORE_STRATEGY"))
+        db_session.add(Game(title="Kids seed", bgg_id=5100, status="OWNED", mana_meeple_category="KIDS_FAMILIES"))
+        db_session.add(Game(title="Gateway seed", bgg_id=5101, status="OWNED", mana_meeple_category="GATEWAY_STRATEGY"))
+        db_session.flush()
+
+        almost_closes_gap = Game(title="Almost Closes Gap", bgg_id=1, mana_meeple_category="KIDS_FAMILIES")
+        far_from_closing_gap = Game(title="Far From Closing Gap", bgg_id=2, mana_meeple_category="PARTY_ICEBREAKERS")
+        db_session.add_all([almost_closes_gap, far_from_closing_gap])
+        db_session.flush()
+        db_session.add_all([
+            BuyListGame(game_id=almost_closes_gap.id, on_buy_list=True),
+            BuyListGame(game_id=far_from_closing_gap.id, on_buy_list=True),
+        ])
+        db_session.commit()
+
+        response = client.get(
+            "/api/admin/buy-list/games",
+            params={"sort_by": "gaps_filled", "sort_desc": "true"},
+            headers=admin_headers,
+        )
+        assert response.status_code == 200
+        items = response.json()["items"]
+        titles = [item["title"] for item in items]
+
+        # Both fill exactly one gap, so they tie on count and share a rank...
+        by_title = {item["title"]: item for item in items}
+        assert by_title["Almost Closes Gap"]["gap_match"]["category_games_needed"] == 1
+        assert by_title["Far From Closing Gap"]["gap_match"]["category_games_needed"] == 2
+        assert by_title["Almost Closes Gap"]["gaps_filled_rank"] == by_title["Far From Closing Gap"]["gaps_filled_rank"]
+        # ...but the one that would fully close its gap is listed first.
+        assert titles.index("Almost Closes Gap") < titles.index("Far From Closing Gap")
+
 
 class TestReorderBuyList:
     """Test PUT /api/admin/buy-list/reorder"""

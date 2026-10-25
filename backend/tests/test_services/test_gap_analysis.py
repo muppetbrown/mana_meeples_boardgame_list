@@ -11,6 +11,7 @@ from services.gap_analysis import (
     compute_player_count_gaps,
     compute_playtime_gaps,
     annotate_candidate,
+    games_needed_values,
 )
 from utils.helpers import CATEGORY_KEYS
 
@@ -50,9 +51,21 @@ class TestComputeCategoryGaps:
 
         assert by_category["CORE_STRATEGY"]["count"] == 10
         assert by_category["CORE_STRATEGY"]["is_gap"] is False
+        assert by_category["CORE_STRATEGY"]["games_needed"] == 0
         for key in CATEGORY_KEYS:
             if key != "CORE_STRATEGY":
                 assert by_category[key]["is_gap"] is True
+                # threshold is 10% of 10 games = 1 game; each gapped category has 0
+                assert by_category[key]["games_needed"] == 1
+
+    def test_games_needed_scales_with_collection_size(self, db_session):
+        # 20 games all CORE_STRATEGY -> threshold is 10% of 20 = 2 games
+        for i in range(20):
+            _add_owned_game(db_session, title=f"Game {i}", bgg_id=i, mana_meeple_category="CORE_STRATEGY")
+        db_session.commit()
+
+        by_category = {g["category"]: g for g in compute_category_gaps(db_session)}
+        assert by_category["KIDS_FAMILIES"]["games_needed"] == 2
 
     def test_uncategorized_games_excluded_from_counts(self, db_session):
         _add_owned_game(db_session, title="Uncategorized", bgg_id=1, mana_meeple_category=None)
@@ -237,6 +250,7 @@ class TestAnnotateCandidate:
         assert set(result["matching_player_count_gaps"]) == {"7", "9+"}
         assert result["complexity_is_gap"] is True
         assert result["playtime_is_gap"] is True
+        assert games_needed_values(result) != []
 
     def test_no_matches_when_candidate_fills_no_gap(self):
         game = Game(
@@ -284,6 +298,40 @@ class TestAnnotateCandidate:
         result = annotate_candidate(game, gaps)
         assert result["complexity_is_gap"] is False
         assert result["playtime_is_gap"] is False
+
+
+class TestAnnotateCandidateGamesNeeded:
+    def test_games_needed_carried_through_from_gap_entries(self):
+        game = Game(
+            title="Candidate", mana_meeple_category="PARTY_ICEBREAKERS",
+            players_min=9, players_max=12, complexity=1.5, playtime_min=20, playtime_max=20,
+        )
+        gaps = {
+            "total_games": 10,
+            "category_gaps": [
+                {"category": "PARTY_ICEBREAKERS", "count": 0, "pct_of_collection": 0.0, "is_gap": True, "games_needed": 2},
+            ],
+            "player_count_gaps": [
+                {"player_count": "9+", "games_supporting": 1, "pct_of_collection": 10.0, "is_gap": True, "games_needed": 1},
+            ],
+            "complexity_gaps": [
+                {"complexity_band": "light", "count": 0, "pct_of_collection": 0.0, "is_gap": True, "games_needed": 3},
+            ],
+            "playtime_gaps": [
+                {"playtime_band": "quick", "count": 5, "pct_of_collection": 50.0, "is_gap": False, "games_needed": 0},
+            ],
+        }
+
+        result = annotate_candidate(game, gaps)
+        assert result["category_games_needed"] == 2
+        assert result["player_count_games_needed"] == {"9+": 1}
+        assert result["complexity_games_needed"] == 3
+        assert result["playtime_is_gap"] is False
+        assert sorted(games_needed_values(result)) == [1, 2, 3]
+
+    def test_games_needed_values_empty_when_nothing_matches(self):
+        assert games_needed_values(None) == []
+        assert games_needed_values({"category_is_gap": False, "complexity_is_gap": False, "playtime_is_gap": False}) == []
 
 
 class TestComputeLibraryGaps:

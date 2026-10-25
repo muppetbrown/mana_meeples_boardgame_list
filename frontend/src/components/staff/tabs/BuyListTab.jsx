@@ -685,6 +685,32 @@ export function BuyListTab() {
     );
   };
 
+  // How many more owned games (beyond this candidate) it would still take to
+  // clear a gap, in a given bucket, given gamesNeeded (the total still needed
+  // counting this purchase as one of them).
+  const describeGamesNeeded = (gamesNeeded) => {
+    const remaining = Math.max(0, (gamesNeeded || 0) - 1);
+    return remaining === 0 ? "closes this gap" : `${remaining} more needed to close`;
+  };
+
+  const needBadge = (key, label) => (
+    <span key={key} className="px-1.5 py-0.5 text-[11px] text-gray-500 italic">
+      ({label})
+    </span>
+  );
+
+  // How many gaps a candidate's gap_match would fill in total - kept in sync
+  // with the backend's own count (see _gaps_filled_count in buy_list.py).
+  const countGapsFilled = (gapMatch) => {
+    if (!gapMatch) return 0;
+    return (
+      (gapMatch.category_is_gap ? 1 : 0) +
+      (gapMatch.matching_player_count_gaps || []).length +
+      (gapMatch.complexity_is_gap ? 1 : 0) +
+      (gapMatch.playtime_is_gap ? 1 : 0)
+    );
+  };
+
   const renderGapMatchBadges = (gapMatch) => {
     if (!gapMatch) return null;
     const badges = [];
@@ -694,12 +720,19 @@ export function BuyListTab() {
           Fills category gap
         </span>
       );
+      badges.push(needBadge("category-needed", describeGamesNeeded(gapMatch.category_games_needed)));
     }
     for (const count of gapMatch.matching_player_count_gaps || []) {
       badges.push(
         <span key={`players-${count}`} className="px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
           Fills {PLAYER_COUNT_LABELS[count] || `${count} players`} gap
         </span>
+      );
+      badges.push(
+        needBadge(
+          `players-${count}-needed`,
+          describeGamesNeeded((gapMatch.player_count_games_needed || {})[count])
+        )
       );
     }
     if (gapMatch.complexity_is_gap) {
@@ -708,6 +741,7 @@ export function BuyListTab() {
           Fills complexity gap
         </span>
       );
+      badges.push(needBadge("complexity-needed", describeGamesNeeded(gapMatch.complexity_games_needed)));
     }
     if (gapMatch.playtime_is_gap) {
       badges.push(
@@ -715,9 +749,10 @@ export function BuyListTab() {
           Fills playtime gap
         </span>
       );
+      badges.push(needBadge("playtime-needed", describeGamesNeeded(gapMatch.playtime_games_needed)));
     }
     if (badges.length === 0) return null;
-    return <div className="flex flex-wrap gap-1 mt-1">{badges}</div>;
+    return <div className="flex flex-wrap items-center gap-1 mt-1">{badges}</div>;
   };
 
   return (
@@ -1397,6 +1432,14 @@ export function BuyListTab() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="font-medium">{item.title}</div>
+                          {countGapsFilled(item.gap_match) > 0 && (
+                            <div className="text-xs text-gray-500 mt-0.5">
+                              Fills {countGapsFilled(item.gap_match)} gap{countGapsFilled(item.gap_match) === 1 ? "" : "s"}
+                              {typeof item.gaps_filled_rank === "number" && (
+                                <> · gap rank #{item.gaps_filled_rank}</>
+                              )}
+                            </div>
+                          )}
                           {renderGapMatchBadges(item.gap_match)}
                           {renderDistroAvailability(item.distro_availability, item)}
                         </td>
