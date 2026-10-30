@@ -172,7 +172,7 @@ def compute_to_sleeve_games(db: Session) -> list[dict]:
     """
     games = db.execute(
         select(Game).where(
-            Game.has_sleeves == "found",
+            Game.has_sleeves.in_(("found", "manual")),
             (Game.is_sleeved == False) | (Game.is_sleeved.is_(None)),
             Game.status == "OWNED",
         ).options(joinedload(Game.sleeves))

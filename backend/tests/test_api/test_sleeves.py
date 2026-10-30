@@ -756,3 +756,35 @@ class TestProductFitsCardSize:
         assert r.json()["card_width_mm"] is None
         got = client.get(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers).json()
         assert got[0]["matched_product_id"] == product["id"]
+
+
+class TestToSleeveList:
+    """GET /api/admin/sleeves/to-sleeve"""
+
+    def _game_with_stocked_sleeve(self, client, db_session, admin_headers, has_sleeves, bgg_id):
+        game = Game(title=f"G{bgg_id}", bgg_id=bgg_id, status="OWNED", has_sleeves=has_sleeves)
+        db_session.add(game)
+        db_session.commit()
+        product = client.post("/api/admin/sleeves/products", headers=admin_headers, json={
+            "distributor": "D", "name": f"P{bgg_id}", "width_mm": 59, "height_mm": 91,
+            "sleeves_per_pack": 100, "price": 5, "in_stock": 100,
+        }).json()
+        client.post(f"/api/admin/sleeves/game/{game.id}", headers=admin_headers,
+                    json={"width_mm": 59, "height_mm": 91, "quantity": 10})
+        # Adding a sleeve via the API marks the game "manual"; set the state under test.
+        db_session.refresh(game)
+        game.has_sleeves = has_sleeves
+        db_session.commit()
+        return game, product
+
+    def test_includes_found_and_manual_games(self, client, db_session, admin_headers):
+        found, _ = self._game_with_stocked_sleeve(client, db_session, admin_headers, "found", 1)
+        manual, _ = self._game_with_stocked_sleeve(client, db_session, admin_headers, "manual", 2)
+        none, _ = self._game_with_stocked_sleeve(client, db_session, admin_headers, "none", 3)
+
+        data = client.get("/api/admin/sleeves/to-sleeve", headers=admin_headers).json()
+
+        ids = {g["game_id"] for g in data}
+        assert found.id in ids
+        assert manual.id in ids
+        assert none.id not in ids
