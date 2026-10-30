@@ -16,6 +16,9 @@ vi.mock('../../../../api/client', () => ({
   getToOrderList: vi.fn(),
   getToSleeveList: vi.fn(),
   updateSleeveStatus: vi.fn(),
+  autoLinkSleeveDistroCodes: vi.fn(),
+  unlinkSleeveDistroCode: vi.fn(),
+  getUnlistedCatalogueSleeves: vi.fn(),
 }));
 
 const product = {
@@ -413,6 +416,47 @@ describe('SleeveInventoryTab', () => {
       await waitFor(() => expect(blobText).not.toBe(''));
       expect(blobText.split('\n')[0]).toContain('"Size group"');
       expect(blobText).toContain('"Standard Card Game"'); // 63x88 fixture
+    });
+  });
+
+  describe('HL distro code link', () => {
+    test('linked products show live distributor stock; unlinked are flagged', async () => {
+      apiClient.getSleeveProducts.mockResolvedValue([
+        { ...product, hl_distro_code: '99', distro: { stock_state: 'out_of_stock', qty_available: 0, cost_price_ex_gst: 4.56 } },
+        { ...product, id: 2, name: 'Other', item_id: null },
+      ]);
+      render(<SleeveInventoryTab />);
+      expect(await screen.findByText('out of stock')).toBeInTheDocument();
+      expect(screen.getByText('$4.56 ex GST')).toBeInTheDocument();
+      expect(screen.getByText('not linked to a distro code')).toBeInTheDocument();
+    });
+
+    test('auto-link reports the result and reloads products', async () => {
+      const user = userEvent.setup();
+      apiClient.autoLinkSleeveDistroCodes.mockResolvedValue({ linked: 3, already_linked: 1, unmatched: [{ id: 9 }] });
+      render(<SleeveInventoryTab />);
+      await user.click(await screen.findByText('Link to Distro Codes'));
+      expect(await screen.findByText(/Linked 3 products .*1 already linked, 1 unmatched/)).toBeInTheDocument();
+      expect(apiClient.getSleeveProducts).toHaveBeenCalledTimes(2);
+    });
+
+    test('Other Available lists unlisted catalogue sleeves and prefills the add form', async () => {
+      const user = userEvent.setup();
+      apiClient.getUnlistedCatalogueSleeves.mockResolvedValue({
+        count: 1,
+        items: [{
+          distributor: 'VR', distro_code: '129356', distro_product_name: '45 Mini Euro Card Sleeves (46 x 69 mm)',
+          width_mm: 46, height_mm: 69, sleeves_per_pack: 45, cost_price_ex_gst: 5.88, cost_per_sleeve: 0.131,
+          qty_available: 19, stock_state: 'in_stock',
+          fits: [{ width_mm: 46, height_mm: 69, total_needed: 45, games_count: 1, uncovered: true }],
+        }],
+      });
+      render(<SleeveInventoryTab />);
+      await user.click(await screen.findByText('Other Available'));
+      expect(await screen.findByText('45 Mini Euro Card Sleeves (46 x 69 mm)')).toBeInTheDocument();
+      expect(screen.getByText('no product yet')).toBeInTheDocument();
+      await user.click(screen.getByText('Add to inventory'));
+      expect(await screen.findByDisplayValue('129356')).toBeInTheDocument();
     });
   });
 });

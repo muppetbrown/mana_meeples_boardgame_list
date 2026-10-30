@@ -765,6 +765,37 @@ export async function deleteSleeveProduct(id) {
 }
 
 /**
+ * Link unlinked sleeve products to the HL Timaru distro_codes catalogue
+ * (by distributor + item id, then exact name).
+ * @returns {Promise<Object>} { linked, already_linked, unmatched, linked_items }
+ */
+export async function autoLinkSleeveDistroCodes() {
+  const r = await api.post("/admin/sleeves/distro/auto-link");
+  return r.data;
+}
+
+/**
+ * Remove a sleeve product's distro code link
+ * @param {number} id - Product ID
+ * @returns {Promise<Object>} Updated product
+ */
+export async function unlinkSleeveDistroCode(id) {
+  const r = await api.delete(`/admin/sleeves/products/${id}/distro-link`);
+  return r.data;
+}
+
+/**
+ * Sleeves in the HL distributor catalogue that aren't in sleeve inventory,
+ * with the currently-needed sizes each would fit.
+ * @param {boolean} [includeAll] - Also include sleeves that fit no current need
+ * @returns {Promise<Object>} { count, items }
+ */
+export async function getUnlistedCatalogueSleeves(includeAll = false) {
+  const r = await api.get("/admin/sleeves/catalogue/unlisted", { params: { include_all: includeAll } });
+  return r.data;
+}
+
+/**
  * Run matching across all unsleeved games
  * @returns {Promise<Object>} Matching results (matched, unmatched, total)
  */
