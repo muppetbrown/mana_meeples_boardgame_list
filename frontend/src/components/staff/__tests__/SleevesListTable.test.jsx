@@ -1,8 +1,9 @@
 /**
  * SleevesListTable tests - Sleeve requirements table with status management
  */
+import React from 'react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import SleevesListTable from '../SleevesListTable';
 import * as apiClient from '../../../api/client';
@@ -545,6 +546,86 @@ describe('SleevesListTable', () => {
 
       await user.click(screen.getByRole('button', { name: 'Cancel' }));
       expect(screen.queryByLabelText('Card width (mm)')).not.toBeInTheDocument();
+    });
+  });
+  describe('flushPending', () => {
+    const renderWithRef = () => {
+      const ref = React.createRef();
+      render(<SleevesListTable ref={ref} gameId={1} onSleeveUpdate={mockOnSleeveUpdate} />);
+      return ref;
+    };
+
+    test('resolves true and saves nothing when no form is open', async () => {
+      const ref = renderWithRef();
+      await screen.findByText('+ Add Sleeve Requirement');
+      let ok;
+      await act(async () => { ok = await ref.current.flushPending(); });
+      expect(ok).toBe(true);
+      expect(apiClient.createGameSleeve).not.toHaveBeenCalled();
+      expect(apiClient.updateGameSleeve).not.toHaveBeenCalled();
+    });
+
+    test('ignores an open but empty add form', async () => {
+      const user = userEvent.setup();
+      const ref = renderWithRef();
+      await user.click(await screen.findByText('+ Add Sleeve Requirement'));
+      let ok;
+      await act(async () => { ok = await ref.current.flushPending(); });
+      expect(ok).toBe(true);
+      expect(apiClient.createGameSleeve).not.toHaveBeenCalled();
+    });
+
+    test('saves a filled-in add form', async () => {
+      const user = userEvent.setup();
+      apiClient.createGameSleeve.mockResolvedValue({});
+      const ref = renderWithRef();
+      await user.click(await screen.findByText('+ Add Sleeve Requirement'));
+      await user.type(screen.getByLabelText('Card width (mm)'), '59');
+      await user.type(screen.getByLabelText('Card height (mm)'), '91');
+      await user.type(screen.getByLabelText('Number of cards'), '110');
+      let ok;
+      await act(async () => { ok = await ref.current.flushPending(); });
+      expect(ok).toBe(true);
+      expect(apiClient.createGameSleeve).toHaveBeenCalledWith(1, expect.objectContaining({
+        width_mm: 59, height_mm: 91, quantity: 110,
+      }));
+    });
+
+    test('resolves false and keeps the form when the add form is invalid', async () => {
+      const user = userEvent.setup();
+      const ref = renderWithRef();
+      await user.click(await screen.findByText('+ Add Sleeve Requirement'));
+      await user.type(screen.getByLabelText('Card width (mm)'), '59');
+      let ok;
+      await act(async () => { ok = await ref.current.flushPending(); });
+      expect(ok).toBe(false);
+      expect(apiClient.createGameSleeve).not.toHaveBeenCalled();
+      expect(screen.getByText('Width, height, and quantity must be numbers.')).toBeInTheDocument();
+    });
+
+    test('saves a changed edit form', async () => {
+      const user = userEvent.setup();
+      apiClient.updateGameSleeve.mockResolvedValue({});
+      const ref = renderWithRef();
+      await user.click((await screen.findAllByText('Edit'))[0]);
+      const qty = screen.getByLabelText('Number of cards');
+      await user.clear(qty);
+      await user.type(qty, '120');
+      let ok;
+      await act(async () => { ok = await ref.current.flushPending(); });
+      expect(ok).toBe(true);
+      expect(apiClient.updateGameSleeve).toHaveBeenCalledWith(1, expect.objectContaining({ quantity: 120 }));
+    });
+
+    test('closes an unchanged edit form without saving', async () => {
+      const user = userEvent.setup();
+      const ref = renderWithRef();
+      await user.click((await screen.findAllByText('Edit'))[0]);
+      let ok;
+      await act(async () => { ok = await ref.current.flushPending(); });
+      expect(ok).toBe(true);
+      expect(apiClient.updateGameSleeve).not.toHaveBeenCalled();
+      expect(screen.queryByLabelText('Number of cards')).not.toBeInTheDocument();
     });
   });
 });

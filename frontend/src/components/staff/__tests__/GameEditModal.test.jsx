@@ -10,11 +10,16 @@ import GameEditModal from '../GameEditModal';
 
 
 // Mock SleevesListTable component
-vi.mock('../SleevesListTable', () => ({
-  default: ({ gameId }) => (
-    <div data-testid="sleeves-list-table">SleevesListTable for game {gameId}</div>
-  ),
-}));
+const mockFlushPending = vi.fn();
+vi.mock('../SleevesListTable', async () => {
+  const React = await import('react');
+  return {
+    default: React.forwardRef(({ gameId }, ref) => {
+      React.useImperativeHandle(ref, () => ({ flushPending: mockFlushPending }));
+      return <div data-testid="sleeves-list-table">SleevesListTable for game {gameId}</div>;
+    }),
+  };
+});
 
 
 describe('GameEditModal', () => {
@@ -48,6 +53,7 @@ describe('GameEditModal', () => {
   ];
 
   beforeEach(() => {
+    mockFlushPending.mockReset().mockResolvedValue(true);
     mockOnSave = vi.fn();
     mockOnClose = vi.fn();
     defaultProps = {
@@ -220,6 +226,21 @@ describe('GameEditModal', () => {
   });
 
   describe('Sleeves section', () => {
+    test('flushes pending sleeve edits before saving the game', async () => {
+      render(<GameEditModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+      await waitFor(() => expect(mockOnSave).toHaveBeenCalled());
+      expect(mockFlushPending).toHaveBeenCalled();
+    });
+
+    test('does not save the game and shows an error when the pending sleeve fails', async () => {
+      mockFlushPending.mockResolvedValue(false);
+      render(<GameEditModal {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+      expect(await screen.findByText(/Fix the sleeve entry/)).toBeInTheDocument();
+      expect(mockOnSave).not.toHaveBeenCalled();
+    });
+
     test('renders SleevesListTable component', () => {
       render(<GameEditModal {...defaultProps} />);
       expect(screen.getByTestId('sleeves-list-table')).toBeInTheDocument();
