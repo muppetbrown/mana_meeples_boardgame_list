@@ -302,13 +302,13 @@ class SleeveProduct(Base):
     sleeves_per_pack = Column(Integer, nullable=False)  # Sleeves in one pack
     price = Column(Numeric(10, 2), nullable=False)  # Price per pack
     in_stock = Column(Integer, nullable=False, default=0)  # Individual sleeves in stock
-    # Optional link to the HL Timaru distro_codes catalogue. Only the key is stored; the
-    # distributor's name/cost/stock are read live (see services/sleeve_distro.py).
-    hl_distributor = Column(String(100), nullable=True)
-    hl_distro_code = Column(String(100), nullable=True)
 
     # Relationships
     matched_sleeves = relationship("Sleeve", back_populates="matched_product")
+    distro_links = relationship(
+        "SleeveProductDistroLink", back_populates="product", cascade="all, delete-orphan",
+        order_by="SleeveProductDistroLink.id",
+    )
 
     __table_args__ = (
         Index("idx_sleeve_product_size", "width_mm", "height_mm"),
@@ -320,6 +320,29 @@ class SleeveProduct(Base):
 
     def __repr__(self):
         return f"<SleeveProduct {self.name} {self.width_mm}x{self.height_mm}>"
+
+
+class SleeveProductDistroLink(Base):
+    """
+    Links a sleeve product to a distributor code in the HL Timaru distro_codes
+    catalogue. A product can carry several (the same sleeve sold by more than one
+    distributor). Only the (distributor, distro_code) key is stored; name, cost
+    and distributor stock are read live so a link never goes stale.
+    """
+
+    __tablename__ = "sleeve_product_distro_links"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    sleeve_product_id = Column(Integer, ForeignKey("sleeve_products.id", ondelete="CASCADE"), nullable=False, index=True)
+    hl_distributor = Column(String(100), nullable=False)
+    hl_distro_code = Column(String(100), nullable=False)
+    created_at = Column(DateTime, default=utc_now, nullable=False)
+
+    product = relationship("SleeveProduct", back_populates="distro_links")
+
+    __table_args__ = (
+        UniqueConstraint("sleeve_product_id", "hl_distributor", "hl_distro_code", name="uq_sleeve_product_distro_link"),
+    )
 
 
 class Sleeve(Base):

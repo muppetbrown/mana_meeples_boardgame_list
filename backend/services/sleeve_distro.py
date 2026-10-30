@@ -2,7 +2,7 @@
 """
 Connects sleeve products to the HL Timaru distro_codes catalogue.
 
-A SleeveProduct optionally stores a (hl_distributor, hl_distro_code) key; name,
+A SleeveProduct can carry several (hl_distributor, hl_distro_code) links; name,
 cost and distributor stock are read live from HL. This module also mines the
 rest of the catalogue for sleeves that aren't in sleeve_products yet and works
 out which of them would fit a size we currently need sleeves for.
@@ -20,7 +20,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from models import Game, Sleeve, SleeveProduct
+from models import Game, Sleeve, SleeveProduct, SleeveProductDistroLink
 from services.distro_availability import build_option
 from services.hl_stock_service import HLStockServiceError, fetch_distro_codes_by_key, fetch_sleeve_catalogue
 
@@ -86,27 +86,58 @@ def with_stock_state(option: dict) -> dict:
     return option
 
 
+_STATE_RANK = {"in_stock": 0, "unknown": 1, "out_of_stock": 2}
+
+
+def _best_first(option: dict):
+    cost = option["cost_price_ex_gst"]
+    return (_STATE_RANK[option["stock_state"]], cost if cost is not None else float("inf"))
+
+
 def product_availability(products: Iterable[SleeveProduct]) -> Optional[Dict[int, dict]]:
-    """Live HL option (name, cost, distributor stock) per linked product id.
+    """Live HL options per product id, best supplier first.
+
+    Each value is the best option (distributor in stock, then cheapest) with an
+    "options" list of every linked code (best first). A linked code that is no
+    longer active in HL appears in "options" as {"inactive": True, ...}; a product
+    whose links are all inactive gets a neutral best option so ranking treats
+    it as unknown. Unlinked products are absent.
 
     None when HL can't be read, so callers fall back to ordering without
-    distributor stock rather than failing. Products with no link, or whose code
-    is no longer active in HL, are simply absent from the result.
+    distributor stock rather than failing.
     """
-    keyed = [p for p in products if p.hl_distributor and p.hl_distro_code]
-    if not keyed:
+    products = [p for p in products if p.distro_links]
+    if not products:
         return {}
+    keys = [(l.hl_distributor, l.hl_distro_code) for p in products for l in p.distro_links]
     try:
-        rows = fetch_distro_codes_by_key([(p.hl_distributor, p.hl_distro_code) for p in keyed])
+        rows = fetch_distro_codes_by_key(keys)
     except HLStockServiceError as e:
         logger.warning(f"Sleeve distributor availability unavailable: {e}")
         return None
     by_key = {(r["distributor"], r["distro_code"]): r for r in rows}
-    return {
-        p.id: with_stock_state(build_option(by_key[(p.hl_distributor, p.hl_distro_code)], None))
-        for p in keyed
-        if (p.hl_distributor, p.hl_distro_code) in by_key
-    }
+
+    result: Dict[int, dict] = {}
+    for p in products:
+        active, inactive = [], []
+        for link in p.distro_links:
+            row = by_key.get((link.hl_distributor, link.hl_distro_code))
+            if row is None:
+                inactive.append({
+                    "link_id": link.id, "distributor": link.hl_distributor, "distro_code": link.hl_distro_code,
+                    "inactive": True, "stock_state": "unknown", "qty_available": None,
+                    "cost_price_ex_gst": None, "distro_product_name": None,
+                })
+            else:
+                active.append(with_stock_state(build_option(row, None, link_id=link.id)))
+        active.sort(key=_best_first)
+        best = dict(active[0]) if active else {
+            "stock_state": "unknown", "qty_available": None, "cost_price_ex_gst": None,
+            "distro_code": None, "inactive": True,
+        }
+        best["options"] = active + inactive
+        result[p.id] = best
+    return result
 
 
 def auto_link_products(db: Session) -> dict:
@@ -125,7 +156,7 @@ def auto_link_products(db: Session) -> dict:
     products = db.execute(select(SleeveProduct)).scalars().all()
     linked, already, unmatched = [], 0, []
     for p in products:
-        if p.hl_distributor and p.hl_distro_code:
+        if p.distro_links:
             already += 1
             continue
         dist = (p.distributor or "").strip().upper()
@@ -136,7 +167,7 @@ def auto_link_products(db: Session) -> dict:
         if row is None:
             unmatched.append({"id": p.id, "name": p.name, "distributor": p.distributor})
             continue
-        p.hl_distributor, p.hl_distro_code = row["distributor"], row["distro_code"]
+        p.distro_links.append(SleeveProductDistroLink(hl_distributor=row["distributor"], hl_distro_code=row["distro_code"]))
         linked.append({"id": p.id, "name": p.name, "distro_code": row["distro_code"]})
     db.commit()
     return {"linked": len(linked), "already_linked": already, "unmatched": unmatched, "linked_items": linked}
@@ -188,7 +219,7 @@ def unlisted_sleeves(db: Session, include_all: bool = False) -> List[dict]:
     """
     catalogue = fetch_sleeve_catalogue()
     products = db.execute(select(SleeveProduct)).scalars().all()
-    linked = {(p.hl_distributor, p.hl_distro_code) for p in products if p.hl_distributor and p.hl_distro_code}
+    linked = {(l.hl_distributor, l.hl_distro_code) for p in products for l in p.distro_links}
     needs = needed_sizes(db)
 
     # A need counts as covered when some product's fit size satisfies it.

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pytest
 
-from models import Game, Sleeve, SleeveProduct
+from models import Game, Sleeve, SleeveProduct, SleeveProductDistroLink
 from services import sleeve_distro
 from services.hl_stock_service import HLStockServiceError
 from services.sleeve_distro import parse_pack_size, parse_size_mm, product_availability, stock_state, unlisted_sleeves
@@ -59,8 +59,8 @@ def _game(db, title="G", bgg_id=1):
 def _product(db, name, price=5.0, per_pack=50, w=59, h=91, in_stock=0, link=None, dist="LPG"):
     p = SleeveProduct(distributor=dist, name=name, width_mm=w, height_mm=h,
                       sleeves_per_pack=per_pack, price=price, in_stock=in_stock)
-    if link:
-        p.hl_distributor, p.hl_distro_code = link
+    for key in ([link] if isinstance(link, tuple) else link or []):
+        p.distro_links.append(SleeveProductDistroLink(hl_distributor=key[0], hl_distro_code=key[1]))
     db.add(p)
     db.commit()
     return p
@@ -79,6 +79,26 @@ class TestProductAvailability:
         _product(db_session, "A", link=("LPG", "1"))
         with patch("services.sleeve_distro.fetch_distro_codes_by_key", side_effect=HLStockServiceError("down")):
             assert product_availability(db_session.query(SleeveProduct).all()) is None
+
+
+    def test_multiple_links_pick_best_supplier_and_keep_all_options(self, db_session):
+        p = _product(db_session, "A", link=[("LPG", "1"), ("VR", "2"), ("GEEK CULTURE", "3"), ("VR", "gone")])
+        rows = [
+            _row("LPG", "1", "A", qty=0, cost=3.0),
+            _row("VR", "2", "A", qty=5, cost=4.0),
+            _row("GEEK CULTURE", "3", "A", qty=9, cost=3.5),
+        ]
+        with patch("services.sleeve_distro.fetch_distro_codes_by_key", return_value=rows):
+            best = product_availability(db_session.query(SleeveProduct).all())[p.id]
+        assert (best["distributor"], best["distro_code"]) == ("GEEK CULTURE", "3")  # in stock, cheaper than VR
+        assert [o["distro_code"] for o in best["options"]] == ["3", "2", "1", "gone"]
+        assert best["options"][-1]["inactive"] is True
+
+    def test_all_links_inactive_is_neutral(self, db_session):
+        p = _product(db_session, "A", link=("LPG", "gone"))
+        with patch("services.sleeve_distro.fetch_distro_codes_by_key", return_value=[]):
+            best = product_availability(db_session.query(SleeveProduct).all())[p.id]
+        assert best["stock_state"] == "unknown" and best["inactive"] and len(best["options"]) == 1
 
 
 class TestToOrderUsesDistributorStock:
@@ -151,31 +171,58 @@ class TestAutoLink:
         assert (result["linked"], result["already_linked"]) == (2, 1)
         assert [u["id"] for u in result["unmatched"]] == [ambiguous.id]
         db_session.refresh(by_code), db_session.refresh(by_name), db_session.refresh(existing)
-        assert (by_code.hl_distributor, by_code.hl_distro_code) == ("LPG", "254223")
-        assert (by_name.hl_distributor, by_name.hl_distro_code) == ("GEEK CULTURE", "02AT-10405")
-        assert existing.hl_distro_code == "KEEP"
+        assert [(l.hl_distributor, l.hl_distro_code) for l in by_code.distro_links] == [("LPG", "254223")]
+        assert [(l.hl_distributor, l.hl_distro_code) for l in by_name.distro_links] == [("GEEK CULTURE", "02AT-10405")]
+        assert [l.hl_distro_code for l in existing.distro_links] == ["KEEP"]
 
 
 class TestLinkEndpoints:
-    def test_link_unlink_and_live_listing(self, client, db_session, admin_headers):
+    def test_add_several_links_list_live_and_remove_one(self, client, db_session, admin_headers):
         p = _product(db_session, "A")
-        row = _row("LPG", "99", "Dragon Shield Mini", qty=0)
+        rows = {"99": _row("LPG", "99", "Dragon Shield Mini", qty=0), "7": _row("VR", "7", "DS Mini", qty=12)}
+
+        def fetch(keys):
+            return [rows[c] for _, c in keys if c in rows]
+
+        with patch("api.routers.sleeves.fetch_distro_codes_by_key", side_effect=fetch), \
+             patch("services.sleeve_distro.fetch_distro_codes_by_key", side_effect=fetch):
+            r1 = client.post(f"/api/admin/sleeves/products/{p.id}/distro-links", headers=admin_headers,
+                             json={"distributor": "LPG", "distro_code": "99"})
+            r2 = client.post(f"/api/admin/sleeves/products/{p.id}/distro-links", headers=admin_headers,
+                             json={"distributor": "VR", "distro_code": "7"})
+            dup = client.post(f"/api/admin/sleeves/products/{p.id}/distro-links", headers=admin_headers,
+                              json={"distributor": "VR", "distro_code": "7"})
+            assert r1.status_code == r2.status_code == dup.status_code == 200
+            body = dup.json()
+            assert [d["distro_code"] for d in body["distros"]] == ["7", "99"]  # in stock first, no duplicate
+            assert body["distro"]["distro_code"] == "7"
+            listed = client.get("/api/admin/sleeves/products", headers=admin_headers).json()
+            assert len(listed[0]["distros"]) == 2
+
+            link_id = body["distros"][1]["link_id"]
+            r = client.delete(f"/api/admin/sleeves/products/{p.id}/distro-links/{link_id}", headers=admin_headers)
+            assert r.status_code == 200 and [d["distro_code"] for d in r.json()["distros"]] == ["7"]
+
+    def test_create_product_with_link(self, client, admin_headers):
+        row = _row("LPG", "5", "X", qty=3)
         with patch("api.routers.sleeves.fetch_distro_codes_by_key", return_value=[row]), \
              patch("services.sleeve_distro.fetch_distro_codes_by_key", return_value=[row]):
-            r = client.put(f"/api/admin/sleeves/products/{p.id}/distro-link", headers=admin_headers,
-                           json={"distributor": "LPG", "distro_code": "99"})
-            assert r.status_code == 200 and r.json()["distro"]["stock_state"] == "out_of_stock"
-            listed = client.get("/api/admin/sleeves/products", headers=admin_headers).json()
-            assert listed[0]["hl_distro_code"] == "99" and listed[0]["distro"]["distro_product_name"] == "Dragon Shield Mini"
+            r = client.post("/api/admin/sleeves/products", headers=admin_headers, json={
+                "distributor": "LPG", "name": "X", "width_mm": 59, "height_mm": 91, "sleeves_per_pack": 50,
+                "price": 4.5, "distro_link": {"distributor": "LPG", "distro_code": "5"}})
+        assert r.status_code == 200 and r.json()["distro"]["distro_code"] == "5"
 
-        r = client.delete(f"/api/admin/sleeves/products/{p.id}/distro-link", headers=admin_headers)
-        assert r.status_code == 200 and r.json()["hl_distro_code"] is None
+    def test_unlink_of_other_products_link_404s(self, client, db_session, admin_headers):
+        a = _product(db_session, "A", link=("LPG", "1"))
+        b = _product(db_session, "B")
+        r = client.delete(f"/api/admin/sleeves/products/{b.id}/distro-links/{a.distro_links[0].id}", headers=admin_headers)
+        assert r.status_code == 404
 
     def test_link_rejects_unknown_code(self, client, db_session, admin_headers):
         p = _product(db_session, "A")
         with patch("api.routers.sleeves.fetch_distro_codes_by_key", return_value=[]):
-            r = client.put(f"/api/admin/sleeves/products/{p.id}/distro-link", headers=admin_headers,
-                           json={"distributor": "LPG", "distro_code": "nope"})
+            r = client.post(f"/api/admin/sleeves/products/{p.id}/distro-links", headers=admin_headers,
+                            json={"distributor": "LPG", "distro_code": "nope"})
         assert r.status_code == 404
 
     def test_unlisted_endpoint_reports_hl_outage_as_503(self, client, admin_headers):
