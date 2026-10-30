@@ -18,12 +18,15 @@ vi.mock('../../../../api/client', () => ({
   updateSleeveStatus: vi.fn(),
   autoLinkSleeveDistroCodes: vi.fn(),
   unlinkSleeveDistroCode: vi.fn(),
+  linkSleeveDistroCode: vi.fn(),
+  searchDistroCodes: vi.fn(),
   getUnlistedCatalogueSleeves: vi.fn(),
 }));
 
 const product = {
   id: 1, distributor: 'Games Dist', item_id: 'SKU1', name: 'Std Card Sleeves',
   width_mm: 63, height_mm: 88, sleeves_per_pack: 100, price: 4.5, in_stock: 200,
+  distros: [{ link_id: 1, distributor: 'LPG', distro_code: '1', stock_state: 'in_stock', qty_available: 5, cost_price_ex_gst: 4 }],
 };
 
 const toSleeve = [
@@ -422,13 +425,44 @@ describe('SleeveInventoryTab', () => {
   describe('HL distro code link', () => {
     test('linked products show live distributor stock; unlinked are flagged', async () => {
       apiClient.getSleeveProducts.mockResolvedValue([
-        { ...product, hl_distro_code: '99', distro: { stock_state: 'out_of_stock', qty_available: 0, cost_price_ex_gst: 4.56 } },
-        { ...product, id: 2, name: 'Other', item_id: null },
+        { ...product, distros: [{ link_id: 1, distributor: 'LPG', distro_code: '99', stock_state: 'out_of_stock', qty_available: 0, cost_price_ex_gst: 4.56 }] },
+        { ...product, id: 2, name: 'Other', item_id: null, distros: [] },
       ]);
       render(<SleeveInventoryTab />);
       expect(await screen.findByText('out of stock')).toBeInTheDocument();
       expect(screen.getByText('$4.56 ex GST')).toBeInTheDocument();
       expect(screen.getByText('not linked to a distro code')).toBeInTheDocument();
+    });
+
+    test('shows every linked distributor and can add another by search', async () => {
+      const user = userEvent.setup();
+      apiClient.getSleeveProducts.mockResolvedValue([
+        { ...product, distros: [
+          { link_id: 1, distributor: 'LPG', distro_code: '99', stock_state: 'in_stock', qty_available: 12, cost_price_ex_gst: 4.56 },
+          { link_id: 2, distributor: 'VR', distro_code: '7', stock_state: 'out_of_stock', qty_available: 0, cost_price_ex_gst: 4.1 },
+        ] },
+      ]);
+      apiClient.searchDistroCodes.mockResolvedValue({ items: [
+        { distributor: 'GEEK CULTURE', distro_code: 'GC1', distro_product_name: 'DS Mini', cost_price_ex_gst: 4.8, qty_available: 5 },
+      ] });
+      apiClient.linkSleeveDistroCode.mockResolvedValue({});
+      render(<SleeveInventoryTab />);
+      expect(await screen.findByText('LPG')).toBeInTheDocument();
+      expect(screen.getByText('VR')).toBeInTheDocument();
+
+      await user.click(screen.getByText('+ link distributor'));
+      await user.type(screen.getByLabelText('Search distributor catalogue'), 'mini{enter}');
+      await user.click(await screen.findByText('Link'));
+      expect(apiClient.linkSleeveDistroCode).toHaveBeenCalledWith(1, { distributor: 'GEEK CULTURE', distro_code: 'GC1' });
+    });
+
+    test('auto-links unlinked products once on first load', async () => {
+      apiClient.getSleeveProducts.mockResolvedValue([{ ...product, distros: [] }]);
+      apiClient.autoLinkSleeveDistroCodes.mockResolvedValue({ linked: 1, already_linked: 0, unmatched: [] });
+      render(<SleeveInventoryTab />);
+      await screen.findByText('Std Card Sleeves');
+      await waitFor(() => expect(apiClient.autoLinkSleeveDistroCodes).toHaveBeenCalledTimes(1));
+      expect(apiClient.getSleeveProducts).toHaveBeenCalledTimes(2);
     });
 
     test('auto-link reports the result and reloads products', async () => {

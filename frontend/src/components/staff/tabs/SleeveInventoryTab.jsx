@@ -1,5 +1,5 @@
 // src/components/staff/tabs/SleeveInventoryTab.jsx
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useConfirm } from "../../../context/StaffContext";
 import { SLEEVE_GROUPS, OTHER_GROUP, classifySleeve, groupItems, groupSizeLabel } from "../../../utils/sleeveGroups";
 import {
@@ -13,6 +13,8 @@ import {
   updateSleeveStatus,
   autoLinkSleeveDistroCodes,
   unlinkSleeveDistroCode,
+  linkSleeveDistroCode,
+  searchDistroCodes,
   getUnlistedCatalogueSleeves,
 } from "../../../api/client";
 
@@ -29,6 +31,66 @@ function DistroBadge({ state, qty }) {
   if (!s) return null;
   const count = state === "in_stock" ? (qty >= 99 ? " 99+" : ` ${qty}`) : "";
   return <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-medium ${s.cls}`}>{s.label}{count}</span>;
+}
+
+// Search the HL catalogue and add another distributor's code to a product.
+function DistroLinkAdder({ onLink }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const search = async (e) => {
+    e.preventDefault();
+    if (q.trim().length < 2) return;
+    setBusy(true);
+    try {
+      setResults((await searchDistroCodes(q.trim())).items);
+    } catch (err) {
+      setResults([]);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="underline text-purple-700">
+        + link distributor
+      </button>
+    );
+  }
+  return (
+    <div className="mt-1 p-2 border rounded bg-gray-50 space-y-1 font-normal">
+      <form onSubmit={search} className="flex gap-1">
+        <input
+          aria-label="Search distributor catalogue"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Name or code"
+          className="border rounded px-2 py-1 text-xs flex-1"
+        />
+        <button type="submit" disabled={busy} className="px-2 py-1 bg-gray-200 rounded text-xs">Search</button>
+        <button type="button" onClick={() => setOpen(false)} className="px-2 py-1 text-xs text-gray-500">Close</button>
+      </form>
+      {results && results.length === 0 && <div className="text-gray-500">No matches</div>}
+      {results && results.map((r) => (
+        <div key={`${r.distributor}-${r.distro_code}`} className="flex items-center justify-between gap-2">
+          <span>
+            {r.distro_product_name} <span className="text-gray-500">({r.distributor} {r.distro_code}
+            {r.cost_price_ex_gst != null && `, $${r.cost_price_ex_gst.toFixed(2)}`})</span>
+          </span>
+          <button
+            type="button"
+            onClick={async () => { await onLink(r); setOpen(false); setResults(null); setQ(""); }}
+            className="px-2 py-0.5 bg-green-100 text-green-800 rounded whitespace-nowrap"
+          >
+            Link
+          </button>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 function ProductFields({ form, setForm, idPrefix }) {
@@ -88,12 +150,12 @@ export function SleeveInventoryTab() {
     sleeves_per_pack: "",
     price: "",
     in_stock: "0",
-    hl_distributor: "",
-    hl_distro_code: "",
+    distro_link: null,
   });
   const [unlisted, setUnlisted] = useState([]);
   const [unlistedAll, setUnlistedAll] = useState(false);
   const [linking, setLinking] = useState(false);
+  const autoLinkTried = useRef(false);
 
   // Inline editing
   const [editingId, setEditingId] = useState(null);
@@ -142,12 +204,21 @@ export function SleeveInventoryTab() {
     }
   };
 
-  const handleUnlink = async (product) => {
+  const handleUnlink = async (product, linkId) => {
     try {
-      await unlinkSleeveDistroCode(product.id);
+      await unlinkSleeveDistroCode(product.id, linkId);
       loadProducts();
     } catch (err) {
       showMessage("Failed to unlink", "error");
+    }
+  };
+
+  const handleLink = async (product, row) => {
+    try {
+      await linkSleeveDistroCode(product.id, { distributor: row.distributor, distro_code: row.distro_code });
+      loadProducts();
+    } catch (err) {
+      showMessage("Failed to link distributor code", "error");
     }
   };
 
@@ -164,8 +235,7 @@ export function SleeveInventoryTab() {
       sleeves_per_pack: item.sleeves_per_pack != null ? String(item.sleeves_per_pack) : "",
       price: item.cost_price_ex_gst != null ? String(item.cost_price_ex_gst) : "",
       in_stock: "0",
-      hl_distributor: item.distributor,
-      hl_distro_code: item.distro_code,
+      distro_link: { distributor: item.distributor, distro_code: item.distro_code },
     });
     setShowAddForm(true);
     setActiveSection("inventory");
@@ -174,7 +244,17 @@ export function SleeveInventoryTab() {
   const loadProducts = async () => {
     setLoading(true);
     try {
-      const data = await getSleeveProducts();
+      let data = await getSleeveProducts();
+      // Link anything unlinked once per visit so staff don't have to remember to click the button.
+      if (!autoLinkTried.current && data.some((p) => !p.distros?.length)) {
+        autoLinkTried.current = true;
+        try {
+          await autoLinkSleeveDistroCodes();
+          data = await getSleeveProducts();
+        } catch (err) {
+          // HL unreachable: leave products unlinked; the manual button reports the error.
+        }
+      }
       setProducts(data);
     } catch (err) {
       showMessage("Failed to load products", "error");
@@ -223,12 +303,11 @@ export function SleeveInventoryTab() {
         sleeves_per_pack: parseInt(addForm.sleeves_per_pack),
         price: parseFloat(addForm.price),
         in_stock: parseInt(addForm.in_stock) || 0,
-        hl_distributor: addForm.hl_distributor || null,
-        hl_distro_code: addForm.hl_distro_code || null,
+        distro_link: addForm.distro_link,
       });
       showMessage("Product added and sleeves re-matched");
       setShowAddForm(false);
-      setAddForm({ distributor: "", item_id: "", name: "", width_mm: "", height_mm: "", card_width_mm: "", card_height_mm: "", sleeves_per_pack: "", price: "", in_stock: "0", hl_distributor: "", hl_distro_code: "" });
+      setAddForm({ distributor: "", item_id: "", name: "", width_mm: "", height_mm: "", card_width_mm: "", card_height_mm: "", sleeves_per_pack: "", price: "", in_stock: "0", distro_link: null });
       loadProducts();
     } catch (err) {
       showMessage("Failed to add product", "error");
@@ -502,6 +581,7 @@ export function SleeveInventoryTab() {
           handleSaveEdit={handleSaveEdit}
           handleDeleteProduct={handleDeleteProduct}
           handleUnlink={handleUnlink}
+          handleLink={handleLink}
           setEditingId={setEditingId}
           stockFilter={stockFilter}
           groupFilter={groupFilter}
@@ -545,7 +625,7 @@ export function SleeveInventoryTab() {
 function ProductInventorySection({
   products, loading, showAddForm, setShowAddForm,
   addForm, setAddForm, handleAddProduct,
-  editingId, editForm, setEditForm, startEdit, handleSaveEdit, handleDeleteProduct, handleUnlink, setEditingId,
+  editingId, editForm, setEditForm, startEdit, handleSaveEdit, handleDeleteProduct, handleUnlink, handleLink, setEditingId,
   stockFilter = "all", groupFilter = "all", groupBySize = false,
 }) {
   if (loading) return <div className="text-center py-8 text-gray-500">Loading products...</div>;
@@ -609,21 +689,24 @@ function ProductInventorySection({
                   <td className="px-3 py-2 font-mono text-xs">{p.item_id || "—"}</td>
                   <td className="px-3 py-2 font-medium">
                     {p.name}
-                    {p.hl_distro_code ? (
-                      <div className="mt-1 font-normal text-[11px] text-gray-600 space-x-1">
-                        {p.distro ? (
-                          <>
-                            <DistroBadge state={p.distro.stock_state} qty={p.distro.qty_available} />
-                            {p.distro.cost_price_ex_gst != null && <span>${p.distro.cost_price_ex_gst.toFixed(2)} ex GST</span>}
-                          </>
-                        ) : (
-                          <span className="text-orange-600">distro code inactive</span>
-                        )}
-                        <button type="button" onClick={() => handleUnlink(p)} className="underline text-gray-500">unlink</button>
-                      </div>
-                    ) : (
-                      <div className="mt-1 font-normal text-[11px] text-gray-400">not linked to a distro code</div>
-                    )}
+                    <div className="mt-1 font-normal text-[11px] text-gray-600 space-y-0.5">
+                      {(p.distros || []).length === 0 && <div className="text-gray-400">not linked to a distro code</div>}
+                      {(p.distros || []).map((d) => (
+                        <div key={d.link_id} className="space-x-1">
+                          {d.inactive ? (
+                            <span className="text-orange-600">{d.distributor} {d.distro_code} inactive</span>
+                          ) : (
+                            <>
+                              <DistroBadge state={d.stock_state} qty={d.qty_available} />
+                              <span>{d.distributor}</span>
+                              {d.cost_price_ex_gst != null && <span>${d.cost_price_ex_gst.toFixed(2)} ex GST</span>}
+                            </>
+                          )}
+                          <button type="button" onClick={() => handleUnlink(p, d.link_id)} className="underline text-gray-500">unlink</button>
+                        </div>
+                      ))}
+                      <DistroLinkAdder onLink={(row) => handleLink(p, row)} />
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-center font-mono">
                     {p.width_mm} x {p.height_mm}
@@ -930,6 +1013,9 @@ function ToOrderSection({ list: fullList, loading, onExportCSV, groupFilter = "a
                       {item.product.distributor_stock_state && (
                         <div className="mt-1">
                           <DistroBadge state={item.product.distributor_stock_state} qty={item.product.distributor_stock} />
+                          {item.product.distro_distributor && (
+                            <span className="ml-1 text-xs text-gray-600">via {item.product.distro_distributor}</span>
+                          )}
                         </div>
                       )}
                       {item.product.alternatives?.length > 0 && (

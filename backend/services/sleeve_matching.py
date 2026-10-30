@@ -255,6 +255,9 @@ def _order_quote(product: SleeveProduct, total_needed: int, option: dict | None)
         "distributor_stock_state": option["stock_state"] if option else None,
         "distributor_cost_ex_gst": option["cost_price_ex_gst"] if option else None,
         "distro_code": option["distro_code"] if option else None,
+        # Distributor of the best supplier, plus every linked supplier (best first).
+        "distro_distributor": option.get("distributor") if option else None,
+        "distro_options": option.get("options", []) if option else [],
     }
 
 

@@ -775,12 +775,24 @@ export async function autoLinkSleeveDistroCodes() {
 }
 
 /**
- * Remove a sleeve product's distro code link
+ * Add a distributor code from the HL catalogue to a sleeve product (several allowed)
  * @param {number} id - Product ID
+ * @param {{distributor: string, distro_code: string}} link
  * @returns {Promise<Object>} Updated product
  */
-export async function unlinkSleeveDistroCode(id) {
-  const r = await api.delete(`/admin/sleeves/products/${id}/distro-link`);
+export async function linkSleeveDistroCode(id, link) {
+  const r = await api.post(`/admin/sleeves/products/${id}/distro-links`, link);
+  return r.data;
+}
+
+/**
+ * Remove one distro code link from a sleeve product
+ * @param {number} id - Product ID
+ * @param {number} linkId - Link ID (from the product's `distros`)
+ * @returns {Promise<Object>} Updated product
+ */
+export async function unlinkSleeveDistroCode(id, linkId) {
+  const r = await api.delete(`/admin/sleeves/products/${id}/distro-links/${linkId}`);
   return r.data;
 }
 

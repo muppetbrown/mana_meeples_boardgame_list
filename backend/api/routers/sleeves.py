@@ -2,14 +2,14 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import delete, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import List, Optional
 from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field
 
 from config import GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
 from database import get_db
-from models import Game, Sleeve, SleeveProduct
+from models import Game, Sleeve, SleeveProduct, SleeveProductDistroLink
 from api.dependencies import require_admin_auth
 from services.sleeve_matching import (
     run_matching_for_all_games,
@@ -82,6 +82,10 @@ class SleeveCreateRequest(BaseModel):
 class GameSleeveStatusUpdate(BaseModel):
     status: str  # "none" (no cards to sleeve) or "check" (reset to needs-investigation)
 
+class SleeveDistroLink(BaseModel):
+    distributor: str
+    distro_code: str
+
 class SleeveProductCreate(BaseModel):
     distributor: str
     item_id: str | None = None
@@ -93,8 +97,7 @@ class SleeveProductCreate(BaseModel):
     sleeves_per_pack: int = Field(gt=0)
     price: float = Field(gt=0)
     in_stock: int = Field(default=0, ge=0)
-    hl_distributor: str | None = None
-    hl_distro_code: str | None = None
+    distro_link: SleeveDistroLink | None = None
 
 class SleeveProductUpdate(BaseModel):
     distributor: str | None = None
@@ -107,10 +110,6 @@ class SleeveProductUpdate(BaseModel):
     sleeves_per_pack: int | None = Field(default=None, gt=0)
     price: float | None = Field(default=None, gt=0)
     in_stock: int | None = Field(default=None, ge=0)
-
-class SleeveDistroLink(BaseModel):
-    distributor: str
-    distro_code: str
 
 class SleeveProductResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -126,9 +125,9 @@ class SleeveProductResponse(BaseModel):
     sleeves_per_pack: int
     price: float
     in_stock: int
-    hl_distributor: str | None = None
-    hl_distro_code: str | None = None
-    # Live HL distro_codes row (name, cost ex GST, distributor stock) when linked and readable.
+    # Live HL distro_codes rows (name, cost ex GST, distributor stock) for each linked code,
+    # best supplier first; `distro` is the best active one.
+    distros: List[dict] = []
     distro: dict | None = None
 
 
@@ -145,9 +144,8 @@ def _product_response(p: SleeveProduct, distro: dict | None = None) -> SleevePro
         sleeves_per_pack=p.sleeves_per_pack,
         price=float(p.price),
         in_stock=p.in_stock,
-        hl_distributor=p.hl_distributor,
-        hl_distro_code=p.hl_distro_code,
-        distro=distro,
+        distros=(distro or {}).get("options", []),
+        distro=None if (distro is None or distro.get("inactive")) else {k: v for k, v in distro.items() if k != "options"},
     )
 
 
@@ -408,6 +406,14 @@ def _live_option(product: SleeveProduct) -> dict | None:
     return (product_availability([product]) or {}).get(product.id)
 
 
+def _add_distro_link(product: SleeveProduct, row: dict) -> None:
+    """Attach a catalogue row to a product unless it's already linked."""
+    key = (row["distributor"], row["distro_code"])
+    if any((l.hl_distributor, l.hl_distro_code) == key for l in product.distro_links):
+        return
+    product.distro_links.append(SleeveProductDistroLink(hl_distributor=key[0], hl_distro_code=key[1]))
+
+
 def _validated_distro_row(link: SleeveDistroLink) -> dict:
     try:
         rows = fetch_distro_codes_by_key([(link.distributor, link.distro_code)])
@@ -424,7 +430,7 @@ def list_sleeve_products(
     db: Session = Depends(get_db),
 ) -> List[SleeveProductResponse]:
     """List all sleeve products, optionally filtered by distributor."""
-    query = select(SleeveProduct)
+    query = select(SleeveProduct).options(selectinload(SleeveProduct.distro_links))
     if distributor:
         query = query.where(SleeveProduct.distributor == distributor)
     query = query.order_by(SleeveProduct.distributor, SleeveProduct.width_mm, SleeveProduct.height_mm)
@@ -452,9 +458,8 @@ def create_sleeve_product(
         price=Decimal(str(data.price)),
         in_stock=data.in_stock,
     )
-    if data.hl_distributor and data.hl_distro_code:
-        row = _validated_distro_row(SleeveDistroLink(distributor=data.hl_distributor, distro_code=data.hl_distro_code))
-        product.hl_distributor, product.hl_distro_code = row["distributor"], row["distro_code"]
+    if data.distro_link:
+        _add_distro_link(product, _validated_distro_row(data.distro_link))
     db.add(product)
     db.flush()
     run_matching_for_all_games(db, commit=False)
@@ -524,37 +529,39 @@ def delete_sleeve_product(
 # HL Timaru distro_codes link
 # ============================================================================
 
-@router.put("/products/{product_id}/distro-link", dependencies=[Depends(require_admin_auth)])
+@router.post("/products/{product_id}/distro-links", dependencies=[Depends(require_admin_auth)])
 def link_product_to_distro_code(
     product_id: int,
     data: SleeveDistroLink,
     db: Session = Depends(get_db),
 ) -> SleeveProductResponse:
-    """Pin a sleeve product to one distributor code in the HL catalogue."""
+    """Add a distributor code from the HL catalogue to a sleeve product (several allowed)."""
     product = db.get(SleeveProduct, product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Sleeve product not found")
-    row = _validated_distro_row(data)
-    product.hl_distributor, product.hl_distro_code = row["distributor"], row["distro_code"]
+    _add_distro_link(product, _validated_distro_row(data))
     db.commit()
     db.refresh(product)
-    return _product_response(product, with_stock_state(build_option(row, None)))
+    return _product_response(product, _live_option(product))
 
 
-@router.delete("/products/{product_id}/distro-link", dependencies=[Depends(require_admin_auth)])
-def unlink_product_from_distro_code(product_id: int, db: Session = Depends(get_db)) -> SleeveProductResponse:
+@router.delete("/products/{product_id}/distro-links/{link_id}", dependencies=[Depends(require_admin_auth)])
+def unlink_product_from_distro_code(
+    product_id: int, link_id: int, db: Session = Depends(get_db)
+) -> SleeveProductResponse:
+    link = db.get(SleeveProductDistroLink, link_id)
+    if not link or link.sleeve_product_id != product_id:
+        raise HTTPException(status_code=404, detail="Distro link not found")
     product = db.get(SleeveProduct, product_id)
-    if not product:
-        raise HTTPException(status_code=404, detail="Sleeve product not found")
-    product.hl_distributor = product.hl_distro_code = None
+    db.delete(link)
     db.commit()
     db.refresh(product)
-    return _product_response(product)
+    return _product_response(product, _live_option(product))
 
 
 @router.post("/distro/auto-link", dependencies=[Depends(require_admin_auth)])
 def auto_link_distro_codes(db: Session = Depends(get_db)):
-    """Link every unlinked product to the HL catalogue by (distributor, item_id), then by exact name."""
+    """Link every product with no distro link to the HL catalogue by (distributor, item_id), then by exact name."""
     try:
         return auto_link_products(db)
     except HLStockServiceError as e:
@@ -586,7 +593,9 @@ def match_all_sleeves(db: Session = Depends(get_db)):
 @router.get("/to-order", dependencies=[Depends(require_admin_auth)])
 def get_to_order_list(db: Session = Depends(get_db)):
     """Aggregated list of sleeves to order, grouped by size/product."""
-    products = db.execute(select(SleeveProduct)).scalars().all()
+    products = db.execute(
+        select(SleeveProduct).options(selectinload(SleeveProduct.distro_links))
+    ).scalars().all()
     return compute_to_order_list(db, availability=product_availability(products))
 
 
