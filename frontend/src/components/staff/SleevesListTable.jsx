@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useConfirm } from '../../context/StaffContext';
 import { getGameSleeves, updateSleeveStatus, createGameSleeve, updateGameSleeve, deleteGameSleeve, updateGameSleeveStatus } from '../../api/client';
 
@@ -43,7 +43,7 @@ function SleeveFields({ form, setForm, idPrefix }) {
   );
 }
 
-export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate }) {
+const SleevesListTable = forwardRef(function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate }, ref) {
   const confirm = useConfirm();
   const [sleeves, setSleeves] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -154,11 +154,11 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
     const quantity = parseInt(editForm.quantity, 10);
     if (!Number.isFinite(width_mm) || !Number.isFinite(height_mm) || !Number.isFinite(quantity)) {
       setEditError('Width, height, and quantity must be numbers.');
-      return;
+      return false;
     }
     if (width_mm <= 0 || height_mm <= 0 || quantity <= 0) {
       setEditError('Width, height, and quantity must be greater than zero.');
-      return;
+      return false;
     }
     setSaving(true);
     try {
@@ -174,9 +174,11 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
       if (onSleeveUpdate) {
         onSleeveUpdate();
       }
+      return true;
     } catch (error) {
       console.error('Failed to update sleeve:', error);
       setEditError('Failed to save changes. Please try again.');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -197,12 +199,12 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
 
     if (!Number.isFinite(width_mm) || !Number.isFinite(height_mm) || !Number.isFinite(quantity)) {
       setAddError('Width, height, and quantity must be numbers.');
-      return;
+      return false;
     }
 
     if (width_mm <= 0 || height_mm <= 0) {
       setAddError('Width and height must be greater than zero.');
-      return;
+      return false;
     }
 
     setSaving(true);
@@ -222,13 +224,38 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
       if (onSleeveUpdate) {
         onSleeveUpdate();
       }
+      return true;
     } catch (error) {
       console.error('Failed to add sleeve:', error);
       setAddError('Failed to add sleeve requirement. Please try again.');
+      return false;
     } finally {
       setSaving(false);
     }
   };
+
+  // Lets the parent form save any half-finished add/edit sleeve form when the
+  // user hits the main Save button. Resolves false if a pending form is invalid
+  // or fails to save, so the parent can abort and leave the errors visible.
+  useImperativeHandle(ref, () => ({
+    flushPending: async () => {
+      if (editingId !== null) {
+        const original = sleeves.find((s) => s.id === editingId);
+        const changed = !original
+          || editForm.card_name !== (original.card_name || '')
+          || editForm.width_mm !== String(original.width_mm)
+          || editForm.height_mm !== String(original.height_mm)
+          || editForm.quantity !== String(original.quantity)
+          || editForm.notes !== (original.notes || '');
+        if (changed && !(await handleSaveEdit())) return false;
+        if (!changed) setEditingId(null);
+      }
+      if (showAddForm && Object.values(addForm).some((v) => String(v).trim() !== '')) {
+        if (!(await handleAddSleeve())) return false;
+      }
+      return true;
+    },
+  }));
 
   const fullySleeved = sleeves.length > 0 && sleeves.every(s => s.is_sleeved);
   const sleevedCount = sleeves.filter(s => s.is_sleeved).length;
@@ -498,4 +525,6 @@ export default function SleevesListTable({ gameId, hasSleeves, onSleeveUpdate })
       </div>
     </div>
   );
-}
+});
+
+export default SleevesListTable;

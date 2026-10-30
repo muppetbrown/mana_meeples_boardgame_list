@@ -1,5 +1,5 @@
 // src/components/staff/GameEditModal.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CATEGORY_KEYS, CATEGORY_LABELS } from '../../constants/categories';
 import SleevesListTable from './SleevesListTable';
 import Modal from '../common/Modal';
@@ -89,6 +89,7 @@ function Switch({ id, checked, onChange, label, description }) {
 export default function GameEditModal({ game, library, onSave, onClose, onSleeveUpdate }) {
   const [validationErrors, setValidationErrors] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
+  const sleevesRef = useRef(null);
   const [formData, setFormData] = useState({
     title: '',
     year: '',
@@ -204,7 +205,17 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
     };
 
     setIsSaving(true);
-    Promise.resolve(onSave(saveData)).finally(() => setIsSaving(false));
+    // Save any sleeve add/edit left open in the Sleeves section first, so it
+    // isn't lost when the modal closes.
+    Promise.resolve(sleevesRef.current?.flushPending?.() ?? true)
+      .then((ok) => {
+        if (ok === false) {
+          setValidationErrors(['Fix the sleeve entry in the Sleeves section (or cancel it) before saving']);
+          return undefined;
+        }
+        return onSave(saveData);
+      })
+      .finally(() => setIsSaving(false));
   };
 
   const thumb = game.thumbnail_url || game.image_url;
@@ -419,6 +430,7 @@ export default function GameEditModal({ game, library, onSave, onClose, onSleeve
 
           <Section title="Sleeves" hint="Unmarked sleeve types go on the shopping list">
             <SleevesListTable
+              ref={sleevesRef}
               gameId={game.id}
               hasSleeves={game.has_sleeves}
               onSleeveUpdate={onSleeveUpdate}
