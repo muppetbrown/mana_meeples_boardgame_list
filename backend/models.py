@@ -302,6 +302,10 @@ class SleeveProduct(Base):
     sleeves_per_pack = Column(Integer, nullable=False)  # Sleeves in one pack
     price = Column(Numeric(10, 2), nullable=False)  # Price per pack
     in_stock = Column(Integer, nullable=False, default=0)  # Individual sleeves in stock
+    # Optional link to the HL Timaru distro_codes catalogue. Only the key is stored; the
+    # distributor's name/cost/stock are read live (see services/sleeve_distro.py).
+    hl_distributor = Column(String(100), nullable=True)
+    hl_distro_code = Column(String(100), nullable=True)
 
     # Relationships
     matched_sleeves = relationship("Sleeve", back_populates="matched_product")

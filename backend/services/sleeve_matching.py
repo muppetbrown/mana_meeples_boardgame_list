@@ -66,6 +66,34 @@ def best_match_for_order(width_mm: float, height_mm: float, db: Session) -> Slee
     ))
 
 
+def _availability_rank(availability: dict | None, product: SleeveProduct) -> int:
+    """Distributor stock for a linked product: 0 in stock, 1 unknown/unlinked, 2 out of stock."""
+    option = (availability or {}).get(product.id)
+    if option is None:
+        return 1
+    return {"in_stock": 0, "unknown": 1, "out_of_stock": 2}[option["stock_state"]]
+
+
+def rank_products_for_order(
+    width_mm, height_mm, db: Session, availability: dict | None = None
+) -> list[SleeveProduct]:
+    """Every product that fits a card size, best one to order first.
+
+    Distributor stock (from HL, see services/sleeve_distro.py) outranks fit and
+    price: all candidates are within tolerance, and a sleeve nobody can supply
+    is a worse buy than a slightly looser one that ships. Without availability
+    data this reduces to best size fit, then cheapest per sleeve.
+    """
+    return sorted(
+        find_matching_products(width_mm, height_mm, db),
+        key=lambda p: (
+            _availability_rank(availability, p),
+            size_waste(p, width_mm, height_mm),
+            float(p.price) / p.sleeves_per_pack,
+        ),
+    )
+
+
 def best_match_in_stock(width_mm: float, height_mm: float, db: Session) -> SleeveProduct | None:
     """Find the best-fitting in-stock product for the given card size."""
     products = find_matching_products(width_mm, height_mm, db)
@@ -208,9 +236,36 @@ def compute_to_sleeve_games(db: Session) -> list[dict]:
     return ready_games
 
 
-def compute_to_order_list(db: Session) -> list[dict]:
+def _order_quote(product: SleeveProduct, total_needed: int, option: dict | None) -> dict:
+    deficit = max(0, total_needed - product.in_stock)
+    packs = -(-deficit // product.sleeves_per_pack)
+    return {
+        "product_id": product.id,
+        "product_name": product.name,
+        "distributor": product.distributor,
+        "item_id": product.item_id,
+        "sleeves_per_pack": product.sleeves_per_pack,
+        "price_per_pack": float(product.price),
+        "price_per_sleeve": round(float(product.price) / product.sleeves_per_pack, 3),
+        "packs_to_buy": packs,
+        "total_cost": round(float(product.price) * packs, 2),
+        "current_stock": product.in_stock,
+        # Live from HL when the product is linked to a distro code, else None.
+        "distributor_stock": option["qty_available"] if option else None,
+        "distributor_stock_state": option["stock_state"] if option else None,
+        "distributor_cost_ex_gst": option["cost_price_ex_gst"] if option else None,
+        "distro_code": option["distro_code"] if option else None,
+    }
+
+
+def compute_to_order_list(db: Session, availability: dict | None = None) -> list[dict]:
     """
     Returns what to order, grouped by matched product.
+
+    `availability` maps product id -> live HL distro option (see
+    services/sleeve_distro.product_availability). When given, products whose
+    distributor is out of stock lose to ones that can ship, and each row lists
+    the other products that would also fit as `alternatives`.
 
     Several card sizes can resolve to the same product; those are merged into a
     single row so the product's stock/on-order quantities are counted once and
@@ -235,9 +290,14 @@ def compute_to_order_list(db: Session) -> list[dict]:
     # their own bucket keyed by size.
     buckets: dict = {}
     for (width, height), group_sleeves in sorted(size_groups.items()):
-        product = best_match_for_order(width, height, db)
+        ranked = rank_products_for_order(width, height, db, availability)
+        product = ranked[0] if ranked else None
         key = ("product", product.id) if product else ("size", width, height)
-        bucket = buckets.setdefault(key, {"product": product, "sizes": [], "sleeves": []})
+        bucket = buckets.setdefault(key, {"product": product, "sizes": [], "sleeves": [], "fitting": None})
+        fitting = {p.id: p for p in ranked}
+        bucket["fitting"] = fitting if bucket["fitting"] is None else {
+            pid: p for pid, p in bucket["fitting"].items() if pid in fitting
+        }
         bucket["sizes"].append((float(width), float(height)))
         bucket["sleeves"].extend(group_sleeves)
 
@@ -255,20 +315,17 @@ def compute_to_order_list(db: Session) -> list[dict]:
             if deficit <= 0:
                 continue  # Already have enough stock
 
-            packs_to_buy = -(-deficit // product.sleeves_per_pack)  # Ceiling division
-
-            product_info = {
-                "product_id": product.id,
-                "product_name": product.name,
-                "distributor": product.distributor,
-                "item_id": product.item_id,
-                "sleeves_per_pack": product.sleeves_per_pack,
-                "price_per_pack": float(product.price),
-                "price_per_sleeve": round(float(product.price) / product.sleeves_per_pack, 3),
-                "packs_to_buy": packs_to_buy,
-                "total_cost": round(float(product.price) * packs_to_buy, 2),
-                "current_stock": product.in_stock,
-            }
+            product_info = _order_quote(product, total_needed, (availability or {}).get(product.id))
+            product_info["alternatives"] = [
+                _order_quote(alt, total_needed, (availability or {}).get(alt.id))
+                for alt in sorted(
+                    (a for pid, a in bucket["fitting"].items() if pid != product.id),
+                    key=lambda a: (
+                        _availability_rank(availability, a),
+                        float(a.price) / a.sleeves_per_pack,
+                    ),
+                )
+            ]
         else:
             deficit = total_needed
 

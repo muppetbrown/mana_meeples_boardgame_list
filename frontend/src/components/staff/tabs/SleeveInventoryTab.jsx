@@ -11,7 +11,25 @@ import {
   getToOrderList,
   getToSleeveList,
   updateSleeveStatus,
+  autoLinkSleeveDistroCodes,
+  unlinkSleeveDistroCode,
+  getUnlistedCatalogueSleeves,
 } from "../../../api/client";
+
+const DISTRO_STATE = {
+  in_stock: { label: "in stock", cls: "bg-green-100 text-green-800" },
+  unknown: { label: "stock unknown", cls: "bg-gray-100 text-gray-600" },
+  out_of_stock: { label: "out of stock", cls: "bg-red-100 text-red-700" },
+};
+
+// Distributor stock from the HL distro_codes catalogue. Distributors report 0 or
+// negatives for "none" and cap high counts at 99, so show 99 as "99+".
+function DistroBadge({ state, qty }) {
+  const s = DISTRO_STATE[state];
+  if (!s) return null;
+  const count = state === "in_stock" ? (qty >= 99 ? " 99+" : ` ${qty}`) : "";
+  return <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-medium ${s.cls}`}>{s.label}{count}</span>;
+}
 
 function ProductFields({ form, setForm, idPrefix }) {
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value });
@@ -70,7 +88,12 @@ export function SleeveInventoryTab() {
     sleeves_per_pack: "",
     price: "",
     in_stock: "0",
+    hl_distributor: "",
+    hl_distro_code: "",
   });
+  const [unlisted, setUnlisted] = useState([]);
+  const [unlistedAll, setUnlistedAll] = useState(false);
+  const [linking, setLinking] = useState(false);
 
   // Inline editing
   const [editingId, setEditingId] = useState(null);
@@ -91,7 +114,62 @@ export function SleeveInventoryTab() {
     if (activeSection === "inventory") loadProducts();
     else if (activeSection === "to-order") loadToOrder();
     else if (activeSection === "to-sleeve") loadToSleeve();
-  }, [activeSection]);
+    else if (activeSection === "unlisted") loadUnlisted();
+  }, [activeSection, unlistedAll]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadUnlisted = async () => {
+    setLoading(true);
+    try {
+      const data = await getUnlistedCatalogueSleeves(unlistedAll);
+      setUnlisted(data.items);
+    } catch (err) {
+      showMessage(err?.response?.status === 503 ? "HL catalogue unavailable" : "Failed to load catalogue sleeves", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAutoLink = async () => {
+    setLinking(true);
+    try {
+      const r = await autoLinkSleeveDistroCodes();
+      showMessage(`Linked ${r.linked} products to distro codes (${r.already_linked} already linked, ${r.unmatched.length} unmatched)`);
+      loadProducts();
+    } catch (err) {
+      showMessage("Auto-link failed - HL catalogue unavailable?", "error");
+    } finally {
+      setLinking(false);
+    }
+  };
+
+  const handleUnlink = async (product) => {
+    try {
+      await unlinkSleeveDistroCode(product.id);
+      loadProducts();
+    } catch (err) {
+      showMessage("Failed to unlink", "error");
+    }
+  };
+
+  // Prefill the add form from a catalogue row; staff confirm pack size and price before saving.
+  const handleAddFromCatalogue = (item) => {
+    setAddForm({
+      distributor: item.distributor,
+      item_id: item.distro_code,
+      name: item.distro_product_name,
+      width_mm: String(item.width_mm),
+      height_mm: String(item.height_mm),
+      card_width_mm: "",
+      card_height_mm: "",
+      sleeves_per_pack: item.sleeves_per_pack != null ? String(item.sleeves_per_pack) : "",
+      price: item.cost_price_ex_gst != null ? String(item.cost_price_ex_gst) : "",
+      in_stock: "0",
+      hl_distributor: item.distributor,
+      hl_distro_code: item.distro_code,
+    });
+    setShowAddForm(true);
+    setActiveSection("inventory");
+  };
 
   const loadProducts = async () => {
     setLoading(true);
@@ -145,10 +223,12 @@ export function SleeveInventoryTab() {
         sleeves_per_pack: parseInt(addForm.sleeves_per_pack),
         price: parseFloat(addForm.price),
         in_stock: parseInt(addForm.in_stock) || 0,
+        hl_distributor: addForm.hl_distributor || null,
+        hl_distro_code: addForm.hl_distro_code || null,
       });
       showMessage("Product added and sleeves re-matched");
       setShowAddForm(false);
-      setAddForm({ distributor: "", item_id: "", name: "", width_mm: "", height_mm: "", card_width_mm: "", card_height_mm: "", sleeves_per_pack: "", price: "", in_stock: "0" });
+      setAddForm({ distributor: "", item_id: "", name: "", width_mm: "", height_mm: "", card_width_mm: "", card_height_mm: "", sleeves_per_pack: "", price: "", in_stock: "0", hl_distributor: "", hl_distro_code: "" });
       loadProducts();
     } catch (err) {
       showMessage("Failed to add product", "error");
@@ -291,6 +371,7 @@ export function SleeveInventoryTab() {
     { id: "inventory", label: "Product Inventory" },
     { id: "to-sleeve", label: "Ready to Sleeve" },
     { id: "to-order", label: "To Order" },
+    { id: "unlisted", label: "Other Available" },
   ];
 
   return (
@@ -310,6 +391,14 @@ export function SleeveInventoryTab() {
       {/* Header with match button */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold">Sleeve Inventory</h2>
+        <div className="flex gap-2">
+        <button
+          onClick={handleAutoLink}
+          disabled={linking}
+          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 disabled:opacity-50 text-sm font-medium"
+        >
+          {linking ? "Linking..." : "Link to Distro Codes"}
+        </button>
         <button
           onClick={handleRunMatching}
           disabled={matching}
@@ -317,6 +406,7 @@ export function SleeveInventoryTab() {
         >
           {matching ? "Running..." : "Run Auto-Match"}
         </button>
+        </div>
       </div>
 
       {/* Sub-section tabs */}
@@ -411,6 +501,7 @@ export function SleeveInventoryTab() {
           startEdit={startEdit}
           handleSaveEdit={handleSaveEdit}
           handleDeleteProduct={handleDeleteProduct}
+          handleUnlink={handleUnlink}
           setEditingId={setEditingId}
           stockFilter={stockFilter}
           groupFilter={groupFilter}
@@ -423,6 +514,15 @@ export function SleeveInventoryTab() {
           loading={loading}
           onSleeveReady={handleSleeveReady}
           groupFilter={groupFilter}
+        />
+      )}
+      {activeSection === "unlisted" && (
+        <UnlistedSleevesSection
+          items={unlisted}
+          loading={loading}
+          includeAll={unlistedAll}
+          setIncludeAll={setUnlistedAll}
+          onAdd={handleAddFromCatalogue}
         />
       )}
       {activeSection === "to-order" && (
@@ -445,7 +545,7 @@ export function SleeveInventoryTab() {
 function ProductInventorySection({
   products, loading, showAddForm, setShowAddForm,
   addForm, setAddForm, handleAddProduct,
-  editingId, editForm, setEditForm, startEdit, handleSaveEdit, handleDeleteProduct, setEditingId,
+  editingId, editForm, setEditForm, startEdit, handleSaveEdit, handleDeleteProduct, handleUnlink, setEditingId,
   stockFilter = "all", groupFilter = "all", groupBySize = false,
 }) {
   if (loading) return <div className="text-center py-8 text-gray-500">Loading products...</div>;
@@ -507,7 +607,24 @@ function ProductInventorySection({
                 <tr key={p.id} className="hover:bg-gray-50">
                   <td className="px-3 py-2">{p.distributor}</td>
                   <td className="px-3 py-2 font-mono text-xs">{p.item_id || "—"}</td>
-                  <td className="px-3 py-2 font-medium">{p.name}</td>
+                  <td className="px-3 py-2 font-medium">
+                    {p.name}
+                    {p.hl_distro_code ? (
+                      <div className="mt-1 font-normal text-[11px] text-gray-600 space-x-1">
+                        {p.distro ? (
+                          <>
+                            <DistroBadge state={p.distro.stock_state} qty={p.distro.qty_available} />
+                            {p.distro.cost_price_ex_gst != null && <span>${p.distro.cost_price_ex_gst.toFixed(2)} ex GST</span>}
+                          </>
+                        ) : (
+                          <span className="text-orange-600">distro code inactive</span>
+                        )}
+                        <button type="button" onClick={() => handleUnlink(p)} className="underline text-gray-500">unlink</button>
+                      </div>
+                    ) : (
+                      <div className="mt-1 font-normal text-[11px] text-gray-400">not linked to a distro code</div>
+                    )}
+                  </td>
                   <td className="px-3 py-2 text-center font-mono">
                     {p.width_mm} x {p.height_mm}
                     {p.card_width_mm != null && p.card_height_mm != null && (
@@ -592,6 +709,77 @@ function ProductInventorySection({
   );
 }
 
+
+function UnlistedSleevesSection({ items, loading, includeAll, setIncludeAll, onAdd }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-gray-600">
+          Sleeves in the HL distributor catalogue that aren&apos;t in your inventory
+          {includeAll ? "" : " but would fit a size you still need"}. Sizes are read from the listing name.
+        </p>
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input type="checkbox" checked={includeAll} onChange={(e) => setIncludeAll(e.target.checked)} className="w-4 h-4" />
+          Show all sizes
+        </label>
+      </div>
+      {loading ? (
+        <div className="text-center py-8 text-gray-500">Loading catalogue...</div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">No unlisted sleeves match the sizes you need.</div>
+      ) : (
+        <div className="overflow-x-auto border rounded-lg">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-100 border-b">
+              <tr>
+                <th className="px-3 py-2 text-left font-semibold">Listing</th>
+                <th className="px-3 py-2 text-left font-semibold">Distributor</th>
+                <th className="px-3 py-2 text-center font-semibold">Size (mm)</th>
+                <th className="px-3 py-2 text-right font-semibold">Cost ex GST</th>
+                <th className="px-3 py-2 text-left font-semibold">Distro stock</th>
+                <th className="px-3 py-2 text-left font-semibold">Fits needs</th>
+                <th className="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {items.map((it) => (
+                <tr key={`${it.distributor}-${it.distro_code}`} className="hover:bg-gray-50">
+                  <td className="px-3 py-2">
+                    {it.distro_product_name}
+                    <div className="text-[11px] text-gray-500 font-mono">{it.distro_code}</div>
+                  </td>
+                  <td className="px-3 py-2">{it.distributor}</td>
+                  <td className="px-3 py-2 text-center font-mono">{it.width_mm} x {it.height_mm}</td>
+                  <td className="px-3 py-2 text-right">
+                    {it.cost_price_ex_gst != null ? `$${it.cost_price_ex_gst.toFixed(2)}` : "—"}
+                    <div className="text-[11px] text-gray-500">
+                      {it.sleeves_per_pack ? `${it.sleeves_per_pack}/pack` : "pack size ?"}
+                      {it.cost_per_sleeve != null && ` · $${it.cost_per_sleeve.toFixed(3)} ea`}
+                    </div>
+                  </td>
+                  <td className="px-3 py-2"><DistroBadge state={it.stock_state} qty={it.qty_available} /></td>
+                  <td className="px-3 py-2 text-xs">
+                    {it.fits.length === 0 ? <span className="text-gray-400">—</span> : it.fits.map((f) => (
+                      <div key={`${f.width_mm}x${f.height_mm}`}>
+                        {f.width_mm} x {f.height_mm}: {f.total_needed} for {f.games_count} game{f.games_count === 1 ? "" : "s"}
+                        {f.uncovered && <span className="ml-1 text-orange-600 font-semibold">no product yet</span>}
+                      </div>
+                    ))}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <button onClick={() => onAdd(it)} className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs hover:bg-green-200 whitespace-nowrap">
+                      Add to inventory
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ReadyToSleeveSection({ list: fullList, loading, onSleeveReady, groupFilter = "all" }) {
   if (loading) return <div className="text-center py-8 text-gray-500">Loading...</div>;
@@ -737,7 +925,27 @@ function ToOrderSection({ list: fullList, loading, onExportCSV, groupFilter = "a
               <tr key={idx} className="hover:bg-gray-50">
                 {item.product ? (
                   <>
-                    <td className="px-3 py-2">{item.product.product_name}</td>
+                    <td className="px-3 py-2">
+                      {item.product.product_name}
+                      {item.product.distributor_stock_state && (
+                        <div className="mt-1">
+                          <DistroBadge state={item.product.distributor_stock_state} qty={item.product.distributor_stock} />
+                        </div>
+                      )}
+                      {item.product.alternatives?.length > 0 && (
+                        <details className="mt-1 text-xs text-gray-600">
+                          <summary className="cursor-pointer">{item.product.alternatives.length} other fitting option(s)</summary>
+                          <ul className="mt-1 space-y-1">
+                            {item.product.alternatives.map((alt) => (
+                              <li key={alt.product_id}>
+                                {alt.product_name} ({alt.distributor}) · {alt.packs_to_buy} pack(s) · ${alt.total_cost.toFixed(2)}{" "}
+                                <DistroBadge state={alt.distributor_stock_state} qty={alt.distributor_stock} />
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
+                    </td>
                     <td className="px-3 py-2">{item.product.distributor}</td>
                     <td className="px-3 py-2 text-right">{item.total_needed}</td>
                     <td className="px-3 py-2 text-right font-semibold text-red-600">{item.deficit}</td>

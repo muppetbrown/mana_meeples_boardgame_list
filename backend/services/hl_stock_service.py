@@ -178,3 +178,30 @@ def fetch_distro_codes_by_key(keys: list[tuple[str, str]]) -> list[dict]:
     if not keys:
         return []
     return _run_distro_query(_DISTRO_BY_KEY_QUERY, {"keys": [tuple(k) for k in keys]})
+
+
+# Every active sleeve listing in the distributor catalogue, linked to a product or
+# not (most aren't). Sleeves are identified by name, plus anything HL categorises
+# as 'Card Sleeves'. hl_stock is HL's own retail stock for the linked product.
+_SLEEVE_CATALOGUE_QUERY = text("""
+    SELECT
+        dc.distributor,
+        dc.distro_code,
+        dc.distro_product_name AS name,
+        dc.cost_price_ex_gst,
+        dc.qty_available,
+        dc.qty_updated_at,
+        dc.internal_id AS hl_internal_id,
+        cs.quantity AS hl_stock
+    FROM distro_codes dc
+    LEFT JOIN products p ON p.internal_id = dc.internal_id
+    LEFT JOIN current_stock cs ON cs.internal_id = dc.internal_id
+    WHERE dc.active
+      AND dc.distro_product_name IS NOT NULL
+      AND (dc.distro_product_name ~* 'sleeve' OR p.category = 'Card Sleeves')
+""")
+
+
+def fetch_sleeve_catalogue() -> list[dict]:
+    """Active sleeve rows from the HL distributor catalogue (see _SLEEVE_CATALOGUE_QUERY)."""
+    return _run_distro_query(_SLEEVE_CATALOGUE_QUERY, {})
