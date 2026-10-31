@@ -68,23 +68,27 @@ def rank_products(
     """THE ranking used everywhere a sleeve/card size is matched to a product.
 
     Every product within tolerance of the card size, best first:
-      1. stock already held covers `quantity` (nothing to order; ready to sleeve)
-      2. distributor availability (HL, see services/sleeve_distro.py): a sleeve
-         nobody can supply is worse than a slightly looser one that ships
-      3. tightest size fit
-      4. cheapest whole-pack order for what's still missing (needs `quantity`)
-      5. cheapest per sleeve
+      1. supply: we can get it. Either stock we hold covers `quantity`, or the
+         distributor (HL, see services/sleeve_distro.py) has it in stock. These
+         are equal, so a tighter fit we'd have to order beats a looser one we
+         hold. Then unknown distributor stock, then out of stock.
+      2. tightest size fit
+      3. cheapest whole-pack order for what's still missing (needs `quantity`)
+      4. cheapest per sleeve
 
     `quantity` is the sleeve quantity when matching a single requirement, or the
-    total for a size group when building the order list. Without it, rules 1
-    and 4 are skipped.
+    total for a size group when building the order list. Without it, held stock
+    is ignored (rule 1 uses distributor stock only) and rule 3 is skipped.
     """
+    def supply_rank(p: SleeveProduct) -> int:
+        if quantity is not None and p.in_stock >= quantity:
+            return 0
+        return _availability_rank(availability, p)
+
     def key(p: SleeveProduct):
-        covered = 0 if quantity is None or p.in_stock >= quantity else 1
         cost = order_cost(p, quantity) if quantity is not None else 0.0
         return (
-            covered,
-            _availability_rank(availability, p),
+            supply_rank(p),
             size_waste(p, width_mm, height_mm),
             cost,
             float(p.price) / p.sleeves_per_pack,

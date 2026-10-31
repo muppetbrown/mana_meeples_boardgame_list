@@ -105,6 +105,25 @@ def test_matching_prefers_product_whose_stock_covers_quantity(db_session):
     assert pick_best_product([tight, loose], 45, 68, 1000).id == tight.id
 
 
+def test_held_stock_and_distributor_stock_rank_equally(db_session):
+    """A tighter fit the distributor can ship beats a looser fit we already hold."""
+    from services.sleeve_matching import rank_products
+    tight = SleeveProduct(distributor="D", name="Tight", width_mm=45, height_mm=68,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=0)
+    loose = SleeveProduct(distributor="D", name="Loose", width_mm=45.5, height_mm=69,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=529)
+    db_session.add_all([tight, loose])
+    db_session.commit()
+    ship = {tight.id: {"stock_state": "in_stock"}}
+    out = {tight.id: {"stock_state": "out_of_stock"}}
+
+    assert [p.id for p in rank_products([tight, loose], 45, 68, 100, ship)] == [tight.id, loose.id]
+    # Distributor can't supply the tighter fit: the one we hold wins
+    assert [p.id for p in rank_products([tight, loose], 45, 68, 100, out)] == [loose.id, tight.id]
+    # Held stock too small to cover the quantity, so only the distributor option counts
+    assert [p.id for p in rank_products([tight, loose], 45, 68, 1000, ship)] == [tight.id, loose.id]
+
+
 def test_to_order_keeps_unmatched_sizes_separate(db_session):
     from services.sleeve_matching import compute_to_order_list
     g = _game(db_session, "Odd")
