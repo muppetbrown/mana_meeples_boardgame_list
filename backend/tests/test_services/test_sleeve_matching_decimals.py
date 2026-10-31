@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from models import SleeveProduct
-from services.sleeve_matching import find_matching_products, best_match_for_order, to_decimal
+from services.sleeve_matching import find_matching_products, pick_best_product, to_decimal
 
 
 def _product(db, name, w, h):
@@ -24,7 +24,7 @@ def test_matching_with_float_inputs(db_session):
     _product(db_session, "TooWide", 65.0, 89.5)
     matches = find_matching_products(63.0, 88.9, db_session)
     assert [m.id for m in matches] == [near.id]
-    assert best_match_for_order(63.0, 88.9, db_session).id == near.id
+    assert pick_best_product(find_matching_products(63.0, 88.9, db_session), 63.0, 88.9).id == near.id
 
 
 def test_to_decimal_handles_float_noise():
