@@ -122,12 +122,16 @@ def best_match_in_stock(width_mm: float, height_mm: float, db: Session) -> Sleev
     ))
 
 
-def pick_best_product(products: list[SleeveProduct], width_mm, height_mm) -> SleeveProduct | None:
+def pick_best_product(
+    products: list[SleeveProduct], width_mm, height_mm, quantity: int | None = None
+) -> SleeveProduct | None:
     """Pick the best product for a card size from a pre-loaded product list.
 
     Uses the same tolerances as find_matching_products: an exact size match
-    (e.g. 59 x 91 card, 59 x 91 sleeve) always qualifies. Best size fit first,
-    then prefer in-stock, then cheapest per sleeve.
+    (e.g. 59 x 91 card, 59 x 91 sleeve) always qualifies. When `quantity` is
+    given, a product whose stock already covers it wins first, so the sleeve
+    shows as ready to sleeve instead of being matched to a tighter fit with
+    no stock. Then best size fit, then prefer in-stock, then cheapest per sleeve.
     """
     sw = to_decimal(width_mm)
     sh = to_decimal(height_mm)
@@ -139,6 +143,7 @@ def pick_best_product(products: list[SleeveProduct], width_mm, height_mm) -> Sle
     if not candidates:
         return None
     return min(candidates, key=lambda p: (
+        0 if quantity is None or p.in_stock >= quantity else 1,
         size_waste(p, sw, sh),
         0 if p.in_stock > 0 else 1,
         float(p.price) / p.sleeves_per_pack,
@@ -163,7 +168,7 @@ def run_matching_for_all_games(db: Session, commit: bool = True) -> dict:
     unmatched = 0
 
     for sleeve in sleeves:
-        best = pick_best_product(all_products, sleeve.width_mm, sleeve.height_mm)
+        best = pick_best_product(all_products, sleeve.width_mm, sleeve.height_mm, sleeve.quantity)
         if best:
             sleeve.matched_product_id = best.id
             matched += 1

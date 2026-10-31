@@ -89,6 +89,22 @@ def test_to_order_prefers_cheapest_order_given_existing_stock(db_session):
     assert [a["product_id"] for a in rows[0]["product"]["alternatives"]] == [big.id]
 
 
+def test_matching_prefers_product_whose_stock_covers_quantity(db_session):
+    """A tighter fit with no stock must not hide sleeves that existing stock could cover."""
+    from services.sleeve_matching import pick_best_product
+    tight = SleeveProduct(distributor="D", name="Tight", width_mm=45, height_mm=68,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=0)
+    loose = SleeveProduct(distributor="D", name="Loose", width_mm=45.5, height_mm=69,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=529)
+    db_session.add_all([tight, loose])
+    db_session.commit()
+
+    assert pick_best_product([tight, loose], 45, 68).id == tight.id  # no quantity: unchanged
+    assert pick_best_product([tight, loose], 45, 68, 100).id == loose.id
+    # If nothing covers the quantity, fall back to best fit
+    assert pick_best_product([tight, loose], 45, 68, 1000).id == tight.id
+
+
 def test_to_order_keeps_unmatched_sizes_separate(db_session):
     from services.sleeve_matching import compute_to_order_list
     g = _game(db_session, "Odd")

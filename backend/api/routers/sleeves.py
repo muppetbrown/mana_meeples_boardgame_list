@@ -282,7 +282,7 @@ def _sleeve_response(s: Sleeve, db: Session) -> SleeveResponse:
 def _auto_match_sleeve(sleeve: Sleeve, db: Session) -> None:
     """Match one unsleeved sleeve requirement to the best product (same rules as batch matching)."""
     products = db.execute(select(SleeveProduct)).scalars().all()
-    best = pick_best_product(products, sleeve.width_mm, sleeve.height_mm)
+    best = pick_best_product(products, sleeve.width_mm, sleeve.height_mm, sleeve.quantity)
     sleeve.matched_product_id = best.id if best else None
 
 
