@@ -231,7 +231,7 @@ describe('SleeveInventoryTab', () => {
     expect(blobText).toContain('"Catan, Seafarers; Azul"');
     // columns are trimmed to what's needed to order, in this order
     expect(blobText.split('\n')[0]).toBe(
-      '"Size group","Product","Distributor","Item ID","In Stock With Distro","Distro Qty Available","Packs to Buy","Total Cost","Games"'
+      '"Product","Distributor","Item ID","In Stock With Distro","Distro Qty Available","Packs to Buy","Total Cost","Games"'
     );
     expect(blobText).toContain('"In stock","42"');
     // unmatched sizes can't be ordered, so they are left out
@@ -413,7 +413,7 @@ describe('SleeveInventoryTab', () => {
       expect(screen.getByText(/No games ready to sleeve in this size group/)).toBeInTheDocument();
     });
 
-    test('order CSV includes a size group column', async () => {
+    test('order CSV has no size group column', async () => {
       const user = userEvent.setup();
       let blobText = '';
       window.URL.createObjectURL = vi.fn((blob) => {
@@ -425,8 +425,8 @@ describe('SleeveInventoryTab', () => {
       await user.click(await screen.findByText('To Order'));
       await user.click(await screen.findByText('Export CSV'));
       await waitFor(() => expect(blobText).not.toBe(''));
-      expect(blobText.split('\n')[0]).toContain('"Size group"');
-      expect(blobText).toContain('"Standard Card Game"'); // 63x88 fixture
+      expect(blobText.split('\n')[0]).not.toContain('Size group');
+      expect(blobText).not.toContain('"Standard Card Game"'); // size-group label no longer exported
     });
   });
 
