@@ -124,6 +124,30 @@ def test_held_stock_and_distributor_stock_rank_equally(db_session):
     assert [p.id for p in rank_products([tight, loose], 45, 68, 1000, ship)] == [tight.id, loose.id]
 
 
+def test_batch_matching_uses_distributor_availability(db_session):
+    """Auto-Match and the order list must agree when distributor stock decides it."""
+    from models import Sleeve
+    from services.sleeve_matching import run_matching_for_all_games, compute_to_order_list
+    tight = SleeveProduct(distributor="D", name="Tight", width_mm=45, height_mm=68,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=0)
+    loose = SleeveProduct(distributor="D", name="Loose", width_mm=45.5, height_mm=69,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=529)
+    db_session.add_all([tight, loose])
+    db_session.commit()
+    g = _game(db_session, "Mini")
+    _sleeve(db_session, g, 45, 68, 100)
+    ship = {tight.id: {"stock_state": "in_stock", "qty_available": 500,
+                       "cost_price_ex_gst": 1.5, "distro_code": "X1"}}
+
+    run_matching_for_all_games(db_session)  # no availability: held stock wins
+    assert db_session.query(Sleeve).one().matched_product_id == loose.id
+
+    run_matching_for_all_games(db_session, availability=ship)
+    assert db_session.query(Sleeve).one().matched_product_id == tight.id
+    rows = compute_to_order_list(db_session, availability=ship)
+    assert rows[0]["product"]["product_id"] == tight.id
+
+
 def test_to_order_keeps_unmatched_sizes_separate(db_session):
     from services.sleeve_matching import compute_to_order_list
     g = _game(db_session, "Odd")

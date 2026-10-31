@@ -279,10 +279,20 @@ def _sleeve_response(s: Sleeve, db: Session) -> SleeveResponse:
     )
 
 
+def _live_availability(db: Session) -> dict | None:
+    """Live distributor stock per product id, or None if HL can't be read (ranking then ignores it)."""
+    products = db.execute(
+        select(SleeveProduct).options(selectinload(SleeveProduct.distro_links))
+    ).scalars().all()
+    return product_availability(products)
+
+
 def _auto_match_sleeve(sleeve: Sleeve, db: Session) -> None:
     """Match one unsleeved sleeve requirement to the best product (same rules as batch matching)."""
     products = db.execute(select(SleeveProduct)).scalars().all()
-    best = pick_best_product(products, sleeve.width_mm, sleeve.height_mm, sleeve.quantity)
+    best = pick_best_product(
+        products, sleeve.width_mm, sleeve.height_mm, sleeve.quantity, _live_availability(db)
+    )
     sleeve.matched_product_id = best.id if best else None
 
 
@@ -462,7 +472,7 @@ def create_sleeve_product(
         _add_distro_link(product, _validated_distro_row(data.distro_link))
     db.add(product)
     db.flush()
-    run_matching_for_all_games(db, commit=False)
+    run_matching_for_all_games(db, commit=False, availability=_live_availability(db))
     db.commit()
     db.refresh(product)
 
@@ -492,7 +502,7 @@ def update_sleeve_product(
 
     db.flush()
     # Size or stock changes can alter which product best fits each sleeve
-    run_matching_for_all_games(db, commit=False)
+    run_matching_for_all_games(db, commit=False, availability=_live_availability(db))
     db.commit()
     db.refresh(product)
 
@@ -519,7 +529,7 @@ def delete_sleeve_product(
     db.delete(product)
     db.flush()
     # Sleeves that lost their product may fit another one
-    run_matching_for_all_games(db, commit=False)
+    run_matching_for_all_games(db, commit=False, availability=_live_availability(db))
     db.commit()
 
     return {"success": True, "cleared_sleeve_links": len(linked_sleeves)}
@@ -586,7 +596,7 @@ def get_unlisted_catalogue_sleeves(include_all: bool = False, db: Session = Depe
 @router.post("/match-all", dependencies=[Depends(require_admin_auth)])
 def match_all_sleeves(db: Session = Depends(get_db)):
     """Run matching across all unsleeved games, persist matched_product_id."""
-    result = run_matching_for_all_games(db)
+    result = run_matching_for_all_games(db, availability=_live_availability(db))
     return result
 
 

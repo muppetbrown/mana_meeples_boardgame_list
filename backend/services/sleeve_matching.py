@@ -112,9 +112,13 @@ def find_matching_products(width_mm: float, height_mm: float, db: Session) -> li
     return [p for p in products if fits_card(p, width_mm, height_mm)]
 
 
-def run_matching_for_all_games(db: Session, commit: bool = True) -> dict:
+def run_matching_for_all_games(
+    db: Session, commit: bool = True, availability: dict | None = None
+) -> dict:
     """
     Batch match: set matched_product_id on every unsleeved Sleeve record.
+    `availability` is live distributor stock per product id (see
+    services/sleeve_distro.product_availability); the same ranking as the order list.
     Returns summary of matches made.
     """
     sleeves = db.execute(
@@ -130,7 +134,9 @@ def run_matching_for_all_games(db: Session, commit: bool = True) -> dict:
     unmatched = 0
 
     for sleeve in sleeves:
-        best = pick_best_product(all_products, sleeve.width_mm, sleeve.height_mm, sleeve.quantity)
+        best = pick_best_product(
+            all_products, sleeve.width_mm, sleeve.height_mm, sleeve.quantity, availability
+        )
         if best:
             sleeve.matched_product_id = best.id
             matched += 1
