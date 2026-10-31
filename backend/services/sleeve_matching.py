@@ -6,7 +6,7 @@ Provides ordering recommendations and stock-based sleeving readiness checks.
 """
 from collections import defaultdict
 from decimal import Decimal
-from sqlalchemy import select, and_, func
+from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
 from models import Sleeve, SleeveProduct, Game
@@ -36,34 +36,11 @@ def size_waste(product: SleeveProduct, width_mm, height_mm) -> Decimal:
     return (pw - to_decimal(width_mm)) + (ph - to_decimal(height_mm))
 
 
-def find_matching_products(width_mm: float, height_mm: float, db: Session) -> list[SleeveProduct]:
-    """Find all sleeve products that fit a given card size within tolerances."""
-    width_mm = to_decimal(width_mm)
-    height_mm = to_decimal(height_mm)
-    fit_w = func.coalesce(SleeveProduct.card_width_mm, SleeveProduct.width_mm)
-    fit_h = func.coalesce(SleeveProduct.card_height_mm, SleeveProduct.height_mm)
-    return db.execute(
-        select(SleeveProduct).where(
-            and_(
-                fit_w >= width_mm,
-                fit_w <= width_mm + WIDTH_TOLERANCE_MM,
-                fit_h >= height_mm,
-                fit_h <= height_mm + HEIGHT_TOLERANCE_MM,
-            )
-        )
-    ).scalars().all()
-
-
-def best_match_for_order(width_mm: float, height_mm: float, db: Session) -> SleeveProduct | None:
-    """Find the best-fitting product, using cheapest-per-sleeve as tiebreaker."""
-    products = find_matching_products(width_mm, height_mm, db)
-    if not products:
-        return None
-    # Best size fit first, then cheapest per sleeve for same-size products
-    return min(products, key=lambda p: (
-        size_waste(p, width_mm, height_mm),
-        float(p.price) / p.sleeves_per_pack,
-    ))
+def fits_card(product: SleeveProduct, width_mm, height_mm) -> bool:
+    """Whether a product fits a card size within the matching tolerances."""
+    sw, sh = to_decimal(width_mm), to_decimal(height_mm)
+    pw, ph = fit_size(product)
+    return sw <= pw <= sw + WIDTH_TOLERANCE_MM and sh <= ph <= sh + HEIGHT_TOLERANCE_MM
 
 
 def _availability_rank(availability: dict | None, product: SleeveProduct) -> int:
@@ -81,73 +58,67 @@ def order_cost(product: SleeveProduct, total_needed: int) -> float:
     return float(product.price) * packs
 
 
-def rank_products_for_order(
-    width_mm, height_mm, db: Session, availability: dict | None = None,
-    total_needed: int | None = None,
+def rank_products(
+    products: list[SleeveProduct],
+    width_mm,
+    height_mm,
+    quantity: int | None = None,
+    availability: dict | None = None,
 ) -> list[SleeveProduct]:
-    """Every product that fits a card size, best one to order first.
+    """THE ranking used everywhere a sleeve/card size is matched to a product.
 
-    Distributor stock (from HL, see services/sleeve_distro.py) outranks fit and
-    price: all candidates are within tolerance, and a sleeve nobody can supply
-    is a worse buy than a slightly looser one that ships. Among equally good
-    fits, when `total_needed` is known the cheapest actual order wins (so stock
-    already held of a product, and pack-size rounding, are taken into account);
-    otherwise cheapest per sleeve.
+    Every product within tolerance of the card size, best first:
+      1. supply: we can get it. Either stock we hold covers `quantity`, or the
+         distributor (HL, see services/sleeve_distro.py) has it in stock. These
+         are equal, so a tighter fit we'd have to order beats a looser one we
+         hold. Then unknown distributor stock, then out of stock.
+      2. tightest size fit
+      3. cheapest whole-pack order for what's still missing (needs `quantity`)
+      4. cheapest per sleeve
+
+    `quantity` is the sleeve quantity when matching a single requirement, or the
+    total for a size group when building the order list. Without it, held stock
+    is ignored (rule 1 uses distributor stock only) and rule 3 is skipped.
     """
-    def cost(p: SleeveProduct) -> float:
-        return order_cost(p, total_needed) if total_needed is not None else 0.0
+    def supply_rank(p: SleeveProduct) -> int:
+        if quantity is not None and p.in_stock >= quantity:
+            return 0
+        return _availability_rank(availability, p)
 
-    return sorted(
-        find_matching_products(width_mm, height_mm, db),
-        key=lambda p: (
-            _availability_rank(availability, p),
+    def key(p: SleeveProduct):
+        cost = order_cost(p, quantity) if quantity is not None else 0.0
+        return (
+            supply_rank(p),
             size_waste(p, width_mm, height_mm),
-            cost(p),
+            cost,
             float(p.price) / p.sleeves_per_pack,
-        ),
-    )
+        )
+
+    return sorted((p for p in products if fits_card(p, width_mm, height_mm)), key=key)
 
 
-def best_match_in_stock(width_mm: float, height_mm: float, db: Session) -> SleeveProduct | None:
-    """Find the best-fitting in-stock product for the given card size."""
-    products = find_matching_products(width_mm, height_mm, db)
-    in_stock = [p for p in products if p.in_stock > 0]
-    if not in_stock:
-        return None
-    # Best size fit first, then highest stock for same-size products
-    return min(in_stock, key=lambda p: (
-        size_waste(p, width_mm, height_mm),
-        -p.in_stock,
-        float(p.price) / p.sleeves_per_pack,
-    ))
+def pick_best_product(
+    products: list[SleeveProduct], width_mm, height_mm, quantity: int | None = None,
+    availability: dict | None = None,
+) -> SleeveProduct | None:
+    """The single best product for a card size from a pre-loaded product list."""
+    ranked = rank_products(products, width_mm, height_mm, quantity, availability)
+    return ranked[0] if ranked else None
 
 
-def pick_best_product(products: list[SleeveProduct], width_mm, height_mm) -> SleeveProduct | None:
-    """Pick the best product for a card size from a pre-loaded product list.
-
-    Uses the same tolerances as find_matching_products: an exact size match
-    (e.g. 59 x 91 card, 59 x 91 sleeve) always qualifies. Best size fit first,
-    then prefer in-stock, then cheapest per sleeve.
-    """
-    sw = to_decimal(width_mm)
-    sh = to_decimal(height_mm)
-    candidates = [
-        p for p in products
-        if sw <= fit_size(p)[0] <= sw + WIDTH_TOLERANCE_MM
-        and sh <= fit_size(p)[1] <= sh + HEIGHT_TOLERANCE_MM
-    ]
-    if not candidates:
-        return None
-    return min(candidates, key=lambda p: (
-        size_waste(p, sw, sh),
-        0 if p.in_stock > 0 else 1,
-        float(p.price) / p.sleeves_per_pack,
-    ))
+def find_matching_products(width_mm: float, height_mm: float, db: Session) -> list[SleeveProduct]:
+    """All sleeve products that fit a card size within tolerances (unranked)."""
+    products = db.execute(select(SleeveProduct)).scalars().all()
+    return [p for p in products if fits_card(p, width_mm, height_mm)]
 
 
-def run_matching_for_all_games(db: Session, commit: bool = True) -> dict:
+def run_matching_for_all_games(
+    db: Session, commit: bool = True, availability: dict | None = None
+) -> dict:
     """
     Batch match: set matched_product_id on every unsleeved Sleeve record.
+    `availability` is live distributor stock per product id (see
+    services/sleeve_distro.product_availability); the same ranking as the order list.
     Returns summary of matches made.
     """
     sleeves = db.execute(
@@ -163,7 +134,9 @@ def run_matching_for_all_games(db: Session, commit: bool = True) -> dict:
     unmatched = 0
 
     for sleeve in sleeves:
-        best = pick_best_product(all_products, sleeve.width_mm, sleeve.height_mm)
+        best = pick_best_product(
+            all_products, sleeve.width_mm, sleeve.height_mm, sleeve.quantity, availability
+        )
         if best:
             sleeve.matched_product_id = best.id
             matched += 1
@@ -303,12 +276,14 @@ def compute_to_order_list(db: Session, availability: dict | None = None) -> list
     for sleeve in sleeves:
         size_groups[(to_decimal(sleeve.width_mm), to_decimal(sleeve.height_mm))].append(sleeve)
 
+    all_products = db.execute(select(SleeveProduct)).scalars().all()
+
     # Bucket sizes by the product they'd be ordered from. Unmatched sizes get
     # their own bucket keyed by size.
     buckets: dict = {}
     for (width, height), group_sleeves in sorted(size_groups.items()):
         size_needed = sum(s.quantity for s in group_sleeves)
-        ranked = rank_products_for_order(width, height, db, availability, size_needed)
+        ranked = rank_products(all_products, width, height, size_needed, availability)
         product = ranked[0] if ranked else None
         key = ("product", product.id) if product else ("size", width, height)
         bucket = buckets.setdefault(key, {"product": product, "sizes": [], "sleeves": [], "fitting": None})
@@ -336,13 +311,9 @@ def compute_to_order_list(db: Session, availability: dict | None = None) -> list
             product_info = _order_quote(product, total_needed, (availability or {}).get(product.id))
             product_info["alternatives"] = [
                 _order_quote(alt, total_needed, (availability or {}).get(alt.id))
-                for alt in sorted(
-                    (a for pid, a in bucket["fitting"].items() if pid != product.id),
-                    key=lambda a: (
-                        _availability_rank(availability, a),
-                        order_cost(a, total_needed),
-                        float(a.price) / a.sleeves_per_pack,
-                    ),
+                for alt in rank_products(
+                    [a for pid, a in bucket["fitting"].items() if pid != product.id],
+                    *bucket["sizes"][0], total_needed, availability,
                 )
             ]
         else:

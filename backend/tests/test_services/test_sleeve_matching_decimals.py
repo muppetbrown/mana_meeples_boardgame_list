@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from models import SleeveProduct
-from services.sleeve_matching import find_matching_products, best_match_for_order, to_decimal
+from services.sleeve_matching import find_matching_products, pick_best_product, to_decimal
 
 
 def _product(db, name, w, h):
@@ -24,7 +24,7 @@ def test_matching_with_float_inputs(db_session):
     _product(db_session, "TooWide", 65.0, 89.5)
     matches = find_matching_products(63.0, 88.9, db_session)
     assert [m.id for m in matches] == [near.id]
-    assert best_match_for_order(63.0, 88.9, db_session).id == near.id
+    assert pick_best_product(find_matching_products(63.0, 88.9, db_session), 63.0, 88.9).id == near.id
 
 
 def test_to_decimal_handles_float_noise():
@@ -87,6 +87,65 @@ def test_to_order_prefers_cheapest_order_given_existing_stock(db_session):
     assert rows[0]["product"]["product_id"] == small.id
     assert rows[0]["product"]["packs_to_buy"] == 5
     assert [a["product_id"] for a in rows[0]["product"]["alternatives"]] == [big.id]
+
+
+def test_matching_prefers_product_whose_stock_covers_quantity(db_session):
+    """A tighter fit with no stock must not hide sleeves that existing stock could cover."""
+    from services.sleeve_matching import pick_best_product
+    tight = SleeveProduct(distributor="D", name="Tight", width_mm=45, height_mm=68,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=0)
+    loose = SleeveProduct(distributor="D", name="Loose", width_mm=45.5, height_mm=69,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=529)
+    db_session.add_all([tight, loose])
+    db_session.commit()
+
+    assert pick_best_product([tight, loose], 45, 68).id == tight.id  # no quantity: unchanged
+    assert pick_best_product([tight, loose], 45, 68, 100).id == loose.id
+    # If nothing covers the quantity, fall back to best fit
+    assert pick_best_product([tight, loose], 45, 68, 1000).id == tight.id
+
+
+def test_held_stock_and_distributor_stock_rank_equally(db_session):
+    """A tighter fit the distributor can ship beats a looser fit we already hold."""
+    from services.sleeve_matching import rank_products
+    tight = SleeveProduct(distributor="D", name="Tight", width_mm=45, height_mm=68,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=0)
+    loose = SleeveProduct(distributor="D", name="Loose", width_mm=45.5, height_mm=69,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=529)
+    db_session.add_all([tight, loose])
+    db_session.commit()
+    ship = {tight.id: {"stock_state": "in_stock"}}
+    out = {tight.id: {"stock_state": "out_of_stock"}}
+
+    assert [p.id for p in rank_products([tight, loose], 45, 68, 100, ship)] == [tight.id, loose.id]
+    # Distributor can't supply the tighter fit: the one we hold wins
+    assert [p.id for p in rank_products([tight, loose], 45, 68, 100, out)] == [loose.id, tight.id]
+    # Held stock too small to cover the quantity, so only the distributor option counts
+    assert [p.id for p in rank_products([tight, loose], 45, 68, 1000, ship)] == [tight.id, loose.id]
+
+
+def test_batch_matching_uses_distributor_availability(db_session):
+    """Auto-Match and the order list must agree when distributor stock decides it."""
+    from models import Sleeve
+    from services.sleeve_matching import run_matching_for_all_games, compute_to_order_list
+    tight = SleeveProduct(distributor="D", name="Tight", width_mm=45, height_mm=68,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=0)
+    loose = SleeveProduct(distributor="D", name="Loose", width_mm=45.5, height_mm=69,
+                          sleeves_per_pack=50, price=Decimal("2.00"), in_stock=529)
+    db_session.add_all([tight, loose])
+    db_session.commit()
+    g = _game(db_session, "Mini")
+    _sleeve(db_session, g, 45, 68, 100)
+    ship = {tight.id: {"stock_state": "in_stock", "qty_available": 500,
+                       "cost_price_ex_gst": 1.5, "distro_code": "X1"}}
+
+    run_matching_for_all_games(db_session)  # no availability: held stock wins
+    assert db_session.query(Sleeve).one().matched_product_id == loose.id
+
+    run_matching_for_all_games(db_session, availability=ship)
+    assert db_session.query(Sleeve).one().matched_product_id == tight.id
+    rows = compute_to_order_list(db_session, availability=ship)
+    assert rows[0]["product"]["product_id"] == tight.id
 
 
 def test_to_order_keeps_unmatched_sizes_separate(db_session):
