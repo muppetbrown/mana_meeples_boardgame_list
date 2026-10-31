@@ -229,10 +229,15 @@ describe('SleeveInventoryTab', () => {
     expect(blobText).toContain('"Std, ""Premium"""');
     expect(blobText).toContain(`"'=SKU"`);
     expect(blobText).toContain('"Catan, Seafarers; Azul"');
-    expect(blobText).toContain('"No match"');
-    // distributor stock columns
-    expect(blobText).toContain('"In Stock With Distro","Distro Qty Available"');
+    // columns are trimmed to what's needed to order, in this order
+    expect(blobText.split('\n')[0]).toBe(
+      '"Size group","Product","Distributor","Item ID","In Stock With Distro","Distro Qty Available","Packs to Buy","Total Cost","Games"'
+    );
     expect(blobText).toContain('"In stock","42"');
+    // unmatched sizes can't be ordered, so they are left out
+    expect(blobText).not.toContain('No match');
+    expect(blobText).not.toContain('Tiny');
+    expect(blobText.split('\n')).toHaveLength(2);
   });
 
   test('empty states render for each section', async () => {
