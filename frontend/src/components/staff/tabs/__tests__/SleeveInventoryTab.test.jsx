@@ -42,7 +42,7 @@ const toSleeve = [
 const toOrder = [
   {
     width_mm: 63, height_mm: 88, total_needed: 300, deficit: 100,
-    product: { product_name: 'Std, "Premium"', distributor: 'D', item_id: '=SKU', packs_to_buy: 1, price_per_pack: 4.5, total_cost: 4.5 },
+    product: { product_name: 'Std, "Premium"', distributor: 'D', item_id: '=SKU', packs_to_buy: 1, price_per_pack: 4.5, total_cost: 4.5, distributor_stock_state: 'in_stock', distributor_stock: 42 },
     game_names: ['Catan, Seafarers', 'Azul'],
   },
   { width_mm: 10, height_mm: 20, total_needed: 5, deficit: 5, product: null, game_names: ['Tiny'] },
@@ -230,6 +230,9 @@ describe('SleeveInventoryTab', () => {
     expect(blobText).toContain(`"'=SKU"`);
     expect(blobText).toContain('"Catan, Seafarers; Azul"');
     expect(blobText).toContain('"No match"');
+    // distributor stock columns
+    expect(blobText).toContain('"In Stock With Distro","Distro Qty Available"');
+    expect(blobText).toContain('"In stock","42"');
   });
 
   test('empty states render for each section', async () => {

@@ -415,7 +415,12 @@ export function SleeveInventoryTab() {
   // ---- CSV Export for to-order ----
 
   const handleExportToOrderCSV = () => {
-    const rows = [["Size group", "Total Needed", "Deficit", "Product", "Distributor", "Item ID", "Packs to Buy", "Price/Pack", "Total Cost", "Games"]];
+    const distroStatus = (p) => {
+      if (!p) return "";
+      if (!p.distributor_stock_state) return "Not linked";
+      return { in_stock: "In stock", out_of_stock: "Out of stock", unknown: "Unknown" }[p.distributor_stock_state] || "Unknown";
+    };
+    const rows = [["Size group", "Total Needed", "Deficit", "Product", "Distributor", "Item ID", "In Stock With Distro", "Distro Qty Available", "Packs to Buy", "Price/Pack", "Total Cost", "Games"]];
     toOrderList.forEach((item) => {
       rows.push([
         classifySleeve({ name: item.product?.product_name, width_mm: item.width_mm, height_mm: item.height_mm }).label,
@@ -424,6 +429,8 @@ export function SleeveInventoryTab() {
         item.product?.product_name || "No match",
         item.product?.distributor || "",
         item.product?.item_id || "",
+        distroStatus(item.product),
+        item.product?.distributor_stock ?? "",
         item.product?.packs_to_buy || "",
         item.product?.price_per_pack || "",
         item.product?.total_cost || "",
