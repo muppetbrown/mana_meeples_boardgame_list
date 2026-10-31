@@ -69,6 +69,26 @@ def test_to_order_merges_sizes_that_map_to_same_product(db_session):
     assert row["game_names"] == ["A", "B"]
 
 
+def test_to_order_prefers_cheapest_order_given_existing_stock(db_session):
+    """Same size: 300 of the 50-pack already held, so 5 more cheap packs beats 150-packs."""
+    from services.sleeve_matching import compute_to_order_list
+    big = SleeveProduct(distributor="D", name="150 pack", width_mm=59, height_mm=91,
+                        sleeves_per_pack=150, price=Decimal("5.29"), in_stock=0)
+    small = SleeveProduct(distributor="D", name="50 pack", width_mm=59, height_mm=91,
+                          sleeves_per_pack=50, price=Decimal("1.96"), in_stock=300)
+    db_session.add_all([big, small])
+    db_session.commit()
+    g = _game(db_session, "Monikers")
+    _sleeve(db_session, g, 59, 91, 550)
+
+    rows = compute_to_order_list(db_session)
+
+    assert len(rows) == 1
+    assert rows[0]["product"]["product_id"] == small.id
+    assert rows[0]["product"]["packs_to_buy"] == 5
+    assert [a["product_id"] for a in rows[0]["product"]["alternatives"]] == [big.id]
+
+
 def test_to_order_keeps_unmatched_sizes_separate(db_session):
     from services.sleeve_matching import compute_to_order_list
     g = _game(db_session, "Odd")

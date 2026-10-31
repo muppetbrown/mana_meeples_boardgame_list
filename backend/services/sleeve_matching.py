@@ -74,21 +74,35 @@ def _availability_rank(availability: dict | None, product: SleeveProduct) -> int
     return {"in_stock": 0, "unknown": 1, "out_of_stock": 2}[option["stock_state"]]
 
 
+def order_cost(product: SleeveProduct, total_needed: int) -> float:
+    """Cost of buying whole packs to cover what's still missing after current stock."""
+    deficit = max(0, total_needed - product.in_stock)
+    packs = -(-deficit // product.sleeves_per_pack)
+    return float(product.price) * packs
+
+
 def rank_products_for_order(
-    width_mm, height_mm, db: Session, availability: dict | None = None
+    width_mm, height_mm, db: Session, availability: dict | None = None,
+    total_needed: int | None = None,
 ) -> list[SleeveProduct]:
     """Every product that fits a card size, best one to order first.
 
     Distributor stock (from HL, see services/sleeve_distro.py) outranks fit and
     price: all candidates are within tolerance, and a sleeve nobody can supply
-    is a worse buy than a slightly looser one that ships. Without availability
-    data this reduces to best size fit, then cheapest per sleeve.
+    is a worse buy than a slightly looser one that ships. Among equally good
+    fits, when `total_needed` is known the cheapest actual order wins (so stock
+    already held of a product, and pack-size rounding, are taken into account);
+    otherwise cheapest per sleeve.
     """
+    def cost(p: SleeveProduct) -> float:
+        return order_cost(p, total_needed) if total_needed is not None else 0.0
+
     return sorted(
         find_matching_products(width_mm, height_mm, db),
         key=lambda p: (
             _availability_rank(availability, p),
             size_waste(p, width_mm, height_mm),
+            cost(p),
             float(p.price) / p.sleeves_per_pack,
         ),
     )
@@ -293,7 +307,8 @@ def compute_to_order_list(db: Session, availability: dict | None = None) -> list
     # their own bucket keyed by size.
     buckets: dict = {}
     for (width, height), group_sleeves in sorted(size_groups.items()):
-        ranked = rank_products_for_order(width, height, db, availability)
+        size_needed = sum(s.quantity for s in group_sleeves)
+        ranked = rank_products_for_order(width, height, db, availability, size_needed)
         product = ranked[0] if ranked else None
         key = ("product", product.id) if product else ("size", width, height)
         bucket = buckets.setdefault(key, {"product": product, "sizes": [], "sleeves": [], "fitting": None})
@@ -325,6 +340,7 @@ def compute_to_order_list(db: Session, availability: dict | None = None) -> list
                     (a for pid, a in bucket["fitting"].items() if pid != product.id),
                     key=lambda a: (
                         _availability_rank(availability, a),
+                        order_cost(a, total_needed),
                         float(a.price) / a.sleeves_per_pack,
                     ),
                 )
