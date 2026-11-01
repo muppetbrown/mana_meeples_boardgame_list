@@ -415,18 +415,22 @@ export function SleeveInventoryTab() {
   // ---- CSV Export for to-order ----
 
   const handleExportToOrderCSV = () => {
-    const rows = [["Size group", "Total Needed", "Deficit", "Product", "Distributor", "Item ID", "Packs to Buy", "Price/Pack", "Total Cost", "Games"]];
-    toOrderList.forEach((item) => {
+    const distroStatus = (p) => {
+      if (!p) return "";
+      if (!p.distributor_stock_state) return "Not linked";
+      return { in_stock: "In stock", out_of_stock: "Out of stock", unknown: "Unknown" }[p.distributor_stock_state] || "Unknown";
+    };
+    const rows = [["Product", "Distributor", "Item ID", "In Stock With Distro", "Distro Qty Available", "Packs to Buy", "Total Cost", "Games"]];
+    // Only orderable rows: sizes with no matching product can't be ordered from a distributor
+    toOrderList.filter((item) => item.product).forEach((item) => {
       rows.push([
-        classifySleeve({ name: item.product?.product_name, width_mm: item.width_mm, height_mm: item.height_mm }).label,
-        item.total_needed,
-        item.deficit,
-        item.product?.product_name || "No match",
-        item.product?.distributor || "",
-        item.product?.item_id || "",
-        item.product?.packs_to_buy || "",
-        item.product?.price_per_pack || "",
-        item.product?.total_cost || "",
+        item.product.product_name,
+        item.product.distributor || "",
+        item.product.item_id || "",
+        distroStatus(item.product),
+        item.product.distributor_stock ?? "",
+        item.product.packs_to_buy || "",
+        item.product.total_cost || "",
         item.game_names.join("; "),
       ]);
     });

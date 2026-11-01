@@ -42,7 +42,7 @@ const toSleeve = [
 const toOrder = [
   {
     width_mm: 63, height_mm: 88, total_needed: 300, deficit: 100,
-    product: { product_name: 'Std, "Premium"', distributor: 'D', item_id: '=SKU', packs_to_buy: 1, price_per_pack: 4.5, total_cost: 4.5 },
+    product: { product_name: 'Std, "Premium"', distributor: 'D', item_id: '=SKU', packs_to_buy: 1, price_per_pack: 4.5, total_cost: 4.5, distributor_stock_state: 'in_stock', distributor_stock: 42 },
     game_names: ['Catan, Seafarers', 'Azul'],
   },
   { width_mm: 10, height_mm: 20, total_needed: 5, deficit: 5, product: null, game_names: ['Tiny'] },
@@ -229,7 +229,15 @@ describe('SleeveInventoryTab', () => {
     expect(blobText).toContain('"Std, ""Premium"""');
     expect(blobText).toContain(`"'=SKU"`);
     expect(blobText).toContain('"Catan, Seafarers; Azul"');
-    expect(blobText).toContain('"No match"');
+    // columns are trimmed to what's needed to order, in this order
+    expect(blobText.split('\n')[0]).toBe(
+      '"Product","Distributor","Item ID","In Stock With Distro","Distro Qty Available","Packs to Buy","Total Cost","Games"'
+    );
+    expect(blobText).toContain('"In stock","42"');
+    // unmatched sizes can't be ordered, so they are left out
+    expect(blobText).not.toContain('No match');
+    expect(blobText).not.toContain('Tiny');
+    expect(blobText.split('\n')).toHaveLength(2);
   });
 
   test('empty states render for each section', async () => {
@@ -405,7 +413,7 @@ describe('SleeveInventoryTab', () => {
       expect(screen.getByText(/No games ready to sleeve in this size group/)).toBeInTheDocument();
     });
 
-    test('order CSV includes a size group column', async () => {
+    test('order CSV has no size group column', async () => {
       const user = userEvent.setup();
       let blobText = '';
       window.URL.createObjectURL = vi.fn((blob) => {
@@ -417,8 +425,8 @@ describe('SleeveInventoryTab', () => {
       await user.click(await screen.findByText('To Order'));
       await user.click(await screen.findByText('Export CSV'));
       await waitFor(() => expect(blobText).not.toBe(''));
-      expect(blobText.split('\n')[0]).toContain('"Size group"');
-      expect(blobText).toContain('"Standard Card Game"'); // 63x88 fixture
+      expect(blobText.split('\n')[0]).not.toContain('Size group');
+      expect(blobText).not.toContain('"Standard Card Game"'); // size-group label no longer exported
     });
   });
 
