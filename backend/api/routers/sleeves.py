@@ -23,9 +23,7 @@ from services.sleeve_distro import (
     auto_link_products,
     product_availability,
     unlisted_sleeves,
-    with_stock_state,
 )
-from services.distro_availability import build_option
 
 logger = logging.getLogger(__name__)
 
