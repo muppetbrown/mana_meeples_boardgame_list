@@ -699,13 +699,14 @@ export function BuyListTab() {
     </span>
   );
 
-  // How many gaps a candidate's gap_match would fill in total - kept in sync
-  // with the backend's own count (see _gaps_filled_count in buy_list.py).
+  // How many kinds of gap a candidate's gap_match would fill - kept in sync
+  // with the backend's own count (see gaps_filled_count in gap_analysis.py).
+  // Player count counts once however many of its buckets match.
   const countGapsFilled = (gapMatch) => {
     if (!gapMatch) return 0;
     return (
       (gapMatch.category_is_gap ? 1 : 0) +
-      (gapMatch.matching_player_count_gaps || []).length +
+      ((gapMatch.matching_player_count_gaps || []).length > 0 ? 1 : 0) +
       (gapMatch.complexity_is_gap ? 1 : 0) +
       (gapMatch.playtime_is_gap ? 1 : 0)
     );

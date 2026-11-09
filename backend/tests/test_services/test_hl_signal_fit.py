@@ -43,12 +43,13 @@ BGG_DATA = {
 
 class TestGapsFilled:
     def test_counts_each_gap_type(self):
+        # Several matching player-count buckets still count as one gap type.
         assert gaps_filled({
             "category_is_gap": True,
             "matching_player_count_gaps": ["8", "9+"],
             "complexity_is_gap": True,
             "playtime_is_gap": False,
-        }) == 4
+        }) == 3
 
     def test_none_is_zero(self):
         assert gaps_filled(None) == 0
