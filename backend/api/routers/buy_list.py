@@ -36,7 +36,6 @@ from services.gap_analysis import (
     annotate_candidate,
     compute_library_gaps,
     gap_score,
-    gaps_filled_count,
     games_needed_values,
 )
 from services.hl_signal_fit import SCORING_POOL_SIZE, enrich_links_task, fit_for_link, needs_bgg_lookup
@@ -105,11 +104,6 @@ def _availability_with_manual_links(db: Session, results: list) -> Optional[Dict
     for link in links:
         links_by_title.setdefault(titles_by_game_id[link.game_id], []).append(link)
     return apply_manual_links(availability, links_by_title)
-
-
-def _gaps_filled_count(result: Dict[str, Any]) -> int:
-    """How many kinds of library gap a 'games to add' entry's gap_match fills."""
-    return gaps_filled_count(result.get("gap_match"))
 
 
 def _gap_score(result: Dict[str, Any]) -> float:
