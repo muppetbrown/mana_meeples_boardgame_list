@@ -20,7 +20,7 @@ from sqlalchemy import select
 
 from bgg_service import BGGServiceError, fetch_bgg_thing, search_bgg
 from models import HLStockLink, Game, utc_now
-from services.gap_analysis import annotate_candidate
+from services.gap_analysis import annotate_candidate, gap_score, gaps_filled_count
 from utils.helpers import categorize_game
 
 logger = logging.getLogger(__name__)
@@ -49,13 +49,8 @@ def needs_bgg_lookup(link: HLStockLink) -> bool:
 
 
 def gaps_filled(gap_match: Optional[Dict[str, Any]]) -> int:
-    """How many library gaps a gap_match would fill (same counting as the buy list)."""
-    gap_match = gap_match or {}
-    count = 1 if gap_match.get("category_is_gap") else 0
-    count += len(gap_match.get("matching_player_count_gaps") or [])
-    count += 1 if gap_match.get("complexity_is_gap") else 0
-    count += 1 if gap_match.get("playtime_is_gap") else 0
-    return count
+    """How many kinds of library gap a gap_match would fill (same counting as the buy list)."""
+    return gaps_filled_count(gap_match)
 
 
 def fit_for_link(link: HLStockLink, game: Optional[Game], gaps: Dict[str, Any]) -> Dict[str, Any]:
@@ -64,7 +59,7 @@ def fit_for_link(link: HLStockLink, game: Optional[Game], gaps: Dict[str, Any]) 
     if game is not None:
         gap_match = annotate_candidate(game, gaps)
         return {"scored": True, "source": "library", "gaps_filled": gaps_filled(gap_match),
-                "gap_match": gap_match, "bgg": None}
+                "gap_score": gap_score(gap_match), "gap_match": gap_match, "bgg": None}
 
     if link.bgg_enriched_at is not None and link.bgg_id is not None:
         candidate = SimpleNamespace(
@@ -80,6 +75,7 @@ def fit_for_link(link: HLStockLink, game: Optional[Game], gaps: Dict[str, Any]) 
             "scored": True,
             "source": "bgg",
             "gaps_filled": gaps_filled(gap_match),
+            "gap_score": gap_score(gap_match),
             "gap_match": gap_match,
             "bgg": {
                 "bgg_id": link.bgg_id,
@@ -89,7 +85,7 @@ def fit_for_link(link: HLStockLink, game: Optional[Game], gaps: Dict[str, Any]) 
             },
         }
 
-    return {"scored": False, "source": None, "gaps_filled": None, "gap_match": None, "bgg": None}
+    return {"scored": False, "source": None, "gaps_filled": None, "gap_score": None, "gap_match": None, "bgg": None}
 
 
 async def _enrich_link(link: HLStockLink) -> None:

@@ -307,6 +307,52 @@ def annotate_candidate(game: Game, gaps: dict) -> dict:
     }
 
 
+# Relative value of closing each kind of gap. Category is the public-facing,
+# hand-curated structure of the library so it matters most; player count is
+# next (it decides whether a group can play at all); complexity and playtime
+# are softer preferences.
+GAP_WEIGHTS = {
+    "category": 3.0,
+    "player_count": 2.0,
+    "complexity": 1.5,
+    "playtime": 1.0,
+}
+
+
+def gaps_filled_count(gap_match: Optional[dict]) -> int:
+    """How many kinds of gap a candidate fills (0-4).
+
+    Player count counts once however many of its buckets match: a 2-6 player
+    game sits in five overlapping buckets but is still one player-count
+    improvement, so it shouldn't outscore a game that fills category,
+    complexity and playtime gaps.
+    """
+    if not gap_match:
+        return 0
+    return (
+        (1 if gap_match.get("category_is_gap") else 0)
+        + (1 if gap_match.get("matching_player_count_gaps") else 0)
+        + (1 if gap_match.get("complexity_is_gap") else 0)
+        + (1 if gap_match.get("playtime_is_gap") else 0)
+    )
+
+
+def gap_score(gap_match: Optional[dict]) -> float:
+    """Weighted value of the gaps a candidate fills (see GAP_WEIGHTS)."""
+    if not gap_match:
+        return 0.0
+    score = 0.0
+    if gap_match.get("category_is_gap"):
+        score += GAP_WEIGHTS["category"]
+    if gap_match.get("matching_player_count_gaps"):
+        score += GAP_WEIGHTS["player_count"]
+    if gap_match.get("complexity_is_gap"):
+        score += GAP_WEIGHTS["complexity"]
+    if gap_match.get("playtime_is_gap"):
+        score += GAP_WEIGHTS["playtime"]
+    return score
+
+
 def games_needed_values(gap_match: Optional[dict]) -> list[int]:
     """games_needed for each gap a candidate's gap_match actually fills - i.e.
     how many more owned games it would still take, per matched gap, to clear

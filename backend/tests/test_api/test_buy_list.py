@@ -1351,7 +1351,7 @@ class TestHLSignalGapRanking:
 
         assert [i["hl_internal_id"] for i in data["items"]] == [1, 2]
         assert data["items"][1]["fit"] == {
-            "scored": False, "source": None, "gaps_filled": None, "gap_match": None, "bgg": None,
+            "scored": False, "source": None, "gaps_filled": None, "gap_score": None, "gap_match": None, "bgg": None,
         }
         assert data["scoring_pending"] == 1
         no_bgg_enrichment.assert_called_once_with([2])

@@ -348,3 +348,26 @@ class TestComputeLibraryGaps:
         assert len(result["player_count_gaps"]) == 9
         assert len(result["complexity_gaps"]) == 3
         assert len(result["playtime_gaps"]) == 4
+
+
+class TestGapScore:
+    def test_player_count_buckets_count_once(self):
+        from services.gap_analysis import GAP_WEIGHTS, gap_score, gaps_filled_count
+
+        wide = {"matching_player_count_gaps": ["5", "6", "7", "8", "9+"]}
+        narrow = {"matching_player_count_gaps": ["9+"]}
+        assert gap_score(wide) == gap_score(narrow) == GAP_WEIGHTS["player_count"]
+        assert gaps_filled_count(wide) == 1
+
+    def test_category_outweighs_playtime_and_complexity(self):
+        from services.gap_analysis import gap_score
+
+        category_only = {"category_is_gap": True}
+        soft_gaps = {"complexity_is_gap": True, "playtime_is_gap": True}
+        assert gap_score(category_only) > gap_score(soft_gaps)
+
+    def test_none_is_zero(self):
+        from services.gap_analysis import gap_score, gaps_filled_count
+
+        assert gap_score(None) == 0.0
+        assert gaps_filled_count(None) == 0
