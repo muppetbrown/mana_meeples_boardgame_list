@@ -336,7 +336,7 @@ class TestAdminTokenRotationRevokesJwt:
         token = generate_jwt_token("192.168.1.1")
         assert verify_jwt_token(token) is not None
 
-        monkeypatch.setattr("config.ADMIN_TOKEN", "a-new-admin-token")
+        monkeypatch.setattr("utils.jwt_utils.ADMIN_TOKEN", "a-new-admin-token")
         assert verify_jwt_token(token) is None
 
         # a token issued under the new admin token works
