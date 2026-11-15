@@ -494,6 +494,21 @@ async def image_proxy(
         # This happens when cloudinary_url is used instead of the original BGG URL
         # Redirect directly to Cloudinary instead of double-proxying
         if _url_host == 'res.cloudinary.com' or _url_host.endswith('.cloudinary.com'):
+            # SECURITY: only ever redirect to our own Cloudinary account. Anyone can
+            # host files on Cloudinary, so redirecting to any cloudinary.com URL made
+            # this public endpoint an open redirect to content we don't control.
+            from config import CLOUDINARY_CLOUD_NAME  # noqa: E402
+            _is_own_cloud = bool(
+                CLOUDINARY_CLOUD_NAME
+                and _url_host == 'res.cloudinary.com'
+                and urlparse(url).path.startswith(f"/{CLOUDINARY_CLOUD_NAME}/")
+            )
+            if not _is_own_cloud:
+                logger.warning(f"Refused to redirect to a foreign Cloudinary URL: {_sl(url[:100])}")
+                raise HTTPException(
+                    status_code=400,
+                    detail="Image proxy only supports BoardGameGeek images"
+                )
             logger.warning(f"Image proxy received Cloudinary URL (should receive BGG URL): {_sl(url[:100])}")
             # Redirect directly to the Cloudinary URL
             return Response(

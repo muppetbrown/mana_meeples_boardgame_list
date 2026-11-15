@@ -8,12 +8,26 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
+import hashlib
+import hmac
+
+import config
 from config import SESSION_SECRET, JWT_EXPIRATION_DAYS
 
 logger = logging.getLogger(__name__)
 
 # JWT configuration
 JWT_ALGORITHM = "HS256"
+
+
+def _admin_token_fingerprint() -> str:
+    """Short fingerprint of the current ADMIN_TOKEN, carried in every JWT.
+
+    A JWT is only accepted while its fingerprint matches, so changing ADMIN_TOKEN signs
+    out every session issued under the old one. Without it, rotating a leaked admin
+    token left already-issued JWTs valid for up to JWT_EXPIRATION_DAYS.
+    """
+    return hashlib.sha256(config.ADMIN_TOKEN.encode()).hexdigest()[:16]
 
 
 def generate_jwt_token(client_ip: str) -> str:
@@ -30,6 +44,7 @@ def generate_jwt_token(client_ip: str) -> str:
     payload = {
         "sub": "admin",  # Subject (admin user)
         "ip": client_ip,  # Client IP for auditing
+        "tv": _admin_token_fingerprint(),  # Revoked when ADMIN_TOKEN changes
         "iat": datetime.now(timezone.utc),  # Issued at
         "exp": datetime.now(timezone.utc) + timedelta(days=JWT_EXPIRATION_DAYS),  # Expiration
     }
@@ -54,6 +69,9 @@ def verify_jwt_token(token: str) -> Optional[Dict[str, Any]]:
     try:
         # Decode and verify token
         payload = jwt.decode(token, SESSION_SECRET, algorithms=[JWT_ALGORITHM])
+        if not hmac.compare_digest(str(payload.get("tv", "")), _admin_token_fingerprint()):
+            logger.warning("JWT token was issued under a different admin token")
+            return None
         return payload
     except jwt.ExpiredSignatureError:
         logger.warning("JWT token expired")
