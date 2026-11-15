@@ -12,7 +12,6 @@ import hashlib
 import hmac
 
 import config
-from config import SESSION_SECRET, JWT_EXPIRATION_DAYS
 
 logger = logging.getLogger(__name__)
 
@@ -46,12 +45,12 @@ def generate_jwt_token(client_ip: str) -> str:
         "ip": client_ip,  # Client IP for auditing
         "tv": _admin_token_fingerprint(),  # Revoked when ADMIN_TOKEN changes
         "iat": datetime.now(timezone.utc),  # Issued at
-        "exp": datetime.now(timezone.utc) + timedelta(days=JWT_EXPIRATION_DAYS),  # Expiration
+        "exp": datetime.now(timezone.utc) + timedelta(days=config.JWT_EXPIRATION_DAYS),  # Expiration
     }
 
     # Generate token
-    token = jwt.encode(payload, SESSION_SECRET, algorithm=JWT_ALGORITHM)
-    logger.info(f"Generated JWT token for {client_ip}, expires in {JWT_EXPIRATION_DAYS} days")
+    token = jwt.encode(payload, config.SESSION_SECRET, algorithm=JWT_ALGORITHM)
+    logger.info(f"Generated JWT token for {client_ip}, expires in {config.JWT_EXPIRATION_DAYS} days")
 
     return token
 
@@ -68,7 +67,7 @@ def verify_jwt_token(token: str) -> Optional[Dict[str, Any]]:
     """
     try:
         # Decode and verify token
-        payload = jwt.decode(token, SESSION_SECRET, algorithms=[JWT_ALGORITHM])
+        payload = jwt.decode(token, config.SESSION_SECRET, algorithms=[JWT_ALGORITHM])
         if not hmac.compare_digest(str(payload.get("tv", "")), _admin_token_fingerprint()):
             logger.warning("JWT token was issued under a different admin token")
             return None
