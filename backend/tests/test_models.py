@@ -499,7 +499,9 @@ class TestModelIndexes:
         """Test Sleeve model has expected indexes"""
         indexes = {idx.name for idx in Sleeve.__table__.indexes}
 
-        assert "idx_sleeve_game" in indexes
+        # game_id is indexed once, by the column's own index (idx_sleeve_game duplicated it)
+        assert "ix_sleeves_game_id" in indexes
+        assert "idx_sleeve_game" not in indexes
         assert "idx_sleeve_size" in indexes
 
 
