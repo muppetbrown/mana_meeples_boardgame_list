@@ -309,6 +309,8 @@ async def lifespan(app: FastAPI):
 # FastAPI app initialization
 # ------------------------------------------------------------------------------
 
+_IS_PRODUCTION = os.getenv("ENVIRONMENT") == "production"
+
 app = FastAPI(
     lifespan=lifespan,
     title="Mana & Meeples Board Game Library API",
@@ -344,8 +346,11 @@ app = FastAPI(
     * Public endpoints: 100 requests/minute
     * Admin endpoints: Limited by authentication
     """,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    # The interactive docs and the raw schema describe every admin endpoint, so they
+    # are not served in production. Run with ENVIRONMENT=development to browse them.
+    docs_url=None if _IS_PRODUCTION else "/docs",
+    redoc_url=None if _IS_PRODUCTION else "/redoc",
+    openapi_url=None if _IS_PRODUCTION else "/openapi.json",
     openapi_tags=[
         {
             "name": "public",
@@ -537,7 +542,7 @@ async def root():
         "message": "Mana & Meeples Board Game Library API",
         "app_version": "2.0.0",
         "endpoints": {
-            "documentation": "/docs",
+            "documentation": None if _IS_PRODUCTION else "/docs",
             "health_check": "/api/health",
             "public_games": "/api/public/games",
             "admin_panel": "/api/admin",

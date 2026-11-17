@@ -32,6 +32,12 @@ services:
         sync: false
       - key: BGG_API_KEY
         sync: false
+      - key: ANTHROPIC_API_KEY   # buy-list game suggestions
+        sync: false
+      # Read-only connection to the HL Timaru stock database, for the HL stock-signal
+      # panel. Use a role that can only SELECT, never that database's owner.
+      - key: HL_STOCK_DATABASE_URL
+        sync: false
       - key: GITHUB_TOKEN     # triggers/polls the sleeve-fetch workflow
         sync: false
       - key: CLOUDINARY_CLOUD_NAME
@@ -50,7 +56,7 @@ services:
 
   - type: redis
     name: boardgame-library-redis
-    plan: free
+    plan: starter
     maxmemoryPolicy: volatile-lru  # Only evict keys with TTL (protects sessions)
     ipAllowList: []  # empty = allow all Render services
 

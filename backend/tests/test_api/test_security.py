@@ -9,6 +9,7 @@ Tests cover:
 4. URL validation on image proxy
 """
 import pytest
+from unittest.mock import patch
 import time
 from fastapi.testclient import TestClient
 from main import app
@@ -270,3 +271,37 @@ class TestSecurityIntegration:
 
 
 # Run with: pytest backend/tests/test_api/test_security.py -v
+
+
+class TestImageProxyCloudinaryRedirect:
+    """The proxy may redirect to our own Cloudinary account, never to someone else's."""
+
+    def test_foreign_cloudinary_url_is_refused(self, client):
+        with patch("api.routers.public.validate_url_against_ssrf"), \
+                patch("config.CLOUDINARY_CLOUD_NAME", "our-cloud"):
+            for url in (
+                "https://res.cloudinary.com/someone-else/image/upload/evil.svg",
+                "https://attacker.cloudinary.com/our-cloud/image/upload/x.jpg",
+                "https://res.cloudinary.com/our-cloud-evil/image/upload/x.jpg",
+            ):
+                response = client.get("/api/public/image-proxy", params={"url": url},
+                                      follow_redirects=False)
+                assert response.status_code == 400, url
+
+    def test_own_cloudinary_url_redirects(self, client):
+        url = "https://res.cloudinary.com/our-cloud/image/upload/game.jpg"
+        with patch("api.routers.public.validate_url_against_ssrf"), \
+                patch("config.CLOUDINARY_CLOUD_NAME", "our-cloud"):
+            response = client.get("/api/public/image-proxy", params={"url": url},
+                                  follow_redirects=False)
+        assert response.status_code == 302
+        assert response.headers["location"] == url
+
+    def test_cloudinary_url_is_refused_when_cloudinary_is_not_configured(self, client):
+        with patch("api.routers.public.validate_url_against_ssrf"), \
+                patch("config.CLOUDINARY_CLOUD_NAME", ""):
+            response = client.get(
+                "/api/public/image-proxy",
+                params={"url": "https://res.cloudinary.com/anyone/image/upload/x.jpg"},
+                follow_redirects=False)
+        assert response.status_code == 400

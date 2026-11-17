@@ -327,3 +327,27 @@ class TestIntegration:
             assert payload is not None
             assert payload["ip"] == ip
             assert payload["sub"] == "admin"
+
+
+class TestAdminTokenRotationRevokesJwt:
+    """A JWT is tied to the ADMIN_TOKEN it was issued under."""
+
+    def test_token_is_rejected_after_admin_token_changes(self, monkeypatch):
+        token = generate_jwt_token("192.168.1.1")
+        assert verify_jwt_token(token) is not None
+
+        monkeypatch.setattr("utils.jwt_utils.ADMIN_TOKEN", "a-new-admin-token")
+        assert verify_jwt_token(token) is None
+
+        # a token issued under the new admin token works
+        assert verify_jwt_token(generate_jwt_token("192.168.1.1")) is not None
+
+    def test_token_without_fingerprint_is_rejected(self):
+        """Tokens issued before the fingerprint existed must be re-issued by logging in."""
+        import jwt as pyjwt
+        from datetime import datetime, timedelta, timezone
+        legacy = pyjwt.encode(
+            {"sub": "admin", "ip": "192.168.1.1",
+             "exp": datetime.now(timezone.utc) + timedelta(days=1)},
+            SESSION_SECRET, algorithm="HS256")
+        assert verify_jwt_token(legacy) is None
