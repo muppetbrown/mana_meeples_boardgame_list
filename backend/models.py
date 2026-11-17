@@ -222,7 +222,7 @@ class HLStockLink(Base):
     __tablename__ = "hl_stock_links"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    hl_internal_id = Column(Integer, nullable=False, unique=True, index=True)
+    hl_internal_id = Column(Integer, nullable=False, unique=True)  # the unique constraint is the index
     game_id = Column(Integer, ForeignKey("boardgames.id", ondelete="SET NULL"), nullable=True, index=True)
     dismissed = Column(Boolean, default=False, nullable=False, index=True)
     hl_product_name = Column(Text, nullable=False)
@@ -353,7 +353,7 @@ class Sleeve(Base):
 
     __tablename__ = "sleeves"
 
-    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     game_id = Column(Integer, ForeignKey("boardgames.id", ondelete="CASCADE"), nullable=False, index=True)
     card_name = Column(String(200), nullable=True)  # e.g., "Age Cards", "Player Cards"
     width_mm = Column(Numeric(6, 2), nullable=False)  # Card width, decimals allowed (e.g. 63.5)
@@ -368,7 +368,6 @@ class Sleeve(Base):
     matched_product = relationship("SleeveProduct", back_populates="matched_sleeves")
 
     __table_args__ = (
-        Index("idx_sleeve_game", "game_id"),
         Index("idx_sleeve_size", "width_mm", "height_mm"),
         Index("idx_sleeve_sleeved", "is_sleeved"),
     )
